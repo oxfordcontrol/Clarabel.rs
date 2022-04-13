@@ -10,3 +10,7 @@ keywords = ["optimization", "math"]
 categories = ["optimization"]
 
 [dependencies]
+num = "0.4"
+nalgebra = "0.30"
+ndarray = "0.15"
+num-traits = "0.2"
