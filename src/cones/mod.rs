@@ -31,7 +31,7 @@ pub fn cone_dict<T: 'static + FloatT>(cone: SupportedCones, dim: usize) -> Box<d
     }
 }
 
-pub trait ConvexCone<T: FloatT> {
+pub trait ConvexCone<T> {
 
     fn dim(&self) -> usize;
     fn degree(&self) -> usize;
