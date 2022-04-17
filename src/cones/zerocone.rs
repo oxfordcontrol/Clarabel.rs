@@ -1,5 +1,5 @@
-use crate::algebra::*;
 use super::*;
+use crate::algebra::*;
 use core::marker::PhantomData;
 
 // -------------------------------------
@@ -21,7 +21,10 @@ impl<T: FloatT> ZeroCone<T> {
     }
 }
 
-impl<T: FloatT> ConvexCone<T> for ZeroCone<T> {
+impl<T> Cone<T, [T], [T]> for ZeroCone<T>
+where
+    T: FloatT,
+{
     fn dim(&self) -> usize {
         self.dim
     }
@@ -48,34 +51,29 @@ impl<T: FloatT> ConvexCone<T> for ZeroCone<T> {
         //nothing to do
     }
 
+    fn λ_circ_λ(&self, x: &mut [T]) {
+        x.fill(T::zero());
+    }
+
+    fn circ_op(&self, x: &mut [T], _y: &[T], _z: &[T]) {
+        x.fill(T::zero());
+    }
+
+    fn λ_inv_circ_op(&self, x: &mut [T], _z: &[T]) {
+        x.fill(T::zero());
+    }
+
+    fn inv_circ_op(&self, x: &mut [T], _y: &[T], _z: &[T]) {
+        x.fill(T::zero());
+    }
+
+    fn shift_to_cone(&self, z: &mut [T]) {
+        z.fill(T::zero());
+    }
+
     #[allow(non_snake_case)]
     fn get_WtW_block(&self, WtWblock: &mut [T]) {
         WtWblock.fill(T::zero());
-    }
-
-    fn λ_circ_λ(&self, x: &mut [T])
-    {
-        x.fill(T::zero());
-    }
-
-    fn circ_op(&self, x: &mut [T], _y: &[T], _z: &[T])
-    {
-        x.fill(T::zero());
-    }
-
-    fn λ_inv_circ_op(&self, x: &mut [T], _z: &[T])
-    {
-        x.fill(T::zero());
-    }
-
-    fn inv_circ_op(&self, x: &mut [T], _y: &[T], _z: &[T])
-    {
-        x.fill(T::zero());
-    }
-
-    fn shift_to_cone(&self, z: &mut [T])
-    {
-        z.fill(T::zero());
     }
 
     #[allow(non_snake_case)]

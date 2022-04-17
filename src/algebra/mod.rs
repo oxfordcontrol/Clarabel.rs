@@ -1,27 +1,53 @@
-use num_traits::{Float, NumAssign, NumCast};
+use num_traits::{Float, NumAssign};
 
-pub trait FloatT: 'static + Float + NumAssign + NumCast + std::iter::Sum + std::cmp::PartialOrd {}
+// PJG: This needs to be configurable
+// Here we specify the particular algebra implementation
+pub mod native;
+pub use native::*;
+
+pub mod cscmatrix;
+pub use cscmatrix::*;
+
+pub trait FloatT:
+    'static + Float + NumAssign
+{
+}
 impl FloatT for f32 {}
 impl FloatT for f64 {}
 
-// T = transpose, N = non-transposed
-#[derive(PartialEq, Eq)]
+// T = transpose, N = non-transpose
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum MatrixShape {
     N,
     T,
 }
 
-pub trait VectorMathOps<T> {
+pub trait ScalarMath<T>
+where
+{
+    fn clip(s: T,min_thresh: T,max_thresh: T,min_new: T,max_new: T) -> T;
+}
 
-    //scalar mut operations
+pub trait VectorMath<T> {
+
+    //copy values from another vector
+    fn copy_from(&mut self, src: &Self);
+
+    //elementwise mut operations
     fn translate(&mut self, c: T);
     fn scale(&mut self, c: T);
     fn reciprocal(&mut self);
+    fn sqrt(&mut self);
+    fn rsqrt(&mut self);    //reciprocal sqrt
+    fn negate(&mut self);
+    fn hadamard(&mut self, y: &Self);
+    fn clip(&mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T);
 
     //norms and friends
-    fn dot(&self, y: &[T]) -> T;
+    fn dot(&self, y: &Self) -> T;
     fn sumsq(&self) -> T;
     fn norm(&self) -> T;
+    fn norm_scaled(&self, v: &Self) -> T;
     fn norm_inf(&self) -> T;
     fn norm_one(&self) -> T;
 
@@ -31,9 +57,36 @@ pub trait VectorMathOps<T> {
     fn mean(&self) -> T;
 
     //blas-like vector ops
-    fn axpby(&mut self, a: T, x: &[T], b :T);  //self = a*x+b*self
-    fn waxpby(&mut self, a: T, x: &[T], b :T, y: &[T]); //self = a*x+b*y
+    fn axpby(&mut self, a: T, x: &Self, b: T); //self = a*x+b*self
+    fn waxpby(&mut self, a: T, x: &Self, b: T, y: &Self); //self = a*x+b*y
+
 }
 
-pub mod native;
-pub use native::*;
+pub trait MatrixMath<T,V: ?Sized> {
+
+    //matrix properties
+    fn nrows(&self) -> usize;
+    fn ncols(&self) -> usize;
+    fn is_square(&self) -> bool;
+
+    //inf norms of rows and columns
+    fn col_norms(&self, norms: &mut V);
+    fn col_norms_no_reset(&self, norms: &mut V);
+    fn col_norms_sym(&self, norms: &mut V);
+    fn col_norms_sym_no_reset(&self, norms: &mut V);
+    fn row_norms(&self, norms: &mut V);
+    fn row_norms_no_reset(&self, norms: &mut V);
+
+    //scalar mut operations
+    fn scale(&mut self, c: T);
+
+    //left and right multiply by diagonals
+    fn lmul_diag(&mut self, l: &V);
+    fn rmul_diag(&mut self, r: &V);
+    fn lrmul_diag(&mut self, l: &V, r: &V);
+
+    // general matrix-vector multiply, blas like
+    // y = a*self*x + b*y
+    fn gemv(&self, sy: &mut V, trans: MatrixShape, x: &V, a:T, b:T);
+
+}

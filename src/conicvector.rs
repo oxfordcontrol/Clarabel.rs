@@ -1,5 +1,5 @@
 use crate::algebra::*;
-use crate::cones::ConeSet;
+use crate::cones::*;
 use std::ops::{Deref, DerefMut};
 
 // -------------------------------------
@@ -8,23 +8,19 @@ use std::ops::{Deref, DerefMut};
 // ---------------------------------------
 
 pub struct ConicVector<T: FloatT = f64> {
-
     //contiguous array of source data
-    vec : Vec<T>,
+    vec: Vec<T>,
 
     //array of start/stop tuples of the subvectors
     //NB: this different from the Julia prototype,
     //which instead used a vector of views.  Rust
     //borrow checker does not want to allow simultaneous
     //mutable access to multiple views of the data
-    ranges : Vec<(usize,usize)>
-
+    ranges: Vec<(usize, usize)>,
 }
 
 impl<T: FloatT> ConicVector<T> {
-
     pub fn new(set: &ConeSet<T>) -> Self {
-
         // make an internal copy to protect from user modification
         let vec = vec![T::zero(); set.numel()];
         let mut ranges = Vec::with_capacity(set.len());
@@ -33,27 +29,26 @@ impl<T: FloatT> ConicVector<T> {
         //required for each range.   This differs from
         //the Julia implementation
         let mut first = 0;
-        for cone in set.iter(){
+        for cone in set.iter() {
             let last = first + cone.numel();
-            ranges.push((first,last));
+            ranges.push((first, last));
             first = last;
         }
-        
+
         Self {
-            vec : vec,
-            ranges : ranges,
+            vec: vec,
+            ranges: ranges,
         }
     }
 
-    pub fn view(&self, i: usize) -> &[T]{
-        &self.vec[self.ranges[i].0 .. self.ranges[i].1]
+    pub fn view(&self, i: usize) -> &[T] {
+        &self.vec[self.ranges[i].0..self.ranges[i].1]
     }
 
-    pub fn view_mut(&mut self, i: usize) -> &[T]{
-        &mut self.vec[self.ranges[i].0 .. self.ranges[i].1]
+    pub fn view_mut(&mut self, i: usize) -> &mut [T] {
+        &mut self.vec[self.ranges[i].0..self.ranges[i].1]
     }
 }
-
 
 impl<T: FloatT> Deref for ConicVector<T> {
     type Target = Vec<T>;
