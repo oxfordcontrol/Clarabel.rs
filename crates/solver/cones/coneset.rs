@@ -8,11 +8,12 @@ use std::collections::HashMap;
 // -------------------------------------
 
 pub struct ConeSet<T: FloatT = f64> {
+
     cones: Vec<Box<dyn Cone<T, [T], [T]>>>,
 
     //Type tags and count of each cone
-    types: Vec<SupportedCones>,
-    type_counts: HashMap<SupportedCones, i32>,
+    pub types: Vec<SupportedCones>,
+    pub type_counts: HashMap<SupportedCones, usize>,
 
     //overall size of the composite cone
     numel: usize,
@@ -20,7 +21,7 @@ pub struct ConeSet<T: FloatT = f64> {
 
     // a vector showing the overall index of the
     // first element in each cone.  For convenience
-    headidx: Vec<usize>,
+    pub headidx: Vec<usize>,
 }
 
 impl<T: FloatT> ConeSet<T> {
@@ -111,11 +112,23 @@ where
 
         // we will update e <- δ .* e using return values
         // from this function.  default is to do nothing at all
-        let x = 0;
+        δ.fill(T::one());
         for (i, cone) in self.iter().enumerate() {
             any_changed |= cone.rectify_equilibration(δ.view_mut(i), e.view(i));
         }
         return any_changed;
+    }
+
+    fn WtW_is_diagonal(&self) -> bool{
+        //This function should probably never be called since
+        //we only us it to interrogate the blocks, but we can
+        //implement something reasonable anyway
+        let mut is_diag = true;
+        for cone in self.iter(){
+            is_diag &= cone.WtW_is_diagonal();
+            if !is_diag {break;}
+        }
+        return is_diag
     }
 
     fn update_scaling(&mut self, s: &ConicVector<T>, z: &ConicVector<T>) {
@@ -125,7 +138,7 @@ where
     }
 
     fn set_identity_scaling(&mut self) {
-        for (i, cone) in self.iter_mut().enumerate() {
+        for cone in self.iter_mut() {
             cone.set_identity_scaling();
         }
     }
@@ -212,7 +225,7 @@ where
         let (mut αz, mut αs) = (huge, huge);
 
         for (i, cone) in self.iter().enumerate() {
-            let (nextαz, nextαs) = cone.step_length(dz.view(i), z.view(i), z.view(i), s.view(i));
+            let (nextαz, nextαs) = cone.step_length(dz.view(i), ds.view(i), z.view(i), s.view(i));
             αz = T::min(αz, nextαz);
             αs = T::min(αs, nextαs);
         }

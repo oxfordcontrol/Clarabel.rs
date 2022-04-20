@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 pub mod coneset;
 pub mod nonnegativecone;
 pub mod socone;
@@ -34,6 +35,7 @@ pub trait Cone<T, CV: ?Sized, BV: ?Sized> {
     fn degree(&self) -> usize;
     fn numel(&self) -> usize;
     fn rectify_equilibration(&self, δ: &mut CV, e: &CV) -> bool;
+    fn WtW_is_diagonal(&self) -> bool;
     fn update_scaling(&mut self, s: &CV, z: &CV);
     fn set_identity_scaling(&mut self);
     fn λ_circ_λ(&self, x: &mut CV);
@@ -41,11 +43,8 @@ pub trait Cone<T, CV: ?Sized, BV: ?Sized> {
     fn λ_inv_circ_op(&self, x: &mut CV, z: &CV);
     fn inv_circ_op(&self, x: &mut CV, y: &CV, z: &CV);
     fn shift_to_cone(&self, z: &mut CV);
-    #[allow(non_snake_case)]
     fn get_WtW_block(&self, WtWblock: &mut BV);
-    #[allow(non_snake_case)]
     fn gemv_W(&self, is_transpose: MatrixShape, x: &CV, y: &mut CV, α: T, β: T);
-    #[allow(non_snake_case)]
     fn gemv_Winv(&self, is_transpose: MatrixShape, x: &CV, y: &mut CV, α: T, β: T);
     fn add_scaled_e(&self, x: &mut CV, α: T);
     fn step_length(&self, dz: &CV, ds: &CV, z: &CV, s: &CV) -> (T, T);

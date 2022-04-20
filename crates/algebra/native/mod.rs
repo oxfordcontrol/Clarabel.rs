@@ -1,4 +1,6 @@
 use super::*;
+pub mod cscmatrix;
+pub use cscmatrix::*;
 
 
 impl<T> ScalarMath<T> for T
@@ -22,28 +24,36 @@ where
         self.copy_from_slice(src);
     }
 
+    fn scalarop(&mut self, op: impl Fn(T) -> T) {
+        for x in self {*x = op(*x)}
+    }
+
+    fn scalarop_from(&mut self, op: impl Fn(T) -> T, v: &[T]) {
+        for (x,v) in self.iter_mut().zip(v) {*x = op(*v)}
+    }
+
     fn translate(&mut self, c: T) {
-        self.iter_mut().for_each(|x| *x += c);
+        self.scalarop(|x| x+c);
     }
 
     fn scale(&mut self, c: T) {
-        self.iter_mut().for_each(|x| *x *= c);
+        self.scalarop(|x| x*c);
     }
 
     fn reciprocal(&mut self) {
-        self.iter_mut().for_each(|x| *x = T::recip(*x));
+        self.scalarop(T::recip);
     }
 
     fn sqrt(&mut self) {
-        self.iter_mut().for_each(|x| *x = T::sqrt(*x));
+        self.scalarop(T::sqrt);
     }
 
     fn rsqrt(&mut self) {
-        self.iter_mut().for_each(|x| *x = T::recip(T::sqrt(*x)));
+        self.scalarop(|x| T::recip(T::sqrt(x)));
     }
 
     fn negate(&mut self) {
-        self.iter_mut().for_each(|x| *x = -(*x));
+        self.scalarop(|x| -x);
     }
 
     fn hadamard(&mut self, y: &[T]) {
@@ -51,10 +61,7 @@ where
     }
 
     fn clip(& mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T){
-        self.iter_mut().for_each(|x| {
-            *x = T::clip(*x, min_thresh, max_thresh, min_new, max_new)
-            }
-        );
+        self.scalarop(|x| T::clip(x, min_thresh, max_thresh, min_new, max_new) );
     }
 
     fn dot(&self, y: &[T]) -> T {
@@ -153,6 +160,7 @@ where
     //matrix properties
     fn nrows(&self) -> usize {self.m}
     fn ncols(&self) -> usize {self.n}
+    fn nnz(&self) -> usize {self.colptr[self.n]}
     fn is_square(&self) -> bool {self.m == self.n}
 
     //scalar mut operations
@@ -210,7 +218,7 @@ where
         }
     }
 
-    fn lmul_diag(&mut self, l: &[T]){
+    fn lscale(&mut self, l: &[T]){
 
         let rows = &self.rowval;
         let vals = &mut self.nzval;
@@ -220,7 +228,7 @@ where
         }
     }
 
-    fn rmul_diag(&mut self, r: &[T]){
+    fn rscale(&mut self, r: &[T]){
 
         let colptr = &self.colptr;
         let vals = &mut self.nzval;
@@ -232,7 +240,7 @@ where
 
     }
 
-    fn lrmul_diag(&mut self, l: &[T], r: &[T]){
+    fn lrscale(&mut self, l: &[T], r: &[T]){
 
         assert_eq!(self.nzval.len(),*self.colptr.last().unwrap());
 

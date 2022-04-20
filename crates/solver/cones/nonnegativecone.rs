@@ -40,8 +40,11 @@ where
 
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
         δ.copy_from_slice(e);
-
         false
+    }
+    
+    fn WtW_is_diagonal(&self) -> bool{
+        true
     }
 
     fn update_scaling(&mut self, s: &[T], z: &[T]) {
@@ -95,7 +98,6 @@ where
         }
     }
 
-    #[allow(non_snake_case)]
     fn get_WtW_block(&self, WtWblock: &mut [T]) {
         assert_eq!(self.w.len(), WtWblock.len());
         for i in 0..self.w.len() {
@@ -103,7 +105,6 @@ where
         }
     }
 
-    #[allow(non_snake_case)]
     fn gemv_W(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
         assert_eq!(y.len(), x.len());
         assert_eq!(y.len(), self.w.len());
@@ -112,7 +113,6 @@ where
         }
     }
 
-    #[allow(non_snake_case)]
     fn gemv_Winv(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
         assert_eq!(y.len(), x.len());
         assert_eq!(y.len(), self.w.len());

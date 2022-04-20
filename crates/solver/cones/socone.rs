@@ -59,6 +59,10 @@ where
         false
     }
 
+    fn WtW_is_diagonal(&self) -> bool{
+        true
+    }
+
     fn update_scaling(&mut self, s: &[T], z: &[T]) {
         let (z1, z2) = (z[1], &z[2..]);
         let (s1, s2) = (z[1], &z[2..]);
@@ -154,7 +158,6 @@ where
         }
     }
 
-    #[allow(non_snake_case)]
     fn get_WtW_block(&self, WtWblock: &mut [T]) {
         //NB: we are returning here the diagonal D block from the
         //sparse representation of W^TW, but not the
@@ -165,7 +168,6 @@ where
         WtWblock[1] *= self.d;
     }
 
-    #[allow(non_snake_case)]
     fn gemv_W(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
         // symmetric, so ignore transpose
         // use the fast product method from ECOS ECC paper
@@ -182,7 +184,6 @@ where
         y[2..].axpby(α * self.η, &x[2..], T::one());
     }
 
-    #[allow(non_snake_case)]
     fn gemv_Winv(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
         // symmetric, so ignore transpose
         // use the fast inverse product method from ECOS ECC paper
