@@ -40,7 +40,8 @@ impl<T: FloatT> DefaultResiduals<T> {
         let Px = vec![T::zero(); n];
 
 
-        Self {rx: rx, rz: rz, rτ: rτ, rx_inf: rx_inf, rz_inf: rz_inf,
-            dot_qx:T::zero(), dot_bz:T::zero() , dot_sz:T::zero(), dot_xPx:T::zero(), Px: Px,}
+        Self {rx, rz, rτ, rx_inf, rz_inf,Px,
+            dot_qx:T::zero(), dot_bz:T::zero() ,
+            dot_sz:T::zero(), dot_xPx:T::zero()}
     }
 }

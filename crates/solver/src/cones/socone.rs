@@ -16,14 +16,14 @@ pub struct SecondOrderCone<T: FloatT = f64> {
     v: Vec<T>,
     //additional scalar terms for rank-2 rep
     d: T,
-    η: T,
+    pub η: T,
 }
 
 impl<T: FloatT> SecondOrderCone<T> {
     pub fn new(dim: usize) -> Self {
         Self {
             //PJG: insert error here if dim < 2
-            dim: dim,
+            dim,
             w: vec![T::zero(); dim],
             λ: vec![T::zero(); dim],
             u: vec![T::zero(); dim],
@@ -234,10 +234,11 @@ where
         panic!("starting point of line search not in SOC");
     }
 
+    let out;
     if (a > T::zero() && b > T::zero()) || (d < T::zero()) {
         // all negative roots / complex root pair
         // -> infinite step length
-        return T::recip(T::epsilon());
+        out = T::recip(T::epsilon());
     } else {
         let sqrtd = T::sqrt(d);
         let mut r1 = (-b + sqrtd) / (two * a);
@@ -249,8 +250,9 @@ where
         if r2 < T::zero() {
             r2 = T::recip(T::epsilon());
         }
-        return T::min(r1, r2);
+        out = T::min(r1, r2);
     }
+    out
 }
 
 // We move the actual implementation of gemv_W outside

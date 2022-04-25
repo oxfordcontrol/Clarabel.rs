@@ -1,4 +1,4 @@
-use crate::algebra::*;
+use clarabel_algebra::*;
 
 pub struct Settings<T: FloatT = f64> {
 

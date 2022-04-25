@@ -3,9 +3,9 @@
 use crate::algebra::*;
 use crate::cones::*;
 use num_traits::Zero;
-use super::ldldatamap::*;
+use super::datamap::*;
 
-pub fn _allocate_kkt_WtW_blocks<T, Z>(cones: &ConeSet<T>) -> Vec<&mut [Z]>
+pub fn _allocate_kkt_WtW_blocks<T, Z>(cones: &ConeSet<T>) -> Vec<Vec<Z>>
 where
     T: FloatT,
     Z: Zero + Clone,
@@ -24,7 +24,7 @@ where
         };
         WtWblocks.push(vec![Z::zero(); numelblock]);
     }
-    return WtWblocks;
+    WtWblocks
 }
 
 
@@ -38,7 +38,7 @@ pub fn _assemble_kkt_matrix<T:FloatT>(
     let n_socs = cones.type_counts[&SupportedCones::SecondOrderConeT];
     let p = 2*n_socs;
 
-    let mut maps = LDLDataMap::new(&P,&A,&cones);
+    let mut maps = LDLDataMap::new(P,A,cones);
 
     // entries actually on the diagonal of P
     let nnz_diagP  = P.count_diagonal_entries();
@@ -64,10 +64,10 @@ pub fn _assemble_kkt_matrix<T:FloatT>(
 
     let mut K = CscMatrix::<T>::spalloc(m+n+p, m+n+p, nnzKKT);
 
-    _kkt_assemble_colcounts(&mut K,&P,&A,&cones,m,n,p,shape);
-    _kkt_assemble_fill(&mut K,&mut maps,&P,&A,&cones,m,n,p,shape);
+    _kkt_assemble_colcounts(&mut K,P,A,cones,(m,n,p),shape);
+    _kkt_assemble_fill(&mut K,&mut maps,P,A,cones,(m,n,p),shape);
 
-    return (K,maps)
+    (K,maps)
 
 }
 
@@ -76,12 +76,12 @@ fn _kkt_assemble_colcounts<T:FloatT>(
     P: &CscMatrix<T>,
     A: &CscMatrix<T>,
     cones: &ConeSet<T>,
-    m: usize,
-    n: usize,
-    p: usize,
+    mnp: (usize,usize,usize),
     shape: MatrixTriangle,
 )
 {
+
+    let (m,n,p) = (mnp.0,mnp.1,mnp.2);
 
     // use K.p to hold nnz entries in each
     // column of the KKT matrix
@@ -89,14 +89,14 @@ fn _kkt_assemble_colcounts<T:FloatT>(
 
     match shape {
         MatrixTriangle::Triu =>  {
-            K.colcount_block(&P,0,MatrixShape::N);
-            K.colcount_missing_diag(&P,0);
-            K.colcount_block(&A,n,MatrixShape::T);
+            K.colcount_block(P,0,MatrixShape::N);
+            K.colcount_missing_diag(P,0);
+            K.colcount_block(A,n,MatrixShape::T);
         }
         MatrixTriangle::Tril => {
-            K.colcount_missing_diag(&P,0);
-            K.colcount_block(&P,0,MatrixShape::T);
-            K.colcount_block(&A,0,MatrixShape::N);
+            K.colcount_missing_diag(P,0);
+            K.colcount_block(P,0,MatrixShape::T);
+            K.colcount_block(A,0,MatrixShape::N);
         }
     }
 
@@ -153,27 +153,27 @@ fn _kkt_assemble_fill<T:FloatT>(
     P: &CscMatrix<T>,
     A: &CscMatrix<T>,
     cones: &ConeSet<T>,
-    m: usize,
-    n: usize,
-    p: usize,
+    mnp: (usize,usize,usize),
     shape: MatrixTriangle,
 ){
+
+    let (m,n,p) = (mnp.0,mnp.1,mnp.2);
 
     // cumsum total entries to convert to K.p
     K.colcount_to_colptr();
 
     match shape {
         MatrixTriangle::Triu => {
-            K.fill_block(&P,&mut maps.P,0,0,MatrixShape::N);
-            K.fill_missing_diag(&P,0);  // after adding P, since triu form
+            K.fill_block(P,&mut maps.P,0,0,MatrixShape::N);
+            K.fill_missing_diag(P,0);  // after adding P, since triu form
             // fill in value for A, top right (transposed/rowwise)
-            K.fill_block(&A,&mut maps.A,0,n,MatrixShape::T);
+            K.fill_block(A,&mut maps.A,0,n,MatrixShape::T);
         }
         MatrixTriangle::Tril => {
-            K.fill_missing_diag(&P,0); // before adding P, since tril form
-            K.fill_block(&P,&mut maps.P,0,0,MatrixShape::T);
+            K.fill_missing_diag(P,0); // before adding P, since tril form
+            K.fill_block(P,&mut maps.P,0,0,MatrixShape::T);
             // fill in value for A, bottom left (not transposed)
-            K.fill_block(&A,&mut maps.A,n,0,MatrixShape::N);
+            K.fill_block(A,&mut maps.A,n,0,MatrixShape::N);
         }
     }
 

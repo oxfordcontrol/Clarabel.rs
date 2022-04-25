@@ -15,8 +15,7 @@ impl<T: FloatT> ZeroCone<T> {
     pub fn new(dim: usize) -> Self {
         Self {
             //PJG: insert error here if dim == 0
-            dim: dim,
-            phantom: PhantomData,
+            dim,phantom: PhantomData,
         }
     }
 }
@@ -95,6 +94,6 @@ where
     fn step_length(&self, _dz: &[T], _ds: &[T], _z: &[T], _s: &[T]) -> (T, T) {
         //equality constraints allow arbitrary step length
         let huge = T::recip(T::epsilon());
-        return (huge, huge);
+        (huge, huge)
     }
 }

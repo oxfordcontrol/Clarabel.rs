@@ -2,14 +2,17 @@ use super::*;
 use crate::algebra::*;
 use crate::conicvector::ConicVector;
 use std::collections::HashMap;
+use std::any::Any;
 
 // -------------------------------------
 // Cone Set (top level composite cone type)
 // -------------------------------------
 
+type BoxedCone<T> = Box<dyn Cone<T, [T], [T]>>;
+
 pub struct ConeSet<T: FloatT = f64> {
 
-    cones: Vec<Box<dyn Cone<T, [T], [T]>>>,
+    cones: Vec<BoxedCone<T>>,
 
     //Type tags and count of each cone
     pub types: Vec<SupportedCones>,
@@ -29,9 +32,9 @@ impl<T: FloatT> ConeSet<T> {
         assert_eq!(types.len(), dims.len());
 
         // make an internal copy to protect from user modification
-        let types = types.clone().to_vec();
+        let types = types.to_vec();
         let ncones = types.len();
-        let mut cones: Vec<Box<dyn Cone<T, [T], [T]>>> = Vec::with_capacity(ncones);
+        let mut cones: Vec<BoxedCone<T>> = Vec::with_capacity(ncones);
 
         // create cones with the given dims
         for (i, dim) in dims.iter().enumerate() {
@@ -56,21 +59,16 @@ impl<T: FloatT> ConeSet<T> {
         _coneset_make_headidx(&mut headidx, &cones);
 
         Self {
-            cones: cones,
-            types: types,
-            type_counts: type_counts,
-            numel: numel,
-            degree: degree,
-            headidx: headidx,
+            cones, types, type_counts, numel, degree, headidx,
         }
     }
 }
 
-fn _coneset_make_headidx<T>(headidx: &mut [usize], cones: &[Box<dyn Cone<T, [T], [T]>>])
+fn _coneset_make_headidx<T>(headidx: &mut [usize], cones: &[BoxedCone<T>])
 where
     T: FloatT,
 {
-    if cones.len() > 0 {
+    if !cones.is_empty() {
         // index of first element in each cone
         headidx[0] = 1;
         for i in 2..headidx.len() {
@@ -83,15 +81,21 @@ impl<T: FloatT> ConeSet<T> {
     pub fn len(&self) -> usize {
         self.cones.len()
     }
-    pub fn iter(&self) -> std::slice::Iter<'_, Box<dyn Cone<T, [T], [T]>>> {
+    pub fn is_empty(&self) -> bool {
+        self.cones.is_empty()
+    }
+    pub fn iter(&self) -> std::slice::Iter<'_, BoxedCone<T>> {
         self.cones.iter()
     }
-    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, Box<dyn Cone<T, [T], [T]>>> {
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, BoxedCone<T>> {
         self.cones.iter_mut()
+    }
+    pub fn anyref_by_idx(&self, idx: usize) -> &(dyn Any + '_)  {
+        &self.cones[idx] as &(dyn Any + '_)
     }
 }
 
-impl<T> Cone<T, ConicVector<T>, Vec<&mut [T]>> for ConeSet<T>
+impl<T> Cone<T, ConicVector<T>, Vec<Vec<T>>> for ConeSet<T>
 where
     T: FloatT,
 {
@@ -116,7 +120,7 @@ where
         for (i, cone) in self.iter().enumerate() {
             any_changed |= cone.rectify_equilibration(δ.view_mut(i), e.view(i));
         }
-        return any_changed;
+        any_changed
     }
 
     fn WtW_is_diagonal(&self) -> bool{
@@ -128,7 +132,7 @@ where
             is_diag &= cone.WtW_is_diagonal();
             if !is_diag {break;}
         }
-        return is_diag
+        is_diag
     }
 
     fn update_scaling(&mut self, s: &ConicVector<T>, z: &ConicVector<T>) {
@@ -144,9 +148,9 @@ where
     }
 
     #[allow(non_snake_case)]
-    fn get_WtW_block(&self, WtWblock: &mut Vec<&mut [T]>) {
+    fn get_WtW_block(&self, WtWblock: &mut Vec<Vec<T>>) {
         for (i, cone) in self.iter().enumerate() {
-            cone.get_WtW_block(WtWblock[i]);
+            cone.get_WtW_block(&mut WtWblock[i]);
         }
     }
 
@@ -229,6 +233,6 @@ where
             αz = T::min(αz, nextαz);
             αs = T::min(αs, nextαs);
         }
-        return (αz, αs);
+        (αz, αs)
     }
 }

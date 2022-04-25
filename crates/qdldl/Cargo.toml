@@ -1,0 +1,14 @@
+[package]
+name = "clarabel_qdldl"
+version = "0.1.0"
+authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
+edition = "2021"
+license = "Apache-2.0"
+description = "QDLDL factorization for Clarabel"
+keywords = ["optimization", "math"]
+categories = ["optimization"]
+
+[dependencies]
+amd = {path = "../../../amd"}
+clarabel_algebra = {path = "../algebra"}
+derive_builder = "0.11"

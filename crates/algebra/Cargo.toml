@@ -1,16 +1,12 @@
 [package]
-name = "clarabel"
+name = "clarabel_algebra"
 version = "0.1.0"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 license = "Apache-2.0"
-description = "Clarabel Conic Interior Point Solver"
-readme = "README.md"
+description = "Algebra interface for Clarabel"
 keywords = ["optimization", "math"]
 categories = ["optimization"]
 
 [dependencies]
-num = "0.4"
-nalgebra = "0.30"
-ndarray = "0.15"
 num-traits = "0.2"

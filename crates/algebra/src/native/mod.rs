@@ -11,7 +11,7 @@ T: FloatT,
     {
         if s < min_thresh {min_new}
         else if s > max_thresh {max_new}
-        else{s.clone()}
+        else {s}
     }
 }
 
@@ -57,7 +57,7 @@ where
     }
 
     fn hadamard(&mut self, y: &[T]) {
-        self.iter_mut().zip(y).for_each(|(x,y)| *x = (*x)*(*y));
+        self.iter_mut().zip(y).for_each(|(x,y)| *x *= *y);
     }
 
     fn clip(& mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T){
@@ -113,13 +113,14 @@ where
     }
 
     fn mean(&self) -> T {
-        if self.len() == 0 {
-            return T::zero();
+        let mean = if self.is_empty() {
+            T::zero()
         } else {
             let num = self.iter().fold(T::zero(), |r, &s| r + s);
             let den = T::from(self.len()).unwrap();
-            return num / den;
-        }
+            num / den
+        };
+        mean
     }
 
     fn axpby(&mut self, a: T, x: &[T], b: T) {
@@ -287,23 +288,23 @@ where
 
   //y += A*x
   if a == T::one(){
-      for j in 0..A.n {
+      for (j, xj) in x.iter().enumerate().take(A.n) {
           for i in A.colptr[j]..A.colptr[j+1]{
-              y[A.rowval[i]] += A.nzval[i] * x[j];
+              y[A.rowval[i]] += A.nzval[i] * *xj;
           }
       }
   }
   else if a == -T::one(){
-      for j in 0..A.n {
+      for (j, xj) in x.iter().enumerate().take(A.n) {
           for i in A.colptr[j]..A.colptr[j+1]{
-              y[A.rowval[i]] -= A.nzval[i] * x[j];
+              y[A.rowval[i]] -= A.nzval[i] * *xj;
           }
       }
   }
   else{
-      for j in 0..A.n {
+      for (j,xj) in x.iter().enumerate().take(A.n) {
           for i in A.colptr[j]..A.colptr[j+1]{
-              y[A.rowval[i]] += a * A.nzval[i] * x[j];
+              y[A.rowval[i]] += a * A.nzval[i] * *xj;
           }
       }
   }
@@ -328,23 +329,23 @@ fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a:T, b:T){
 
     //y += A*x
     if a == T::one(){
-        for j in 0..A.n {
+        for (j,yj) in y.iter_mut().enumerate().take(A.n) {
             for k in A.colptr[j]..A.colptr[j+1]{
-                y[j] += A.nzval[k] * x[A.rowval[k]];
+                *yj += A.nzval[k] * x[A.rowval[k]];
             }
         }
     }
     else if a == -T::one(){
-        for j in 0..A.n {
+        for (j,yj) in y.iter_mut().enumerate().take(A.n) {
             for k in A.colptr[j]..A.colptr[j+1]{
-                y[j] -= A.nzval[k] * x[A.rowval[k]];
+                *yj -= A.nzval[k] * x[A.rowval[k]];
             }
         }
     }
     else{
-        for j in 0..A.n {
+        for (j,yj) in y.iter_mut().enumerate().take(A.n) {
             for k in A.colptr[j]..A.colptr[j+1]{
-                y[j] += a * A.nzval[k] * x[A.rowval[k]];
+                *yj += a * A.nzval[k] * x[A.rowval[k]];
             }
         }
     }

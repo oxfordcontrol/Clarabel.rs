@@ -8,17 +8,17 @@
 //Need a general cleanup of these header like
 //declarations
 
-pub mod algebra;
+pub use clarabel_algebra as algebra;
+
 pub mod cones;
 pub mod conicvector;
-pub mod tests;
 pub mod default;
 pub mod kktsolvers;
 pub mod settings;
-pub mod qdldl;
 pub use cones::*;
-pub use algebra::*;
 pub use settings::Settings;
+
+use algebra::*;
 
 pub enum SolverStatus {
     Unsolved,
@@ -28,7 +28,6 @@ pub enum SolverStatus {
     MaxIterations,
     MaxTime,
 }
-
 
 pub trait ProblemData<T: FloatT> {
     fn equilibrate(&mut self, cones: &ConeSet<T>, settings: &Settings<T>);

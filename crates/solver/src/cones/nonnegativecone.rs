@@ -15,7 +15,7 @@ impl<T: FloatT> NonnegativeCone<T> {
     pub fn new(dim: usize) -> Self {
         Self {
             //PJG: insert error here if dim == 0
-            dim: dim,
+            dim,
             w: vec![T::zero(); dim],
             λ: vec![T::zero(); dim],
         }
@@ -42,7 +42,7 @@ where
         δ.copy_from_slice(e);
         false
     }
-    
+
     fn WtW_is_diagonal(&self) -> bool{
         true
     }
@@ -63,8 +63,8 @@ where
 
     fn λ_circ_λ(&self, x: &mut [T]) {
         assert_eq!(self.λ.len(), x.len());
-        for i in 0..x.len() {
-            x[i] = self.λ[i] * self.λ[i];
+        for (xi,&λi) in x.iter_mut().zip(self.λ.iter()) {
+            *xi = λi * λi;
         }
     }
 
@@ -100,8 +100,8 @@ where
 
     fn get_WtW_block(&self, WtWblock: &mut [T]) {
         assert_eq!(self.w.len(), WtWblock.len());
-        for i in 0..self.w.len() {
-            WtWblock[i] = self.w[i] * self.w[i];
+        for (blki,&wi) in WtWblock.iter_mut().zip(self.w.iter()) {
+            *blki = wi * wi;
         }
     }
 

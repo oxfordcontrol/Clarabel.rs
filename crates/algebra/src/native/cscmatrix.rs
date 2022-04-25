@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use super::*;
-use crate::algebra::{MatrixShape, MatrixTriangle};
+use crate::{MatrixShape, MatrixTriangle};
 
 impl<T: FloatT> CscMatrix<T>
 where
@@ -13,13 +13,7 @@ where
 
         colptr[n] = nnz + 1;
 
-        return CscMatrix {
-            m: m,
-            n: n,
-            colptr: colptr,
-            rowval: rowval,
-            nzval: nzval,
-        };
+        CscMatrix {m,n,colptr,rowval,nzval,}
     }
 
     // increment self.colptr by the number of nonzeros
@@ -291,6 +285,6 @@ where
             }
 
         }
-        return count
+        count
     }
 }

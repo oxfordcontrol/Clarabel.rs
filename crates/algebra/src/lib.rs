@@ -1,4 +1,4 @@
-use num_traits::{Float, NumAssign};
+use num_traits::{Float, NumAssign, FromPrimitive};
 
 // PJG: This needs to be configurable
 // Here we specify the particular algebra implementation
@@ -9,7 +9,7 @@ pub mod cscmatrix;
 pub use cscmatrix::*;
 
 pub trait FloatT:
-    'static + Float + NumAssign
+    'static + Float + NumAssign + Default + FromPrimitive
 {
 }
 impl FloatT for f32 {}

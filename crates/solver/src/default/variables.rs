@@ -25,6 +25,6 @@ impl<T: FloatT> DefaultVariables<T> {
         let κ = T::one();
 
 
-        Self {x: x, s: s, z: z, τ: τ, κ: κ}
+        Self {x,s,z,τ,κ}
     }
 }

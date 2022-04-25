@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
 use crate::cones::*;
-use crate::kktsolvers::direct_ldl::_allocate_kkt_WtW_blocks;
+use super::*;
 
 pub struct LDLDataMap {
     pub P: Vec<usize>,
@@ -32,7 +32,7 @@ impl LDLDataMap {
         let diagP = vec![0; n];
 
         // make an index for each of the WtW blocks for each cone
-        let WtWblocks = _allocate_kkt_WtW_blocks::<T, usize>(&cones);
+        let WtWblocks = _allocate_kkt_WtW_blocks::<T, usize>(cones);
 
         // now do the SOC expansion pieces
         let nsoc = cones.type_counts[&SupportedCones::SecondOrderConeT];
@@ -52,14 +52,7 @@ impl LDLDataMap {
         let diag_full = vec![0, m + n + p];
 
         Self {
-            P: P,
-            A: A,
-            WtWblocks: WtWblocks,
-            SOC_u: SOC_u,
-            SOC_v: SOC_v,
-            SOC_D: SOC_D,
-            diagP: diagP,
-            diag_full: diag_full,
+            P, A,WtWblocks,SOC_u,SOC_v,SOC_D,diagP,diag_full,
         }
     }
 }

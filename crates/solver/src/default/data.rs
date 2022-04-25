@@ -22,7 +22,7 @@ pub struct DefaultProblemData<T: FloatT = f64> {
 }
 
 impl<T: FloatT> DefaultProblemData<T> {
-    pub fn new(P: CscMatrix<T>, q: Vec<T>, A: CscMatrix<T>, b: Vec<T>, cones: ConeSet<T>) -> Self {
+    pub fn new(P: &CscMatrix<T>, q: &[T], A: &CscMatrix<T>, b: &[T], cones: &ConeSet<T>) -> Self {
         let (m, n) = (b.len(), q.len());
 
         assert_eq!(m, A.nrows());
@@ -31,20 +31,12 @@ impl<T: FloatT> DefaultProblemData<T> {
         assert!(P.is_square());
 
         let P = P.clone();
-        let q = q.clone();
+        let q = q.to_vec();
         let A = A.clone();
-        let b = b.clone();
+        let b = b.to_vec();
         let equilibration = DefaultEquilibration::<T>::new(n, cones);
 
-        Self {
-            P: P,
-            q: q,
-            A: A,
-            b: b,
-            n: n,
-            m: m,
-            equilibration: equilibration,
-        }
+        Self { P,q,A,b,n,m,equilibration,}
     }
 }
 

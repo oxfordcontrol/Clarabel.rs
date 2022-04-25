@@ -26,7 +26,7 @@ pub struct DefaultEquilibration<T: FloatT = f64> {
 impl<T: FloatT> DefaultEquilibration<T> {
     pub fn new(
         nvars: usize,
-        cones: ConeSet<T>,
+        cones: &ConeSet<T>,
     ) -> Self
     {
         // Left/Right diagonal scaling for problem data
@@ -36,12 +36,12 @@ impl<T: FloatT> DefaultEquilibration<T> {
         // PJG : note that this double initializes
         // e / einv because the ConicVector constructor
         // first initializes to zero.   Could be improved.
-        let mut e    = ConicVector::<T>::new(&cones); e.fill(T::one());
-        let mut einv = ConicVector::<T>::new(&cones); einv.fill(T::one());
+        let mut e    = ConicVector::<T>::new(cones); e.fill(T::one());
+        let mut einv = ConicVector::<T>::new(cones); einv.fill(T::one());
 
         let c    = T::one();
 
-        Self {d: d, dinv: dinv, e: e, einv: einv, c: c}
+        Self {d,dinv,e,einv,c}
     }
 
 }
