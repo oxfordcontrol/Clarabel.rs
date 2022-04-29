@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
 use crate::cones::Cone;
-use crate::default::equilibration::DefaultEquilibration;
+use crate::default::DefaultEquilibration;
+use crate::default::DefaultVariables;
 use crate::settings::Settings;
 use crate::ConeSet;
 use crate::ProblemData;
@@ -36,7 +37,15 @@ impl<T: FloatT> DefaultProblemData<T> {
         let b = b.to_vec();
         let equilibration = DefaultEquilibration::<T>::new(n, cones);
 
-        Self { P,q,A,b,n,m,equilibration,}
+        Self {
+            P,
+            q,
+            A,
+            b,
+            n,
+            m,
+            equilibration,
+        }
     }
 }
 
@@ -44,8 +53,9 @@ impl<T> ProblemData<T> for DefaultProblemData<T>
 where
     T: FloatT,
 {
-    fn equilibrate(&mut self, cones: &ConeSet<T>, settings: &Settings<T>) {
+    type V = DefaultVariables<T>;
 
+    fn equilibrate(&mut self, cones: &ConeSet<T>, settings: &Settings<T>) {
         let data = self;
         let equil = &mut data.equilibration;
 

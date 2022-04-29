@@ -1,17 +1,16 @@
 use super::*;
 use crate::algebra::*;
 use crate::conicvector::ConicVector;
-use std::collections::HashMap;
 use std::any::Any;
+use std::collections::HashMap;
 
 // -------------------------------------
-// Cone Set (top level composite cone type)
+// Cone Set (default composite cone type)
 // -------------------------------------
 
 type BoxedCone<T> = Box<dyn Cone<T, [T], [T]>>;
 
 pub struct ConeSet<T: FloatT = f64> {
-
     cones: Vec<BoxedCone<T>>,
 
     //Type tags and count of each cone
@@ -59,7 +58,12 @@ impl<T: FloatT> ConeSet<T> {
         _coneset_make_headidx(&mut headidx, &cones);
 
         Self {
-            cones, types, type_counts, numel, degree, headidx,
+            cones,
+            types,
+            type_counts,
+            numel,
+            degree,
+            headidx,
         }
     }
 }
@@ -90,7 +94,7 @@ impl<T: FloatT> ConeSet<T> {
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, BoxedCone<T>> {
         self.cones.iter_mut()
     }
-    pub fn anyref_by_idx(&self, idx: usize) -> &(dyn Any + '_)  {
+    pub fn anyref_by_idx(&self, idx: usize) -> &(dyn Any + '_) {
         &self.cones[idx] as &(dyn Any + '_)
     }
 }
@@ -123,14 +127,16 @@ where
         any_changed
     }
 
-    fn WtW_is_diagonal(&self) -> bool{
+    fn WtW_is_diagonal(&self) -> bool {
         //This function should probably never be called since
         //we only us it to interrogate the blocks, but we can
         //implement something reasonable anyway
         let mut is_diag = true;
-        for cone in self.iter(){
+        for cone in self.iter() {
             is_diag &= cone.WtW_is_diagonal();
-            if !is_diag {break;}
+            if !is_diag {
+                break;
+            }
         }
         is_diag
     }

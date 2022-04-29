@@ -101,4 +101,10 @@ pub trait MatrixMath<T,V: ?Sized> {
     // y = a*self*x + b*y
     fn gemv(&self, sy: &mut V, trans: MatrixShape, x: &V, a:T, b:T);
 
+    // symmetric matrix-vector multiply, blas like
+    // y = a*self*x + b*y.  The matrix should be
+    //in either triu or tril form, with the other
+    //half of the triangle assumed symmetric
+    fn symv(&self, y: &mut [T], tri: MatrixTriangle, x: &[T], a:T, b:T);
+
 }

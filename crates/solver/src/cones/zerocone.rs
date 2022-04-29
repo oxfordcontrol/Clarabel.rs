@@ -15,7 +15,8 @@ impl<T: FloatT> ZeroCone<T> {
     pub fn new(dim: usize) -> Self {
         Self {
             //PJG: insert error here if dim == 0
-            dim,phantom: PhantomData,
+            dim,
+            phantom: PhantomData,
         }
     }
 }
@@ -41,7 +42,7 @@ where
         false
     }
 
-    fn WtW_is_diagonal(&self) -> bool{
+    fn WtW_is_diagonal(&self) -> bool {
         true
     }
 

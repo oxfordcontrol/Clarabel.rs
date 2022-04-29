@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
+use super::*;
 use crate::algebra::*;
 use crate::cones::*;
-use super::*;
 
 pub struct LDLDataMap {
     pub P: Vec<usize>,
@@ -52,7 +52,14 @@ impl LDLDataMap {
         let diag_full = vec![0, m + n + p];
 
         Self {
-            P, A,WtWblocks,SOC_u,SOC_v,SOC_D,diagP,diag_full,
+            P,
+            A,
+            WtWblocks,
+            SOC_u,
+            SOC_v,
+            SOC_D,
+            diagP,
+            diag_full,
         }
     }
 }

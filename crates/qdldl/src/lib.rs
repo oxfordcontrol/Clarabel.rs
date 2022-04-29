@@ -12,7 +12,7 @@ pub struct QDLDLSettings<T: FloatT> {
     #[builder(default = "None",setter(strip_option))]
     Dsigns: Option<Vec<i8>>,
     #[builder(default = "true")]
-    regularize: bool,
+    regularize_enable: bool,
     #[builder(default = "T::from(1e-12).unwrap()")]
     regularize_eps: T,
     #[builder(default = "T::from(1e-7).unwrap()")]
@@ -178,7 +178,7 @@ fn _qdldl_new<T: FloatT> (
 
     // allocate workspace
     let mut workspace = QDLDLWorkspace::<T>::new(
-        A,AtoPAPt,Dsigns,opts.regularize,opts.regularize_eps,opts.regularize_delta);
+        A,AtoPAPt,Dsigns,opts.regularize_enable,opts.regularize_eps,opts.regularize_delta);
 
     //total nonzeros in factorization
     let sumLnz = workspace.Lnz.iter().sum();
@@ -222,7 +222,7 @@ pub struct QDLDLWorkspace<T: FloatT = f64> {
 
     //regularization signs and parameters
     Dsigns: Vec<i8>,
-    regularize: bool,
+    regularize_enable: bool,
     regularize_eps: T,
     regularize_delta: T,
 
@@ -236,7 +236,7 @@ impl<T: FloatT> QDLDLWorkspace<T>
         triuA: CscMatrix<T>,
         AtoPAPt: Vec<usize>,
         Dsigns: Vec<i8>,
-        regularize: bool,
+        regularize_enable: bool,
         regularize_eps: T,
         regularize_delta: T) -> Self
     {
@@ -255,7 +255,7 @@ impl<T: FloatT> QDLDLWorkspace<T>
         // number of regularized entries in D. None to start
         let regularize_count = 0;
 
-        Self{etree,Lnz,iwork,bwork,fwork,positive_inertia,triuA,AtoPAPt,Dsigns,regularize,regularize_eps,regularize_delta,regularize_count}
+        Self{etree,Lnz,iwork,bwork,fwork,positive_inertia,triuA,AtoPAPt,Dsigns,regularize_enable,regularize_eps,regularize_delta,regularize_count}
     }
 }
 
@@ -287,7 +287,7 @@ fn _factor<T:FloatT>(L: &mut CscMatrix<T>, D: &mut [T], Dinv: &mut [T], workspac
         &mut workspace.fwork,
         logical,
         &workspace.Dsigns,
-        workspace.regularize,
+        workspace.regularize_enable,
         workspace.regularize_eps,
         workspace.regularize_delta,
         &mut workspace.regularize_count);
@@ -371,7 +371,7 @@ fn _factor_inner<T:FloatT>(
         fwork: &mut [T],
         logical_factor: bool,
         Dsigns: &[i8],
-        regularize: bool,
+        regularize_enable: bool,
         regularize_eps: T,
         regularize_delta: T,
         regularize_count: &mut usize
@@ -406,7 +406,7 @@ fn _factor_inner<T:FloatT>(
 
         // First element of the diagonal D.
         D[0] = Ax[0];
-        if regularize {
+        if regularize_enable {
             let sign = T::from_i8(Dsigns[0]).unwrap();
             if D[0]*sign < regularize_eps {
                 D[0] = regularize_delta * sign;
@@ -525,7 +525,7 @@ fn _factor_inner<T:FloatT>(
         }
 
         // apply dynamic regularization
-        if regularize {
+        if regularize_enable {
             let sign = T::from_i8(Dsigns[k]).unwrap();
             if D[k]*sign < regularize_eps {
                 D[k] = regularize_delta * sign;

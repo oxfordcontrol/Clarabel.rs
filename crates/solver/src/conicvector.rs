@@ -35,7 +35,7 @@ impl<T: FloatT> ConicVector<T> {
             first = last;
         }
 
-        Self {vec,ranges,}
+        Self { vec, ranges }
     }
 
     pub fn view(&self, i: usize) -> &[T] {

@@ -43,7 +43,7 @@ where
         false
     }
 
-    fn WtW_is_diagonal(&self) -> bool{
+    fn WtW_is_diagonal(&self) -> bool {
         true
     }
 
@@ -63,7 +63,7 @@ where
 
     fn λ_circ_λ(&self, x: &mut [T]) {
         assert_eq!(self.λ.len(), x.len());
-        for (xi,&λi) in x.iter_mut().zip(self.λ.iter()) {
+        for (xi, &λi) in x.iter_mut().zip(self.λ.iter()) {
             *xi = λi * λi;
         }
     }
@@ -100,7 +100,7 @@ where
 
     fn get_WtW_block(&self, WtWblock: &mut [T]) {
         assert_eq!(self.w.len(), WtWblock.len());
-        for (blki,&wi) in WtWblock.iter_mut().zip(self.w.iter()) {
+        for (blki, &wi) in WtWblock.iter_mut().zip(self.w.iter()) {
             *blki = wi * wi;
         }
     }

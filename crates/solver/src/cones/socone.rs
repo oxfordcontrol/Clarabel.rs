@@ -59,7 +59,7 @@ where
         false
     }
 
-    fn WtW_is_diagonal(&self) -> bool{
+    fn WtW_is_diagonal(&self) -> bool {
         true
     }
 

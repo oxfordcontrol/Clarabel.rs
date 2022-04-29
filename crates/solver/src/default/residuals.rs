@@ -6,7 +6,6 @@ use crate::algebra::*;
 // ---------------
 
 pub struct DefaultResiduals<T: FloatT = f64> {
-
     // the main KKT residuals
     rx: Vec<T>,
     rz: Vec<T>,
@@ -24,12 +23,11 @@ pub struct DefaultResiduals<T: FloatT = f64> {
     dot_xPx: T,
 
     // the product Px by itself. Required for infeasibilty checks
-    Px:Vec<T>,
+    Px: Vec<T>,
 }
 
 impl<T: FloatT> DefaultResiduals<T> {
     pub fn new(n: usize, m: usize) -> Self {
-
         let rx = vec![T::zero(); n];
         let rz = vec![T::zero(); m];
         let rτ = T::one();
@@ -39,9 +37,17 @@ impl<T: FloatT> DefaultResiduals<T> {
 
         let Px = vec![T::zero(); n];
 
-
-        Self {rx, rz, rτ, rx_inf, rz_inf,Px,
-            dot_qx:T::zero(), dot_bz:T::zero() ,
-            dot_sz:T::zero(), dot_xPx:T::zero()}
+        Self {
+            rx,
+            rz,
+            rτ,
+            rx_inf,
+            rz_inf,
+            Px,
+            dot_qx: T::zero(),
+            dot_bz: T::zero(),
+            dot_sz: T::zero(),
+            dot_xPx: T::zero(),
+        }
     }
 }

@@ -264,6 +264,35 @@ where
         }
 
     }
+
+    fn symv(&self, y: &mut [T], tri: MatrixTriangle, x: &[T], a:T, b:T){
+
+        //NB: the triangle argument doesn't actually do
+        //anything here, and the call is the same either
+        //way.  The argument serves only as a reminder that
+        //the caller should only pass a triangular form
+        match tri {
+            MatrixTriangle::Triu => _csc_symv(self, y, x, a, b),
+            MatrixTriangle::Tril => _csc_symv(self, y, x, a, b),
+        }
+    }
+}
+
+#[allow(non_snake_case)]
+fn _csc_symv<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a:T, b:T){
+
+    y.scale(b);
+
+    for j in 0..A.n {
+        for i in A.colptr[j]..A.colptr[j+1]{
+            y[A.rowval[i]] += a * A.nzval[i] * x[j];
+            if i != j {
+                //don't double up on the diagonal
+                y[j] += a * A.nzval[i] * x[A.rowval[i]];
+            }
+        }
+    }
+
 }
 
 
