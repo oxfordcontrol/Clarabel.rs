@@ -19,7 +19,7 @@ pub enum SupportedCones {
 
 //PJG: translation of Julia in this function is
 //probably not the best way, plus it's not a dict now
-pub fn cone_dict<T>(cone: SupportedCones, dim: usize) -> Box<dyn Cone<T, [T], [T]>>
+pub fn cone_dict<T>(cone: SupportedCones, dim: usize) -> Box<dyn Cone<T>>
 where
     T: FloatT + 'static,
 {
@@ -30,22 +30,22 @@ where
     }
 }
 
-pub trait Cone<T, CV: ?Sized, BV: ?Sized> {
+pub trait Cone<T> {
     fn dim(&self) -> usize;
     fn degree(&self) -> usize;
     fn numel(&self) -> usize;
-    fn rectify_equilibration(&self, δ: &mut CV, e: &CV) -> bool;
+    fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool;
     fn WtW_is_diagonal(&self) -> bool;
-    fn update_scaling(&mut self, s: &CV, z: &CV);
+    fn update_scaling(&mut self, s: &[T], z: &[T]);
     fn set_identity_scaling(&mut self);
-    fn λ_circ_λ(&self, x: &mut CV);
-    fn circ_op(&self, x: &mut CV, y: &CV, z: &CV);
-    fn λ_inv_circ_op(&self, x: &mut CV, z: &CV);
-    fn inv_circ_op(&self, x: &mut CV, y: &CV, z: &CV);
-    fn shift_to_cone(&self, z: &mut CV);
-    fn get_WtW_block(&self, WtWblock: &mut BV);
-    fn gemv_W(&self, is_transpose: MatrixShape, x: &CV, y: &mut CV, α: T, β: T);
-    fn gemv_Winv(&self, is_transpose: MatrixShape, x: &CV, y: &mut CV, α: T, β: T);
-    fn add_scaled_e(&self, x: &mut CV, α: T);
-    fn step_length(&self, dz: &CV, ds: &CV, z: &CV, s: &CV) -> (T, T);
+    fn λ_circ_λ(&self, x: &mut [T]);
+    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]);
+    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]);
+    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]);
+    fn shift_to_cone(&self, z: &mut [T]);
+    fn get_WtW_block(&self, WtWblock: &mut [T]);
+    fn gemv_W(&self, is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T);
+    fn gemv_Winv(&self, is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T);
+    fn add_scaled_e(&self, x: &mut [T], α: T);
+    fn step_length(&self, dz: &[T], ds: &[T], z: &[T], s: &[T]) -> (T, T);
 }

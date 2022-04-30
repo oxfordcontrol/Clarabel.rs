@@ -2,16 +2,16 @@ use crate::algebra::*;
 use crate::*;
 
 pub struct Solver<D, V, R, K, SI, SR, C, S> {
-    data: D,
-    variables: V,
-    residuals: R,
-    kktsystem: K,
-    step_lhs: V,
-    step_rhs: V,
-    info: SI,
-    result: SR,
-    cones: C,
-    settings: S,
+    pub data: D,
+    pub variables: V,
+    pub residuals: R,
+    pub kktsystem: K,
+    pub step_lhs: V,
+    pub step_rhs: V,
+    pub info: SI,
+    pub result: SR,
+    pub cones: C,
+    pub settings: S,
 }
 
 pub trait IPSolver<T, D, V, R, K, SI, SR, C> {
@@ -25,20 +25,17 @@ pub trait IPSolver<T, D, V, R, K, SI, SR, C> {
 // serve up basic values via getters and have no
 // other methods, so should be reusable across
 // problem format implementations
-//
-// The ConeSet is more tricky.   Not sure if that
-// should be accessed directly or via trait, but
-// I think without a trait is easier for now.
 
-impl<T, D, V, R, K, SI, SR, C> IPSolver<T, D, V, R, K, SI, SR, C>
+
+impl<T, D, V, R, K, SI, SR, C> IPSolver<T, D, V, R, K, SI, SR,C>
     for Solver<D, V, R, K, SI, SR, C, Settings<T>>
 where
     T: FloatT,
     D: ProblemData<T, V = V>,
-    V: Variables<T, D = D, R = R>,
+    V: Variables<T, D = D, R = R, C = C>,
     R: Residuals<T, D = D, V = V>,
-    K: KKTSystem<T, D = D, V = V>,
-    SI: SolveInfo<T, D = D, V = V, R = R>,
+    K: KKTSystem<T, D = D, V = V, C = C>,
+    SI: SolveInfo<T, D = D, V = V, R = R, C = C>,
     SR: SolveResult<T, D = D, V = V, SI = SI>,
     C : Cone<T>,
 {
@@ -99,7 +96,7 @@ where
 
             //PJG: problem here because cones has no trait to impl
             //s.cones.scaling_update(s.variables);
-            s.variables.scale_cones(&s.cones);
+            s.variables.scale_cones(&mut s.cones);
 
             //update the KKT system and the constant
             //parts of its solution

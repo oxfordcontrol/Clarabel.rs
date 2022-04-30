@@ -1,7 +1,9 @@
 //PJG: Temporary allows during development
 #![allow(confusable_idents)]
 #![allow(dead_code)]
-// #![allow(unused_variables)]
+#![allow(unreachable_code)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
 // #![allow(unused_mut)]
 
 //PJG: Are both use and mod required throughout?
@@ -31,42 +33,45 @@ pub enum SolverStatus {
 }
 
 pub trait ProblemData<T: FloatT> {
-    //associated types
-    type V; //should impl Variables
 
-    fn equilibrate(&mut self, cones: &ConeSet<T>, settings: &Settings<T>);
+    type V: Variables<T>;
+    type C: Cone<T>;
+
+    fn equilibrate(&mut self, cones: &Self::C, settings: &Settings<T>);
 }
 
 pub trait Variables<T: FloatT> {
     //associated types
     type D: ProblemData<T>;
     type R: Residuals<T>;
+    type C: Cone<T>;
 
-    fn calc_mu(&mut self, residuals: &Self::R, cones: &ConeSet<T>) -> T;
+    fn calc_mu(&mut self, residuals: &Self::R, cones: &Self::C) -> T;
     fn calc_affine_step_rhs(
         &mut self,
         residuals: &Self::R,
         data: &Self::D,
         variables: &Self,
-        cones: &ConeSet<T>,
+        cones: &Self::C,
     );
     fn calc_combined_step_rhs(
         &mut self,
         residuals: &Self::R,
         data: &Self::D,
         variables: &Self,
-        cones: &ConeSet<T>,
+        cones: &Self::C,
         step_lhs: &Self,
         σ: T,
         μ: T,
     );
-    fn calc_step_length(&mut self, step_lhs: &Self, cones: &ConeSet<T>) -> T;
+    fn calc_step_length(&mut self, step_lhs: &Self, cones: &Self::C) -> T;
     fn add_step(&mut self, step_lhs: &Self, α: T);
-    fn shift_to_cone(&mut self, cones: &ConeSet<T>);
+    fn shift_to_cone(&mut self, cones: &Self::C);
+    fn scale_cones(&self, cones: &mut Self::C);
 }
 
 pub trait Residuals<T: FloatT> {
-    //associated types
+
     type D: ProblemData<T>;
     type V: Variables<T>;
 
@@ -77,8 +82,9 @@ pub trait KKTSystem<T: FloatT> {
     //associated types
     type D: ProblemData<T>; //should impl ProblemData
     type V: Variables<T>; //should impl Variables
+    type C: Cone<T>;
 
-    fn update(&mut self, data: &Self::D, cones: &ConeSet<T>);
+    fn update(&mut self, data: &Self::D, cones: &Self::C);
 
     //PJG: stepstype as string sucks here
     fn solve(
@@ -87,7 +93,7 @@ pub trait KKTSystem<T: FloatT> {
         step_rhs: &Self::V,
         data: &Self::D,
         variables: &Self::V,
-        cones: &ConeSet<T>,
+        cones: &Self::C,
         steptype: &str,
     );
 
@@ -95,15 +101,16 @@ pub trait KKTSystem<T: FloatT> {
 }
 
 pub trait SolveInfo<T: FloatT> {
-    //associated types
+
     type D: ProblemData<T>;
     type V: Variables<T>;
     type R: Residuals<T>;
+    type C: Cone<T>;
 
     fn reset(&mut self);
     fn finalize(&mut self);
 
-    fn print_header(&mut self, settings: &Settings<T>, data: &Self::D, cones: &ConeSet<T>);
+    fn print_header(&mut self, settings: &Settings<T>, data: &Self::D, cones: &Self::C);
     fn print_status(&mut self, settings: &Settings<T>);
     fn print_footer(&mut self, settings: &Settings<T>);
 
@@ -121,7 +128,7 @@ pub trait SolveInfo<T: FloatT> {
 }
 
 pub trait SolveResult<T: FloatT> {
-    //associated types
+
     type D: ProblemData<T>;
     type V: Variables<T>;
     type SI: SolveInfo<T>;

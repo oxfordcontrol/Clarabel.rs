@@ -27,8 +27,8 @@ pub struct DirectQuasidefiniteKKTSolver<'a, T: FloatT = f64> {
     map: LDLDataMap,
 
     // a vector for storing the entries of WtW blocks
-    // ons the KKT matrix block diagonal
-    WtWblocks: Vec<Vec<T>>,
+    // on the KKT matrix block diagonal
+    WtWblocks: Vec<T>,
 
     // settings just points back to the main solver settings.
     // Required since there is no separate LDL settings container
@@ -132,11 +132,10 @@ where
         // Set the elements the W^tW blocks in the KKT matrix.
         cones.get_WtW_block(&mut self.WtWblocks);
 
-        for (values, index) in self.WtWblocks.iter_mut().zip(map.WtWblocks.iter()) {
-            // change signs to get -W^TW
-            values.negate();
-            ldlsolver.update_values(index, values);
-        }
+        let (values, index) = (&mut self.WtWblocks, &map.WtWblocks);
+        // change signs to get -W^TW
+        values.negate();
+        ldlsolver.update_values(index, values);
 
         // update the scaled u and v columns.
         let mut cidx = 0; // which of the SOCs are we working on?

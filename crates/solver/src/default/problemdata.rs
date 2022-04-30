@@ -1,8 +1,7 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
 use crate::cones::Cone;
-use crate::default::DefaultEquilibration;
-use crate::default::DefaultVariables;
+use crate::default::*;
 use crate::settings::Settings;
 use crate::ConeSet;
 use crate::ProblemData;
@@ -13,13 +12,13 @@ use crate::ProblemData;
 
 pub struct DefaultProblemData<T: FloatT = f64> {
     // the main KKT residuals
-    P: CscMatrix<T>,
-    q: Vec<T>,
-    A: CscMatrix<T>,
-    b: Vec<T>,
-    n: usize,
-    m: usize,
-    equilibration: DefaultEquilibration<T>,
+    pub P: CscMatrix<T>,
+    pub q: Vec<T>,
+    pub A: CscMatrix<T>,
+    pub b: Vec<T>,
+    pub n: usize,
+    pub m: usize,
+    pub equilibration: DefaultEquilibration<T>,
 }
 
 impl<T: FloatT> DefaultProblemData<T> {
@@ -54,6 +53,7 @@ where
     T: FloatT,
 {
     type V = DefaultVariables<T>;
+    type C = ConeSet<T>;
 
     fn equilibrate(&mut self, cones: &ConeSet<T>, settings: &Settings<T>) {
         let data = self;

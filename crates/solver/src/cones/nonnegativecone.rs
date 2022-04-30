@@ -22,7 +22,7 @@ impl<T: FloatT> NonnegativeCone<T> {
     }
 }
 
-impl<T> Cone<T, [T], [T]> for NonnegativeCone<T>
+impl<T> Cone<T> for NonnegativeCone<T>
 where
     T: FloatT,
 {

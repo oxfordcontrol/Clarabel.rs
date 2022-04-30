@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
+use crate::default::*;
 
 // ---------------
 // Residuals type for default problem format
@@ -49,5 +50,20 @@ impl<T: FloatT> DefaultResiduals<T> {
             dot_sz: T::zero(),
             dot_xPx: T::zero(),
         }
+    }
+}
+
+
+impl<T> Residuals<T> for DefaultResiduals<T>
+where
+T: FloatT
+{
+
+    type D = DefaultProblemData<T>;
+    type V = DefaultVariables<T>;
+
+    fn update(&mut self, variables: &DefaultVariables<T>, data: &DefaultProblemData<T>)
+    {
+        todo!();
     }
 }

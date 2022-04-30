@@ -34,7 +34,7 @@ impl<T: FloatT> SecondOrderCone<T> {
     }
 }
 
-impl<T> Cone<T, [T], [T]> for SecondOrderCone<T>
+impl<T> Cone<T> for SecondOrderCone<T>
 where
     T: FloatT,
 {

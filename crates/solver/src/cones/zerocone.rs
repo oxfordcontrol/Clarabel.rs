@@ -21,7 +21,7 @@ impl<T: FloatT> ZeroCone<T> {
     }
 }
 
-impl<T> Cone<T, [T], [T]> for ZeroCone<T>
+impl<T> Cone<T> for ZeroCone<T>
 where
     T: FloatT,
 {

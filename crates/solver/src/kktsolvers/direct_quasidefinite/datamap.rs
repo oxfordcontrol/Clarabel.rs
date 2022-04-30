@@ -6,7 +6,7 @@ use crate::cones::*;
 pub struct LDLDataMap {
     pub P: Vec<usize>,
     pub A: Vec<usize>,
-    pub WtWblocks: Vec<Vec<usize>>, //indices of the lower RHS blocks (by cone)
+    pub WtWblocks: Vec<usize>,      //indices of the lower RHS blocks (by cone)
     pub SOC_u: Vec<Vec<usize>>,     //off diag dense columns u
     pub SOC_v: Vec<Vec<usize>>,     //off diag dense columns v
     pub SOC_D: Vec<usize>,          //diag of just the sparse SOC expansion D

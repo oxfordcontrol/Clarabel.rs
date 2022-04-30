@@ -1,14 +1,14 @@
 use super::*;
 use crate::algebra::*;
-use crate::conicvector::ConicVector;
 use std::any::Any;
 use std::collections::HashMap;
+use std::ops::Range;
 
 // -------------------------------------
 // Cone Set (default composite cone type)
 // -------------------------------------
 
-type BoxedCone<T> = Box<dyn Cone<T, [T], [T]>>;
+type BoxedCone<T> = Box<dyn Cone<T>>;
 
 pub struct ConeSet<T: FloatT = f64> {
     cones: Vec<BoxedCone<T>>,
@@ -21,13 +21,17 @@ pub struct ConeSet<T: FloatT = f64> {
     numel: usize,
     degree: usize,
 
-    // a vector showing the overall index of the
-    // first element in each cone.  For convenience
-    pub headidx: Vec<usize>,
+    //ranges for the indices of the constituent cones
+    pub rng_cones: Vec<Range<usize>>,
+
+    //ranges for the indices of the constituent WtW blocks
+    //associated with each cone
+    pub rng_blocks: Vec<Range<usize>>,
 }
 
 impl<T: FloatT> ConeSet<T> {
     pub fn new(types: &[SupportedCones], dims: &[usize]) -> Self {
+
         assert_eq!(types.len(), dims.len());
 
         // make an internal copy to protect from user modification
@@ -36,8 +40,8 @@ impl<T: FloatT> ConeSet<T> {
         let mut cones: Vec<BoxedCone<T>> = Vec::with_capacity(ncones);
 
         // create cones with the given dims
-        for (i, dim) in dims.iter().enumerate() {
-            cones.push(cone_dict(types[i], *dim));
+        for (dim,t) in dims.iter().zip(types.iter()) {
+            cones.push(cone_dict(*t, *dim));
         }
 
         //  count the number of each cone type.
@@ -52,10 +56,13 @@ impl<T: FloatT> ConeSet<T> {
         let numel = cones.iter().map(|c| c.numel()).sum();
         let degree = cones.iter().map(|c| c.degree()).sum();
 
-        //headidx gives the index of the first element
-        //of each constituent cone
-        let mut headidx = vec![0; cones.len()];
-        _coneset_make_headidx(&mut headidx, &cones);
+        //ranges for the subvectors associated with each cone,
+        //and the subranges associated with their corresponding
+        //entries in the WtW sparse block
+
+        let rng_cones = _make_rng_cones(&cones);
+        let rng_blocks = _make_rng_blocks(&cones);
+
 
         Self {
             cones,
@@ -63,10 +70,50 @@ impl<T: FloatT> ConeSet<T> {
             type_counts,
             numel,
             degree,
-            headidx,
+            rng_cones,
+            rng_blocks,
         }
     }
 }
+
+fn _make_rng_cones<T>(cones: &[BoxedCone<T>]) -> Vec<Range<usize>>
+where
+    T: FloatT,
+{
+    let mut rngs = Vec::with_capacity(cones.len());
+
+    if !cones.is_empty() {
+        let mut start = 0;
+        for cone in cones {
+            let stop  = start + cone.numel();
+            rngs.push(start..stop);
+            start = stop;
+        }
+    }
+    rngs
+}
+
+fn _make_rng_blocks<T>(cones: &[BoxedCone<T>]) -> Vec<Range<usize>>
+where
+    T: FloatT,
+{
+    let mut rngs = Vec::with_capacity(cones.len());
+
+    if !cones.is_empty() {
+        let mut start = 0;
+        for cone in cones {
+            let nvars = cone.numel();
+            let stop = start + {
+                if cone.WtW_is_diagonal() { nvars }
+                else { (nvars * (nvars + 1)) >> 1 }
+            };
+            rngs.push(start..stop);
+            start = stop;
+        }
+    }
+    rngs
+}
+
 
 fn _coneset_make_headidx<T>(headidx: &mut [usize], cones: &[BoxedCone<T>])
 where
@@ -74,7 +121,7 @@ where
 {
     if !cones.is_empty() {
         // index of first element in each cone
-        headidx[0] = 1;
+        headidx[0] = 0;
         for i in 2..headidx.len() {
             headidx[i] = headidx[i - 1] + cones[i - 1].numel();
         }
@@ -99,7 +146,7 @@ impl<T: FloatT> ConeSet<T> {
     }
 }
 
-impl<T> Cone<T, ConicVector<T>, Vec<Vec<T>>> for ConeSet<T>
+impl<T> Cone<T> for ConeSet<T>
 where
     T: FloatT,
 {
@@ -115,14 +162,16 @@ where
         self.numel
     }
 
-    fn rectify_equilibration(&self, δ: &mut ConicVector<T>, e: &ConicVector<T>) -> bool {
+    fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
         let mut any_changed = false;
 
         // we will update e <- δ .* e using return values
         // from this function.  default is to do nothing at all
         δ.fill(T::one());
-        for (i, cone) in self.iter().enumerate() {
-            any_changed |= cone.rectify_equilibration(δ.view_mut(i), e.view(i));
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            let δi = &mut δ[rng.clone()];
+            let ei = &e[rng.clone()];
+            any_changed |= cone.rectify_equilibration(δi, ei);
         }
         any_changed
     }
@@ -141,9 +190,14 @@ where
         is_diag
     }
 
-    fn update_scaling(&mut self, s: &ConicVector<T>, z: &ConicVector<T>) {
-        for (i, cone) in self.iter_mut().enumerate() {
-            cone.update_scaling(s.view(i), z.view(i));
+    fn update_scaling(&mut self, s: &[T], z: &[T]) {
+        let cones = &mut self.cones;
+        let rngs  = &self.rng_cones;
+
+        for (cone,rng) in cones.iter_mut().zip(rngs.iter()) {
+            let si = &s[rng.clone()];
+            let zi = &z[rng.clone()];
+            cone.update_scaling(si, zi);
         }
     }
 
@@ -154,39 +208,47 @@ where
     }
 
     #[allow(non_snake_case)]
-    fn get_WtW_block(&self, WtWblock: &mut Vec<Vec<T>>) {
-        for (i, cone) in self.iter().enumerate() {
-            cone.get_WtW_block(&mut WtWblock[i]);
+    fn get_WtW_block(&self, WtWblock: &mut [T]) {
+        for (cone,rng) in self.iter().zip(self.rng_blocks.iter()) {
+            cone.get_WtW_block(&mut WtWblock[rng.clone()]);
         }
     }
 
-    fn λ_circ_λ(&self, x: &mut ConicVector<T>) {
-        for (i, cone) in self.iter().enumerate() {
-            cone.λ_circ_λ(x.view_mut(i));
+    fn λ_circ_λ(&self, x: &mut [T]) {
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            cone.λ_circ_λ(&mut x[rng.clone()]);
         }
     }
 
-    fn circ_op(&self, x: &mut ConicVector<T>, y: &ConicVector<T>, z: &ConicVector<T>) {
-        for (i, cone) in self.iter().enumerate() {
-            cone.circ_op(x.view_mut(i), y.view(i), z.view(i));
+    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            let xi = &mut x[rng.clone()];
+            let yi = &y[rng.clone()];
+            let zi = &z[rng.clone()];
+            cone.circ_op(xi, yi, zi);
         }
     }
 
-    fn λ_inv_circ_op(&self, x: &mut ConicVector<T>, z: &ConicVector<T>) {
-        for (i, cone) in self.iter().enumerate() {
-            cone.λ_inv_circ_op(x.view_mut(i), z.view(i));
+    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            let xi = &mut x[rng.clone()];
+            let zi = &z[rng.clone()];
+            cone.λ_inv_circ_op(xi,zi);
         }
     }
 
-    fn inv_circ_op(&self, x: &mut ConicVector<T>, y: &ConicVector<T>, z: &ConicVector<T>) {
-        for (i, cone) in self.iter().enumerate() {
-            cone.inv_circ_op(x.view_mut(i), y.view(i), z.view(i));
+    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            let xi = &mut x[rng.clone()];
+            let yi = &y[rng.clone()];
+            let zi = &z[rng.clone()];
+            cone.inv_circ_op(xi,yi,zi);
         }
     }
 
-    fn shift_to_cone(&self, z: &mut ConicVector<T>) {
-        for (i, cone) in self.iter().enumerate() {
-            cone.shift_to_cone(z.view_mut(i));
+    fn shift_to_cone(&self, z: &mut [T]) {
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            cone.shift_to_cone(&mut z[rng.clone()]);
         }
     }
 
@@ -194,13 +256,15 @@ where
     fn gemv_W(
         &self,
         is_transpose: MatrixShape,
-        x: &ConicVector<T>,
-        y: &mut ConicVector<T>,
+        x: &[T],
+        y: &mut [T],
         α: T,
         β: T,
     ) {
-        for (i, cone) in self.iter().enumerate() {
-            cone.gemv_W(is_transpose, x.view(i), y.view_mut(i), α, β);
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            let xi = &x[rng.clone()];
+            let yi = &mut y[rng.clone()];
+            cone.gemv_W(is_transpose, xi, yi, α, β);
         }
     }
 
@@ -208,34 +272,40 @@ where
     fn gemv_Winv(
         &self,
         is_transpose: MatrixShape,
-        x: &ConicVector<T>,
-        y: &mut ConicVector<T>,
+        x: &[T],
+        y: &mut [T],
         α: T,
         β: T,
     ) {
-        for (i, cone) in self.iter().enumerate() {
-            cone.gemv_Winv(is_transpose, x.view(i), y.view_mut(i), α, β);
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            let xi = &x[rng.clone()];
+            let yi = &mut y[rng.clone()];
+            cone.gemv_Winv(is_transpose, xi, yi, α, β);
         }
     }
 
-    fn add_scaled_e(&self, x: &mut ConicVector<T>, α: T) {
-        for (i, cone) in self.iter().enumerate() {
-            cone.add_scaled_e(x.view_mut(i), α);
+    fn add_scaled_e(&self, x: &mut [T], α: T) {
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            cone.add_scaled_e(&mut x[rng.clone()], α);
         }
     }
 
     fn step_length(
         &self,
-        dz: &ConicVector<T>,
-        ds: &ConicVector<T>,
-        z: &ConicVector<T>,
-        s: &ConicVector<T>,
+        dz: &[T],
+        ds: &[T],
+        z: &[T],
+        s: &[T],
     ) -> (T, T) {
         let huge = T::recip(T::epsilon());
         let (mut αz, mut αs) = (huge, huge);
 
-        for (i, cone) in self.iter().enumerate() {
-            let (nextαz, nextαs) = cone.step_length(dz.view(i), ds.view(i), z.view(i), s.view(i));
+        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+            let dzi = &dz[rng.clone()];
+            let dsi = &ds[rng.clone()];
+            let zi  = &z[rng.clone()];
+            let si  = &s[rng.clone()];
+            let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si);
             αz = T::min(αz, nextαz);
             αs = T::min(αs, nextαs);
         }

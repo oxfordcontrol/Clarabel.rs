@@ -5,26 +5,17 @@ use crate::algebra::*;
 use crate::cones::*;
 use num_traits::Zero;
 
-pub fn _allocate_kkt_WtW_blocks<T, Z>(cones: &ConeSet<T>) -> Vec<Vec<Z>>
+pub fn _allocate_kkt_WtW_blocks<T, Z>(cones: &ConeSet<T>) -> Vec<Z>
 where
     T: FloatT,
     Z: Zero + Clone,
 {
-    let ncones = cones.len();
-    let mut WtWblocks = Vec::<Vec<Z>>::with_capacity(ncones);
 
-    for cone in cones.iter() {
-        let nvars = cone.numel();
-        let numelblock = {
-            if cone.WtW_is_diagonal() {
-                nvars
-            } else {
-                (nvars * (nvars + 1)) >> 1
-            } //dense triangle
-        };
-        WtWblocks.push(vec![Z::zero(); numelblock]);
+    let mut nnz = 0;
+    if let Some(rng_last) = cones.rng_cones.last() {
+        nnz = (*rng_last).end;
     }
-    WtWblocks
+    vec![Z::zero(); nnz]
 }
 
 pub fn _assemble_kkt_matrix<T: FloatT>(
@@ -43,10 +34,7 @@ pub fn _assemble_kkt_matrix<T: FloatT>(
     let nnz_diagP = P.count_diagonal_entries();
 
     // total entries in the WtW blocks
-    let nnz_WtW_blocks = maps
-        .WtWblocks
-        .iter()
-        .fold(0, |acc, block| acc + block.len());
+    let nnz_WtW_blocks = maps.WtWblocks.len();
 
     // entries in the dense columns u/v of the
     // sparse SOC expansion terms.  2 is for
@@ -101,7 +89,7 @@ fn _kkt_assemble_colcounts<T: FloatT>(
 
     // add the the WtW blocks in the lower right
     for (i, cone) in cones.iter().enumerate() {
-        let firstcol = cones.headidx[i] + n;
+        let firstcol = cones.rng_cones[i].start + n;
         let blockdim = cone.numel();
         if cone.WtW_is_diagonal() {
             K.colcount_diag(firstcol, blockdim);
@@ -117,7 +105,7 @@ fn _kkt_assemble_colcounts<T: FloatT>(
         if cones.types[i] == SupportedCones::SecondOrderConeT {
             // we will add the u and v columns for this cone
             let nvars = cone.numel();
-            let headidx = cones.headidx[i];
+            let headidx = cones.rng_cones[i].start;
 
             // which column does u go into?
             let col = m + n + 2 * socidx;
@@ -171,23 +159,26 @@ fn _kkt_assemble_fill<T: FloatT>(
     }
 
     // add the the WtW blocks in the lower right
-    for (i, cone) in cones.iter().enumerate() {
-        let firstcol = cones.headidx[i] + n;
+    for (i,(cone, rng_cone)) in cones.iter().zip(cones.rng_cones.iter()).enumerate() {
+        let firstcol = rng_cone.start + n;
         let blockdim = cone.numel();
+        let block    = &mut maps.WtWblocks[cones.rng_blocks[i].clone()];
         if cone.WtW_is_diagonal() {
-            K.fill_diag(&mut maps.WtWblocks[i], firstcol, blockdim);
+            K.fill_diag(block, firstcol, blockdim);
         } else {
-            K.fill_dense_triangle(&mut maps.WtWblocks[i], firstcol, blockdim, shape);
+            K.fill_dense_triangle(block, firstcol, blockdim, shape);
         }
     }
 
     // fill in dense columns for each SOC
     let mut socidx = 0; //which SOC are we working on?
 
-    for (i, cone) in cones.iter().enumerate() {
+    for (i,(cone,rng)) in cones.iter().zip(cones.rng_cones.iter()).enumerate() {
+
         if cones.types[i] == SupportedCones::SecondOrderConeT {
+
             let nvars = cone.numel();
-            let headidx = cones.headidx[i];
+            let headidx = rng.start;
 
             // which column does u go into (if triu)?
             let col = m + n + 2 * socidx;
