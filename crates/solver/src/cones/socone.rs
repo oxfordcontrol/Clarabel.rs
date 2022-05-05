@@ -52,7 +52,7 @@ where
     }
 
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
-        δ.copy_from_slice(e);
+        δ.copy_from(e);
         δ.reciprocal();
         δ.scale(e.mean());
 
@@ -76,7 +76,7 @@ where
         let gamma = T::sqrt((T::one() + s.dot(z) / (zscale * sscale)) * half);
 
         let w = &mut self.w;
-        w.copy_from_slice(s);
+        w.copy_from(s);
         w.scale(two * sscale * gamma);
         w[1] += z[1] / (two * zscale * gamma);
         w[2..].axpby(-two * zscale * gamma, &z[2..], T::one());

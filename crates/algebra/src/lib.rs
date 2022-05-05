@@ -9,7 +9,7 @@ pub mod cscmatrix;
 pub use cscmatrix::*;
 
 pub trait FloatT:
-    'static + Float + NumAssign + Default + FromPrimitive
+    'static + Float + NumAssign + Default + FromPrimitive + std::fmt::Display + std::fmt::LowerExp
 {
 }
 impl FloatT for f32 {}
@@ -99,12 +99,16 @@ pub trait MatrixMath<T,V: ?Sized> {
 
     // general matrix-vector multiply, blas like
     // y = a*self*x + b*y
-    fn gemv(&self, sy: &mut V, trans: MatrixShape, x: &V, a:T, b:T);
+    fn gemv(&self, y: &mut V, trans: MatrixShape, x: &V, a:T, b:T);
 
     // symmetric matrix-vector multiply, blas like
     // y = a*self*x + b*y.  The matrix should be
     //in either triu or tril form, with the other
     //half of the triangle assumed symmetric
     fn symv(&self, y: &mut [T], tri: MatrixTriangle, x: &[T], a:T, b:T);
+
+    // quadratic form for a symmetric matrix.  Assumes upper
+    // triangular form for the matrix
+    fn symdot(&self, y : &[T], x : &[T]) -> T;
 
 }

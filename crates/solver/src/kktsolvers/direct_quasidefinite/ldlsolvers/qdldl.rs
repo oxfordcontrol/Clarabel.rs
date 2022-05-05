@@ -62,16 +62,18 @@ impl<T: FloatT> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> {
     }
 
     fn offset_values(&mut self, index: &[usize], offset: T) {
+
         self.factors.offset_values(index, offset);
+
         for (idx, sign) in index.iter().zip(self.Dsigns.iter()) {
             let sign = T::from_i8(*sign).unwrap();
-            self.KKT.nzval[*idx] = sign * offset;
+            self.KKT.nzval[*idx] += sign * offset;
         }
     }
 
     fn solve(&mut self, x: &mut [T], b: &[T], settings: &Settings<T>) {
         // make an initial solve (solves in place)
-        x.copy_from_slice(b);
+        x.copy_from(b);
         self.factors.solve(x);
 
         if settings.iterative_refinement_enable {
@@ -104,7 +106,7 @@ impl<T: FloatT> QDLDLDirectLDLSolver<T> {
 
         for _ in 0..maxiter {
             // this is work = error = b - Kξ
-            work.copy_from_slice(b);
+            work.copy_from(b);
             K.symv(work, MatrixTriangle::Triu, x, -T::one(), T::one());
             let norme = work.norm_inf();
 

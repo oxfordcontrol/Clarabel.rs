@@ -6,25 +6,28 @@ use crate::default::*;
 // Residuals type for default problem format
 // ---------------
 
+//PJG everything pub here should probably be
+//public within the crate
+
 pub struct DefaultResiduals<T: FloatT = f64> {
     // the main KKT residuals
-    rx: Vec<T>,
-    rz: Vec<T>,
-    rτ: T,
+    pub rx: Vec<T>,
+    pub rz: Vec<T>,
+    pub rτ: T,
 
     // partial residuals for infeasibility checks
-    rx_inf: Vec<T>,
-    rz_inf: Vec<T>,
+    pub rx_inf: Vec<T>,
+    pub rz_inf: Vec<T>,
 
     // various inner products.
     // NB: these are invariant w.r.t equilibration
-    dot_qx: T,
-    dot_bz: T,
-    dot_sz: T,
-    dot_xPx: T,
+    pub dot_qx: T,
+    pub dot_bz: T,
+    pub dot_sz: T,
+    pub dot_xPx: T,
 
     // the product Px by itself. Required for infeasibilty checks
-    Px: Vec<T>,
+    pub Px: Vec<T>,
 }
 
 impl<T: FloatT> DefaultResiduals<T> {
@@ -58,12 +61,52 @@ impl<T> Residuals<T> for DefaultResiduals<T>
 where
 T: FloatT
 {
-
     type D = DefaultProblemData<T>;
     type V = DefaultVariables<T>;
 
     fn update(&mut self, variables: &DefaultVariables<T>, data: &DefaultProblemData<T>)
     {
-        todo!();
+        // various products used multiple times
+        let qx  = data.q.dot(&variables.x);
+        let bz  = data.b.dot(&variables.z);
+        let sz  = variables.s.dot(&variables.z);
+
+        //Px = P*x, P treated as symmetric
+        data.P.symv(&mut self.Px,
+                    MatrixTriangle::Triu,
+                    &variables.x,
+                    T::one(),
+                    T::zero());
+
+        let xPx = variables.x.dot(&self.Px);
+
+        //partial residual calc so we can check primal/dual
+        //infeasibility conditions
+
+        //Same as:
+        //rx_inf .= -data.A'* variables.z
+        data.A.gemv(&mut self.rx_inf, MatrixShape::T,&variables.z,-T::one(),T::zero());
+
+        //Same as:  residuals.rz_inf .=  data.A * variables.x + variables.s
+        self.rz_inf.copy_from(&variables.s);
+        data.A.gemv(&mut self.rz_inf, MatrixShape::N,&variables.x, T::one(), T::one());
+
+
+        //complete the residuals
+        //rx = rx_inf - Px - qτ
+        self.rx.waxpby(-T::one(), &self.Px, -variables.τ, &data.q);
+        self.rx.axpby(T::one(),&self.rx_inf,T::one());
+
+        // rz = rz_inf - bτ
+        self.rz.waxpby(T::one(),&self.rz_inf,-variables.τ,&data.b);
+
+        // τ = qz + bz + κ + xPx/τ;
+        self.rτ    = qx + bz + variables.κ + xPx/variables.τ;
+
+        //save local versions
+        self.dot_qx  = qx;
+        self.dot_bz  = bz;
+        self.dot_sz  = sz;
+        self.dot_xPx = xPx;
     }
 }

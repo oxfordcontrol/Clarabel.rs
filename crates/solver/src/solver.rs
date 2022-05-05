@@ -44,12 +44,12 @@ where
 
         // various initializations
         s.info.reset();
-        let mut iter: i32 = 0;
+        let mut iter: u32 = 0;
         // timer  = s.info.timer //PJG fix
         //
 
         // solver release info, solver config
-        // problem dimensions, cone type etc
+        // problem dimensions, cone types etc
         // @notimeit //PJG fix
         s.info.print_header(&s.settings, &s.data, &s.cones);
 
@@ -78,7 +78,7 @@ where
             // --------------
             //         @timeit_debug timer "check termination" begin
             s.info
-                .update(&s.data, &s.variables, &s.residuals, &s.settings);
+                .update(&s.data, &s.variables, &s.residuals);
 
             let isdone = s.info.check_termination(&s.residuals, &s.settings);
             //         end //end timer
@@ -94,8 +94,6 @@ where
             // --------------
             // @timeit_debug timer "NT scaling"
 
-            //PJG: problem here because cones has no trait to impl
-            //s.cones.scaling_update(s.variables);
             s.variables.scale_cones(&mut s.cones);
 
             //update the KKT system and the constant
@@ -107,11 +105,11 @@ where
             // calculate the affine step
             // --------------
             s.step_rhs
-                .calc_affine_step_rhs(&s.residuals, &s.data, &s.variables, &s.cones);
+                .calc_affine_step_rhs(&s.residuals, &s.variables, &s.cones);
             //
             //         @timeit_debug timer "kkt solve" begin
             s.kktsystem.solve(
-                &s.step_lhs,
+                &mut s.step_lhs,
                 &s.step_rhs,
                 &s.data,
                 &s.variables,
@@ -129,17 +127,16 @@ where
             // --------------
             s.step_rhs.calc_combined_step_rhs(
                 &s.residuals,
-                &s.data,
                 &s.variables,
                 &s.cones,
-                &s.step_lhs,
+                &mut s.step_lhs,
                 σ,
                 μ,
             );
 
             //@timeit_debug timer "kkt solve" begin
             s.kktsystem.solve(
-                &s.step_lhs,
+                &mut s.step_lhs,
                 &s.step_rhs,
                 &s.data,
                 &s.variables,
@@ -162,9 +159,9 @@ where
         // ----------
         // ----------
 
-        //     end #end IP iteration timer
+        // end IP iteration timer
 
-        // end #end solve! timer
+        // end solve! timer
 
         s.info.finalize(); //halts timers
 
@@ -186,7 +183,7 @@ where
         // Refactor
         s.kktsystem.update(&s.data, &s.cones);
         // solve for primal/dual initial points via KKT
-        s.kktsystem.solve_initial_point(&s.variables, &s.data);
+        s.kktsystem.solve_initial_point(&mut s.variables, &s.data);
         // fix up (z,s) so that they are in the cone
         s.variables.shift_to_cone(&s.cones);
     }

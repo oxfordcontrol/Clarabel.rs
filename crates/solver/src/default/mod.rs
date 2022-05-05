@@ -20,7 +20,7 @@ pub use solveinfo::*;
 pub use solveresult::*;
 pub use variables::*;
 
-type DefaultSolver<T = f64> = Solver<
+pub type DefaultSolver<T = f64> = Solver<
     DefaultProblemData<T>,
     DefaultVariables<T>,
     DefaultResiduals<T>,
@@ -49,9 +49,9 @@ impl<T:FloatT> DefaultSolver<T>
         //on the types, dims and settings
 
         let info = DefaultSolveInfo::<T>::new();
-        let cones = ConeSet::<T>::new(&cone_types,&cone_dims);
-        let mut data = DefaultProblemData::<T>::new(P,q,A,b,&cones);
-        let variables = DefaultVariables::<T>::new(data.n,&cones);
+        let cones = ConeSet::<T>::new(cone_types,cone_dims);
+        let mut data = DefaultProblemData::<T>::new(P,q,A,b);
+        let variables = DefaultVariables::<T>::new(data.n,data.m);
         let residuals = DefaultResiduals::<T>::new(data.n,data.m);
 
         // equilibrate problem data immediately on setup.
@@ -59,19 +59,19 @@ impl<T:FloatT> DefaultSolver<T>
         // is called more than once.
         data.equilibrate(&cones,&settings);
 
-        let kktsystem = DefaultKKTSystem::<T>::new(&cones,&settings);
+        let kktsystem = DefaultKKTSystem::<T>::new(&data,&cones,&settings);
 
         // work variables for assembling step direction LHS/RHS
-        let step_rhs  = DefaultVariables::<T>::new(data.n,&cones);
-        let step_lhs  = DefaultVariables::<T>::new(data.n,&cones);
+        let step_rhs  = DefaultVariables::<T>::new(data.n,data.m);
+        let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
 
         // user facing results go here
         //PJG:final argument in julia is the timer.  Left out
         //here for now.
         let result  = DefaultSolveResult::<T>::new(data.m,data.n);
 
-        Self{data: data,variables,residuals,kktsystem,step_lhs,
-             step_rhs,info,result,cones,settings: settings}
+        Self{data,variables,residuals,kktsystem,step_lhs,
+             step_rhs,info,result,cones,settings}
 
     }
 }

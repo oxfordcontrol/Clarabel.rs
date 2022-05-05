@@ -1,0 +1,16 @@
+# [package]
+# name = "clarabel"
+# version = "0.1.0"
+# authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
+# edition = "2021"
+# license = "Apache-2.0"
+# description = "Clarabel Conic Interior Point Solver"
+# readme = "README.md"
+# keywords = ["optimization", "math"]
+# categories = ["optimization"]
+
+[workspace]
+members = ["crates/*"]
+
+# [dependencies]
+# num-traits = "0.2"

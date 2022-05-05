@@ -38,7 +38,7 @@ where
         let cols = self.colptr[initcol..(initcol + blockcols)].iter_mut();
         cols.for_each(|x| *x += 1);
     }
-
+ 
     // same as kkt_count_diag, but counts places
     // where the input matrix M has a missing
     // diagonal entry.  M must be square and TRIU
@@ -81,20 +81,21 @@ where
         match shape {
             MatrixShape::T => {
                 for row in M.rowval.iter() {
-                    self.colptr[row + (initcol - 1)] += 1;
+                    self.colptr[initcol + row] += 1;
                 }
             }
             MatrixShape::N => {
                 // just add the column count
                 for i in 0..M.n {
-                    self.colptr[initcol + i] += self.colptr[i + 1] - self.colptr[i];
+                    self.colptr[initcol + i] += M.colptr[i + 1] - M.colptr[i];
                 }
             }
         }
     }
 
-    //populate a partial column with zeros using the self.colptr as indicator of
-    // next fill location in each row.
+    //populate a partial column with zeros using the self.colptr as the indicator
+    // the next fill location in each row.
+    //PJG: Maybe vlength is always the same as vtoKKT.len() here?
     pub fn fill_colvec(
         &mut self,
         vtoKKT: &mut [usize],
@@ -102,17 +103,18 @@ where
         initcol: usize,
         vlength: usize,
     ) {
-        for i in 0..vlength {
+        for (i, v) in vtoKKT.iter_mut().enumerate().take(vlength) {
             let dest = self.colptr[initcol];
             self.rowval[dest] = initrow + i;
             self.nzval[dest] = T::zero();
-            vtoKKT[i] = dest;
+            *v = dest;
             self.colptr[initcol] += 1;
         }
     }
 
     // populate a partial row with zeros using the self.colptr as indicator of
     // next fill location in each row.
+    //PJG: Maybe vlength is always the same as vtoKKT.len() here?
     pub fn fill_rowvec(
         &mut self,
         vtoKKT: &mut [usize],
@@ -120,12 +122,12 @@ where
         initcol: usize,
         vlength: usize,
     ) {
-        for i in 0..vlength {
+        for (i, v) in vtoKKT.iter_mut().enumerate().take(vlength) {
             let col = initcol + i;
             let dest = self.colptr[col];
             self.rowval[dest] = initrow;
             self.nzval[dest] = T::zero();
-            vtoKKT[i] = dest;
+            *v = dest;
             self.colptr[col] += 1;
         }
     }
@@ -141,23 +143,29 @@ where
         shape: MatrixShape,
     ) {
         for i in 0..M.n {
-            for j in M.colptr[i]..M.colptr[i + 1] {
+
+            let z = M.rowval.iter().zip(M.nzval.iter());
+            let start = M.colptr[i];
+            let stop  = M.colptr[i+1];
+
+            for (j,(&Mrow,&Mval)) in z.take(stop).skip(start).enumerate() {
+
                 let (col, row);
 
                 match shape {
                     MatrixShape::T => {
-                        col = M.rowval[j] + initcol;
+                        col = Mrow + initcol;
                         row = i + initrow;
                     }
                     MatrixShape::N => {
                         col = i + initcol;
-                        row = M.rowval[j] + initrow;
+                        row = Mrow + initrow;
                     }
                 };
 
                 let dest = self.colptr[col];
                 self.rowval[dest] = row;
-                self.nzval[dest] = M.nzval[j];
+                self.nzval[dest] = Mval;
                 MtoKKT[j] = dest;
                 self.colptr[col] += 1;
             }
@@ -229,13 +237,15 @@ where
     // Populate the diagonal with 0s using the K.colptr as indicator of
     // next fill location in each row
     pub fn fill_diag(&mut self, diagtoKKT: &mut [usize], offset: usize, blockdim: usize) {
-        for i in 0..blockdim {
-            let col = i + offset;
+
+        for (i, col) in (offset..(offset + blockdim)).enumerate() {
+ 
             let dest = self.colptr[col];
             self.rowval[dest] = col;
             self.nzval[dest] = T::zero(); //structural zero
             self.colptr[col] += 1;
             diagtoKKT[i] = dest;
+
         }
     }
 

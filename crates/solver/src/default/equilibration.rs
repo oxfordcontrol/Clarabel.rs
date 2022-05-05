@@ -1,7 +1,5 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
-use crate::conicvector::ConicVector;
-use crate::ConeSet;
 
 // ---------------
 // equilibration data
@@ -13,27 +11,24 @@ pub struct DefaultEquilibration<T: FloatT = f64> {
     // to be treated as diagonal scaling data
     pub d: Vec<T>,
     pub dinv: Vec<T>,
-    pub e: ConicVector<T>,
-    pub einv: ConicVector<T>,
+    pub e: Vec<T>,
+    pub einv: Vec<T>,
 
     // overall scaling for objective function
     pub c: T,
 }
 
 impl<T: FloatT> DefaultEquilibration<T> {
-    pub fn new(nvars: usize, cones: &ConeSet<T>) -> Self {
+    pub fn new(n: usize, m: usize) -> Self {
         // Left/Right diagonal scaling for problem data
-        let d = vec![T::zero(); nvars];
-        let dinv = vec![T::zero(); nvars];
+        let d = vec![T::one(); n];
+        let dinv = vec![T::one(); n];
 
         // PJG : note that this double initializes
         // e / einv because the ConicVector constructor
         // first initializes to zero.   Could be improved.
-        let mut e = ConicVector::<T>::new(cones);
-        e.fill(T::one());
-        let mut einv = ConicVector::<T>::new(cones);
-        einv.fill(T::one());
-
+        let e = vec![T::one(); m];
+        let einv = vec![T::one(); m];
         let c = T::one();
 
         Self {

@@ -10,11 +10,17 @@ pub use zerocone::*;
 
 use crate::algebra::*;
 
-#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum SupportedCones {
     ZeroConeT,
     NonnegativeConeT,
     SecondOrderConeT,
+}
+
+impl std::fmt::Display for SupportedCones {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 //PJG: translation of Julia in this function is

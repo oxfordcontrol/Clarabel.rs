@@ -39,7 +39,7 @@ where
     }
 
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
-        δ.copy_from_slice(e);
+        δ.copy_from(e);
         false
     }
 
@@ -117,7 +117,7 @@ where
         assert_eq!(y.len(), x.len());
         assert_eq!(y.len(), self.w.len());
         for i in 0..y.len() {
-            y[i] = α * (x[i] * self.w[i]) + β * y[i];
+            y[i] = α * (x[i] / self.w[i]) + β * y[i];
         }
     }
 

@@ -109,7 +109,7 @@ where
     }
 
     fn maximum(&self) -> T {
-        self.iter().fold(T::infinity(), |r, &s| T::max(r, s))
+        self.iter().fold(-T::infinity(), |r, &s| T::max(r, s))
     }
 
     fn mean(&self) -> T {
@@ -146,7 +146,7 @@ where
         let xy = x.iter().zip(y);
 
         for (w, (x, y)) in self.iter_mut().zip(xy) {
-            *w = a * (*x) * b * (*y);
+            *w = a * (*x) + b * (*y);
         }
     }
 }
@@ -245,13 +245,13 @@ where
 
         assert_eq!(self.nzval.len(),*self.colptr.last().unwrap());
 
-        for col in 0..self.n {
+        for (col,&ri) in r.iter().enumerate() {
             let (first,last) = (self.colptr[col],self.colptr[col+1]);
             let  vals = &mut self.nzval[first..last];
             let rows = &self.rowval[first..last];
 
             for (val,row) in vals.iter_mut().zip(rows){
-                *val *= l[*row] * r[col];
+                *val *= l[*row] * ri;
             }
         }
     }
@@ -276,6 +276,10 @@ where
             MatrixTriangle::Tril => _csc_symv(self, y, x, a, b),
         }
     }
+
+    fn symdot(&self, y : &[T], x : &[T]) -> T {
+        _csc_quad_form(self,y,x)
+    }
 }
 
 #[allow(non_snake_case)]
@@ -283,15 +287,61 @@ fn _csc_symv<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a:T, b:T){
 
     y.scale(b);
 
-    for j in 0..A.n {
-        for i in A.colptr[j]..A.colptr[j+1]{
-            y[A.rowval[i]] += a * A.nzval[i] * x[j];
-            if i != j {
+    //PJG: some iterator magic needed here
+
+    for col in 0..A.n {
+        for i in A.colptr[col]..A.colptr[col+1] {
+            let row   = A.rowval[i];
+            let Aij   = A.nzval[i];
+            y[row] += a * Aij * x[col];
+            if row != col {
                 //don't double up on the diagonal
-                y[j] += a * A.nzval[i] * x[A.rowval[i]];
+                y[col] += a * Aij * x[row];
             }
         }
     }
+
+}
+
+#[allow(non_snake_case)]
+#[allow(clippy::comparison_chain)]
+fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T{
+
+    let (m, n) = (M.m, M.n);
+
+    assert_eq!(x.len(), m);
+    assert_eq!(y.len(), n);
+
+    if m == 0 || n == 0{
+        return T::zero()
+    }
+
+    let Mc = &M.colptr;
+    let Mr = &M.rowval;
+    let Mv = &M.nzval;
+
+    let mut out = T::zero();
+
+    for j in 0..n {   //col number
+        let mut tmp1 = T::zero();
+        let mut tmp2 = T::zero();
+        for p in Mc[j]..Mc[j+1] {
+            let i = Mr[p];   //row number
+            if i < j {
+                //triu terms only
+                tmp1 += Mv[p]*x[i];
+                tmp2 += Mv[p]*y[i];
+            }
+            else if i == j {
+                out += Mv[p]*x[i]*y[i];
+            }
+            else{
+                panic!("Input matrix should be triu form.");
+            }   
+        }
+        out += tmp1*y[j] + tmp2*x[j]
+    }
+    out
 
 }
 
@@ -354,7 +404,7 @@ fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a:T, b:T){
     if a == T::zero() {return}
 
     assert_eq!(A.nzval.len(),*A.colptr.last().unwrap());
-    assert_eq!(x.len(),A.n);
+    assert_eq!(x.len(),A.m);
 
     //y += A*x
     if a == T::one(){

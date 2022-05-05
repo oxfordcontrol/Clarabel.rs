@@ -24,8 +24,9 @@ pub fn _assemble_kkt_matrix<T: FloatT>(
     cones: &ConeSet<T>,
     shape: MatrixTriangle,
 ) -> (CscMatrix<T>, LDLDataMap) {
+
     let (m, n) = (A.nrows(), P.nrows());
-    let n_socs = cones.type_counts[&SupportedCones::SecondOrderConeT];
+    let n_socs = cones.type_count(&SupportedCones::SecondOrderConeT);
     let p = 2 * n_socs;
 
     let mut maps = LDLDataMap::new(P, A, cones);
@@ -203,7 +204,7 @@ fn _kkt_assemble_fill<T: FloatT>(
     }
 
     // fill in SOC diagonal extension with diagonal of structural zeros
-    K.fill_diag(&mut maps.SOC_D, n + m + 1, p);
+    K.fill_diag(&mut maps.SOC_D, n + m, p);
 
     // backshift the colptrs to recover K.p again
     K.backshift_colptrs();
@@ -217,8 +218,8 @@ fn _kkt_assemble_fill<T: FloatT>(
             maps.diag_full.copy_from_slice(&K.colptr[1..]);
             maps.diag_full.iter_mut().for_each(|x| *x -= 1);
             // and the diagonal of just the upper left
-            maps.diagP.copy_from_slice(&K.colptr[1..n]);
-            maps.diag_full.iter_mut().for_each(|x| *x -= 1);
+            maps.diagP.copy_from_slice(&K.colptr[1..=n]);
+            maps.diagP.iter_mut().for_each(|x| *x -= 1);
         }
 
         MatrixTriangle::Tril => {

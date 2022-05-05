@@ -13,7 +13,12 @@ use crate::kktsolvers::direct_quasidefinite::DirectLDLSolver;
 // KKTSolver using direct LDL factorisation
 // -------------------------------------
 
-pub struct DirectQuasidefiniteKKTSolver<'a, T: FloatT = f64> {
+//PJG: Need to explicitly give T:FloatT bound here
+//since Settings must be Settings<T> to allow for
+//defaults.  Once settings is removed here, this
+//bound in the struct definition can be removed
+
+pub struct DirectQuasidefiniteKKTSolver<T:FloatT> {
     // problem dimensions
     m: usize,
     n: usize,
@@ -32,25 +37,34 @@ pub struct DirectQuasidefiniteKKTSolver<'a, T: FloatT = f64> {
 
     // settings just points back to the main solver settings.
     // Required since there is no separate LDL settings container
-    settings: &'a Settings<T>,
+    settings: Settings<T>,
 
     // the direct linear LDL solver
     ldlsolver: Box<dyn DirectLDLSolver<T>>,
 }
 
 //PJG: check on lifetime reqs here (actually everywhere in this file)
-impl<'a, T: FloatT> DirectQuasidefiniteKKTSolver<'a, T> {
+impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
     pub fn new(
         P: &CscMatrix<T>,
         A: &CscMatrix<T>,
         cones: &ConeSet<T>,
         m: usize,
         n: usize,
-        settings: &'a Settings<T>,
+        settings: &Settings<T>,
     ) -> Self {
+
+
+        //PJG: Cloning settings here as a workaround because
+        //both the QD KKT solver requires settings for refinement
+        //and the inner QDLDL solver requires settings.   Move
+        //IR method to within QDLDL, then settings can be
+        //removed from this structure entirely.
+        let settings = (*settings).clone();
+
         // solving in sparse format.  Need this many
         // extra variables for SOCs
-        let p = 2 * cones.type_counts[&SupportedCones::SecondOrderConeT];
+        let p = 2 * cones.type_count(&SupportedCones::SecondOrderConeT);
 
         // LHS/RHS/work for iterative refinement
         let x = vec![T::zero(); n + m + p];
@@ -76,7 +90,7 @@ impl<'a, T: FloatT> DirectQuasidefiniteKKTSolver<'a, T> {
 
         //PJG: switchable solver engine not implemented yet
         // the LDL linear solver engine
-        let mut ldlsolver = Box::new(QDLDLDirectLDLSolver::<T>::new(KKT, signs, settings));
+        let mut ldlsolver = Box::new(QDLDLDirectLDLSolver::<T>::new(KKT, signs, &settings));
 
         if settings.static_regularization_enable {
             let eps = settings.static_regularization_eps;
@@ -95,7 +109,21 @@ impl<'a, T: FloatT> DirectQuasidefiniteKKTSolver<'a, T> {
             ldlsolver,
         }
     }
+
+    // extra helper functions, not required for KKTSolver trait
+    fn getlhs(&self, lhsx: Option<&mut [T]>, lhsz: Option<&mut [T]>) {
+        let x = &self.x;
+        let (m, n, _p) = (self.m, self.n, self.p);
+
+        if let Some(v) = lhsx {
+            v.copy_from(&x[0..n]);
+        }
+        if let Some(v) = lhsz {
+            v.copy_from(&x[n..(n + m)]);
+        }
+    }
 }
+
 
 //PJG: Switching not supported yet.   Fix this.
 // function _get_ldlsolver_type(s::Symbol)
@@ -120,11 +148,11 @@ fn _fill_signs(signs: &mut [i8], m: usize, n: usize, p: usize) {
         .for_each(|x| *x = -*x);
 }
 
-impl<'a, T> KKTSolver<'a, T> for DirectQuasidefiniteKKTSolver<'a, T>
+impl<T> KKTSolver<T> for DirectQuasidefiniteKKTSolver<T>
 where
     T: FloatT,
 {
-    fn update(&mut self, cones: ConeSet<T>) {
+    fn update(&mut self, cones: &ConeSet<T>) {
         let settings = &self.settings;
         let map = &self.map;
         let ldlsolver = &mut self.ldlsolver;
@@ -162,6 +190,7 @@ where
                         //ldlsolver.update_values(&map.SOC_v[cidx],(-η2).*K.v);
 
                         //add η^2*(1/-1) to diagonal in the extended rows/cols
+                        //PJG: not sure my arrays make sense here.  How long are they?
                         ldlsolver.update_values(&map.SOC_D[cidx * 2..], &[-η2; 1]);
                         ldlsolver.update_values(&map.SOC_D[cidx * 2..], &[η2; 1]);
 
@@ -173,12 +202,12 @@ where
 
         // Perturb the diagonal terms WtW that we have just overwritten
         // with static regularizers.  Note that we don't want to shift
-        // elements in the ULHS #(corresponding to P) since we already
+        // elements in the ULHS (corresponding to P) since we already
         // shifted them at initialization and haven't overwritten it
         if settings.static_regularization_enable {
             let eps = settings.static_regularization_eps;
             ldlsolver.offset_values(&map.diag_full, eps);
-            ldlsolver.offset_values(&map.diagP, -eps); //undo to the P shift
+            ldlsolver.offset_values(&map.diagP, -eps); //undo the P shift
         }
 
         //refactor with new data
@@ -194,23 +223,7 @@ where
     }
 
     fn solve(&mut self, lhsx: Option<&mut [T]>, lhsz: Option<&mut [T]>) {
-        self.ldlsolver.solve(&mut self.x, &self.b, self.settings);
+        self.ldlsolver.solve(&mut self.x, &self.b, &self.settings);
         self.getlhs(lhsx, lhsz);
-    }
-}
-
-// extra helper functions, not required for KKTSolver trait
-
-impl<'a, T: FloatT> DirectQuasidefiniteKKTSolver<'a, T> {
-    fn getlhs(&self, lhsx: Option<&mut [T]>, lhsz: Option<&mut [T]>) {
-        let x = &self.x;
-        let (m, n, _p) = (self.m, self.n, self.p);
-
-        if let Some(v) = lhsx {
-            v.copy_from(&x[0..n]);
-        }
-        if let Some(v) = lhsz {
-            v.copy_from(&x[n..(n + m)]);
-        }
     }
 }

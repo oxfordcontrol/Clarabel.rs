@@ -38,7 +38,7 @@ where
     }
 
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
-        δ.copy_from_slice(e);
+        δ.copy_from(e);
         false
     }
 

@@ -92,12 +92,14 @@ impl<T:FloatT> QDLDLFactorisation<T>{
     pub fn offset_values(&mut self, indices: &[usize], offset: T){
 
         let nzval   = &mut self.workspace.triuA.nzval;     //post permutation internal data
+        let rowval  = &self.workspace.triuA.rowval;
         let AtoPAPt = &self.workspace.AtoPAPt;       //mapping from input matrix entries to triuA
         let Dsigns   = &self.workspace.Dsigns;
 
-        for (i,idx) in indices.iter().enumerate() {
-            let sign : T = T::from_i8(Dsigns[i]).unwrap();
-            nzval[AtoPAPt[*idx]] += offset*sign;
+        for idx in indices.iter() {
+            let j = AtoPAPt[*idx];
+            let sign : T = T::from_i8(Dsigns[rowval[j]]).unwrap();
+            nzval[j] += offset*sign;
         }
     }
 
@@ -685,8 +687,6 @@ fn _permute_symmetric_inner<T:FloatT>(
         }
     }
 
-    println!("num_entries = {:?}",num_entries);
-
     // 2. calculate permuted Pc = P.colptr from number of entries
     // Pc is one longer than num_entries here.
     Pc[0] = 0;
@@ -697,12 +697,9 @@ fn _permute_symmetric_inner<T:FloatT>(
     }
     // reuse this memory to keep track of free entries in rowval
     num_entries.copy_from_slice(&Pc[0..n]);
-    println!("Pc = {:?}",Pc);
-    println!("num_entries copied = {:?}",num_entries);
 
     // use alias
     let mut row_starts = num_entries;
-    println!("row_starts copied = {:?}",row_starts);
 
     // 3. permute the row entries and position of corresponding nzval
     for colA in 0..n {
@@ -737,7 +734,6 @@ fn _permute_symmetric_inner<T:FloatT>(
 fn _get_amd_ordering<T: FloatT>(A: &CscMatrix<T>) -> (Vec<usize>,Vec<usize>){
 
     let control = amd::Control::default();
-    amd::control(&control);
     let (perm, iperm, _info) =
     amd::order(A.nrows(), &A.colptr, &A.rowval, &control).unwrap();
     (perm,iperm)

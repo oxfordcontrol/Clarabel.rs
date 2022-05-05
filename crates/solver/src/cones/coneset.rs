@@ -30,6 +30,7 @@ pub struct ConeSet<T: FloatT = f64> {
 }
 
 impl<T: FloatT> ConeSet<T> {
+
     pub fn new(types: &[SupportedCones], dims: &[usize]) -> Self {
 
         assert_eq!(types.len(), dims.len());
@@ -142,7 +143,18 @@ impl<T: FloatT> ConeSet<T> {
         self.cones.iter_mut()
     }
     pub fn anyref_by_idx(&self, idx: usize) -> &(dyn Any + '_) {
-        &self.cones[idx] as &(dyn Any + '_)
+        let foo = &self.cones[idx];
+        let foo = foo as &(dyn Any + '_);
+        println!("{:?}",foo);
+        foo
+    }
+    pub fn type_count(&self, conet: &SupportedCones)->usize {
+        if self.type_counts.contains_key(conet){
+            self.type_counts[conet]
+        }
+        else{
+            0
+        }
     }
 }
 

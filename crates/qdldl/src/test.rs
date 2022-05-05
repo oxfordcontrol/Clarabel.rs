@@ -1,3 +1,4 @@
+#[cfg(test)]
 use crate::*;
 extern crate amd;
 
@@ -11,14 +12,13 @@ fn test_matrix_4x4() -> CscMatrix<f64>{
     let Ap = vec![0, 1, 3, 6, 8];
     let Ai = vec![0, 0, 1, 0, 1, 2, 2, 3];
     let Ax = vec![8., -3., 8., 2., -1., 8., -1., 1.];
-    let A = CscMatrix{
-        n : 4,
+    CscMatrix{
         m : 4,
+        n : 4,
         colptr : Ap,
         rowval : Ai,
         nzval : Ax
-    };
-    return A
+    }
 }
 
 fn inf_norm_diff<T:FloatT>(a: &[T], b: &[T]) -> T
@@ -103,9 +103,9 @@ fn test_etree(){
 
     let n = 4;
     let A = test_matrix_4x4();
-    let mut Lnz = vec![0 as usize; n];
-    let mut iwork = vec![0 as usize; 3*n];
-    let mut etree = vec![0 as usize; n];
+    let mut Lnz = vec![0; n];
+    let mut iwork = vec![0; 3*n];
+    let mut etree = vec![0; n];
 
     let _out = _etree(
         A.nrows(),
@@ -160,8 +160,8 @@ fn test_permute_symmetric(){
     let iperm = _invperm(&perm);
     let (P, _) = _permute_symmetric(&A,&iperm);
 
-    assert_eq!(&P.colptr,&vec![0 as usize, 1, 3, 5, 8]);
-    assert_eq!(&P.rowval,&vec![0 as usize, 0, 1, 2, 0, 2, 3, 0]);
+    assert_eq!(&P.colptr,&vec![0, 1, 3, 5, 8]);
+    assert_eq!(&P.rowval,&vec![0, 0, 1, 2, 0, 2, 3, 0]);
     assert_eq!(&P.nzval,&vec![6.0, 7.0, 8.0, 1.0, 4.0, 2.0, 3.0, 5.0]);
 
 }
@@ -185,9 +185,9 @@ fn test_settings_builder(){
     let opts = QDLDLSettingsBuilder::default()
             .perm(vec![0,1,2,3])
             .logical(false)
-            .regularize(true)
-            .regularize_eps(1e-3 as f64)
-            .regularize_delta(1e-3 as f64)
+            .regularize_enable(true)
+            .regularize_eps(1e-3)
+            .regularize_delta(1e-3)
             .build().unwrap();
 
     assert_eq!(opts.regularize_eps,1e-3);

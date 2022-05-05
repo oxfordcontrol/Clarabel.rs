@@ -22,7 +22,7 @@ pub struct DefaultProblemData<T: FloatT = f64> {
 }
 
 impl<T: FloatT> DefaultProblemData<T> {
-    pub fn new(P: &CscMatrix<T>, q: &[T], A: &CscMatrix<T>, b: &[T], cones: &ConeSet<T>) -> Self {
+    pub fn new(P: &CscMatrix<T>, q: &[T], A: &CscMatrix<T>, b: &[T]) -> Self {
         let (m, n) = (b.len(), q.len());
 
         assert_eq!(m, A.nrows());
@@ -34,7 +34,7 @@ impl<T: FloatT> DefaultProblemData<T> {
         let q = q.to_vec();
         let A = A.clone();
         let b = b.to_vec();
-        let equilibration = DefaultEquilibration::<T>::new(n, cones);
+        let equilibration = DefaultEquilibration::<T>::new(n, m);
 
         Self {
             P,
