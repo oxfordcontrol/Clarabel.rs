@@ -167,14 +167,16 @@ where
 
         // update the scaled u and v columns.
         let mut cidx = 0; // which of the SOCs are we working on?
-        for (i, _cone) in cones.iter().enumerate() {
+        for (i, cone) in cones.iter().enumerate() {
             if cones.types[i] == SupportedCones::SecondOrderConeT {
                 //here we need to recover the inner SOC value for
                 //this cone so we can access its fields
 
-                //PJG: This is extremely questionable
-                let K = cones.anyref_by_idx(i);
-                let K = K.downcast_ref::<SecondOrderCone<T>>();
+                //PJG: This forced downcasting is not ideal and requires 
+                //ugly machinery in the BoxedCone implementation to enable.
+                //Might be better for the cones to be implemented as an 
+                //enum type, treating SOC as a special case. 
+                let K = cone.as_any().downcast_ref::<SecondOrderCone<T>>();
 
                 match K {
                     None => {
@@ -186,13 +188,15 @@ where
                         //off diagonal columns (or rows)
                         //PJG: not sure how to force the scaling here
                         //commenting out for the moment
-                        //ldlsolver.update_values(&map.SOC_u[cidx],(-η2).*K.u);
-                        //ldlsolver.update_values(&map.SOC_v[cidx],(-η2).*K.v);
+                        ldlsolver.update_values(&map.SOC_u[cidx],&K.u);
+                        ldlsolver.update_values(&map.SOC_v[cidx],&K.v);
+                        ldlsolver.scale_values(&map.SOC_u[cidx],-η2);
+                        ldlsolver.scale_values(&map.SOC_v[cidx],-η2);
 
-                        //add η^2*(1/-1) to diagonal in the extended rows/cols
+                        //add η^2*(-1/1) to diagonal in the extended rows/cols
                         //PJG: not sure my arrays make sense here.  How long are they?
-                        ldlsolver.update_values(&map.SOC_D[cidx * 2..], &[-η2; 1]);
-                        ldlsolver.update_values(&map.SOC_D[cidx * 2..], &[η2; 1]);
+                        ldlsolver.update_values(&[map.SOC_D[cidx * 2]], &[-η2; 1]);
+                        ldlsolver.update_values(&[map.SOC_D[cidx * 2 + 1]], &[ η2; 1]);
 
                         cidx += 1;
                     }
@@ -205,7 +209,7 @@ where
         // elements in the ULHS (corresponding to P) since we already
         // shifted them at initialization and haven't overwritten it
         if settings.static_regularization_enable {
-            let eps = settings.static_regularization_eps;
+            let eps = settings.static_regularization_eps; 
             ldlsolver.offset_values(&map.diag_full, eps);
             ldlsolver.offset_values(&map.diagP, -eps); //undo the P shift
         }

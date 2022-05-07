@@ -61,6 +61,19 @@ impl<T: FloatT> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> {
         }
     }
 
+    fn scale_values(&mut self, index: &[usize], scale: T) {
+        // Scale values in both the KKT matrix and
+        // in the reordered copy held internally by QDLDL.
+        // The former is needed for iterative refinement since
+        // QDLDL does not have internal iterative refinement
+
+        self.factors.scale_values(index, scale);
+
+        for idx in index.iter() {
+            self.KKT.nzval[*idx] *= scale;
+        }
+    }
+
     fn offset_values(&mut self, index: &[usize], offset: T) {
 
         self.factors.offset_values(index, offset);

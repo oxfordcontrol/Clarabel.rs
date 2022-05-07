@@ -89,6 +89,16 @@ impl<T:FloatT> QDLDLFactorisation<T>{
         }
     }
 
+    pub fn scale_values(&mut self,indices: &[usize], scale: T){
+
+        let nzval   = &mut self.workspace.triuA.nzval; // post perm internal data
+        let AtoPAPt = &self.workspace.AtoPAPt;         //mapping from input matrix entries to triuA
+
+        for idx in indices.iter() {
+            nzval[AtoPAPt[*idx]] *= scale;
+        }
+    }
+
     pub fn offset_values(&mut self, indices: &[usize], offset: T){
 
         let nzval   = &mut self.workspace.triuA.nzval;     //post permutation internal data

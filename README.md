@@ -3,6 +3,8 @@ To do:
 
 Check code against no_std
 
+ConeSet probably doesn't want to live in the cones directory, but rather to be the DefaultCone.   Maybe it could be CompositeCone and stay where it is.
+
 There are no checks at all on CSC constructor.   At least nzval and rowval should be the same length, and colptr should agree with dims.w
 
 Use of underscores in private function names is totally inconsistent.   What is the usual style, e.g. for the rust float formatting internal functions?
@@ -54,6 +56,8 @@ Don't use T::recip(T::epsilon()), but rather T::max_value() of T::infinity() as 
 
 Settings uses time_limit in Rust and max_time in Julia.   Or maybe time_limit is a bool   Very confusing in the settings print function.   Maybe this was just a bug in the no time limit case?   Fixed in Julia print maybe.   Perhaps Rust should use Option here.  
 
+gemv_W for SOCs has a redundant associated implementation for a special case at the bottom of the file.   This should also be called by the general function.   Also, the Winv code is almost identical aside from two operations, both in Rust and in the Julia ver.
+
 Julia compat updates:
 
 Removed data as an argument to aff/combined RHS calcs.   Removed a few other unused params for other top level functions (settings?   Should have written it down.)
@@ -69,3 +73,5 @@ Change QDLDL dsign behaviour to be consistent with Rust.   QDLDL should use inte
 Changed cone_scaling_update call in top level solver to a method scale_cones on the variables.   This way only Variables/Residuals/Data/KKT/SolveInfo/SolveResult need to be mutually interoperable, since the Cone type has no methods taking any of these as arguments.
 
 Possible removal of ConicVector and switch to range calcs as in Rust.   This might be slightly slower.  REmember to @view on the ranges.
+
+Solver is failing now with Cholmod or MKL.   I don't understand why.   Possibly related to updated Dsigns behaviour or to the new scale_update calls.

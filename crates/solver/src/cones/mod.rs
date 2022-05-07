@@ -23,19 +23,6 @@ impl std::fmt::Display for SupportedCones {
     }
 }
 
-//PJG: translation of Julia in this function is
-//probably not the best way, plus it's not a dict now
-pub fn cone_dict<T>(cone: SupportedCones, dim: usize) -> Box<dyn Cone<T>>
-where
-    T: FloatT + 'static,
-{
-    match cone {
-        SupportedCones::ZeroConeT => Box::new(ZeroCone::<T>::new(dim)),
-        SupportedCones::NonnegativeConeT => Box::new(NonnegativeCone::<T>::new(dim)),
-        SupportedCones::SecondOrderConeT => Box::new(SecondOrderCone::<T>::new(dim)),
-    }
-}
-
 pub trait Cone<T> {
     fn dim(&self) -> usize;
     fn degree(&self) -> usize;
@@ -55,3 +42,5 @@ pub trait Cone<T> {
     fn add_scaled_e(&self, x: &mut [T], α: T);
     fn step_length(&self, dz: &[T], ds: &[T], z: &[T], s: &[T]) -> (T, T);
 }
+
+

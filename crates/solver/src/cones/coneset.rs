@@ -5,10 +5,51 @@ use std::collections::HashMap;
 use std::ops::Range;
 
 // -------------------------------------
-// Cone Set (default composite cone type)
+// Here we make a type that will allow for convenient
+// casting back to concrete cone types when needed.   This
+// is used in particular for SOC, since the SOC can be
+// represented an a sparse expanded format for LDL solvers.
 // -------------------------------------
 
-type BoxedCone<T> = Box<dyn Cone<T>>;
+//AsAny is generic on T here, otherwise we get E0207 error
+//complaining that our impl<T,U> AsAny as an unconstrained
+//type parameter
+
+pub trait AsAny<T> {
+   fn as_any(&self) -> &dyn Any;
+}
+
+impl<T, U: Any + Cone<T>> AsAny<T> for U {
+    fn as_any(&self) -> &dyn Any {self}
+}
+
+pub trait AnyCone<T> : Cone<T> + AsAny<T> {}
+impl<T,V: Cone<T> +  AsAny<T>> AnyCone<T> for V {}
+
+// type BoxedCone<T> = Box<dyn AnyCone<T>>;
+type BoxedCone<T> = Box<dyn AnyCone<T>>;
+
+//PJG: translation of Julia in this function is
+//probably not the best way, plus it's not a dict now
+pub fn cone_dict<T: FloatT>(cone: SupportedCones, dim: usize) -> BoxedCone<T>
+{
+    match cone {
+        SupportedCones::NonnegativeConeT => {
+            Box::new(NonnegativeCone::<T>::new(dim))
+        }
+        SupportedCones::ZeroConeT => {
+            Box::new(ZeroCone::<T>::new(dim))
+        }
+        SupportedCones::SecondOrderConeT => {
+            Box::new(SecondOrderCone::<T>::new(dim))
+        }
+    }
+}
+
+
+// -------------------------------------
+// Cone Set (default composite cone type)
+// -------------------------------------
 
 pub struct ConeSet<T: FloatT = f64> {
     cones: Vec<BoxedCone<T>>,
@@ -142,19 +183,11 @@ impl<T: FloatT> ConeSet<T> {
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, BoxedCone<T>> {
         self.cones.iter_mut()
     }
-    pub fn anyref_by_idx(&self, idx: usize) -> &(dyn Any + '_) {
-        let foo = &self.cones[idx];
-        let foo = foo as &(dyn Any + '_);
-        println!("{:?}",foo);
-        foo
-    }
     pub fn type_count(&self, conet: &SupportedCones)->usize {
         if self.type_counts.contains_key(conet){
             self.type_counts[conet]
         }
-        else{
-            0
-        }
+        else{0}
     }
 }
 
