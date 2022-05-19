@@ -1,5 +1,7 @@
 use crate::algebra::*;
+use crate::timers::Timers;
 use crate::default::*;
+use std::time::Duration;
 
 //PJG: do all of these need to be pub?  Used in finalization, for example
 
@@ -23,9 +25,7 @@ pub struct DefaultSolveInfo<T> {
     pub gap_abs: T,
     pub gap_rel: T,
     pub ktratio: T,
-    pub solve_time: T,
-    //PJG: No timers implemented yet.
-    //timer: TimerOutput,
+    pub solve_time: Duration,
     pub status: SolverStatus,
 }
 
@@ -48,18 +48,13 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T>
 
         self.status = SolverStatus::Unsolved;
         self.iterations = 0;
-        self.solve_time = T::zero();
+        self.solve_time = Duration::ZERO;
 
-        //PJG: Timer reset required here
-        // Julia impl below
-        // reset the solve! timer, but keep the setup!
-        // reset_timer!(info.timer["solve!"])
     }
 
 
-    fn finalize(&mut self){
-        //PJG: Timers not yet implemented.
-        //info.get_solve_time()
+    fn finalize(&mut self, timers: &Timers){
+        self.solve_time = timers.total_time();
     }
 
     fn print_header(
@@ -68,7 +63,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T>
         data: &DefaultProblemData<T>,
         cones: &ConeSet<T>)
         {
-            if !settings.verbose {return;}
+            if !settings.verbose {return}
 
             const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -106,7 +101,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T>
 
     fn print_status(&self, settings: &Settings<T>){
 
-        if !settings.verbose {return;}
+        if !settings.verbose {return}
 
         //PJG: keeping C format specifiers here for temporary reference
         // print!("%3d  ", info.iterations);
@@ -148,8 +143,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T>
         //PJG: not solver status string formatting available yet
         println!("Terminated with status = {}", self.status);
 
-        //PJG: timers not yet implemented
-        //@printf("solve time = %s\n",TimerOutputs.prettytime(info.solve_time*1e9))
+        println!("solve time = {:?}",self.solve_time);
     }
 
     fn update(
@@ -198,9 +192,9 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T>
         // κ/τ
         self.ktratio = variables.κ / variables.τ;
 
-        // solve time so far (includes setup!)
-        //PJG: Still need to do something about timing
-        //info_get_solve_time!(info)
+        // solve time so far (includes setup)
+        //PJG: wtf is this?
+        //self.get_solve_time();
     }
 
 
@@ -241,7 +235,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T>
             if settings.max_iter  == self.iterations {
                 self.status = SolverStatus::MaxIterations;
             }
-            else if settings.time_limit > T::zero() && self.solve_time > settings.time_limit
+            else if settings.time_limit > Duration::ZERO && self.solve_time > settings.time_limit
             {
                 self.status = SolverStatus::MaxTime;
             }
@@ -282,9 +276,13 @@ fn _print_settings<T:FloatT>(settings: &Settings<T>){
         //set.direct_solve_method, _get_precision_string<T>());
     }
 
-    println!("  max iter = {}, time limit = {},  max step = {:.3}",
+    let time_lim_str = {
+        if set.time_limit == Duration::ZERO {"none".to_string()}
+        else {format!("{:?}",set.time_limit)}
+    };
+    println!("  max iter = {}, time limit = {:?},  max step = {:.3}",
         set.max_iter,
-        {if set.time_limit == T::zero() {T::infinity()} else {set.time_limit}},
+        time_lim_str,
         set.max_step_fraction
     );
 
@@ -329,7 +327,7 @@ fn _print_settings<T:FloatT>(settings: &Settings<T>){
 }
 
 fn _get_precision_string<T>()->&'static str {
-    "TBD"
+    "TBD" //PJG fix me.
 }
 
 
@@ -405,7 +403,7 @@ fn _exp_str_reformat(mut thestr: String) -> String {
         else {chars = "+";}
     }
     else if has_short_exp {chars = "0";}
-    else {chars = "";} 
+    else {chars = "";}
 
     let shift = if has_sign{2} else {1};
     thestr.insert_str(eidx+shift,chars);

@@ -7,7 +7,7 @@ use crate::*;
 pub struct CscMatrix<T: FloatT = f64> {
     pub m: usize,
     pub n: usize,
-    pub nzval: Vec<T>,
     pub colptr: Vec<usize>,
     pub rowval: Vec<usize>,
+    pub nzval: Vec<T>,
 }

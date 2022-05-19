@@ -14,8 +14,6 @@ pub struct NonnegativeCone<T: FloatT = f64> {
 impl<T: FloatT> NonnegativeCone<T> {
     pub fn new(dim: usize) -> Self {
         Self {
-            //PJG: insert error here if dim == 0
-            dim,
             w: vec![T::zero(); dim],
             λ: vec![T::zero(); dim],
         }

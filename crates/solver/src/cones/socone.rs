@@ -22,8 +22,7 @@ pub struct SecondOrderCone<T: FloatT = f64> {
 impl<T: FloatT> SecondOrderCone<T> {
     pub fn new(dim: usize) -> Self {
         Self {
-            //PJG: insert error here if dim < 2
-            dim,
+            assert!(dim >= 2);
             w: vec![T::zero(); dim],
             λ: vec![T::zero(); dim],
             u: vec![T::zero(); dim],
@@ -256,8 +255,8 @@ where
 // otherwise because λ is part of the cone's internal data
 // and we can't borrow self and &mut λ at the same time.
 
-//PJG: there is some redundant implementation here, because the 
-//basic gemv_W is also implemented, but then this one gets 
+//PJG: there is some redundant implementation here, because the
+//basic gemv_W is also implemented, but then this one gets
 //a special call for λ = Wz.   The basic call should also come here.
 
 #[allow(non_snake_case)]

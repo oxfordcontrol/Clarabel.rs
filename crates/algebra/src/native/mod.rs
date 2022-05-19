@@ -178,11 +178,17 @@ where
 
         assert_eq!(norms.len(),self.colptr.len()-1);
 
+        // for (i,v) in norms.iter_mut().enumerate(){
+        //     for j in self.colptr[i]..self.colptr[i + 1]{
+        //         let tmp = T::abs(self.nzval[j]);
+        //         *v = T::max(*v,tmp);
+        //     }
+        // }
         for (i,v) in norms.iter_mut().enumerate(){
-            for j in self.colptr[i]..self.colptr[i + 1]{
-                let tmp = T::abs(self.nzval[j]);
-                *v = T::max(*v,tmp);
-            }
+            *v = self.nzval.iter().
+                 take(self.colptr[i + 1]).
+                 skip(self.colptr[i]).
+                 fold(*v,|m,&nzval| T::max(m,T::abs(nzval)));
         }
     }
 
@@ -287,13 +293,21 @@ fn _csc_symv<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a:T, b:T){
 
     y.scale(b);
 
-    //PJG: some iterator magic needed here
+    assert!(x.len() == A.n); 
+    assert!(y.len() == A.n);
+    assert!(A.n == A.m);
 
-    for col in 0..A.n {
-        for i in A.colptr[col]..A.colptr[col+1] {
-            let row   = A.rowval[i];
-            let Aij   = A.nzval[i];
-            y[row] += a * Aij * x[col];
+    for (col,&xcol) in x.iter().enumerate() {
+
+        let first = A.colptr[col];
+        let last  = A.colptr[col+1];
+        let rows   = &A.rowval[first..last];
+        let nzvals = &A.nzval[first..last];
+
+        for (&row,&Aij) in rows.iter().zip(nzvals.iter()) {
+
+            y[row] += a * Aij * xcol;
+
             if row != col {
                 //don't double up on the diagonal
                 y[col] += a * Aij * x[row];
@@ -307,42 +321,48 @@ fn _csc_symv<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a:T, b:T){
 #[allow(clippy::comparison_chain)]
 fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T{
 
-    let (m, n) = (M.m, M.n);
+    assert_eq!(M.n, M.m);
+    assert_eq!(x.len(), M.n);
+    assert_eq!(y.len(), M.n);
+    assert!(M.colptr.len() == M.n+1);
+    assert!(M.nzval.len() == M.rowval.len());
 
-    assert_eq!(x.len(), m);
-    assert_eq!(y.len(), n);
-
-    if m == 0 || n == 0{
+    if M.n == 0 {
         return T::zero()
     }
 
-    let Mc = &M.colptr;
-    let Mr = &M.rowval;
-    let Mv = &M.nzval;
-
     let mut out = T::zero();
 
-    for j in 0..n {   //col number
+    for col in 0..M.n {   //column number
+
         let mut tmp1 = T::zero();
         let mut tmp2 = T::zero();
-        for p in Mc[j]..Mc[j+1] {
-            let i = Mr[p];   //row number
-            if i < j {
+
+        //start / stop indices for the current column
+        let first = M.colptr[col];
+        let last  = M.colptr[col+1];
+
+        let values   = &M.nzval[first..last];
+        let rows     = &M.rowval[first..last];
+        let iter     = values.iter().zip(rows.iter());
+
+        for (&Mv,&row) in iter
+         {
+            if row < col {
                 //triu terms only
-                tmp1 += Mv[p]*x[i];
-                tmp2 += Mv[p]*y[i];
+                tmp1 += Mv*x[row];
+                tmp2 += Mv*y[row];
             }
-            else if i == j {
-                out += Mv[p]*x[i]*y[i];
+            else if row == col {
+                out += Mv*x[col]*y[col];
             }
             else{
                 panic!("Input matrix should be triu form.");
             }   
         }
-        out += tmp1*y[j] + tmp2*x[j]
+        out += tmp1*y[col] + tmp2*x[col]
     }
     out
-
 }
 
 

@@ -49,12 +49,13 @@ fn main() {
     let settings = SettingsBuilder::default()
             .equilibrate_enable(false)
             .max_iter(50)
+            .verbose(true)
             .build().unwrap();
 
     //PJG: no borrow on settings sucks here
     let mut solver = DefaultSolver::
-            new(&P,&q,&A,&b,&cone_types,&cone_dims, settings);
+        new(&P,&q,&A,&b,&cone_types,&cone_dims, settings);
 
     solver.solve();
-
+    
 }

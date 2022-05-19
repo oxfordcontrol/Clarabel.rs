@@ -8,6 +8,8 @@
 //Need a general cleanup of these header like
 //declarations
 
+pub use timers;
 pub use algebra;
 pub use qdldl;
 pub use solver;
+

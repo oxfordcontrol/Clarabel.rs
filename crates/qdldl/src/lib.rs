@@ -514,8 +514,14 @@ fn _factor_inner<T:FloatT>(
                 let y_vals_cidx = y_vals[cidx];
 
                 let (f,l) = (Lp[cidx],tmp_idx);
-                for (Lxj,Lij) in Lx[f..l].iter().zip(Li[f..l].iter()){
-                    y_vals[*Lij] -= (*Lxj)*y_vals_cidx;
+                for (&Lxj,&Lij) in Lx[f..l].iter().zip(Li[f..l].iter()){
+                    //Safety : Here the Lij index comes from the rowval 
+                    //field of the sparse L factor matrix, and should 
+                    //always be bounded by the matrix dimension.
+                    unsafe{
+                        //y_vals[Lij] -= Lxj*y_vals_cidx;
+                        *(y_vals.get_unchecked_mut(Lij)) -= Lxj*y_vals_cidx;
+                    }
                 }
 
                 // Now I have the cidx^th element of y = L\b.
@@ -741,7 +747,8 @@ fn _permute_symmetric_inner<T:FloatT>(
 
 }
 
-fn _get_amd_ordering<T: FloatT>(A: &CscMatrix<T>) -> (Vec<usize>,Vec<usize>){
+//PJG: temporarily pub for testing
+pub fn _get_amd_ordering<T: FloatT>(A: &CscMatrix<T>) -> (Vec<usize>,Vec<usize>){
 
     let control = amd::Control::default();
     let (perm, iperm, _info) =

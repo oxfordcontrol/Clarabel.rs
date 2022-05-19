@@ -10,7 +10,10 @@
 //Need a general cleanup of these header like
 //declarations
 
+pub use clarabel_timers as timers;
+pub use clarabel_qdldl as qdldl;
 pub use clarabel_algebra as algebra;
+
 
 pub mod cones;
 pub mod conicvector;
@@ -22,6 +25,7 @@ pub use cones::*;
 pub use settings::Settings;
 
 use algebra::*;
+use timers::*;
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum SolverStatus {
@@ -121,7 +125,7 @@ pub trait SolveInfo<T: FloatT> {
     type C: Cone<T>;
 
     fn reset(&mut self);
-    fn finalize(&mut self);
+    fn finalize(&mut self, timers: &Timers);
 
     fn print_header(&self,
         settings: &Settings<T>,

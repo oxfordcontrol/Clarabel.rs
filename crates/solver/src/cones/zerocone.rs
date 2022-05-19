@@ -14,7 +14,6 @@ pub struct ZeroCone<T: FloatT = f64> {
 impl<T: FloatT> ZeroCone<T> {
     pub fn new(dim: usize) -> Self {
         Self {
-            //PJG: insert error here if dim == 0
             dim,
             phantom: PhantomData,
         }
