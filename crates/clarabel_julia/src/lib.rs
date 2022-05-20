@@ -1,17 +1,17 @@
 #![allow(unused)]
 #![allow(non_snake_case)]
-use clarabel_solver as clarabel;
-use clarabel_algebra as algebra;
-use crate::qdldl::*;
 use std::slice;
 
+use clarabel_internal as clarabel;
 
 // PJG: probably need better re-export here so only clarabel::* suffices.
+// PJG: this "solver::solver" stuff sucks here.
 use clarabel::*;
-use clarabel::SupportedCones::*;
-use clarabel::settings::*;
-use clarabel::solver::*;
-use clarabel::default::*;
+use clarabel::solver::SupportedCones::*;
+use clarabel::solver::settings::*;
+use clarabel::solver::solver::IPSolver;
+use clarabel::solver::default::*;
+use clarabel::qdldl::*;
 use algebra::*;
 
 #[repr(C)]
@@ -24,24 +24,26 @@ pub struct VectorJl<T> {
 impl<T: std::clone::Clone + std::fmt::Debug> VectorJl<T> {
     fn to_slice(&self) -> &[T] {
         unsafe {
-            let sl = slice::from_raw_parts(self.p, self.len as usize);
-            sl
+            slice::from_raw_parts(self.p, self.len as usize)
         }
     }
+
     fn to_vec(&self) -> Vec<T> {
-        unsafe {
-            assert!(!self.p.is_null());
-            let sl;
-            if(self.len > 0){
-                sl = slice::from_raw_parts(self.p, self.len);
-            }else {
-                sl = &[];
-            }
-            let v = sl.to_vec();
-            v
+
+        assert!(!self.p.is_null());
+        let sl;
+        if(self.len > 0){
+            unsafe {
+            sl = slice::from_raw_parts(self.p, self.len);
+            } 
         }
+        else {
+             sl = &[];
+        }
+        sl.to_vec()
     }
-}   
+}
+
 
 #[derive(Debug)]
 #[repr(C)]

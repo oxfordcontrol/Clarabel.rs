@@ -10,8 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rand = "0.8.4"
-clarabel_solver = {path = "../solver"}
-clarabel_algebra = {path = "../algebra"}
+clarabel_internal = {path = "../clarabel_internal"}
 
 [dependencies.pyo3]
 version = "0.16.1"

@@ -4,13 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "clarabel_julia"
+name = "julia"
 crate-type = ["cdylib"]
 
 [dependencies]
-clarabel_solver = {path = "../solver"}
-clarabel_algebra = {path = "../algebra"}
+clarabel_internal   = {path = "../clarabel_internal"}
 libc = "0.2"
 
-[profile.release]
-debug = true

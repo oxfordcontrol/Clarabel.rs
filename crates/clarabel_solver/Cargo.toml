@@ -1,0 +1,17 @@
+[package]
+name = "clarabel_solver"
+version = "0.1.0"
+authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
+edition = "2021"
+license = "Apache-2.0"
+description = "Clarabel Conic Interior Point Solver"
+readme = "README.md"
+keywords = ["optimization", "math"]
+categories = ["optimization"]
+
+[dependencies]
+clarabel_algebra = {path = "../clarabel_algebra"}
+clarabel_qdldl   = {path = "../clarabel_qdldl"}
+clarabel_timers  = {path = "../clarabel_timers"}
+num-traits = "0.2"
+derive_builder = "0.11"

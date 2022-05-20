@@ -1,9 +1,5 @@
-
 #![allow(unused)]
 #![allow(non_snake_case)]
-fn main() {
-use clarabel_solver as clarabel;
-use clarabel_algebra as algebra;
 
 use pyo3::prelude::*;
 use pyo3::PyClass;
@@ -12,13 +8,23 @@ use std::cmp::Ordering;
 use std::io;
 use core::ops::Deref;
 
+use clarabel_internal as clarabel;
+use clarabel::solver;
+use clarabel::algebra;
 // PJG: probably need better re-export here so only clarabel::* suffices.
 use clarabel::*;
-use clarabel::SupportedCones::*;
-use clarabel::settings::*;
+use clarabel::solver::SupportedCones::*;
+use clarabel::solver::settings::*;
 use clarabel::solver::*;
-use clarabel::default::*;
+use clarabel::solver::solver::IPSolver;
+use clarabel::solver::default::*;
 use algebra::*;
+
+
+
+
+
+fn main() {
 
 //We can't implement a foreign trait directly on CscMatrix since 
 //it is outside the crate, so put a dummy wrapper around it here.
