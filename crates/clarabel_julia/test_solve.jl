@@ -3,9 +3,7 @@ using Clarabel
 using TimerOutputs
 
 include("./types.jl")
-push!(Base.DL_LOAD_PATH,"../../target/release/")
-lib = "libclarabel_julia.dylib"
-
+include("./clarabel_rs.jl")
 
 using Random
 Random.seed!(1234)
@@ -41,9 +39,7 @@ print(solver.info.timer)
 
 println("\n\nLaunching Rust\n-----------------")
 
-solve_time = ccall((:solve,lib),Float64,
-    (Ref{CscMatrixRs},Ref{VectorRs},Ref{CscMatrixRs},Ref{VectorRs}),
-    CscMatrixRs(P), VectorRs(q),CscMatrixRs(A), VectorRs(b))
+solve_time = solve_rs(solver, P, q, A, b, cone_types, cone_dims)
 
 
 

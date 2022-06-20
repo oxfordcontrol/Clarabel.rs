@@ -1,15 +1,15 @@
 #![allow(non_snake_case)]
 
 //PJG: Includes WTF?
-use clarabel_algebra::*;
 use crate::cones::*;
 use crate::kktsolvers::KKTSolver;
 use crate::settings::*;
+use clarabel_algebra::*;
 //use crate::kktsolvers::direct_ldl::*; //PJG:This is a horrendous include
-use crate::kktsolvers::direct_quasidefinite::datamap::*;
-use crate::kktsolvers::direct_quasidefinite::ldlsolvers::QDLDLDirectLDLSolver;
-use crate::kktsolvers::direct_quasidefinite::utils::*;
-use crate::kktsolvers::direct_quasidefinite::DirectLDLSolver;
+use crate::kktsolvers::direct::datamap::*;
+use crate::kktsolvers::direct::ldlsolvers::QDLDLDirectLDLSolver;
+use crate::kktsolvers::direct::utils::*;
+use crate::kktsolvers::direct::DirectLDLSolver;
 
 // -------------------------------------
 // KKTSolver using direct LDL factorisation
@@ -20,7 +20,7 @@ use crate::kktsolvers::direct_quasidefinite::DirectLDLSolver;
 //defaults.  Once settings is removed here, this
 //bound in the struct definition can be removed
 
-pub struct DirectQuasidefiniteKKTSolver<T:FloatT> {
+pub struct DirectQuasidefiniteKKTSolver<T: FloatT> {
     // problem dimensions
     m: usize,
     n: usize,
@@ -54,8 +54,6 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
         n: usize,
         settings: &Settings<T>,
     ) -> Self {
-
-
         //PJG: Cloning settings here as a workaround because
         //both the QD KKT solver requires settings for refinement
         //and the inner QDLDL solver requires settings.   Move
@@ -125,7 +123,6 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
     }
 }
 
-
 //PJG: Switching not supported yet.   Fix this.
 // function _get_ldlsolver_type(s::Symbol)
 //     try
@@ -188,14 +185,14 @@ where
 
                         //off diagonal columns (or rows)
                         //PJG: this two step scaling should be ported to Julia
-                        ldlsolver.update_values(&map.SOC_u[cidx],&K.u);
-                        ldlsolver.update_values(&map.SOC_v[cidx],&K.v);
-                        ldlsolver.scale_values(&map.SOC_u[cidx],-η2);
-                        ldlsolver.scale_values(&map.SOC_v[cidx],-η2);
+                        ldlsolver.update_values(&map.SOC_u[cidx], &K.u);
+                        ldlsolver.update_values(&map.SOC_v[cidx], &K.v);
+                        ldlsolver.scale_values(&map.SOC_u[cidx], -η2);
+                        ldlsolver.scale_values(&map.SOC_v[cidx], -η2);
 
                         //add η^2*(-1/1) to diagonal in the extended rows/cols
                         ldlsolver.update_values(&[map.SOC_D[cidx * 2]], &[-η2; 1]);
-                        ldlsolver.update_values(&[map.SOC_D[cidx * 2 + 1]], &[ η2; 1]);
+                        ldlsolver.update_values(&[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
 
                         cidx += 1;
                     }

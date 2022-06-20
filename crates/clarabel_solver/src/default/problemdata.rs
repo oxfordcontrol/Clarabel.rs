@@ -1,10 +1,10 @@
 #![allow(non_snake_case)]
-use clarabel_algebra::*;
 use crate::cones::Cone;
 use crate::default::*;
 use crate::settings::Settings;
 use crate::ConeSet;
 use crate::ProblemData;
+use clarabel_algebra::*;
 
 // ---------------
 // Data type for default problem format

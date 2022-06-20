@@ -13,8 +13,8 @@ pub mod solver;
 pub use cones::*;
 pub use settings::Settings;
 
-use clarabel_timers::*;
 use clarabel_algebra::*;
+use clarabel_timers::*;
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum SolverStatus {
@@ -32,12 +32,13 @@ impl std::fmt::Display for SolverStatus {
     }
 }
 
-impl Default for SolverStatus{
-    fn default() -> Self {SolverStatus::Unsolved}
+impl Default for SolverStatus {
+    fn default() -> Self {
+        SolverStatus::Unsolved
+    }
 }
 
 pub trait ProblemData<T: FloatT> {
-
     type V: Variables<T>;
     type C: Cone<T>;
 
@@ -52,12 +53,7 @@ pub trait Variables<T: FloatT> {
 
     fn calc_mu(&mut self, residuals: &Self::R, cones: &Self::C) -> T;
 
-    fn calc_affine_step_rhs(
-        &mut self,
-        residuals: &Self::R,
-        variables: &Self,
-        cones: &Self::C,
-    );
+    fn calc_affine_step_rhs(&mut self, residuals: &Self::R, variables: &Self, cones: &Self::C);
 
     #[allow(clippy::too_many_arguments)]
     fn calc_combined_step_rhs(
@@ -77,7 +73,6 @@ pub trait Variables<T: FloatT> {
 }
 
 pub trait Residuals<T: FloatT> {
-
     type D: ProblemData<T>;
     type V: Variables<T>;
 
@@ -107,7 +102,6 @@ pub trait KKTSystem<T: FloatT> {
 }
 
 pub trait SolveInfo<T: FloatT> {
-
     type D: ProblemData<T>;
     type V: Variables<T>;
     type R: Residuals<T>;
@@ -116,20 +110,12 @@ pub trait SolveInfo<T: FloatT> {
     fn reset(&mut self);
     fn finalize(&mut self, timers: &Timers);
 
-    fn print_header(&self,
-        settings: &Settings<T>,
-        data: &Self::D,
-        cones: &Self::C);
+    fn print_header(&self, settings: &Settings<T>, data: &Self::D, cones: &Self::C);
 
     fn print_status(&self, settings: &Settings<T>);
     fn print_footer(&self, settings: &Settings<T>);
 
-    fn update(
-        &mut self,
-        data: &Self::D,
-        variables: &Self::V,
-        residuals: &Self::R,
-    );
+    fn update(&mut self, data: &Self::D, variables: &Self::V, residuals: &Self::R);
 
     fn check_termination(&mut self, residuals: &Self::R, settings: &Settings<T>) -> bool;
 
@@ -137,7 +123,6 @@ pub trait SolveInfo<T: FloatT> {
 }
 
 pub trait SolveResult<T: FloatT> {
-
     type D: ProblemData<T>;
     type V: Variables<T>;
     type SI: SolveInfo<T>;

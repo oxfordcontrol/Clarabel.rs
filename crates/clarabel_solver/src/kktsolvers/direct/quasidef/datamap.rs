@@ -1,15 +1,15 @@
 #![allow(non_snake_case)]
 use super::*;
-use clarabel_algebra::*;
 use crate::cones::*;
+use clarabel_algebra::*;
 
 pub struct LDLDataMap {
     pub P: Vec<usize>,
     pub A: Vec<usize>,
-    pub WtWblocks: Vec<usize>,      //indices of the lower RHS blocks (by cone)
-    pub SOC_u: Vec<Vec<usize>>,     //off diag dense columns u
-    pub SOC_v: Vec<Vec<usize>>,     //off diag dense columns v
-    pub SOC_D: Vec<usize>,          //diag of just the sparse SOC expansion D
+    pub WtWblocks: Vec<usize>,  //indices of the lower RHS blocks (by cone)
+    pub SOC_u: Vec<Vec<usize>>, //off diag dense columns u
+    pub SOC_v: Vec<Vec<usize>>, //off diag dense columns v
+    pub SOC_D: Vec<usize>,      //diag of just the sparse SOC expansion D
 
     // all of above terms should be disjoint and their union
     // should cover all of the user data in the KKT matrix.  Now

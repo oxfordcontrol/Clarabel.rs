@@ -1,10 +1,9 @@
 use clarabel_algebra::*;
-use std::time::Duration;
 use derive_builder::Builder;
+use std::time::Duration;
 
-#[derive(Builder,Debug,Clone)]
+#[derive(Builder, Debug, Clone)]
 pub struct Settings<T: FloatT> {
-
     #[builder(default = "50")]
     pub max_iter: u32,
 
@@ -85,9 +84,8 @@ pub struct Settings<T: FloatT> {
     pub iterative_refinement_stop_ratio: T,
 }
 
-
-impl<T:FloatT> Default for Settings<T>{
-    fn default() -> Settings<T>{
+impl<T: FloatT> Default for Settings<T> {
+    fn default() -> Settings<T> {
         SettingsBuilder::<T>::default().build().unwrap()
     }
 }

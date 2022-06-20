@@ -22,7 +22,8 @@ pub struct SecondOrderCone<T: FloatT = f64> {
 impl<T: FloatT> SecondOrderCone<T> {
     pub fn new(dim: usize) -> Self {
         assert!(dim >= 2);
-        Self {dim,
+        Self {
+            dim,
             w: vec![T::zero(); dim],
             λ: vec![T::zero(); dim],
             u: vec![T::zero(); dim],
@@ -63,7 +64,6 @@ where
     }
 
     fn update_scaling(&mut self, s: &[T], z: &[T]) {
-
         let (z1, z2) = (z[0], &z[1..]);
         let (s1, s2) = (s[0], &s[1..]);
 
@@ -134,7 +134,6 @@ where
     }
 
     fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-
         let p = y[0] * y[0] - y[1..].sumsq();
         let pinv = T::recip(p);
         let v = y[1..].dot(&z[1..]);

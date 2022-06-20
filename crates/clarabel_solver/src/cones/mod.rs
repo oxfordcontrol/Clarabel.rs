@@ -10,7 +10,6 @@ pub use zerocone::*;
 
 use clarabel_algebra::*;
 
-
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum SupportedCones {
     ZeroConeT,
@@ -43,5 +42,3 @@ pub trait Cone<T> {
     fn add_scaled_e(&self, x: &mut [T], α: T);
     fn step_length(&self, dz: &[T], ds: &[T], z: &[T], s: &[T]) -> (T, T);
 }
-
-

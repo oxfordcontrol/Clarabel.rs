@@ -4,8 +4,9 @@
 //PJG: Somehow need to bundle all default solver types and re-export
 //at a common module level
 
-use clarabel::algebra;
-use clarabel::solver;
+//PJG: some includes seem redundant
+use clarabel::algebra::*;
+use clarabel::solver::*;
 use crate::default::DefaultSolver;
 use clarabel::solver::SupportedCones::*;
 use clarabel::solver::solver::IPSolver; //solve fails without this.  Should be easier

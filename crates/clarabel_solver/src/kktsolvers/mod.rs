@@ -1,6 +1,6 @@
 use crate::cones::*;
 use clarabel_algebra::*;
-pub mod direct_quasidefinite;
+pub mod direct;
 
 pub trait KKTSolver<T: FloatT> {
     fn update(&mut self, cones: &ConeSet<T>);

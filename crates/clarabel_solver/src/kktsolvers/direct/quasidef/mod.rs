@@ -3,6 +3,8 @@ pub mod directquasidefinitekktsolver;
 pub mod ldlsolvers;
 pub mod utils;
 
+
+//PJG: Should I really re-export here?
 pub use datamap::*;
 pub use directquasidefinitekktsolver::*;
 pub use ldlsolvers::*;

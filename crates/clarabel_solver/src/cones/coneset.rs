@@ -16,36 +16,30 @@ use std::ops::Range;
 //type parameter
 
 pub trait AsAny<T> {
-   fn as_any(&self) -> &dyn Any;
+    fn as_any(&self) -> &dyn Any;
 }
 
 impl<T, U: Any + Cone<T>> AsAny<T> for U {
-    fn as_any(&self) -> &dyn Any {self}
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
-pub trait AnyCone<T> : Cone<T> + AsAny<T> {}
-impl<T,V: Cone<T> +  AsAny<T>> AnyCone<T> for V {}
+pub trait AnyCone<T>: Cone<T> + AsAny<T> {}
+impl<T, V: Cone<T> + AsAny<T>> AnyCone<T> for V {}
 
 // type BoxedCone<T> = Box<dyn AnyCone<T>>;
 type BoxedCone<T> = Box<dyn AnyCone<T>>;
 
 //PJG: translation of Julia in this function is
 //probably not the best way, plus it's not a dict now
-pub fn cone_dict<T: FloatT>(cone: SupportedCones, dim: usize) -> BoxedCone<T>
-{
+pub fn cone_dict<T: FloatT>(cone: SupportedCones, dim: usize) -> BoxedCone<T> {
     match cone {
-        SupportedCones::NonnegativeConeT => {
-            Box::new(NonnegativeCone::<T>::new(dim))
-        }
-        SupportedCones::ZeroConeT => {
-            Box::new(ZeroCone::<T>::new(dim))
-        }
-        SupportedCones::SecondOrderConeT => {
-            Box::new(SecondOrderCone::<T>::new(dim))
-        }
+        SupportedCones::NonnegativeConeT => Box::new(NonnegativeCone::<T>::new(dim)),
+        SupportedCones::ZeroConeT => Box::new(ZeroCone::<T>::new(dim)),
+        SupportedCones::SecondOrderConeT => Box::new(SecondOrderCone::<T>::new(dim)),
     }
 }
-
 
 // -------------------------------------
 // Cone Set (default composite cone type)
@@ -71,9 +65,7 @@ pub struct ConeSet<T: FloatT = f64> {
 }
 
 impl<T: FloatT> ConeSet<T> {
-
     pub fn new(types: &[SupportedCones], dims: &[usize]) -> Self {
-
         assert_eq!(types.len(), dims.len());
 
         // make an internal copy to protect from user modification
@@ -82,7 +74,7 @@ impl<T: FloatT> ConeSet<T> {
         let mut cones: Vec<BoxedCone<T>> = Vec::with_capacity(ncones);
 
         // create cones with the given dims
-        for (dim,t) in dims.iter().zip(types.iter()) {
+        for (dim, t) in dims.iter().zip(types.iter()) {
             cones.push(cone_dict(*t, *dim));
         }
 
@@ -105,7 +97,6 @@ impl<T: FloatT> ConeSet<T> {
         let rng_cones = _make_rng_cones(&cones);
         let rng_blocks = _make_rng_blocks(&cones);
 
-
         Self {
             cones,
             types,
@@ -127,7 +118,7 @@ where
     if !cones.is_empty() {
         let mut start = 0;
         for cone in cones {
-            let stop  = start + cone.numel();
+            let stop = start + cone.numel();
             rngs.push(start..stop);
             start = stop;
         }
@@ -146,8 +137,11 @@ where
         for cone in cones {
             let nvars = cone.numel();
             let stop = start + {
-                if cone.WtW_is_diagonal() { nvars }
-                else { (nvars * (nvars + 1)) >> 1 }
+                if cone.WtW_is_diagonal() {
+                    nvars
+                } else {
+                    (nvars * (nvars + 1)) >> 1
+                }
             };
             rngs.push(start..stop);
             start = stop;
@@ -155,7 +149,6 @@ where
     }
     rngs
 }
-
 
 fn _coneset_make_headidx<T>(headidx: &mut [usize], cones: &[BoxedCone<T>])
 where
@@ -183,11 +176,12 @@ impl<T: FloatT> ConeSet<T> {
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, BoxedCone<T>> {
         self.cones.iter_mut()
     }
-    pub fn type_count(&self, conet: &SupportedCones)->usize {
-        if self.type_counts.contains_key(conet){
+    pub fn type_count(&self, conet: &SupportedCones) -> usize {
+        if self.type_counts.contains_key(conet) {
             self.type_counts[conet]
+        } else {
+            0
         }
-        else{0}
     }
 }
 
@@ -213,7 +207,7 @@ where
         // we will update e <- δ .* e using return values
         // from this function.  default is to do nothing at all
         δ.fill(T::one());
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             let δi = &mut δ[rng.clone()];
             let ei = &e[rng.clone()];
             any_changed |= cone.rectify_equilibration(δi, ei);
@@ -237,9 +231,9 @@ where
 
     fn update_scaling(&mut self, s: &[T], z: &[T]) {
         let cones = &mut self.cones;
-        let rngs  = &self.rng_cones;
+        let rngs = &self.rng_cones;
 
-        for (cone,rng) in cones.iter_mut().zip(rngs.iter()) {
+        for (cone, rng) in cones.iter_mut().zip(rngs.iter()) {
             let si = &s[rng.clone()];
             let zi = &z[rng.clone()];
             cone.update_scaling(si, zi);
@@ -254,19 +248,19 @@ where
 
     #[allow(non_snake_case)]
     fn get_WtW_block(&self, WtWblock: &mut [T]) {
-        for (cone,rng) in self.iter().zip(self.rng_blocks.iter()) {
+        for (cone, rng) in self.iter().zip(self.rng_blocks.iter()) {
             cone.get_WtW_block(&mut WtWblock[rng.clone()]);
         }
     }
 
     fn λ_circ_λ(&self, x: &mut [T]) {
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             cone.λ_circ_λ(&mut x[rng.clone()]);
         }
     }
 
     fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             let xi = &mut x[rng.clone()];
             let yi = &y[rng.clone()];
             let zi = &z[rng.clone()];
@@ -275,38 +269,31 @@ where
     }
 
     fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             let xi = &mut x[rng.clone()];
             let zi = &z[rng.clone()];
-            cone.λ_inv_circ_op(xi,zi);
+            cone.λ_inv_circ_op(xi, zi);
         }
     }
 
     fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             let xi = &mut x[rng.clone()];
             let yi = &y[rng.clone()];
             let zi = &z[rng.clone()];
-            cone.inv_circ_op(xi,yi,zi);
+            cone.inv_circ_op(xi, yi, zi);
         }
     }
 
     fn shift_to_cone(&self, z: &mut [T]) {
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             cone.shift_to_cone(&mut z[rng.clone()]);
         }
     }
 
     #[allow(non_snake_case)]
-    fn gemv_W(
-        &self,
-        is_transpose: MatrixShape,
-        x: &[T],
-        y: &mut [T],
-        α: T,
-        β: T,
-    ) {
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+    fn gemv_W(&self, is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             let xi = &x[rng.clone()];
             let yi = &mut y[rng.clone()];
             cone.gemv_W(is_transpose, xi, yi, α, β);
@@ -314,15 +301,8 @@ where
     }
 
     #[allow(non_snake_case)]
-    fn gemv_Winv(
-        &self,
-        is_transpose: MatrixShape,
-        x: &[T],
-        y: &mut [T],
-        α: T,
-        β: T,
-    ) {
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+    fn gemv_Winv(&self, is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             let xi = &x[rng.clone()];
             let yi = &mut y[rng.clone()];
             cone.gemv_Winv(is_transpose, xi, yi, α, β);
@@ -330,26 +310,20 @@ where
     }
 
     fn add_scaled_e(&self, x: &mut [T], α: T) {
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             cone.add_scaled_e(&mut x[rng.clone()], α);
         }
     }
 
-    fn step_length(
-        &self,
-        dz: &[T],
-        ds: &[T],
-        z: &[T],
-        s: &[T],
-    ) -> (T, T) {
+    fn step_length(&self, dz: &[T], ds: &[T], z: &[T], s: &[T]) -> (T, T) {
         let huge = T::recip(T::epsilon());
         let (mut αz, mut αs) = (huge, huge);
 
-        for (cone,rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             let dzi = &dz[rng.clone()];
             let dsi = &ds[rng.clone()];
-            let zi  = &z[rng.clone()];
-            let si  = &s[rng.clone()];
+            let zi = &z[rng.clone()];
+            let si = &s[rng.clone()];
             let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si);
             αz = T::min(αz, nextαz);
             αs = T::min(αs, nextαs);

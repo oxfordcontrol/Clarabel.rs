@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-use clarabel_algebra::*;
 use crate::default::*;
+use clarabel_algebra::*;
 
 // ---------------
 // Residuals type for default problem format
@@ -56,27 +56,27 @@ impl<T: FloatT> DefaultResiduals<T> {
     }
 }
 
-
 impl<T> Residuals<T> for DefaultResiduals<T>
 where
-T: FloatT
+    T: FloatT,
 {
     type D = DefaultProblemData<T>;
     type V = DefaultVariables<T>;
 
-    fn update(&mut self, variables: &DefaultVariables<T>, data: &DefaultProblemData<T>)
-    {
+    fn update(&mut self, variables: &DefaultVariables<T>, data: &DefaultProblemData<T>) {
         // various products used multiple times
-        let qx  = data.q.dot(&variables.x);
-        let bz  = data.b.dot(&variables.z);
-        let sz  = variables.s.dot(&variables.z);
+        let qx = data.q.dot(&variables.x);
+        let bz = data.b.dot(&variables.z);
+        let sz = variables.s.dot(&variables.z);
 
         //Px = P*x, P treated as symmetric
-        data.P.symv(&mut self.Px,
-                    MatrixTriangle::Triu,
-                    &variables.x,
-                    T::one(),
-                    T::zero());
+        data.P.symv(
+            &mut self.Px,
+            MatrixTriangle::Triu,
+            &variables.x,
+            T::one(),
+            T::zero(),
+        );
 
         let xPx = variables.x.dot(&self.Px);
 
@@ -85,28 +85,40 @@ T: FloatT
 
         //Same as:
         //rx_inf .= -data.A'* variables.z
-        data.A.gemv(&mut self.rx_inf, MatrixShape::T,&variables.z,-T::one(),T::zero());
+        data.A.gemv(
+            &mut self.rx_inf,
+            MatrixShape::T,
+            &variables.z,
+            -T::one(),
+            T::zero(),
+        );
 
         //Same as:  residuals.rz_inf .=  data.A * variables.x + variables.s
         self.rz_inf.copy_from(&variables.s);
-        data.A.gemv(&mut self.rz_inf, MatrixShape::N,&variables.x, T::one(), T::one());
-
+        data.A.gemv(
+            &mut self.rz_inf,
+            MatrixShape::N,
+            &variables.x,
+            T::one(),
+            T::one(),
+        );
 
         //complete the residuals
         //rx = rx_inf - Px - qτ
         self.rx.waxpby(-T::one(), &self.Px, -variables.τ, &data.q);
-        self.rx.axpby(T::one(),&self.rx_inf,T::one());
+        self.rx.axpby(T::one(), &self.rx_inf, T::one());
 
         // rz = rz_inf - bτ
-        self.rz.waxpby(T::one(),&self.rz_inf,-variables.τ,&data.b);
+        self.rz
+            .waxpby(T::one(), &self.rz_inf, -variables.τ, &data.b);
 
         // τ = qz + bz + κ + xPx/τ;
-        self.rτ    = qx + bz + variables.κ + xPx/variables.τ;
+        self.rτ = qx + bz + variables.κ + xPx / variables.τ;
 
         //save local versions
-        self.dot_qx  = qx;
-        self.dot_bz  = bz;
-        self.dot_sz  = sz;
+        self.dot_qx = qx;
+        self.dot_bz = bz;
+        self.dot_sz = sz;
         self.dot_xPx = xPx;
     }
 }

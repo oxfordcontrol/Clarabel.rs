@@ -1,5 +1,5 @@
-use clarabel_algebra::*;
 use crate::default::*;
+use clarabel_algebra::*;
 
 pub struct DefaultSolveResult<T> {
     pub x: Vec<T>,
@@ -16,26 +16,27 @@ pub struct DefaultSolveResult<T> {
     //pub info: SolveInfo,
 }
 
-impl<T:FloatT> DefaultSolveResult<T>
-{
-    pub fn new(m: usize, n: usize)->Self {
-
-        let x = vec![T::zero();n];
-        let z = vec![T::zero();m];
-        let s = vec![T::zero();m];
+impl<T: FloatT> DefaultSolveResult<T> {
+    pub fn new(m: usize, n: usize) -> Self {
+        let x = vec![T::zero(); n];
+        let z = vec![T::zero(); m];
+        let s = vec![T::zero(); m];
 
         let obj_val = T::nan();
         let status = SolverStatus::Unsolved;
         //let info = ???
 
-        Self{x,z,s,obj_val,status}
-
+        Self {
+            x,
+            z,
+            s,
+            obj_val,
+            status,
+        }
     }
 }
 
-
-impl<T:FloatT> SolveResult<T> for DefaultSolveResult<T> {
-
+impl<T: FloatT> SolveResult<T> for DefaultSolveResult<T> {
     type D = DefaultProblemData<T>;
     type V = DefaultVariables<T>;
     type SI = DefaultSolveInfo<T>;
@@ -44,25 +45,26 @@ impl<T:FloatT> SolveResult<T> for DefaultSolveResult<T> {
         &mut self,
         data: &DefaultProblemData<T>,
         variables: &DefaultVariables<T>,
-        info: &DefaultSolveInfo<T>)
-    {
-        self.status  = info.status.clone();
-	    self.obj_val = info.cost_primal;
+        info: &DefaultSolveInfo<T>,
+    ) {
+        self.status = info.status.clone();
+        self.obj_val = info.cost_primal;
 
-	    //copy internal variables and undo homogenization
-	    self.x.copy_from(&variables.x);
-	    self.z.copy_from(&variables.z);
-	    self.s.copy_from(&variables.s);
+        //copy internal variables and undo homogenization
+        self.x.copy_from(&variables.x);
+        self.z.copy_from(&variables.z);
+        self.s.copy_from(&variables.s);
 
         // if we have an infeasible problem, normalize
         // using κ to get an infeasibility certificate.
         // Otherwise use τ to get a solution.
         let scaleinv;
-        if info.status == SolverStatus::PrimalInfeasible || info.status == SolverStatus::DualInfeasible {
+        if info.status == SolverStatus::PrimalInfeasible
+            || info.status == SolverStatus::DualInfeasible
+        {
             scaleinv = T::recip(variables.κ);
             self.obj_val = T::nan();
-        }
-        else {
+        } else {
             scaleinv = T::recip(variables.τ);
         }
 
@@ -72,11 +74,12 @@ impl<T:FloatT> SolveResult<T> for DefaultSolveResult<T> {
 
         // undo the equilibration
         let d = &data.equilibration.d;
-        let (e,einv) = (&data.equilibration.e,&data.equilibration.einv);
+        let (e, einv) = (&data.equilibration.e, &data.equilibration.einv);
         let cscale = data.equilibration.c;
 
         self.x.hadamard(d);
-        self.z.hadamard(e); self.z.scale(T::recip(cscale));
+        self.z.hadamard(e);
+        self.z.scale(T::recip(cscale));
         self.s.hadamard(einv);
 
         //PJG : Leaving this out since the SolveInfo is not defined,

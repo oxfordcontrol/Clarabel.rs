@@ -33,10 +33,7 @@ pub type DefaultSolver<T = f64> = Solver<
     Settings<T>,
 >;
 
-
-impl<T:FloatT> DefaultSolver<T>
-{
-
+impl<T: FloatT> DefaultSolver<T> {
     pub fn new(
         P: &CscMatrix<T>,
         q: &[T],
@@ -44,14 +41,12 @@ impl<T:FloatT> DefaultSolver<T>
         b: &[T],
         cone_types: &[SupportedCones],
         cone_dims: &[usize],
-        settings: Settings<T>
-    ) -> Self
-    {
-
+        settings: Settings<T>,
+    ) -> Self {
         let mut timers = Timers::default();
         let mut output;
 
-        timeit!{timers => "setup"; {
+        timeit! {timers => "setup"; {
         //PJG not clear to me if I should clone or borrow
         //on the types, dims and settings
 
@@ -78,20 +73,20 @@ impl<T:FloatT> DefaultSolver<T>
         let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
 
         // user facing results go here
-        //PJG:final argument in julia is the timer.  Made 
-        //into a separate field here, since it is part of the 
-        //main solver loop and we shouldn't rely on the user 
+        //PJG:final argument in julia is the timer.  Made
+        //into a separate field here, since it is part of the
+        //main solver loop and we shouldn't rely on the user
         //to provide one in a non-default implementation.
         //Change this in Julia.
         let result = DefaultSolveResult::<T>::new(data.m,data.n);
 
         output = Self{data,variables,residuals,kktsystem,step_lhs,
              step_rhs,info,result,cones,settings,timers: None};
-        
+
         }} //end "setup" timer.
 
-        //now that the timer is finished we can swap our 
-        //timer object into the solver structure 
+        //now that the timer is finished we can swap our
+        //timer object into the solver structure
         output.timers.replace(timers);
 
         output

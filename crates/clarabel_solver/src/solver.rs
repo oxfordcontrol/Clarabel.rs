@@ -1,6 +1,6 @@
+use crate::*;
 use clarabel_algebra::*;
 use clarabel_timers::*;
-use crate::*;
 
 pub struct Solver<D, V, R, K, SI, SR, C, S> {
     pub data: D,
@@ -28,8 +28,7 @@ pub trait IPSolver<T, D, V, R, K, SI, SR, C> {
 // other methods, so should be reusable across
 // problem format implementations
 
-
-impl<T, D, V, R, K, SI, SR, C> IPSolver<T, D, V, R, K, SI, SR,C>
+impl<T, D, V, R, K, SI, SR, C> IPSolver<T, D, V, R, K, SI, SR, C>
     for Solver<D, V, R, K, SI, SR, C, Settings<T>>
 where
     T: FloatT,
@@ -39,18 +38,17 @@ where
     K: KKTSystem<T, D = D, V = V, C = C>,
     SI: SolveInfo<T, D = D, V = V, R = R, C = C>,
     SR: SolveResult<T, D = D, V = V, SI = SI>,
-    C : Cone<T>,
+    C: Cone<T>,
 {
     fn solve(&mut self) {
-
         let s = self;
 
         // various initializations
         s.info.reset();
         let mut iter: u32 = 0;
 
-        //timers is stored as an option so that 
-        //we can swap it out here and avoid 
+        //timers is stored as an option so that
+        //we can swap it out here and avoid
         //borrow conflicts with other fields.
         let mut timers = s.timers.take().unwrap();
         // reset the "solve" timer, but keep the "setup"
@@ -61,7 +59,7 @@ where
         // @notimeit //PJG fix
         s.info.print_header(&s.settings, &s.data, &s.cones);
 
-        timeit!{timers => "solve"; {
+        timeit! {timers => "solve"; {
 
         // initialize variables to some reasonable starting point
         timeit!{timers => "default start"; {
@@ -105,7 +103,7 @@ where
             if isdone {
                 break;
             }
-            
+
             //
             // update the scalings
             // --------------
@@ -184,26 +182,26 @@ where
             timeit!{timers => "save scalars"; {
             s.info.save_scalars(μ, α, σ, iter);
             }}
-        } //end loop 
+        } //end loop
         // ----------
         // ----------
 
         }} //end "IP iteration" timer
 
-        }}// end "solve" timer
+        }} // end "solve" timer
 
         //store final solution, timing etc
         s.result.finalize(&s.data, &s.variables, &s.info);
-        s.info.finalize(&timers); 
-        
-        //stow the timers back into Option in the solver struct 
+        s.info.finalize(&timers);
+
+        //stow the timers back into Option in the solver struct
         s.timers.replace(timers);
 
         s.info.print_footer(&s.settings);
 
         println!("\n\n Detailed solve time\n--------");
         s.timers.as_ref().unwrap().print();
-        
+
         //PJG: not clear if I am returning a result or
         //what here.
         // return s.result

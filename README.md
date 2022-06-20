@@ -31,9 +31,13 @@ and
   impl<T:FloatT>
 Pick a lane here.
 
-The CscMatrix is defined as part of algebra crate, which means that both algebra and solver crates need to be separately imported in my python example.  It's not clear where the CscMatrix defintion should live.   Maybe algebra shouldn't be a separate crate, or someone the whole collection of crates needs to be reexported somehow.
+The CscMatrix is defined as part of algebra crate, which means that both algebra and solver crates need to be separately imported in my python example.  It's not clear where the CscMatrix defintion should live.   Maybe algebra shouldn't be a separate crate, or  the whole collection of crates needs to be reexported somehow.
 
 Move IR implementation to within QDLDL.   Move all IR settings to within QDLDL and then remove lifetime annotation on KKTsolver that are supporting shared references to the master settings object.
+
+ABOVE IS PROBABLY WRONG : I have moved IR *up* to the generic QD KKT solver now, rather than implementing it within the QDLDL wrapper.   I think this is better but still not ideal.
+
+Need to update the IR scheme to match the new method implemented in Julia now that it is working.
 
 Consider whether SolveResult can be made a dependency only in the same way as Cone in the top level solver.   Maybe not since it depends on descaling equilibration stuff.
 
@@ -61,12 +65,13 @@ Settings uses time_limit in Rust and max_time in Julia.   Or maybe time_limit is
 
 gemv_W for SOCs has a redundant associated implementation for a special case at the bottom of the file.   This should also be called by the general function.   Also, the Winv code is almost identical aside from two operations, both in Rust and in the Julia ver.
 
+
 Julia compat updates:
 ---------------------
 
 Removed data as an argument to aff/combined RHS calcs.   Removed a few other unused params for other top level functions (settings?   Should have written it down.)
 
-Caution: in QDLDL, changing the Dsigns to be the internally permuted ones means that the offset_values function will need to change.   This was a Rust bug, now fixed (??) in the rust impl.
+Caution: in QDLDL, changing the Dsigns to be the internally permuted ones means that the offset_values function will need to change.   This was a Rust bug, now fixed (??) in the rust impl.   Much of this code be avoided if we only update one version of the KKT matrix and then just memcpy it through the permutation on a refactor.
 
 Residuals and Variables should take (m,n) sizes.   There is no consistency about whether n comes first or m in argument lists.   This is super confusing.
 
@@ -80,7 +85,7 @@ Possible removal of ConicVector and switch to range calcs as in Rust.   This mig
 
 Solver is failing now with Cholmod or MKL.   I don't understand why.   Possibly related to updated Dsigns behaviour or to the new scale_update calls.  Maybe I fixed it already?
 
-I moved the timers into the main solver struct and out of info.  The info struct is user implemented and shouldn't be expected 
+I moved the timers into the main solver struct and out of info.  The info struct is user implemented and shouldn't be expected
 to provide timing facilities for main solver internals.
 
 Final few steps of main solver loop are slightly reordered to facilitate printing etc.   Go back to Julia and make it the same sequence.

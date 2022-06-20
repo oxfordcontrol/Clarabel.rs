@@ -1,19 +1,32 @@
-# [package]
-# name = "clarabel"
-# version = "0.1.0"
-# authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
-# edition = "2021"
-# license = "Apache-2.0"
-# description = "Clarabel Conic Interior Point Solver"
-# readme = "README.md"
-# keywords = ["optimization", "math"]
-# categories = ["optimization"]
+[package]
+name = "clarabel"
+version = "0.1.0"
+authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
+edition = "2021"
+license = "Apache-2.0"
+description = "Clarabel Conic Interior Point Solver"
+readme = "README.md"
+keywords = ["optimization", "math"]
+categories = ["optimization"]
 
 [workspace]
 members = ["crates/*"]
 
-# [dependencies]
-# num-traits = "0.2"
+[dependencies]
+clarabel_internal = {path = "crates/clarabel_internal"}
 
 [profile.release]
 debug = true
+
+[[example]]
+name = "qp"
+path = "examples/example_qp.rs"
+
+[[example]]
+name = "socp"
+path = "examples/example_socp.rs"
+
+#PJG: this is not a permanent example
+[[example]]
+name = "box"
+path = "examples/example_big_box.rs"

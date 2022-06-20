@@ -1,8 +1,8 @@
 #![allow(non_snake_case)]
 
 use super::datamap::*;
-use clarabel_algebra::*;
 use crate::cones::*;
+use clarabel_algebra::*;
 use num_traits::Zero;
 
 pub fn _allocate_kkt_WtW_blocks<T, Z>(cones: &ConeSet<T>) -> Vec<Z>
@@ -10,7 +10,6 @@ where
     T: FloatT,
     Z: Zero + Clone,
 {
-
     let mut nnz = 0;
     if let Some(rng_last) = cones.rng_cones.last() {
         nnz = (*rng_last).end;
@@ -24,7 +23,6 @@ pub fn _assemble_kkt_matrix<T: FloatT>(
     cones: &ConeSet<T>,
     shape: MatrixTriangle,
 ) -> (CscMatrix<T>, LDLDataMap) {
-
     let (m, n) = (A.nrows(), P.nrows());
     let n_socs = cones.type_count(&SupportedCones::SecondOrderConeT);
     let p = 2 * n_socs;
@@ -160,10 +158,10 @@ fn _kkt_assemble_fill<T: FloatT>(
     }
 
     // add the the WtW blocks in the lower right
-    for (i,(cone, rng_cone)) in cones.iter().zip(cones.rng_cones.iter()).enumerate() {
+    for (i, (cone, rng_cone)) in cones.iter().zip(cones.rng_cones.iter()).enumerate() {
         let firstcol = rng_cone.start + n;
         let blockdim = cone.numel();
-        let block    = &mut maps.WtWblocks[cones.rng_blocks[i].clone()];
+        let block = &mut maps.WtWblocks[cones.rng_blocks[i].clone()];
         if cone.WtW_is_diagonal() {
             K.fill_diag(block, firstcol, blockdim);
         } else {
@@ -174,10 +172,8 @@ fn _kkt_assemble_fill<T: FloatT>(
     // fill in dense columns for each SOC
     let mut socidx = 0; //which SOC are we working on?
 
-    for (i,(cone,rng)) in cones.iter().zip(cones.rng_cones.iter()).enumerate() {
-
+    for (i, (cone, rng)) in cones.iter().zip(cones.rng_cones.iter()).enumerate() {
         if cones.types[i] == SupportedCones::SecondOrderConeT {
-
             let nvars = cone.numel();
             let headidx = rng.start;
 

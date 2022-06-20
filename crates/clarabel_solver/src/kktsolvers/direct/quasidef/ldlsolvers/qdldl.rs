@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
-use clarabel_algebra::*;
-use crate::kktsolvers::direct_quasidefinite::DirectLDLSolver;
+use crate::kktsolvers::direct::DirectLDLSolver;
 use crate::Settings;
+use clarabel_algebra::*;
 use clarabel_qdldl::*;
 //PJG: includes WTF
 
@@ -76,7 +76,6 @@ impl<T: FloatT> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> {
     }
 
     fn offset_values(&mut self, index: &[usize], offset: T) {
-
         self.factors.offset_values(index, offset);
 
         for (idx, sign) in index.iter().zip(self.Dsigns.iter()) {
