@@ -33,11 +33,8 @@ Pick a lane here.
 
 The CscMatrix is defined as part of algebra crate, which means that both algebra and solver crates need to be separately imported in my python example.  It's not clear where the CscMatrix defintion should live.   Maybe algebra shouldn't be a separate crate, or  the whole collection of crates needs to be reexported somehow.
 
-Move IR implementation to within QDLDL.   Move all IR settings to within QDLDL and then remove lifetime annotation on KKTsolver that are supporting shared references to the master settings object.
-
-ABOVE IS PROBABLY WRONG : I have moved IR *up* to the generic QD KKT solver now, rather than implementing it within the QDLDL wrapper.   I think this is better but still not ideal.
-
-Need to update the IR scheme to match the new method implemented in Julia now that it is working.
+Remove lifetime annotation on KKTsolvers if they are still there.  At the moment I think KKTsolver object 
+is taking a copy of the settings to support iterative refinement.
 
 Consider whether SolveResult can be made a dependency only in the same way as Cone in the top level solver.   Maybe not since it depends on descaling equilibration stuff.
 
@@ -65,6 +62,8 @@ Settings uses time_limit in Rust and max_time in Julia.   Or maybe time_limit is
 
 gemv_W for SOCs has a redundant associated implementation for a special case at the bottom of the file.   This should also be called by the general function.   Also, the Winv code is almost identical aside from two operations, both in Rust and in the Julia ver.
 
+
+maybe _offset_diagonal_KKT should be a method on a sparse matrix, rather than something implemented with the KKT solver code.   Could also add something like _assign_diagonal_KKT.   
 
 Julia compat updates:
 ---------------------

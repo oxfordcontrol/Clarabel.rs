@@ -140,9 +140,9 @@ where
 
         x[0] = (y[0] * z[0] - v) * pinv;
 
-        let a = pinv * (v / y[0] - z[0]);
-        let b = T::recip(y[0]);
-        x[1..].waxpby(a, &y[1..], b, &z[1..]);
+        let c1 = pinv * (v / y[0] - z[0]);
+        let c2 = T::recip(y[0]);
+        x[1..].waxpby(c1, &y[1..], c2, &z[1..]);
     }
 
     fn shift_to_cone(&self, z: &mut [T]) {

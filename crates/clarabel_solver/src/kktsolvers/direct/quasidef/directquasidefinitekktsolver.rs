@@ -11,6 +11,8 @@ use crate::kktsolvers::direct::ldlsolvers::QDLDLDirectLDLSolver;
 use crate::kktsolvers::direct::utils::*;
 use crate::kktsolvers::direct::DirectLDLSolver;
 
+use std::ops::Range; 
+
 // -------------------------------------
 // KKTSolver using direct LDL factorisation
 // -------------------------------------
@@ -30,12 +32,22 @@ pub struct DirectQuasidefiniteKKTSolver<T: FloatT> {
     x: Vec<T>,
     b: Vec<T>,
 
+    // internal workspace for IR scheme
+    work_e: Vec<T>,
+    work_dx: Vec<T>,
+
     // KKT mapping from problem data to KKT
     map: LDLDataMap,
+
+    // the expected signs of D in KKT = LDL^T
+    dsigns: Vec<i8>,
 
     // a vector for storing the entries of WtW blocks
     // on the KKT matrix block diagonal
     WtWblocks: Vec<T>,
+
+    //unpermuted KKT matrix
+    KKT: CscMatrix<T>,
 
     // settings just points back to the main solver settings.
     // Required since there is no separate LDL settings container
@@ -56,9 +68,7 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
     ) -> Self {
         //PJG: Cloning settings here as a workaround because
         //both the QD KKT solver requires settings for refinement
-        //and the inner QDLDL solver requires settings.   Move
-        //IR method to within QDLDL, then settings can be
-        //removed from this structure entirely.
+        //and the inner QDLDL solver requires settings.
         let settings = (*settings).clone();
 
         // solving in sparse format.  Need this many
@@ -68,10 +78,12 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
         // LHS/RHS/work for iterative refinement
         let x = vec![T::zero(); n + m + p];
         let b = vec![T::zero(); n + m + p];
+        let work_e = vec![T::zero(); n + m + p];
+        let work_dx = vec![T::zero(); n + m + p];
 
         // the expected signs of D in LDL
-        let mut signs = vec![1_i8; n + m + p];
-        _fill_signs(&mut signs, m, n, p);
+        let mut dsigns = vec![1_i8; n + m + p];
+        _fill_signs(&mut dsigns, m, n, p);
 
         // updates to the diagonal of KKT will be
         // assigned here before updating matrix entries
@@ -85,16 +97,16 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
         // does it want a :triu or :tril KKT matrix?
         //kktshape = required_matrix_shape(ldlsolverT);
         let kktshape = MatrixTriangle::Triu;
-        let (KKT, map) = _assemble_kkt_matrix(P, A, cones, kktshape);
-
-        //PJG: switchable solver engine not implemented yet
-        // the LDL linear solver engine
-        let mut ldlsolver = Box::new(QDLDLDirectLDLSolver::<T>::new(KKT, signs, &settings));
+        let (mut KKT, map) = _assemble_kkt_matrix(P, A, cones, kktshape);
 
         if settings.static_regularization_enable {
             let eps = settings.static_regularization_eps;
-            ldlsolver.offset_values(&map.diagP, eps);
+            _offset_diagonal_KKT(&mut KKT, 0..n, eps, &dsigns[0..n]);
         }
+
+        //PJG: switchable solver engine not implemented yet
+        // the LDL linear solver engine
+        let ldlsolver = Box::new(QDLDLDirectLDLSolver::<T>::new(&KKT, &dsigns, &settings));
 
         Self {
             m,
@@ -102,8 +114,12 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
             p,
             x,
             b,
+            work_e,
+            work_dx,
             map,
+            dsigns,
             WtWblocks,
+            KKT,
             settings,
             ldlsolver,
         }
@@ -132,6 +148,99 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
 //     end
 // end
 
+// update entries of the KKT matrix using the given index into its CSC representation.
+// applied to both the unpermuted matrix of the kktsolver and also to the ldlsolver 
+fn _update_values<T:FloatT>(
+    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>, 
+    KKT: &mut CscMatrix<T>, 
+    index: &[usize], 
+    values: &[T]
+) {
+    //Update values in the KKT matrix K
+    _update_values_KKT(KKT, index, values);
+
+    // give the LDL subsolver an opportunity to update the same
+    // values if needed.   This latter is useful for QDLDL
+    // since it stores its own permuted copy
+    ldlsolver.update_values(index, values);
+}
+
+fn _update_values_KKT<T: FloatT>(
+    KKT: &mut CscMatrix<T>, 
+    index: &[usize], 
+    values: &[T]
+) {
+    for (idx, v) in index.iter().zip(values.iter()) {
+        KKT.nzval[*idx] = *v;
+    }
+}
+
+fn _scale_values<T: FloatT>(
+    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>, 
+    KKT: &mut CscMatrix<T>, 
+    index: &[usize], 
+    scale: T
+) {
+    //Update values in the KKT matrix K
+    _scale_values_KKT(KKT, index, scale);
+
+    // ...and in the LDL subsolver if needed
+    ldlsolver.scale_values(index, scale);
+}
+
+//scales KKT matrix values
+fn _scale_values_KKT<T: FloatT>(
+    KKT: &mut CscMatrix<T>, 
+    index: &[usize], 
+    scale: T
+) {
+    for idx in index.iter() {
+        KKT.nzval[*idx] *= scale;
+    }
+}
+
+// offset diagonal entries of the KKT matrix over the Range 
+// of inices passed.  Length of signs and index must agree
+fn _offset_diagonal<T: FloatT>(
+    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>, 
+    KKT: &mut CscMatrix<T>, 
+    index: Range<usize>, 
+    offset: T, 
+    signs: &[i8]
+) {
+
+    assert_eq!(index.len(),signs.len());   
+        
+    //Update values in the KKT matrix K.  Clone the 
+    //index since I need it again on the next line
+    _offset_diagonal_KKT(KKT, index.clone(), offset, signs);
+
+    // ...and in the LDL subsolver if needed
+    ldlsolver.offset_diagonal(index, offset, signs);
+}
+
+fn _offset_diagonal_KKT<T: FloatT>(
+    KKT: &mut CscMatrix<T>,
+    index: Range<usize>,
+    offset: T,
+    signs: &[i8],
+) {
+
+    assert_eq!(index.len(),signs.len());  
+
+    for (col,&sign) in index.zip(signs.iter()) {
+
+        let sign = T::from_i8(sign).unwrap();
+        // in upper triangular form, the diagonal entries 
+        // should be the final entry within every column 
+
+        let idx = KKT.colptr[col+1] - 1;
+        assert_eq!(KKT.rowval[idx],col);
+        KKT.nzval[idx] += sign * offset;
+    }
+}
+
+
 fn _fill_signs(signs: &mut [i8], m: usize, n: usize, p: usize) {
     signs.fill(1);
 
@@ -153,7 +262,6 @@ where
     fn update(&mut self, cones: &ConeSet<T>) {
         let settings = &self.settings;
         let map = &self.map;
-        let ldlsolver = &mut self.ldlsolver;
 
         // Set the elements the W^tW blocks in the KKT matrix.
         cones.get_WtW_block(&mut self.WtWblocks);
@@ -161,7 +269,7 @@ where
         let (values, index) = (&mut self.WtWblocks, &map.WtWblocks);
         // change signs to get -W^TW
         values.negate();
-        ldlsolver.update_values(index, values);
+        _update_values(&mut self.ldlsolver, &mut self.KKT, index, values);
 
         // update the scaled u and v columns.
         let mut cidx = 0; // which of the SOCs are we working on?
@@ -185,14 +293,18 @@ where
 
                         //off diagonal columns (or rows)
                         //PJG: this two step scaling should be ported to Julia
-                        ldlsolver.update_values(&map.SOC_u[cidx], &K.u);
-                        ldlsolver.update_values(&map.SOC_v[cidx], &K.v);
-                        ldlsolver.scale_values(&map.SOC_u[cidx], -η2);
-                        ldlsolver.scale_values(&map.SOC_v[cidx], -η2);
+
+                        let KKT       = &mut self.KKT;
+                        let ldlsolver = &mut self.ldlsolver;
+
+                        _update_values(ldlsolver, KKT, &map.SOC_u[cidx], &K.u);
+                        _update_values(ldlsolver, KKT, &map.SOC_v[cidx], &K.v);
+                        _scale_values(ldlsolver, KKT, &map.SOC_u[cidx], -η2);
+                        _scale_values(ldlsolver, KKT, &map.SOC_v[cidx], -η2);
 
                         //add η^2*(-1/1) to diagonal in the extended rows/cols
-                        ldlsolver.update_values(&[map.SOC_D[cidx * 2]], &[-η2; 1]);
-                        ldlsolver.update_values(&[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
+                        _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2]], &[-η2; 1]);
+                        _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
 
                         cidx += 1;
                     }
@@ -203,15 +315,15 @@ where
         // Perturb the diagonal terms WtW that we have just overwritten
         // with static regularizers.  Note that we don't want to shift
         // elements in the ULHS (corresponding to P) since we already
-        // shifted them at initialization and haven't overwritten it
+        // shifted them at initialization and haven't overwritten then
         if settings.static_regularization_enable {
             let eps = settings.static_regularization_eps;
-            ldlsolver.offset_values(&map.diag_full, eps);
-            ldlsolver.offset_values(&map.diagP, -eps); //undo the P shift
+            let (m,n,p) = (self.m,self.n,self.p);
+            _offset_diagonal(&mut self.ldlsolver, &mut self.KKT, n..(n+m+p), eps, &self.dsigns[n..(n+m+p)]);
         }
 
         //refactor with new data
-        ldlsolver.refactor();
+        self.ldlsolver.refactor(&self.KKT);
     } //end fn
 
     fn setrhs(&mut self, rhsx: &[T], rhsz: &[T]) {
@@ -223,7 +335,91 @@ where
     }
 
     fn solve(&mut self, lhsx: Option<&mut [T]>, lhsz: Option<&mut [T]>) {
-        self.ldlsolver.solve(&mut self.x, &self.b, &self.settings);
+
+        self.ldlsolver.solve(&mut self.x, &self.b);
+
+        if self.settings.iterative_refinement_enable {
+            self.iterative_refinement();
+        }
         self.getlhs(lhsx, lhsz);
+
+    }
+
+}
+
+impl<T: FloatT> DirectQuasidefiniteKKTSolver<T>{
+
+    fn iterative_refinement(&mut self) {
+
+        let (x,b)  = (&mut self.x, &self.b);
+        let (e,dx) = (&mut self.work_e, &mut self.work_dx);
+        let settings = &self.settings;
+
+        // iterative refinement params
+        let reltol = settings.iterative_refinement_reltol;
+        let abstol = settings.iterative_refinement_abstol;
+        let maxiter = settings.iterative_refinement_max_iter;
+        let stopratio = settings.iterative_refinement_stop_ratio;
+
+        let eps = {
+            if settings.static_regularization_enable {
+                settings.static_regularization_eps
+            }
+            else {
+                T::zero()
+            }
+        };
+
+
+        // Note that K is only triu data, so need to
+        // be careful when computing the residual here
+        let K = &self.KKT;
+        let normb = b.norm_inf();
+
+        //compute the initial error 
+        let mut norme = _get_refine_error(e, b, K, &self.dsigns, eps, x);
+
+        for _ in 0..maxiter {
+
+            if norme <= (abstol + reltol * normb) {
+                //within tolerance.  Exit
+                return;
+            }
+
+            let lastnorme = norme;
+
+            //make a refinement 
+            self.ldlsolver.solve(dx,e);
+
+            //prospective solution is x + dx.  Use dx space to
+            // hold it for a check before applying to x
+            dx.axpby(T::one(),x,T::one());  //now dx is really x + dx 
+            norme = _get_refine_error(e,b,K,&self.dsigns,eps,dx);
+
+            if lastnorme/norme < stopratio {
+            //insufficient improvement.  Exit
+                return;
+            } else {
+                x.copy_from(dx);  //PJG: pointer swap might be faster
+            }
+        }
     }
 }
+
+
+fn _get_refine_error<T:FloatT>(e: &mut [T],b: &[T], K: &CscMatrix<T>, dsigns: &[i8], eps: T, ξ: &mut [T]) -> T {
+
+    e.copy_from(b);
+    K.symv(e, MatrixTriangle::Triu, ξ, -T::one(), T::one());  //#  e = b - Kξ
+
+    if !T::is_zero(&eps) {
+        //@. e += ϵ * D * ξ
+        for (i,eval) in e.iter_mut().enumerate(){
+            let s = T::from_i8(dsigns[i]).unwrap();
+            *eval += eps * s * ξ[i];
+        }
+    }
+
+    e.norm_inf()
+}
+

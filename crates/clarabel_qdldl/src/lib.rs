@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 use clarabel_algebra::*;
 use core::cmp::{max, min};
+use std::ops::Range; 
 use derive_builder::Builder;
 
 #[derive(Builder, Debug)]
@@ -100,43 +101,27 @@ impl<T: FloatT> QDLDLFactorisation<T> {
         }
     }
 
-    pub fn offset_values(&mut self, indices: &[usize], offset: T) {
-        let nzval = &mut self.workspace.triuA.nzval; //post permutation internal data
+    pub fn offset_diagonal(&mut self, indices: Range<usize>, offset: T, signs: &[i8]) {
+
+        assert_eq!(indices.len(),signs.len());
+
+        let nzval  = &mut self.workspace.triuA.nzval; //post permutation internal data
+        let colptr = &self.workspace.triuA.colptr; //post permutation internal data
         let rowval = &self.workspace.triuA.rowval;
-        let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
-        let Dsigns = &self.workspace.Dsigns;
-
-        for idx in indices.iter() {
-            let j = AtoPAPt[*idx];
-            let sign: T = T::from_i8(Dsigns[rowval[j]]).unwrap();
-            nzval[j] += offset * sign;
-        }
-    }
-
-    pub fn update_diagonal(&mut self, indices: &[usize], values: &[T]) {
-        if !(indices.len() == values.len() || values.len() == 1) {
-            panic!("Index and value arrays must be the same size, or values must be an array of length 1.");
-        }
-
-        let triuA = &mut self.workspace.triuA;
-        let invp = &self.iperm;
-        let nvals = values.len();
+        let iperm  = &self.iperm; 
 
         // triuA should be full rank and upper triangular, so the diagonal element
         // in each column should always be the last nonzero
-        for (i, idx) in indices.iter().enumerate() {
-            let thecol = invp[*idx];
-            let elidx = triuA.colptr[thecol + 1]; //first element in the *next* column
-            if elidx == 0 {
-                panic!("triu(A) is missing diagonal entries");
-            }
-            let elidx = elidx - 1;
-            let therow = triuA.rowval[elidx];
-            if therow != thecol {
-                panic!("triu(A) is missing diagonal entries");
-            }
-            let val = if nvals == 1 { values[0] } else { values[i] };
-            triuA.nzval[elidx] = val;
+
+        for (col, &sign) in indices.zip(signs.iter()) {
+
+            //triu is permuted, so get the column after permutation 
+            let col = iperm[col];
+            let sign: T = T::from_i8(sign).unwrap();
+
+            let idx = colptr[col+1] - 1;
+            assert_eq!(rowval[idx],col);
+            nzval[idx] += sign * offset;
         }
     }
 

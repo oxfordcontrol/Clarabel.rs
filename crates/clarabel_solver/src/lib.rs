@@ -1,4 +1,4 @@
-//PJG: Temporary allows during development
+//Rust hates greek characters
 #![allow(confusable_idents)]
 
 //PJG: Are both use and mod required throughout?
