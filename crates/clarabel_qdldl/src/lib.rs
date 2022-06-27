@@ -1,11 +1,12 @@
 #![allow(non_snake_case)]
 use clarabel_algebra::*;
 use core::cmp::{max, min};
-use std::ops::Range; 
+use std::ops::Range;
 use derive_builder::Builder;
 
 #[derive(Builder, Debug)]
-pub struct QDLDLSettings<T: FloatT> {
+pub struct QDLDLSettings<T> 
+{
     #[builder(default = "None", setter(strip_option))]
     perm: Option<Vec<usize>>,
     #[builder(default = "false")]
@@ -14,9 +15,9 @@ pub struct QDLDLSettings<T: FloatT> {
     Dsigns: Option<Vec<i8>>,
     #[builder(default = "true")]
     regularize_enable: bool,
-    #[builder(default = "T::from(1e-12).unwrap()")]
+    #[builder(default = "T::from_f64(1e-12).unwrap()")]
     regularize_eps: T,
-    #[builder(default = "T::from(1e-7).unwrap()")]
+    #[builder(default = "T::from_f64(1e-7).unwrap()")]
     regularize_delta: T,
 }
 
@@ -108,14 +109,14 @@ impl<T: FloatT> QDLDLFactorisation<T> {
         let nzval  = &mut self.workspace.triuA.nzval; //post permutation internal data
         let colptr = &self.workspace.triuA.colptr; //post permutation internal data
         let rowval = &self.workspace.triuA.rowval;
-        let iperm  = &self.iperm; 
+        let iperm  = &self.iperm;
 
         // triuA should be full rank and upper triangular, so the diagonal element
         // in each column should always be the last nonzero
 
         for (col, &sign) in indices.zip(signs.iter()) {
 
-            //triu is permuted, so get the column after permutation 
+            //triu is permuted, so get the column after permutation
             let col = iperm[col];
             let sign: T = T::from_i8(sign).unwrap();
 

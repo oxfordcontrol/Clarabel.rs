@@ -2,9 +2,7 @@ use super::*;
 pub mod cscmatrix;
 pub use cscmatrix::*;
 
-impl<T> ScalarMath<T> for T
-where
-    T: FloatT,
+impl<T:FloatT> ScalarMath<T> for T
 {
     fn clip(s: T, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T {
         if s < min_thresh {
@@ -17,9 +15,7 @@ where
     }
 }
 
-impl<T> VectorMath<T> for [T]
-where
-    T: FloatT,
+impl<T:FloatT> VectorMath<T> for [T]
 {
     fn copy_from(&mut self, src: &[T]) {
         self.copy_from_slice(src);
@@ -156,8 +152,6 @@ where
 }
 
 impl<T: FloatT> MatrixMath<T, [T]> for CscMatrix<T>
-where
-    T: FloatT,
 {
     //matrix properties
     fn nrows(&self) -> usize {
@@ -284,7 +278,7 @@ where
         }
     }
 
-    fn symdot(&self, y: &[T], x: &[T]) -> T {
+    fn quad_form(&self, y: &[T], x: &[T]) -> T {
         _csc_quad_form(self, y, x)
     }
 }
@@ -362,8 +356,6 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T {
 // sparse matrix-vector multiply, no transpose
 #[allow(non_snake_case)]
 fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T)
-where
-    T: FloatT,
 {
     //first do the b*y part
     if b == T::zero() {

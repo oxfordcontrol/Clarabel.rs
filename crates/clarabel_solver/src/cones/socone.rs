@@ -162,8 +162,6 @@ where
         //NB: we are returning here the diagonal D block from the
         //sparse representation of W^TW, but not the
         //extra two entries at the bottom right of the block.
-        //The ConicVector for s and z (and its views) don't
-        //know anything about the 2 extra sparsifying entries
         WtWblock.fill(self.η * self.η);
         WtWblock[0] *= self.d;
     }
@@ -232,17 +230,17 @@ where
     if (a > T::zero() && b > T::zero()) || (d < T::zero()) {
         // all negative roots / complex root pair
         // -> infinite step length
-        out = T::recip(T::epsilon());
+        out = T::max_value();
     } else {
         let sqrtd = T::sqrt(d);
         let mut r1 = (-b + sqrtd) / (two * a);
         let mut r2 = (-b - sqrtd) / (two * a);
         // return the minimum positive root
         if r1 < T::zero() {
-            r1 = T::recip(T::epsilon());
+            r1 = T::max_value();
         }
         if r2 < T::zero() {
-            r2 = T::recip(T::epsilon());
+            r2 = T::max_value();
         }
         out = T::min(r1, r2);
     }

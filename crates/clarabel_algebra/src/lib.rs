@@ -104,5 +104,5 @@ pub trait MatrixMath<T, V: ?Sized> {
 
     // quadratic form for a symmetric matrix.  Assumes upper
     // triangular form for the matrix
-    fn symdot(&self, y: &[T], x: &[T]) -> T;
+    fn quad_form(&self, y: &[T], x: &[T]) -> T;
 }

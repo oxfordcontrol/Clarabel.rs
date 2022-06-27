@@ -97,7 +97,7 @@ where
             if step.τ < T::zero() {
                 -self.τ / step.τ
             } else {
-                T::recip(T::epsilon())
+                T::max_value()
             }
         };
 
@@ -105,7 +105,7 @@ where
             if step.κ < T::zero() {
                 -self.κ / step.κ
             } else {
-                T::recip(T::epsilon())
+                T::max_value()
             }
         };
 

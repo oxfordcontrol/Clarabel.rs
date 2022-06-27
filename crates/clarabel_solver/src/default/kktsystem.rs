@@ -10,7 +10,7 @@ use clarabel_algebra::*;
 //DirectQuasidefiniteKKTSolver<T>/ Once settings is
 //removed there, it can be removed here as well.
 
-pub struct DefaultKKTSystem<T: FloatT> {
+pub struct DefaultKKTSystem<T> {
     //the KKT system solver
     //PJG: This is too concrete.   Should be trait based
     //types hierarchy and folders is super confusing
@@ -31,7 +31,10 @@ pub struct DefaultKKTSystem<T: FloatT> {
     work_conic: Vec<T>,
 }
 
-impl<T: FloatT> DefaultKKTSystem<T> {
+impl<T> DefaultKKTSystem<T>
+where
+    T: FloatT,
+{
     pub fn new(data: &DefaultProblemData<T>, cones: &ConeSet<T>, settings: &Settings<T>) -> Self {
         let (m, n) = (data.m, data.n);
         let kktsolver =
@@ -50,8 +53,6 @@ impl<T: FloatT> DefaultKKTSystem<T> {
         let workz = vec![T::zero(); m];
 
         //additional conic workspace vector compatible with s and z
-        //PJG: cones not needed as an argument now because there is
-        //no longer a ConicVector constructor
         let work_conic = vec![T::zero(); m];
 
         Self {
@@ -138,14 +139,14 @@ where
         let tau_num = rhs.τ - rhs.κ / variables.τ
             + data.q.dot(x1)
             + data.b.dot(z1)
-            + two * data.P.symdot(ξ, x1);
+            + two * data.P.quad_form(ξ, x1);
 
         // offset ξ for the quadratic form in the denominator
         let ξ_minus_x2 = ξ; //alias to ξ, same as workx
         ξ_minus_x2.axpby(-T::one(), x2, T::one());
 
         let mut tau_den = variables.κ / variables.τ - data.q.dot(x2) - data.b.dot(z2);
-        tau_den += data.P.symdot(ξ_minus_x2, ξ_minus_x2) - data.P.symdot(x2, x2);
+        tau_den += data.P.quad_form(ξ_minus_x2, ξ_minus_x2) - data.P.quad_form(x2, x2);
 
         // solve for (Δx,Δz)
         // -----------

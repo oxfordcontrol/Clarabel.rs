@@ -42,19 +42,11 @@ Consider whether Settings can be made dependency only as well.   This should be 
 
 I am currently disassembling the cone index ranges in the KKT assembly function to pass the headidx to the different colcount and colfill functions, and then building the ranges again there.   Maybe could be improved.   [This might be fixed already?]
 
-Remove ConicVector as a mod and from all use statements.  [Might be fixed already]
-
 Maybe ConeSet<T> Should be DefaultCone<T> and should be placed into the default implementation group.   Problem here because Julia uses slightly different method names.
-
-conicvector.rs should now be deleted.
 
 kkt_fill and friends are taking a length index as the final argument, but this seems redundant.   Maybe it was there to facilitate a C version.
 
 Really confusing native methods implementation for CSC matrices.   What should nalgebra and others implement?   Should this go somewhere else?
-
-Change symdot to quad_form.   Do this also in Julia.
-
-Don't use T::recip(T::epsilon()), but rather T::max_value() of T::infinity() as appropriate.  Same for Julia probably.
 
 Settings uses time_limit in Rust and max_time in Julia.   Or maybe time_limit is a bool   Very confusing in the settings print function.   Maybe this was just a bug in the no time limit case?   Fixed in Julia print maybe.   Perhaps Rust should use Option here.  
 

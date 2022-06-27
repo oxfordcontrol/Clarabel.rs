@@ -151,12 +151,12 @@ fn test_symv() {
 }
 
 #[test]
-fn test_symdot() {
+fn test_quad_form() {
     let A = test_matrix_4x4_triu();
     let x = vec![1., 2., -3., -4.];
     let y = vec![0., 1., -1., 2.];
 
-    let val = A.symdot(&y, &x);
+    let val = A.quad_form(&y, &x);
 
     assert_eq!(val, 15.);
 }

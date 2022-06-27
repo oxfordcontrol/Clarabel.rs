@@ -3,8 +3,6 @@ use super::*;
 use crate::{MatrixShape, MatrixTriangle};
 
 impl<T: FloatT> CscMatrix<T>
-where
-    T: FloatT,
 {
     pub fn spalloc(m: usize, n: usize, nnz: usize) -> Self {
         let mut colptr = vec![0; n + 1];

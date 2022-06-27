@@ -176,7 +176,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
         self.gap_abs = residuals.dot_sz * τinv * τinv;
 
         if (self.cost_primal > T::zero()) && (self.cost_dual < T::zero()) {
-            self.gap_rel = T::recip(T::epsilon());
+            self.gap_rel = T::max_value();
         } else {
             self.gap_rel = self.gap_abs / T::min(T::abs(self.cost_primal), T::abs(self.cost_dual));
         }

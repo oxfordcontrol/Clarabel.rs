@@ -37,7 +37,7 @@ pub fn cone_dict<T: FloatT>(cone: SupportedCones<T>) -> BoxedCone<T> {
         SupportedCones::ZeroConeT(dim) => Box::new(ZeroCone::<T>::new(dim)),
         SupportedCones::SecondOrderConeT(dim) => Box::new(SecondOrderCone::<T>::new(dim)),
         SupportedCones::PlaceHolderT(_, _) => unimplemented!(),
-        
+
     }
 }
 
@@ -163,7 +163,10 @@ where
     }
 }
 
-impl<T: FloatT> ConeSet<T> {
+impl<T> ConeSet<T>
+where
+    T:FloatT
+{
     pub fn len(&self) -> usize {
         self.cones.len()
     }
@@ -187,7 +190,7 @@ impl<T: FloatT> ConeSet<T> {
 
 impl<T> Cone<T> for ConeSet<T>
 where
-    T: FloatT,
+    T: FloatT
 {
     fn dim(&self) -> usize {
         panic!("dim() not well defined for the ConeSet");
@@ -316,7 +319,7 @@ where
     }
 
     fn step_length(&self, dz: &[T], ds: &[T], z: &[T], s: &[T]) -> (T, T) {
-        let huge = T::recip(T::epsilon());
+        let huge = T::max_value();
         let (mut αz, mut αs) = (huge, huge);
 
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
