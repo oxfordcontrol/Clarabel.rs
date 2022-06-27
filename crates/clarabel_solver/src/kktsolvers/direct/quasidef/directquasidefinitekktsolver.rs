@@ -73,7 +73,7 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
 
         // solving in sparse format.  Need this many
         // extra variables for SOCs
-        let p = 2 * cones.type_count(&SupportedCones::SecondOrderConeT(0));
+        let p = 2 * cones.type_count("SupportedConeT");
 
         // LHS/RHS/work for iterative refinement
         let x = vec![T::zero(); n + m + p];

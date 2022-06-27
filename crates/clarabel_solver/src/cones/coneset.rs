@@ -50,7 +50,7 @@ pub struct ConeSet<T: FloatT = f64> {
 
     //Type tags and count of each cone
     pub types: Vec<SupportedCones<T>>,
-    pub type_counts: HashMap<SupportedCones<T>, usize>,
+    pub type_counts: HashMap<&'static str, usize>,
 
     //overall size of the composite cone
     numel: usize,
@@ -83,7 +83,7 @@ impl<T: FloatT> ConeSet<T> {
         // yet a stable feature.  Capacity should be number of SupportedCones variants
         let mut type_counts = HashMap::new();
         for t in types.iter() {
-            *type_counts.entry(*t).or_insert(0) += 1;
+            *type_counts.entry(&(*t.variant_name())).or_insert(0) += 1;
         }
 
         // count up elements and degree
@@ -176,9 +176,9 @@ impl<T: FloatT> ConeSet<T> {
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, BoxedCone<T>> {
         self.cones.iter_mut()
     }
-    pub fn type_count(&self, conet: &SupportedCones<T>) -> usize {
-        if self.type_counts.contains_key(conet) {
-            self.type_counts[conet]
+    pub fn type_count(&self, cone_str: &'static str) -> usize {
+        if self.type_counts.contains_key(cone_str) {
+            self.type_counts[cone_str]
         } else {
             0
         }

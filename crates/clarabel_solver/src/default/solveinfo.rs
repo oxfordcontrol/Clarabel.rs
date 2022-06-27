@@ -317,15 +317,15 @@ fn _print_conedims_by_type<T: FloatT>(cones: &ConeSet<T>, conetype: SupportedCon
     let maxlistlen = 5;
 
     //skip if there are none of this type
-    if !cones.type_counts.contains_key(&conetype) {
+    if !cones.type_counts.contains_key(&conetype.variant_name()) {
         return;
     }
 
     // how many of this type of cone?
-    let count = cones.type_counts[&conetype];
+    let name  = conetype.variant_name();
+    let count = cones.type_counts[name];
 
     //let name  = rpad(string(type)[1:end-5],11)  #drops "ConeT part"
-    let name = conetype.to_string();
     let name = &name[0..name.len() - 5];
     let name = format!("{:>11}", name);
 

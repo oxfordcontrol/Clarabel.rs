@@ -24,7 +24,7 @@ pub fn _assemble_kkt_matrix<T: FloatT>(
     shape: MatrixTriangle,
 ) -> (CscMatrix<T>, LDLDataMap) {
     let (m, n) = (A.nrows(), P.nrows());
-    let n_socs = cones.type_count(&SupportedCones::SecondOrderConeT(0));
+    let n_socs = cones.type_count("SupportedConeT");
     let p = 2 * n_socs;
 
     let mut maps = LDLDataMap::new(P, A, cones);

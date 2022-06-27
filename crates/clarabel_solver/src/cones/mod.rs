@@ -21,16 +21,21 @@ pub enum SupportedCones<T> {
     PlaceHolderT(usize, T),  // params: cone_dim, exponent
 }
 
-//PJG: is there a more compact way of displaying only the variant name?
-impl<T: FloatT> std::fmt::Display for SupportedCones<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let str = match self {
+impl<T> SupportedCones<T> {
+    pub fn variant_name(&self) -> &'static str {
+        match self {
             SupportedCones::ZeroConeT(_) => "ZeroConeT",
             SupportedCones::NonnegativeConeT(_) => "NonnegativeConeT",
             SupportedCones::SecondOrderConeT(_) => "SecondOrderConeT",
             SupportedCones::PlaceHolderT(_, _) => "PlaceHolderConeT",
-        };
-        write!(f, "{}", str)
+        }
+    }
+}
+
+//PJG: is there a more compact way of displaying only the variant name?
+impl<T: FloatT> std::fmt::Display for SupportedCones<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", &self.variant_name().to_string())
     }
 }
 

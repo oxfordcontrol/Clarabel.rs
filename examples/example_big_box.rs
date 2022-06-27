@@ -13,7 +13,7 @@ use crate::settings::SettingsBuilder;  //shouldn't need to explicit import this
 
 fn _problem_data() -> (CscMatrix<f64>,Vec<f64>,CscMatrix<f64>,Vec<f64>)
 {
-    let n = 1;
+    let n = 20000;
 
     let mut P = CscMatrix::<f64>::spalloc(n,n,n);
 
