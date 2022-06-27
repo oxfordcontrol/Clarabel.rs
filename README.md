@@ -15,7 +15,8 @@ Check basic QP equilibration values (step through code)
 
 Change SolveResult to Solution and then SolveInfo back to Info.
 
-Remove trait bounds from struct definitions and keep in the impl only.
+Remove trait bounds from struct definitions and keep in the impl only?   It is unclear whether it is really
+add value to put a generic f64 on all of these definitions.
 
 Printing functions should be a totally separate trait on DefaultSolveInfo, and should
 be separately implementable, or at the very least in a separate file.  Solver should require that both are implemented, then disabling printing amounts to declaring the trait to be empty or similar.
@@ -33,7 +34,7 @@ Pick a lane here.
 
 The CscMatrix is defined as part of algebra crate, which means that both algebra and solver crates need to be separately imported in my python example.  It's not clear where the CscMatrix defintion should live.   Maybe algebra shouldn't be a separate crate, or  the whole collection of crates needs to be reexported somehow.
 
-Remove lifetime annotation on KKTsolvers if they are still there.  At the moment I think KKTsolver object 
+Remove lifetime annotation on KKTsolvers if they are still there.  At the moment I think KKTsolver object
 is taking a copy of the settings to support iterative refinement.
 
 Consider whether SolveResult can be made a dependency only in the same way as Cone in the top level solver.   Maybe not since it depends on descaling equilibration stuff.
@@ -49,8 +50,6 @@ kkt_fill and friends are taking a length index as the final argument, but this s
 Really confusing native methods implementation for CSC matrices.   What should nalgebra and others implement?   Should this go somewhere else?
 
 Settings uses time_limit in Rust and max_time in Julia.   Or maybe time_limit is a bool   Very confusing in the settings print function.   Maybe this was just a bug in the no time limit case?   Fixed in Julia print maybe.   Perhaps Rust should use Option here.  
-
-gemv_W for SOCs has a redundant associated implementation for a special case at the bottom of the file.   This should also be called by the general function.   Also, the Winv code is almost identical aside from two operations, both in Rust and in the Julia ver.
 
 
 maybe _offset_diagonal_KKT should be a method on a sparse matrix, rather than something implemented with the KKT solver code.   Could also add something like _assign_diagonal_KKT.   

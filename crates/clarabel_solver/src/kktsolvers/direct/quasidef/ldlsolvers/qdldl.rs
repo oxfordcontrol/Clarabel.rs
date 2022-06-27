@@ -3,10 +3,10 @@ use crate::kktsolvers::direct::DirectLDLSolver;
 use crate::Settings;
 use clarabel_algebra::*;
 use clarabel_qdldl::*;
-use std::ops::Range; 
+use std::ops::Range;
 //PJG: includes WTF
 
-pub struct QDLDLDirectLDLSolver<T: FloatT> {
+pub struct QDLDLDirectLDLSolver<T> {
 
     //KKT matrix and its QDLDL factorization
     factors: QDLDLFactorisation<T>,
@@ -50,7 +50,7 @@ impl<T: FloatT> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> {
     }
 
     fn offset_diagonal(&mut self, index: Range<usize>, offset: T, signs: &[i8]) {
-       
+
         self.factors.offset_diagonal(index, offset, signs);
     }
 
@@ -62,7 +62,7 @@ impl<T: FloatT> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> {
 
     fn refactor(&mut self, _kkt: &CscMatrix<T>) {
 
-        //QDLDL has maintained its own version of the permuted 
+        //QDLDL has maintained its own version of the permuted
         //KKT matrix through custom update/scale/offset methods,
         //so we ignore the KKT matrix provided by the caller
         self.factors.refactor();

@@ -19,7 +19,10 @@ pub struct SecondOrderCone<T: FloatT = f64> {
     pub η: T,
 }
 
-impl<T: FloatT> SecondOrderCone<T> {
+impl<T> SecondOrderCone<T>
+where
+    T: FloatT,
+{
     pub fn new(dim: usize) -> Self {
         assert!(dim >= 2);
         Self {
@@ -64,6 +67,7 @@ where
     }
 
     fn update_scaling(&mut self, s: &[T], z: &[T]) {
+
         let (z1, z2) = (z[0], &z[1..]);
         let (s1, s2) = (s[0], &s[1..]);
 
@@ -167,29 +171,15 @@ where
     }
 
     fn gemv_W(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
+
         // symmetric, so ignore transpose
-        // use the fast product method from ECOS ECC paper
-
-        let ζ = self.w[1..].dot(&x[1..]);
-        let c = x[0] + ζ / (T::one() + self.w[0]);
-
-        y[0] = α * self.η * (self.w[0] * x[0] + ζ) + β * y[0];
-
-        y[1..].axpby(α * self.η * c, &self.w[1..], β);
-        y[1..].axpby(α * self.η, &x[1..], T::one());
+        _soc_gemv_W_inner(&self.w, self.η, x, y, α, β);
     }
 
     fn gemv_Winv(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
+
         // symmetric, so ignore transpose
-        // use the fast inverse product method from ECOS ECC paper
-
-        let ζ = self.w[1..].dot(&x[1..]);
-        let c = -x[0] + ζ / (T::one() + self.w[0]);
-
-        y[0] = (α / self.η) * (self.w[0] * x[0] - ζ) + β * y[0];
-
-        y[1..].axpby(α / self.η * c, &self.w[1..], β);
-        y[1..].axpby(α / self.η, &x[1..], T::one());
+        _soc_gemv_Winv_inner(&self.w, self.η, x, y, α, β);
     }
 
     fn add_scaled_e(&self, x: &mut [T], α: T) {
@@ -247,31 +237,36 @@ where
     out
 }
 
-// We move the actual implementation of gemv_W outside
+// We move the actual implementations of gemv_{W,Winv} outside
 // here.  The operation λ = Wz produces a borrow conflict
 // otherwise because λ is part of the cone's internal data
 // and we can't borrow self and &mut λ at the same time.
-
-//PJG: there is some redundant implementation here, because the
-//basic gemv_W is also implemented, but then this one gets
-//a special call for λ = Wz.   The basic call should also come here.
 
 #[allow(non_snake_case)]
 fn _soc_gemv_W_inner<T>(w: &[T], η: T, x: &[T], y: &mut [T], α: T, β: T)
 where
     T: FloatT,
 {
-    // symmetric, so ignore transpose
     // use the fast product method from ECOS ECC paper
-
     let ζ = w[1..].dot(&x[1..]);
     let c = x[0] + ζ / (T::one() + w[0]);
 
-    y[0] = α * η * (w[0] * x[0] + ζ) + β * y[0];
+    y[0] = (α * η) * (w[0] * x[0] + ζ) + β * y[0];
 
-    //for i in 2..y.len(){
-    //  y[i] = (α*self.η)*(x[i] + c*self.w[i]) + β*y[i]
-    //}
     y[1..].axpby(α * η * c, &w[1..], β);
     y[1..].axpby(α * η, &x[1..], T::one());
+}
+
+fn _soc_gemv_Winv_inner<T>(w: &[T], η: T, x: &[T], y: &mut [T], α: T, β: T)
+where
+    T: FloatT,
+{
+    // use the fast inverse product method from ECOS ECC paper
+    let ζ = w[1..].dot(&x[1..]);
+    let c = -x[0] + ζ / (T::one() + w[0]);
+
+    y[0] = (α / η) * (w[0] * x[0] - ζ) + β * y[0];
+
+    y[1..].axpby(α / self.η * c, &self.w[1..], β);
+    y[1..].axpby(α / self.η, &x[1..], T::one());
 }

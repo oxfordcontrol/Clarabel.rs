@@ -32,7 +32,6 @@ impl<T> SupportedCones<T> {
     }
 }
 
-//PJG: is there a more compact way of displaying only the variant name?
 impl<T: FloatT> std::fmt::Display for SupportedCones<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", &self.variant_name().to_string())
