@@ -50,8 +50,6 @@ conicvector.rs should now be deleted.
 
 kkt_fill and friends are taking a length index as the final argument, but this seems redundant.   Maybe it was there to facilitate a C version.
 
-Lifetime in DirectQuasidefiniteKKTSolver should be removed once settings are rectified.  [I think this is done already]
-
 Really confusing native methods implementation for CSC matrices.   What should nalgebra and others implement?   Should this go somewhere else?
 
 Change symdot to quad_form.   Do this also in Julia.
@@ -64,6 +62,8 @@ gemv_W for SOCs has a redundant associated implementation for a special case at 
 
 
 maybe _offset_diagonal_KKT should be a method on a sparse matrix, rather than something implemented with the KKT solver code.   Could also add something like _assign_diagonal_KKT.   
+
+SupportedCones is really part of the default implementation's API, and not really part of the Cone trait that defines all of the required behaviours.   These should be separated I think.
 
 Julia compat updates:
 ---------------------

@@ -10,16 +10,45 @@ pub use zerocone::*;
 
 use clarabel_algebra::*;
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-pub enum SupportedCones {
-    ZeroConeT,
-    NonnegativeConeT,
-    SecondOrderConeT,
+use core::hash::{Hash, Hasher};
+use std::{cmp::PartialEq, mem::discriminant};
+
+#[derive(Debug, Clone, Copy)]
+pub enum SupportedCones<T> {
+    ZeroConeT(usize),        // params: cone_dim
+    NonnegativeConeT(usize), // params: cone_dim
+    SecondOrderConeT(usize), // params: cone_dim
+    PlaceHolderT(usize, T),  // params: cone_dim, exponent
 }
 
-impl std::fmt::Display for SupportedCones {
+//PJG: is there a more compact way of displaying only the variant name?
+impl<T: FloatT> std::fmt::Display for SupportedCones<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        let str = match self {
+            SupportedCones::ZeroConeT(_) => "ZeroConeT",
+            SupportedCones::NonnegativeConeT(_) => "NonnegativeConeT",
+            SupportedCones::SecondOrderConeT(_) => "SecondOrderConeT",
+            SupportedCones::PlaceHolderT(_, _) => "PlaceHolderConeT",
+        };
+        write!(f, "{}", str)
+    }
+}
+
+// we will use the SupportedCones as a user facing marker
+// for the constraint types, and then map them through
+// a dictionary to get the internal cone representations.
+// we will also make a HashMap of cone type counts, so need
+// to define custom hashing and comparator ops
+impl<T> Eq for SupportedCones<T> {}
+impl<T> PartialEq for SupportedCones<T> {
+    fn eq(&self, other: &Self) -> bool {
+        discriminant(self) == discriminant(other)
+    }
+}
+
+impl<T> Hash for SupportedCones<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        discriminant(self).hash(state);
     }
 }
 

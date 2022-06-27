@@ -35,7 +35,7 @@ impl LDLDataMap {
         let WtWblocks = _allocate_kkt_WtW_blocks::<T, usize>(cones);
 
         // now do the SOC expansion pieces
-        let nsoc = cones.type_count(&SupportedCones::SecondOrderConeT);
+        let nsoc = cones.type_count(&SupportedCones::SecondOrderConeT(0));
         let p = 2 * nsoc;
         let SOC_D = vec![0; p];
 
@@ -43,7 +43,7 @@ impl LDLDataMap {
         let mut SOC_v = Vec::<Vec<usize>>::with_capacity(nsoc);
 
         for (i, cone) in cones.iter().enumerate() {
-            if cones.types[i] == SupportedCones::SecondOrderConeT {
+            if matches!(cones.types[i],SupportedCones::SecondOrderConeT(_)) {
                 SOC_u.push(vec![0; cone.numel()]);
                 SOC_v.push(vec![0; cone.numel()]);
             }

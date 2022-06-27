@@ -39,8 +39,7 @@ impl<T: FloatT> DefaultSolver<T> {
         q: &[T],
         A: &CscMatrix<T>,
         b: &[T],
-        cone_types: &[SupportedCones],
-        cone_dims: &[usize],
+        cone_types: &[SupportedCones<T>],
         settings: Settings<T>,
     ) -> Self {
         let mut timers = Timers::default();
@@ -51,7 +50,7 @@ impl<T: FloatT> DefaultSolver<T> {
         //on the types, dims and settings
 
         let info = DefaultSolveInfo::<T>::new();
-        let cones = ConeSet::<T>::new(cone_types,cone_dims);
+        let cones = ConeSet::<T>::new(cone_types);
         let mut data = DefaultProblemData::<T>::new(P,q,A,b);
         let variables = DefaultVariables::<T>::new(data.n,data.m);
         let residuals = DefaultResiduals::<T>::new(data.n,data.m);

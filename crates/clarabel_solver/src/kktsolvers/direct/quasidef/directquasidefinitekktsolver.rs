@@ -73,7 +73,7 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
 
         // solving in sparse format.  Need this many
         // extra variables for SOCs
-        let p = 2 * cones.type_count(&SupportedCones::SecondOrderConeT);
+        let p = 2 * cones.type_count(&SupportedCones::SecondOrderConeT(0));
 
         // LHS/RHS/work for iterative refinement
         let x = vec![T::zero(); n + m + p];
@@ -274,7 +274,7 @@ where
         // update the scaled u and v columns.
         let mut cidx = 0; // which of the SOCs are we working on?
         for (i, cone) in cones.iter().enumerate() {
-            if cones.types[i] == SupportedCones::SecondOrderConeT {
+            if matches!(cones.types[i],SupportedCones::SecondOrderConeT(_)) {
                 //here we need to recover the inner SOC value for
                 //this cone so we can access its fields
 

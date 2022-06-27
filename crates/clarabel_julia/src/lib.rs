@@ -94,9 +94,7 @@ pub extern "C" fn solve(
     let q = q.to_slice().to_vec();
     let b = b.to_slice().to_vec();
 
-    let cone_types = [NonnegativeConeT];
-
-    let cone_dims = [b.len()];
+    let cone_types = [NonnegativeConeT(b.len())];
 
     let settings = SettingsBuilder::default()
         .equilibrate_enable(true)
@@ -106,7 +104,7 @@ pub extern "C" fn solve(
         .unwrap();
 
     //PJG: no borrow on settings sucks here
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cone_types, &cone_dims, settings);
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cone_types, settings);
 
     solver.solve();
 

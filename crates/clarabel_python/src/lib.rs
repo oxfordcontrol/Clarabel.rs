@@ -54,9 +54,8 @@ fn main() {
     #[pyfunction]
     #[pyo3(name = "solve")]
     fn solve_py(P: CscMatrixPy, q: Vec<f64>, A: CscMatrixPy, b: Vec<f64>) {
-        let cone_types = [NonnegativeConeT];
 
-        let cone_dims = [b.len()];
+        let cone_types = [NonnegativeConeT(b.len())];
 
         let settings = SettingsBuilder::default()
             .equilibrate_enable(true)
@@ -66,7 +65,7 @@ fn main() {
             .unwrap();
 
         //PJG: no borrow on settings sucks here
-        let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cone_types, &cone_dims, settings);
+        let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cone_types, settings);
 
         solver.solve();
     }

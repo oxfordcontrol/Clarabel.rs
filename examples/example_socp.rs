@@ -43,9 +43,7 @@ fn main() {
 
     let (P,q,A,b) = _problem_data();
 
-    let cone_types = [SecondOrderConeT];
-
-    let cone_dims  = [3];
+    let cone_types = [SecondOrderConeT(3)];
 
     let settings = SettingsBuilder::default()
             .equilibrate_enable(false)
@@ -55,7 +53,7 @@ fn main() {
 
     //PJG: no borrow on settings sucks here
     let mut solver = DefaultSolver::
-        new(&P,&q,&A,&b,&cone_types,&cone_dims, settings);
+        new(&P,&q,&A,&b,&cone_types, settings);
 
     solver.solve();
     

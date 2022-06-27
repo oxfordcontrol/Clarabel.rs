@@ -79,9 +79,9 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
         println!("  nnz(A)        = {}", data.A.nnz());
         println!("  cones (total) = {}", cones.len());
         //PJG: Completing printing stuff here.  Additional functions needed
-        _print_conedims_by_type(cones, SupportedCones::ZeroConeT);
-        _print_conedims_by_type(cones, SupportedCones::NonnegativeConeT);
-        _print_conedims_by_type(cones, SupportedCones::SecondOrderConeT);
+        _print_conedims_by_type(cones, SupportedCones::ZeroConeT(0));
+        _print_conedims_by_type(cones, SupportedCones::NonnegativeConeT(0));
+        _print_conedims_by_type(cones, SupportedCones::SecondOrderConeT(0));
         //_print_conedims_by_type(&cones, SupportedCones::PSDTriangleConeT); //PJG: SDP not implemented yet
         _print_settings(settings);
         println!();
@@ -311,7 +311,9 @@ fn _get_precision_string<T>() -> &'static str {
     "TBD" //PJG fix me.
 }
 
-fn _print_conedims_by_type<T: FloatT>(cones: &ConeSet<T>, conetype: SupportedCones) {
+//PJG: cone dimensions are now baked into SupportedCones<T>.  Maybe 
+//this function can be simplied.
+fn _print_conedims_by_type<T: FloatT>(cones: &ConeSet<T>, conetype: SupportedCones<T>) {
     let maxlistlen = 5;
 
     //skip if there are none of this type

@@ -12,7 +12,7 @@ use std::ops::Range;
 // -------------------------------------
 
 //AsAny is generic on T here, otherwise we get E0207 error
-//complaining that our impl<T,U> AsAny as an unconstrained
+//complaining that our impl<T,U> AsAny has an unconstrained
 //type parameter
 
 pub trait AsAny<T> {
@@ -27,17 +27,17 @@ impl<T, U: Any + Cone<T>> AsAny<T> for U {
 
 pub trait AnyCone<T>: Cone<T> + AsAny<T> {}
 impl<T, V: Cone<T> + AsAny<T>> AnyCone<T> for V {}
-
-// type BoxedCone<T> = Box<dyn AnyCone<T>>;
 type BoxedCone<T> = Box<dyn AnyCone<T>>;
 
 //PJG: translation of Julia in this function is
 //probably not the best way, plus it's not a dict now
-pub fn cone_dict<T: FloatT>(cone: SupportedCones, dim: usize) -> BoxedCone<T> {
+pub fn cone_dict<T: FloatT>(cone: SupportedCones<T>) -> BoxedCone<T> {
     match cone {
-        SupportedCones::NonnegativeConeT => Box::new(NonnegativeCone::<T>::new(dim)),
-        SupportedCones::ZeroConeT => Box::new(ZeroCone::<T>::new(dim)),
-        SupportedCones::SecondOrderConeT => Box::new(SecondOrderCone::<T>::new(dim)),
+        SupportedCones::NonnegativeConeT(dim) => Box::new(NonnegativeCone::<T>::new(dim)),
+        SupportedCones::ZeroConeT(dim) => Box::new(ZeroCone::<T>::new(dim)),
+        SupportedCones::SecondOrderConeT(dim) => Box::new(SecondOrderCone::<T>::new(dim)),
+        SupportedCones::PlaceHolderT(_, _) => unimplemented!(),
+        
     }
 }
 
@@ -49,8 +49,8 @@ pub struct ConeSet<T: FloatT = f64> {
     cones: Vec<BoxedCone<T>>,
 
     //Type tags and count of each cone
-    pub types: Vec<SupportedCones>,
-    pub type_counts: HashMap<SupportedCones, usize>,
+    pub types: Vec<SupportedCones<T>>,
+    pub type_counts: HashMap<SupportedCones<T>, usize>,
 
     //overall size of the composite cone
     numel: usize,
@@ -65,8 +65,8 @@ pub struct ConeSet<T: FloatT = f64> {
 }
 
 impl<T: FloatT> ConeSet<T> {
-    pub fn new(types: &[SupportedCones], dims: &[usize]) -> Self {
-        assert_eq!(types.len(), dims.len());
+
+    pub fn new(types: &[SupportedCones<T>]) -> Self {
 
         // make an internal copy to protect from user modification
         let types = types.to_vec();
@@ -74,8 +74,8 @@ impl<T: FloatT> ConeSet<T> {
         let mut cones: Vec<BoxedCone<T>> = Vec::with_capacity(ncones);
 
         // create cones with the given dims
-        for (dim, t) in dims.iter().zip(types.iter()) {
-            cones.push(cone_dict(*t, *dim));
+        for t in types.iter() {
+            cones.push(cone_dict(*t));
         }
 
         //  count the number of each cone type.
@@ -176,7 +176,7 @@ impl<T: FloatT> ConeSet<T> {
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, BoxedCone<T>> {
         self.cones.iter_mut()
     }
-    pub fn type_count(&self, conet: &SupportedCones) -> usize {
+    pub fn type_count(&self, conet: &SupportedCones<T>) -> usize {
         if self.type_counts.contains_key(conet) {
             self.type_counts[conet]
         } else {
