@@ -11,10 +11,7 @@ pub struct NonnegativeCone<T: FloatT = f64> {
     λ: Vec<T>,
 }
 
-impl<T> NonnegativeCone<T>
-where
-    T: FloatT,
-{
+impl<T: FloatT> NonnegativeCone<T> {
     pub fn new(dim: usize) -> Self {
         Self {
             dim,
@@ -128,8 +125,8 @@ where
     }
 
     fn step_length(&self, dz: &[T], ds: &[T], z: &[T], s: &[T]) -> (T, T) {
-        let mut αz = T::recip(T::epsilon());
-        let mut αs = T::recip(T::epsilon());
+        let mut αz = T::max_value();
+        let mut αs = T::max_value();
 
         assert_eq!(z.len(), s.len());
         assert_eq!(dz.len(), z.len());

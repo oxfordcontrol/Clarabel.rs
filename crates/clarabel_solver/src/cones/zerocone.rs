@@ -11,10 +11,7 @@ pub struct ZeroCone<T: FloatT = f64> {
     phantom: PhantomData<T>,
 }
 
-impl<T> ZeroCone<T>
-where
-    T:FloatT,
-{
+impl<T: FloatT> ZeroCone<T> {
     pub fn new(dim: usize) -> Self {
         Self {
             dim,
@@ -96,7 +93,7 @@ where
 
     fn step_length(&self, _dz: &[T], _ds: &[T], _z: &[T], _s: &[T]) -> (T, T) {
         //equality constraints allow arbitrary step length
-        let huge = T::recip(T::epsilon());
+        let huge = T::max_value();
         (huge, huge)
     }
 }
