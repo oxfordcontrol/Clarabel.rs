@@ -1,4 +1,4 @@
-import clarabel_python;
+import clarabel_python as clarabel;
 import numpy as np
 from scipy import sparse
 
@@ -9,4 +9,4 @@ q = np.array([1, 1])
 A = sparse.csc_matrix([[1, 1], [1, 0], [0, 1]])
 b = np.array([1, 1, 1])
 
-clarabel_python.solve(P,q,A,b)
+clarabel.solve(P,q,A,b)

@@ -6,6 +6,8 @@ use derive_builder::Builder;
 
 #[derive(Builder, Debug)]
 pub struct QDLDLSettings<T> 
+where 
+    T:FloatT
 {
     #[builder(default = "None", setter(strip_option))]
     perm: Option<Vec<usize>>,
@@ -28,7 +30,7 @@ impl<T: FloatT> Default for QDLDLSettings<T> {
 }
 
 #[derive(Debug)]
-pub struct QDLDLFactorisation<T: FloatT = f64> {
+pub struct QDLDLFactorisation<T = f64> {
     // permutation vector
     perm: Vec<usize>,
     // inverse permutation
@@ -210,7 +212,7 @@ fn _qdldl_new<T: FloatT>(
 }
 
 #[derive(Debug)]
-pub struct QDLDLWorkspace<T: FloatT = f64> {
+pub struct QDLDLWorkspace<T> {
     // internal workspace data
     etree: Vec<usize>,
     Lnz: Vec<usize>,

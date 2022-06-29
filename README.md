@@ -11,12 +11,10 @@ There are no checks at all on CSC constructor.   At least nzval and rowval shoul
 
 Use of underscores in private function names is totally inconsistent.   What is the usual style, e.g. for the rust float formatting internal functions?
 
-Check basic QP equilibration values (step through code)
-
 Change SolveResult to Solution and then SolveInfo back to Info.
 
-Remove trait bounds from struct definitions and keep in the impl only?   It is unclear whether it is really
-add value to put a generic f64 on all of these definitions.
+Remove FloatT strait bounds from struct definitions and keep in the impl only?   It is also unclear whether it is really
+adding value to put a generic f64 on all of these definitions.
 
 Printing functions should be a totally separate trait on DefaultSolveInfo, and should
 be separately implementable, or at the very least in a separate file.  Solver should require that both are implemented, then disabling printing amounts to declaring the trait to be empty or similar.
@@ -32,7 +30,7 @@ and
   impl<T:FloatT>
 Pick a lane here.
 
-The CscMatrix is defined as part of algebra crate, which means that both algebra and solver crates need to be separately imported in my python example.  It's not clear where the CscMatrix defintion should live.   Maybe algebra shouldn't be a separate crate, or  the whole collection of crates needs to be reexported somehow.
+The CscMatrix is defined as part of algebra crate, which means that both algebra and solver crates need to be separately imported in my python example.  It's not clear where the CscMatrix definition should live.   Maybe algebra shouldn't be a separate crate, or  the whole collection of crates needs to be reexported somehow.
 
 Remove lifetime annotation on KKTsolvers if they are still there.  At the moment I think KKTsolver object
 is taking a copy of the settings to support iterative refinement.
@@ -47,7 +45,7 @@ Maybe ConeSet<T> Should be DefaultCone<T> and should be placed into the default 
 
 kkt_fill and friends are taking a length index as the final argument, but this seems redundant.   Maybe it was there to facilitate a C version.
 
-Really confusing native methods implementation for CSC matrices.   What should nalgebra and others implement?   Should this go somewhere else?
+Really confusing native methods implementation for CSC matrices.   What should nalgebra and others implement?   Should this go somewhere else?   Maybe I just need a "SparseMatrix" or "Matrix" trait.
 
 Settings uses time_limit in Rust and max_time in Julia.   Or maybe time_limit is a bool   Very confusing in the settings print function.   Maybe this was just a bug in the no time limit case?   Fixed in Julia print maybe.   Perhaps Rust should use Option here.  
 
@@ -55,6 +53,12 @@ Settings uses time_limit in Rust and max_time in Julia.   Or maybe time_limit is
 maybe _offset_diagonal_KKT should be a method on a sparse matrix, rather than something implemented with the KKT solver code.   Could also add something like _assign_diagonal_KKT.   
 
 SupportedCones is really part of the default implementation's API, and not really part of the Cone trait that defines all of the required behaviours.   These should be separated I think.
+
+I want to remove trait bounds on struct definitions, but I can't do so completely because of this: 
+    struct Settings<T: FloatT>
+Settings must have FloatT as a bound so that Builder will work.   But then I must impose the same trait bound and everyhing that includes Settings as a field (and so on, recursively down).  This is a problem specifically with the KKTSolver that takes a copied Settings as an argument, which means that things like the QDLDL solver and associated sctructures are also getting this trait bound.
+
+Maybe the Settings in the KKTSolver should be a borrow with a lifetime, but I don't know how to implement this.
 
 Julia compat updates:
 ---------------------

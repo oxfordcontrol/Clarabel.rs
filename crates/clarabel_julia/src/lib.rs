@@ -22,7 +22,10 @@ pub struct VectorJl<T> {
     len: libc::size_t,
 }
 
-impl<T: std::clone::Clone + std::fmt::Debug> VectorJl<T> {
+impl<T> VectorJl<T> 
+where 
+    T: std::clone::Clone + std::fmt::Debug
+{
     fn to_slice(&self) -> &[T] {
         unsafe { slice::from_raw_parts(self.p, self.len as usize) }
     }
@@ -88,7 +91,9 @@ pub extern "C" fn solve(
     q: &VectorJl<f64>,
     A: &CscMatrixJl,
     b: &VectorJl<f64>,
-) -> f64 {
+) -> f64 
+
+{
     let P = P.to_CscMatrix();
     let A = A.to_CscMatrix();
     let q = q.to_slice().to_vec();

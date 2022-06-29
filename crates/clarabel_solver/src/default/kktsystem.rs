@@ -10,7 +10,7 @@ use clarabel_algebra::*;
 //DirectQuasidefiniteKKTSolver<T>/ Once settings is
 //removed there, it can be removed here as well.
 
-pub struct DefaultKKTSystem<T> {
+pub struct DefaultKKTSystem<T:FloatT> {
     //the KKT system solver
     //PJG: This is too concrete.   Should be trait based
     //types hierarchy and folders is super confusing
