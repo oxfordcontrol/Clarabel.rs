@@ -1,4 +1,4 @@
-use crate::Cone;
+use crate::cones::Cone;
 use clarabel_algebra::*;
 
 // -------------------------------------

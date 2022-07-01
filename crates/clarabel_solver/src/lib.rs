@@ -9,21 +9,17 @@
 // : core solver implementation and types 
 // : trait definitions for core components
 
+pub mod components;
 pub mod cones;
 pub mod kktsolvers;
 pub mod settings;
 pub mod solver;
-pub mod components;
 
-//re-export everything in a flat structure
-pub use cones::*;
-pub use kktsolvers::*;
+//flatten top level pieces
 pub use settings::*;
 pub use solver::*;
-pub use components::*;
 
 // include the default concrete implementation
 pub mod implementations;
-pub use implementations::default::*;
 
 

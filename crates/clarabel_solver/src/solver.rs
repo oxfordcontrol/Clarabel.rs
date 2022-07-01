@@ -1,4 +1,6 @@
 use crate::components::*;
+use crate::Settings;
+use crate::cones::Cone;
 use clarabel_timers::*;
 use clarabel_algebra::*;
 

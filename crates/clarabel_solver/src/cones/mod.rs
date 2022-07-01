@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use clarabel_algebra::MatrixShape;
+
 pub mod compositecone;
 pub mod nonnegativecone;
 pub mod socone;
@@ -9,8 +11,6 @@ pub use compositecone::*;
 pub use nonnegativecone::*;
 pub use socone::*;
 pub use zerocone::*;
-
-use clarabel_algebra::MatrixShape;
 
 pub trait Cone<T> {
     fn dim(&self) -> usize;
