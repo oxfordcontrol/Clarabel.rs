@@ -20,7 +20,7 @@ pub struct LDLDataMap {
 }
 
 impl LDLDataMap {
-    pub fn new<T: FloatT>(Pmat: &CscMatrix<T>, Amat: &CscMatrix<T>, cones: &ConeSet<T>) -> Self {
+    pub fn new<T: FloatT>(Pmat: &CscMatrix<T>, Amat: &CscMatrix<T>, cones: &CompositeCone<T>) -> Self {
         let (m, n) = (Amat.nrows(), Pmat.nrows());
         let P = vec![0; Pmat.nnz()];
         let A = vec![0; Amat.nnz()];

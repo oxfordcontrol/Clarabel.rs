@@ -6,10 +6,10 @@
 
 //PJG: some includes seem redundant
 use clarabel::algebra::*;
-use clarabel::solver::default::*;
+use clarabel::solver::implementations::default::*;
 use clarabel::solver::SupportedCones::*;
 use clarabel::solver::solver::IPSolver; //solve fails without this.  Should be easier
-use crate::settings::SettingsBuilder;  //shouldn't need to explicit import this
+use clarabel::solver::settings::SettingsBuilder;  //shouldn't need to explicit import this
 
 fn _problem_data() -> (CscMatrix<f64>,Vec<f64>,CscMatrix<f64>,Vec<f64>)
 {

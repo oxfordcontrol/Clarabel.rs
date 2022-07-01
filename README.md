@@ -3,7 +3,7 @@ To do:
 
 Check code against no_std
 
-ConeSet probably doesn't want to live in the cones directory, but rather to be the DefaultCone.   Maybe it could be CompositeCone and stay where it is.
+I have defined CompositeCone as a core cone type, and use this directly in the default implementation.  Maybe it should be DefaultCone === CompositeCone in that implementation though.   It also seems like the functions that populate the WtW block in the CompositeCone are implementation specific.   If so, these should be pulled out into DefaultCone.  Note Julia file structure and method names are no longer the same.
 
 Take only upper triangle of P in DefaultProblemData.   This means that something better than clone is required in the constructor.
 
@@ -41,7 +41,6 @@ Consider whether Settings can be made dependency only as well.   This should be 
 
 I am currently disassembling the cone index ranges in the KKT assembly function to pass the headidx to the different colcount and colfill functions, and then building the ranges again there.   Maybe could be improved.   [This might be fixed already?]
 
-Maybe ConeSet<T> Should be DefaultCone<T> and should be placed into the default implementation group.   Problem here because Julia uses slightly different method names.
 
 kkt_fill and friends are taking a length index as the final argument, but this seems redundant.   Maybe it was there to facilitate a C version.
 
@@ -59,6 +58,8 @@ I want to remove trait bounds on struct definitions, but I can't do so completel
 Settings must have FloatT as a bound so that Builder will work.   But then I must impose the same trait bound and everyhing that includes Settings as a field (and so on, recursively down).  This is a problem specifically with the KKTSolver that takes a copied Settings as an argument, which means that things like the QDLDL solver and associated sctructures are also getting this trait bound.
 
 Maybe the Settings in the KKTSolver should be a borrow with a lifetime, but I don't know how to implement this.
+
+The Ruiz equilibration is a method implemented in DefaultProblemData.  Maybe it should be associated with the DefaultEquilibration type instead.
 
 Julia compat updates:
 ---------------------

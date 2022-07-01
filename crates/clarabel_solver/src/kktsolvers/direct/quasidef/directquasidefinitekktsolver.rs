@@ -11,7 +11,7 @@ use crate::kktsolvers::direct::ldlsolvers::QDLDLDirectLDLSolver;
 use crate::kktsolvers::direct::utils::*;
 use crate::kktsolvers::direct::DirectLDLSolver;
 
-use std::ops::Range; 
+use std::ops::Range;
 
 // -------------------------------------
 // KKTSolver using direct LDL factorisation
@@ -61,7 +61,7 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
     pub fn new(
         P: &CscMatrix<T>,
         A: &CscMatrix<T>,
-        cones: &ConeSet<T>,
+        cones: &CompositeCone<T>,
         m: usize,
         n: usize,
         settings: &Settings<T>,
@@ -149,11 +149,11 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
 // end
 
 // update entries of the KKT matrix using the given index into its CSC representation.
-// applied to both the unpermuted matrix of the kktsolver and also to the ldlsolver 
+// applied to both the unpermuted matrix of the kktsolver and also to the ldlsolver
 fn _update_values<T:FloatT>(
-    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>, 
-    KKT: &mut CscMatrix<T>, 
-    index: &[usize], 
+    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>,
+    KKT: &mut CscMatrix<T>,
+    index: &[usize],
     values: &[T]
 ) {
     //Update values in the KKT matrix K
@@ -166,8 +166,8 @@ fn _update_values<T:FloatT>(
 }
 
 fn _update_values_KKT<T: FloatT>(
-    KKT: &mut CscMatrix<T>, 
-    index: &[usize], 
+    KKT: &mut CscMatrix<T>,
+    index: &[usize],
     values: &[T]
 ) {
     for (idx, v) in index.iter().zip(values.iter()) {
@@ -176,9 +176,9 @@ fn _update_values_KKT<T: FloatT>(
 }
 
 fn _scale_values<T: FloatT>(
-    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>, 
-    KKT: &mut CscMatrix<T>, 
-    index: &[usize], 
+    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>,
+    KKT: &mut CscMatrix<T>,
+    index: &[usize],
     scale: T
 ) {
     //Update values in the KKT matrix K
@@ -190,8 +190,8 @@ fn _scale_values<T: FloatT>(
 
 //scales KKT matrix values
 fn _scale_values_KKT<T: FloatT>(
-    KKT: &mut CscMatrix<T>, 
-    index: &[usize], 
+    KKT: &mut CscMatrix<T>,
+    index: &[usize],
     scale: T
 ) {
     for idx in index.iter() {
@@ -199,19 +199,19 @@ fn _scale_values_KKT<T: FloatT>(
     }
 }
 
-// offset diagonal entries of the KKT matrix over the Range 
+// offset diagonal entries of the KKT matrix over the Range
 // of inices passed.  Length of signs and index must agree
 fn _offset_diagonal<T: FloatT>(
-    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>, 
-    KKT: &mut CscMatrix<T>, 
-    index: Range<usize>, 
-    offset: T, 
+    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>,
+    KKT: &mut CscMatrix<T>,
+    index: Range<usize>,
+    offset: T,
     signs: &[i8]
 ) {
 
-    assert_eq!(index.len(),signs.len());   
-        
-    //Update values in the KKT matrix K.  Clone the 
+    assert_eq!(index.len(),signs.len());
+
+    //Update values in the KKT matrix K.  Clone the
     //index since I need it again on the next line
     _offset_diagonal_KKT(KKT, index.clone(), offset, signs);
 
@@ -226,13 +226,13 @@ fn _offset_diagonal_KKT<T: FloatT>(
     signs: &[i8],
 ) {
 
-    assert_eq!(index.len(),signs.len());  
+    assert_eq!(index.len(),signs.len());
 
     for (col,&sign) in index.zip(signs.iter()) {
 
         let sign = T::from_i8(sign).unwrap();
-        // in upper triangular form, the diagonal entries 
-        // should be the final entry within every column 
+        // in upper triangular form, the diagonal entries
+        // should be the final entry within every column
 
         let idx = KKT.colptr[col+1] - 1;
         assert_eq!(KKT.rowval[idx],col);
@@ -259,7 +259,7 @@ impl<T> KKTSolver<T> for DirectQuasidefiniteKKTSolver<T>
 where
     T: FloatT,
 {
-    fn update(&mut self, cones: &ConeSet<T>) {
+    fn update(&mut self, cones: &CompositeCone<T>) {
         let settings = &self.settings;
         let map = &self.map;
 
@@ -376,7 +376,7 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T>{
         let K = &self.KKT;
         let normb = b.norm_inf();
 
-        //compute the initial error 
+        //compute the initial error
         let mut norme = _get_refine_error(e, b, K, &self.dsigns, eps, x);
 
         for _ in 0..maxiter {
@@ -388,12 +388,12 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T>{
 
             let lastnorme = norme;
 
-            //make a refinement 
+            //make a refinement
             self.ldlsolver.solve(dx,e);
 
             //prospective solution is x + dx.  Use dx space to
             // hold it for a check before applying to x
-            dx.axpby(T::one(),x,T::one());  //now dx is really x + dx 
+            dx.axpby(T::one(),x,T::one());  //now dx is really x + dx
             norme = _get_refine_error(e,b,K,&self.dsigns,eps,dx);
 
             if lastnorme/norme < stopratio {
@@ -422,4 +422,3 @@ fn _get_refine_error<T:FloatT>(e: &mut [T],b: &[T], K: &CscMatrix<T>, dsigns: &[
 
     e.norm_inf()
 }
-

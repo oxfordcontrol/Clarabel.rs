@@ -7,7 +7,6 @@
 //PJG: some includes seem redundant
 use clarabel::algebra::*;
 use clarabel::solver::*;
-use crate::default::DefaultSolver;
 use clarabel::solver::SupportedCones::*;
 use clarabel::solver::solver::IPSolver; //solve fails without this.  Should be easier
 use clarabel::solver::settings::SettingsBuilder;  //shouldn't need to explicit import this

@@ -11,7 +11,7 @@ categories = ["optimization"]
 
 [dependencies]
 clarabel_algebra = {path = "../clarabel_algebra"}
-clarabel_qdldl   = {path = "../clarabel_qdldl"}
 clarabel_timers  = {path = "../clarabel_timers"}
+clarabel_qdldl   = {path = "../clarabel_qdldl"}
 num-traits = "0.2"
 derive_builder = "0.11"

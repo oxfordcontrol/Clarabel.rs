@@ -5,7 +5,7 @@ use crate::cones::*;
 use clarabel_algebra::*;
 use num_traits::Zero;
 
-pub fn _allocate_kkt_WtW_blocks<T, Z>(cones: &ConeSet<T>) -> Vec<Z>
+pub fn _allocate_kkt_WtW_blocks<T, Z>(cones: &CompositeCone<T>) -> Vec<Z>
 where
     T: FloatT,
     Z: Zero + Clone,
@@ -20,7 +20,7 @@ where
 pub fn _assemble_kkt_matrix<T: FloatT>(
     P: &CscMatrix<T>,
     A: &CscMatrix<T>,
-    cones: &ConeSet<T>,
+    cones: &CompositeCone<T>,
     shape: MatrixTriangle,
 ) -> (CscMatrix<T>, LDLDataMap) {
     let (m, n) = (A.nrows(), P.nrows());
@@ -63,7 +63,7 @@ fn _kkt_assemble_colcounts<T: FloatT>(
     K: &mut CscMatrix<T>,
     P: &CscMatrix<T>,
     A: &CscMatrix<T>,
-    cones: &ConeSet<T>,
+    cones: &CompositeCone<T>,
     mnp: (usize, usize, usize),
     shape: MatrixTriangle,
 ) {
@@ -133,7 +133,7 @@ fn _kkt_assemble_fill<T: FloatT>(
     maps: &mut LDLDataMap,
     P: &CscMatrix<T>,
     A: &CscMatrix<T>,
-    cones: &ConeSet<T>,
+    cones: &CompositeCone<T>,
     mnp: (usize, usize, usize),
     shape: MatrixTriangle,
 ) {

@@ -1,60 +1,16 @@
 #![allow(non_snake_case)]
-pub mod coneset;
+
+pub mod compositecone;
 pub mod nonnegativecone;
 pub mod socone;
 pub mod zerocone;
-pub use coneset::*;
+
+pub use compositecone::*;
 pub use nonnegativecone::*;
 pub use socone::*;
 pub use zerocone::*;
 
-use clarabel_algebra::*;
-
-use core::hash::{Hash, Hasher};
-use std::{cmp::PartialEq, mem::discriminant};
-
-#[derive(Debug, Clone, Copy)]
-pub enum SupportedCones<T> {
-    ZeroConeT(usize),        // params: cone_dim
-    NonnegativeConeT(usize), // params: cone_dim
-    SecondOrderConeT(usize), // params: cone_dim
-    PlaceHolderT(usize, T),  // params: cone_dim, exponent
-}
-
-impl<T> SupportedCones<T> {
-    pub fn variant_name(&self) -> &'static str {
-        match self {
-            SupportedCones::ZeroConeT(_) => "ZeroConeT",
-            SupportedCones::NonnegativeConeT(_) => "NonnegativeConeT",
-            SupportedCones::SecondOrderConeT(_) => "SecondOrderConeT",
-            SupportedCones::PlaceHolderT(_, _) => "PlaceHolderConeT",
-        }
-    }
-}
-
-impl<T: FloatT> std::fmt::Display for SupportedCones<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", &self.variant_name().to_string())
-    }
-}
-
-// we will use the SupportedCones as a user facing marker
-// for the constraint types, and then map them through
-// a dictionary to get the internal cone representations.
-// we will also make a HashMap of cone type counts, so need
-// to define custom hashing and comparator ops
-impl<T> Eq for SupportedCones<T> {}
-impl<T> PartialEq for SupportedCones<T> {
-    fn eq(&self, other: &Self) -> bool {
-        discriminant(self) == discriminant(other)
-    }
-}
-
-impl<T> Hash for SupportedCones<T> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        discriminant(self).hash(state);
-    }
-}
+use clarabel_algebra::MatrixShape;
 
 pub trait Cone<T> {
     fn dim(&self) -> usize;

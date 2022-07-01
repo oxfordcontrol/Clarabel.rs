@@ -1,6 +1,6 @@
-use crate::*;
-use clarabel_algebra::*;
+use crate::components::*;
 use clarabel_timers::*;
+use clarabel_algebra::*;
 
 pub struct Solver<D, V, R, K, SI, SR, C, S> {
     pub data: D,
