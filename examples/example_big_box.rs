@@ -5,11 +5,9 @@
 //at a common module level
 
 //PJG: some includes seem redundant
-use clarabel::algebra::*;
+use clarabel::core::*;
 use clarabel::implementations::default::*;
-use clarabel::cones::SupportedCones::*;
-use clarabel::solver::IPSolver; //solve fails without this.  Should be easier
-use clarabel::settings::SettingsBuilder;  //shouldn't need to explicit import this
+
 
 fn _problem_data() -> (CscMatrix<f64>,Vec<f64>,CscMatrix<f64>,Vec<f64>)
 {

@@ -1,16 +1,8 @@
 #![allow(non_snake_case)]
 
-//PJG: Don't understand how to make the import just "algebra" here.
-//PJG: Somehow need to bundle all default solver types and re-export
-//at a common module level
+use clarabel::core::*;
+use clarabel::implementations::default::*;
 
-//PJG: some includes seem redundant
-use clarabel::algebra::*;
-use clarabel::solver::*;
-
-use clarabel::solver::SupportedCones::*;
-use clarabel::solver::solver::IPSolver; //solve fails without this.  Should be easier
-use clarabel::solver::settings::SettingsBuilder;  //shouldn't need to explicit import this
 
 fn _problem_data() -> (CscMatrix<f64>,Vec<f64>,CscMatrix<f64>,Vec<f64>)
 {
