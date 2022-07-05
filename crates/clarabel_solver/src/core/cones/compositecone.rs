@@ -1,5 +1,4 @@
 use super::*;
-use crate::cones::Cone;
 use clarabel_algebra::*;
 use std::any::Any;
 use std::collections::HashMap;

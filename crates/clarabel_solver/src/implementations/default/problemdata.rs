@@ -1,8 +1,10 @@
 #![allow(non_snake_case)]
 use super::*;
-use crate::Settings;
-use crate::cones::{Cone,CompositeCone};
-use crate::components::ProblemData;
+use crate::core::{
+    Settings,
+    cones::{Cone,CompositeCone}, 
+    components::ProblemData,
+};
 use clarabel_algebra::*;
 
 // ---------------

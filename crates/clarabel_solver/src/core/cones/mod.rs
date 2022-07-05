@@ -2,11 +2,12 @@
 
 use clarabel_algebra::MatrixShape;
 
-pub mod compositecone;
-pub mod nonnegativecone;
-pub mod socone;
-pub mod zerocone;
+mod compositecone;
+mod nonnegativecone;
+mod socone;
+mod zerocone;
 
+//flatten all cone implementations to appear in this module
 pub use compositecone::*;
 pub use nonnegativecone::*;
 pub use socone::*;

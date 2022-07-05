@@ -1,4 +1,4 @@
-use crate::cones::Cone;
+use super::Cone;
 use clarabel_algebra::*;
 use core::marker::PhantomData;
 

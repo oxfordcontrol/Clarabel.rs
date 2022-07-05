@@ -1,10 +1,11 @@
-//PJG: includes are terrible here
 use super::*;
-use crate::kktsolvers::direct::*;
-use crate::kktsolvers::*;
-use crate::Settings;
-use crate::components::KKTSystem;
-use crate::cones::*;
+use crate::core::{
+    Settings,
+    components::KKTSystem,
+    cones::{Cone,CompositeCone},
+    kktsolvers::{*,direct::*}
+};
+
 use clarabel_algebra::*;
 
 //PJG: Need to explicitly give T:FloatT bound here
@@ -94,7 +95,7 @@ where
         data: &DefaultProblemData<T>,
         variables: &DefaultVariables<T>,
         cones: &CompositeCone<T>,
-        steptype: &str,
+        steptype: &'static str,
     ) {
         let (x1, z1) = (&mut self.x1, &mut self.z1);
         let (x2, z2) = (&self.x2, &self.z2); //from constant solve, so not mut

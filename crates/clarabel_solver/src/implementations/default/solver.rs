@@ -1,11 +1,15 @@
 use super::*;
-use crate::{Settings,Solver};
-use crate::cones::{CompositeCone,SupportedCones};
-use crate::components::ProblemData;
+
+use crate::core::{
+    Settings,Solver,
+    cones::{CompositeCone,SupportedCones},
+    components::ProblemData};
+
 use clarabel_algebra::*;
 use clarabel_timers::*;
 
-pub type DefaultSolver<T = f64> = Solver<
+pub type DefaultSolver<T = f64> = 
+Solver<
     DefaultProblemData<T>,
     DefaultVariables<T>,
     DefaultResiduals<T>,

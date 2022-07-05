@@ -1,19 +1,16 @@
-pub mod datamap;
-pub mod directquasidefinitekktsolver;
-pub mod ldlsolvers;
-pub mod utils;
-
-
-//PJG: Should I really re-export here?
-pub use datamap::*;
-pub use directquasidefinitekktsolver::*;
-pub use ldlsolvers::*;
-pub use utils::*;
-
 use clarabel_algebra::*;
 use std::ops::Range; 
 
-//PJG: includes WTF
+//ldl linear solvers kept in a submodule (not flattened) 
+pub mod ldlsolvers;
+
+//flatten direct KKT module structure
+mod datamap;
+mod directquasidefinitekktsolver;
+mod utils;
+pub use directquasidefinitekktsolver::*;
+pub use datamap::*;
+pub use utils::*;
 
 pub trait DirectLDLSolver<T: FloatT> {
     fn update_values(&mut self, index: &[usize], values: &[T]);

@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 use super::*;
-use crate::cones::*;
-use clarabel_algebra::*;
+use crate::core::cones::{CompositeCone,SupportedCones};
 
 pub struct LDLDataMap {
     pub P: Vec<usize>,

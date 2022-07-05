@@ -3,6 +3,10 @@ To do:
 
 Check code against no_std
 
+Bug discovered in the offset_diagonal KKT code in Julia, making me realize the whole thing was fundamentally broken.   Julia is now fixed - go back to fix in Rust.
+
+Should KKT solver operate on CompositeCone or Cone?
+
 I have defined CompositeCone as a core cone type, and use this directly in the default implementation.  Maybe it should be DefaultCone === CompositeCone in that implementation though.   It also seems like the functions that populate the WtW block in the CompositeCone are implementation specific.   If so, these should be pulled out into DefaultCone.  Note Julia file structure and method names are no longer the same.
 
 Take only upper triangle of P in DefaultProblemData.   This means that something better than clone is required in the constructor.
@@ -53,7 +57,7 @@ maybe _offset_diagonal_KKT should be a method on a sparse matrix, rather than so
 
 SupportedCones is really part of the default implementation's API, and not really part of the Cone trait that defines all of the required behaviours.   These should be separated I think.
 
-I want to remove trait bounds on struct definitions, but I can't do so completely because of this: 
+I want to remove trait bounds on struct definitions, but I can't do so completely because of this:
     struct Settings<T: FloatT>
 Settings must have FloatT as a bound so that Builder will work.   But then I must impose the same trait bound and everyhing that includes Settings as a field (and so on, recursively down).  This is a problem specifically with the KKTSolver that takes a copied Settings as an argument, which means that things like the QDLDL solver and associated sctructures are also getting this trait bound.
 
@@ -63,6 +67,8 @@ The Ruiz equilibration is a method implemented in DefaultProblemData.  Maybe it 
 
 Julia compat updates:
 ---------------------
+
+Coneset should be removed in favor of compositecone.  Also need to get rid of ConicVector.
 
 Removed data as an argument to aff/combined RHS calcs.   Removed a few other unused params for other top level functions (settings?   Should have written it down.)
 
@@ -84,3 +90,14 @@ I moved the timers into the main solver struct and out of info.  The info struct
 to provide timing facilities for main solver internals.
 
 Final few steps of main solver loop are slightly reordered to facilitate printing etc.   Go back to Julia and make it the same sequence.
+
+Julia function scaling_update! in variables.jl is named something like variables_scale_cones in the Rust version.
+
+Add MKL / Cholmod / SDP tests
+
+
+Experiment with split step lengths for primal/dual vars?
+
+I removed old refactorization unit tests from QDLDL.   Add these back to test new update/scale/shift functions.
+
+Merge QDLDL commit from other use, but need to unpick update values test that he added.

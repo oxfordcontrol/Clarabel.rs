@@ -1,10 +1,9 @@
 #![allow(non_snake_case)]
-use crate::kktsolvers::direct::DirectLDLSolver;
-use crate::Settings;
+use super::super::DirectLDLSolver;
+use crate::core::Settings;
 use clarabel_algebra::*;
 use clarabel_qdldl::*;
 use std::ops::Range;
-//PJG: includes WTF
 
 pub struct QDLDLDirectLDLSolver<T> {
 

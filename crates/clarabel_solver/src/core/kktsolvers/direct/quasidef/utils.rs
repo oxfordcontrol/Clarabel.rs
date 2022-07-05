@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use super::datamap::*;
-use crate::cones::*;
+use crate::core::cones::{CompositeCone,SupportedCones};
 use clarabel_algebra::*;
 use num_traits::Zero;
 
@@ -24,7 +24,7 @@ pub fn _assemble_kkt_matrix<T: FloatT>(
     shape: MatrixTriangle,
 ) -> (CscMatrix<T>, LDLDataMap) {
     let (m, n) = (A.nrows(), P.nrows());
-    let n_socs = cones.type_count("SupportedConeT");
+    let n_socs = cones.type_count("SecondOrderConeT");
     let p = 2 * n_socs;
 
     let mut maps = LDLDataMap::new(P, A, cones);

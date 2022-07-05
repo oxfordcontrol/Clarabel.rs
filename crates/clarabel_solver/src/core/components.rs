@@ -1,5 +1,4 @@
-use crate::cones::Cone;
-use crate::Settings;
+use super::{cones::Cone, Settings};
 use clarabel_algebra::*;
 use clarabel_timers::*;
 
@@ -82,7 +81,7 @@ pub trait KKTSystem<T: FloatT> {
         data: &Self::D,
         variables: &Self::V,
         cones: &Self::C,
-        steptype: &str,
+        steptype: &'static str,
     );
 
     fn solve_initial_point(&mut self, variables: &mut Self::V, data: &Self::D);

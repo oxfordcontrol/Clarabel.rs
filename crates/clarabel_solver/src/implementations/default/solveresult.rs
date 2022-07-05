@@ -1,5 +1,5 @@
 use super::*;
-use crate::components::{SolverStatus,SolveResult};
+use crate::core::components::{SolverStatus,SolveResult};
 use clarabel_algebra::*;
 
 pub struct DefaultSolveResult<T> {

@@ -1,14 +1,15 @@
 #![allow(non_snake_case)]
 
-pub mod equilibration;
-pub mod kktsystem;
-pub mod problemdata;
-pub mod residuals;
-pub mod solveinfo;
-pub mod solveresult;
-pub mod variables;
-pub mod solver;
+mod equilibration;
+mod kktsystem;
+mod problemdata;
+mod residuals;
+mod solveinfo;
+mod solveresult;
+mod variables;
+mod solver;
 
+//export flattened
 pub use equilibration::*;
 pub use kktsystem::*;
 pub use problemdata::*;

@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use super::*;
-use crate::components::Residuals;
+use crate::core::components::Residuals;
 use clarabel_algebra::*;
 
 // ---------------

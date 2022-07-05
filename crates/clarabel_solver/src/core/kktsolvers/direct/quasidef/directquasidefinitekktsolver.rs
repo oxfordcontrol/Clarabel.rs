@@ -1,15 +1,14 @@
 #![allow(non_snake_case)]
 
-//PJG: Includes WTF?
-use crate::cones::*;
-use crate::kktsolvers::KKTSolver;
-use crate::settings::*;
+use crate::core::{
+    cones::*,
+    kktsolvers::KKTSolver,
+    Settings};
 use clarabel_algebra::*;
-//use crate::kktsolvers::direct_ldl::*; //PJG:This is a horrendous include
-use crate::kktsolvers::direct::datamap::*;
-use crate::kktsolvers::direct::ldlsolvers::QDLDLDirectLDLSolver;
-use crate::kktsolvers::direct::utils::*;
-use crate::kktsolvers::direct::DirectLDLSolver;
+
+use super::*;
+use super::ldlsolvers::{
+    qdldl::*};
 
 use std::ops::Range;
 
@@ -90,7 +89,7 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
         let WtWblocks = _allocate_kkt_WtW_blocks::<T, T>(cones);
 
         // which LDL solver should I use?
-        //PJG: commented out and QDLDL harcodded for now
+        //PJG: commented out and QDLDL hardcoded for now
         // ldlsolverT = _get_ldlsolver_type(settings.direct_solve_method);
 
         //PJG: hardcoding shape

@@ -1,7 +1,10 @@
 use super::*;
-use crate::cones::{CompositeCone,SupportedCones};
-use crate::Settings;
-use crate::components::{SolverStatus,SolveInfo};
+use crate::core::{
+    Settings,
+    cones::{CompositeCone,SupportedCones},
+    components::{SolverStatus,SolveInfo},
+};
+
 use clarabel_algebra::*;
 use clarabel_timers::Timers;
 use std::time::Duration;

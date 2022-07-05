@@ -1,6 +1,5 @@
-use crate::components::*;
-use crate::Settings;
-use crate::cones::Cone;
+use super::{Settings, cones::Cone};
+use super::components::*;
 use clarabel_timers::*;
 use clarabel_algebra::*;
 

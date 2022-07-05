@@ -1,5 +1,6 @@
-use crate::cones::*;
+use super::cones::CompositeCone;
 use clarabel_algebra::*;
+
 pub mod direct;
 
 pub trait KKTSolver<T: FloatT> {
