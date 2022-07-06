@@ -138,7 +138,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
             "-----------------------------------------------------------------------------------"
         );
 
-        //PJG: not solver status string formatting available yet
+        //PJG: no solver status string formatting available yet
         println!("Terminated with status = {}", self.status);
 
         println!("solve time = {:?}", self.solve_time);
@@ -257,7 +257,7 @@ fn _print_settings<T: FloatT>(settings: &Settings<T>) {
     println!("settings:");
 
     if set.direct_kkt_solver {
-        println!("  linear algebra: direct / TBD, precision: TBD");
+        println!("  linear algebra: direct / TBD, precision: {} bit",  _get_precision_string::<T>());
         //set.direct_solve_method, _get_precision_string<T>());
     }
 
@@ -313,8 +313,8 @@ fn _print_settings<T: FloatT>(settings: &Settings<T>) {
     println!("               max iter = {}", set.equilibrate_max_iter,);
 }
 
-fn _get_precision_string<T>() -> &'static str {
-    "TBD" //PJG fix me.
+fn _get_precision_string<T: FloatT>() -> String {
+    (::std::mem::size_of::<T>()*8).to_string()
 }
 
 //PJG: cone dimensions are now baked into SupportedCones<T>.  Maybe

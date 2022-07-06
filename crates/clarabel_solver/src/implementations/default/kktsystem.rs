@@ -198,9 +198,8 @@ where
     T: FloatT,
 {
     fn solve_constant_rhs(&mut self, data: &DefaultProblemData<T>) {
-        //PJG: Don't think I can change just signs here as I was doing
-        //here in Julia.   Probably this is an alloc in Julia
-        self.workx.axpby(-T::one(), &data.q, T::zero()); //workx = -q
+        
+        self.workx.axpby(-T::one(), &data.q, T::zero()); //workx .= -q
         self.kktsolver.setrhs(&self.workx, &data.b);
         self.kktsolver.solve(Some(&mut self.x2), Some(&mut self.z2));
     }
