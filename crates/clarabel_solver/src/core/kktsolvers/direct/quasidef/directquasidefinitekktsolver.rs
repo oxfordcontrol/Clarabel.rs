@@ -92,7 +92,7 @@ impl<T: FloatT> DirectQuasidefiniteKKTSolver<T> {
         //PJG: commented out and QDLDL hardcoded for now
         // ldlsolverT = _get_ldlsolver_type(settings.direct_solve_method);
 
-        //PJG: hardcoding shape
+        //PJG: hardcoding shape since only 1 solver is supported so far
         // does it want a :triu or :tril KKT matrix?
         //kktshape = required_matrix_shape(ldlsolverT);
         let kktshape = MatrixTriangle::Triu;
