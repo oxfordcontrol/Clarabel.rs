@@ -11,9 +11,15 @@ use std::time::Duration;
 
 //PJG: do all of these need to be pub?  Used in finalization, for example
 
+//PJG: does this really need to be macro?
 macro_rules! expformat {
     ($fmt:expr,$val:expr) => {
-        _exp_str_reformat(format!($fmt, $val))
+        if $val.is_normal() {
+            _exp_str_reformat(format!($fmt, $val))
+        }
+        else {
+            format!($fmt, $val)
+        }
     };
 }
 
@@ -365,11 +371,12 @@ fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: Suppor
 }
 
 // convert a string in LowerExp display format into
-// one that 1) always as a sign after the exponent,
+// one that 1) always has a sign after the exponent,
 // and 2) has at least two digits in the exponent.
 // This matches the Julia output formatting.
 
 fn _exp_str_reformat(mut thestr: String) -> String {
+
     // Safe to `unwrap` as `num` is guaranteed to contain `'e'`
     let eidx = thestr.find('e').unwrap();
     let has_sign = thestr.chars().nth(eidx + 1).unwrap() == '-';

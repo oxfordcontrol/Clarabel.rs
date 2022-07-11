@@ -1,46 +1,41 @@
 using SparseArrays
-using Clarabel
-using TimerOutputs
 
 include("./types.jl")
 include("./clarabel_rs.jl")
 
+using Clarabel
+using TimerOutputs
+
 using Random
 Random.seed!(1234)
 
-n = 2000
+P = sparse([3. 1.;1. 2.].*2)
+q = [-1., -4.]
+A = sparse([1.  0.;    #<-- LHS of inequality constraint (upper bound)
+            0.  1.;    #<-- LHS of inequality constraint (upper bound)
+           -1.  0.;    #<-- LHS of inequality constraint (lower bound)
+            0. -1.;    #<-- LHS of inequality constraint (lower bound)
+            ])
 
-P = sparse(I(n)).*1.
-P = triu(P)
-q = ones(n)
-A = [I(n);-I(n)].*1.
-b = ones(2*n)
+b = [ones(4);   #<-- RHS of inequality constraints
+    ]
 
-m = 2*n;
-P = sprandn(n,n,0.05)
-P = P+P';
-d = sum(abs.(P),dims=1);
-P = P + Diagonal(d[:]);
-P = triu(P);
-A = sprandn(m,n,0.05);
-b = ones(m)
-q = randn(n)
+    cones =
+    [Clarabel.NonnegativeConeT(4)]    #<--- for the inequality constraints
 
-println("\n\nLaunching Julia\n-----------------")
+
+println("\n\n Calling Julia implementation\n-----------------")
 TimerOutputs.enable_debug_timings(Clarabel)
-settings = Clarabel.Settings(max_iter = 0, verbose = true)
+settings = Clarabel.Settings(max_iter = 20, verbose = true)
 solver   = Clarabel.Solver(settings)
-cone_types = [Clarabel.NonnegativeConeT]
-cone_dims = [m]
 
-Clarabel.setup!(solver, P, q, A, b, cone_types, cone_dims)
+Clarabel.setup!(solver, P, q, A, b, cones)
 result = Clarabel.solve!(solver)
 print(solver.info.timer) 
 
-println("\n\nLaunching Rust\n-----------------")
+println("\n\n Calling Rust implementation Rust\n-----------------")
 
-solve_time = solve_rs(solver, P, q, A, b, cone_types, cone_dims)
+solve_time = solve_rs((P), q, A, b, cones)
 
 
 
-print(solver.info.timer) 

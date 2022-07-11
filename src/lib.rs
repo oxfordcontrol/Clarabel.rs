@@ -1,2 +1,2 @@
-pub use clarabel_internal::*;
+pub use clarabel_api::*;
 

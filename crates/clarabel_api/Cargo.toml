@@ -1,10 +1,10 @@
 [package]
-name = "clarabel_internal"
+name = "clarabel_api"
 version = "0.1.0"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 license = "Apache-2.0"
-description = "Internal crate to facilitate crate and module organisation"
+description = "Crate to export a reorganized set of API modules for users"
 keywords = ["optimization", "math"]
 categories = ["optimization"]
 
@@ -13,4 +13,3 @@ clarabel_algebra = {path = "../clarabel_algebra"}
 clarabel_qdldl   = {path = "../clarabel_qdldl"}
 clarabel_solver  = {path = "../clarabel_solver"}
 clarabel_timers  = {path = "../clarabel_timers"}
-

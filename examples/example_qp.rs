@@ -34,16 +34,15 @@ fn main() {
 
     let (P,q,A,b) = _problem_data();
 
-    let cone_types = [ZeroConeT(1), NonnegativeConeT(4)];
+    let cones = [ZeroConeT(1), NonnegativeConeT(4)];
 
     let settings = SettingsBuilder::default()
             .equilibrate_enable(true)
             .max_iter(50)
             .build().unwrap();
 
-    //PJG: no borrow on settings sucks here
     let mut solver = DefaultSolver::
-            new(&P,&q,&A,&b, &cone_types, settings);
+            new(&P,&q,&A,&b, &cones, settings);
 
     solver.solve();
 

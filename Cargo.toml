@@ -13,7 +13,7 @@ categories = ["optimization"]
 members = ["crates/*"]
 
 [dependencies]
-clarabel_internal = {path = "crates/clarabel_internal"}
+clarabel_api = {path = "crates/clarabel_api"}
 
 [profile.release]
 debug = true
