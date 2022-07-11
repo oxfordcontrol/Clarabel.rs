@@ -2,10 +2,10 @@ use num_traits::{Float, FromPrimitive, NumAssign};
 
 // PJG: This needs to be configurable
 // Here we specify the particular algebra implementation
-pub mod native;
+mod native;
 pub use native::*;
 
-pub mod cscmatrix;
+mod cscmatrix;
 pub use cscmatrix::*;
 
 pub trait FloatT:

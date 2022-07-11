@@ -2,18 +2,14 @@
 #![allow(non_snake_case)]
 use std::slice;
 
-use clarabel_internal as clarabel;
-
-// PJG: probably need better re-export here so only clarabel::* suffices.
-// PJG: this "solver::solver" stuff sucks here.
-//Not sure I understand why "algebra" even works here
-use algebra::*;
-use clarabel::qdldl::*;
-use clarabel::solver::default::*;
-use clarabel::solver::settings::*;
-use clarabel::solver::solver::IPSolver;
-use clarabel::solver::SupportedCones::*;
-use clarabel::*;
+//julia interface require some access to solver internals, 
+//so just use the internal crate definitions instead of the API.
+use clarabel_algebra as algebra;
+use clarabel_solver  as solver;
+use algebra::CscMatrix;
+use solver::implementations::default::*;
+use solver::core::{cones::SupportedCones::*, 
+                   IPSolver,Settings,SettingsBuilder};
 
 #[repr(C)]
 #[derive(Debug)]
@@ -99,17 +95,22 @@ pub extern "C" fn solve(
     let q = q.to_slice().to_vec();
     let b = b.to_slice().to_vec();
 
-    let cone_types = [NonnegativeConeT(b.len())];
+    let cones = [NonnegativeConeT(b.len())];
+
+    println!("P = {:?}",P);
+    println!("A = {:?}",A);
+    println!("q = {:?}",q);
+    println!("b = {:?}",b);
 
     let settings = SettingsBuilder::default()
         .equilibrate_enable(true)
-        .max_iter(0)
+        .max_iter(20)
         .verbose(true)
         .build()
         .unwrap();
 
     //PJG: no borrow on settings sucks here
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cone_types, settings);
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
 
     solver.solve();
 

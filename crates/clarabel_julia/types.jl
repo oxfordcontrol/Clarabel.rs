@@ -4,7 +4,7 @@ using Random
 struct VectorRs{T<:Real}
 
     p::Ptr{T}
-    len::UInt64
+    len::UInt64 
 
     function VectorRs(v::Vector{T}) where{T}
         p = Base.unsafe_convert(Ptr{T},v)

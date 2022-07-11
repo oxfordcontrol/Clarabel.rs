@@ -1,17 +1,15 @@
 [package]
-name = "clarabel_solver"
+name = "clarabel_api"
 version = "0.1.0"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 license = "Apache-2.0"
-description = "Clarabel Conic Interior Point Solver"
-readme = "README.md"
+description = "Crate to export a reorganized set of API modules for users"
 keywords = ["optimization", "math"]
 categories = ["optimization"]
 
 [dependencies]
 clarabel_algebra = {path = "../clarabel_algebra"}
-clarabel_timers  = {path = "../clarabel_timers"}
 clarabel_qdldl   = {path = "../clarabel_qdldl"}
-num-traits = "0.2"
-derive_builder = "0.11"
+clarabel_solver  = {path = "../clarabel_solver"}
+clarabel_timers  = {path = "../clarabel_timers"}

@@ -1,16 +1,7 @@
 #![allow(non_snake_case)]
 
-//PJG: Don't understand how to make the import just "algebra" here.
-//PJG: Somehow need to bundle all default solver types and re-export
-//at a common module level
-
-//PJG: some includes seem redundant
-use clarabel::algebra::*;
-use clarabel::solver::*;
-use crate::default::DefaultSolver;
-use clarabel::solver::SupportedCones::*;
-use clarabel::solver::solver::IPSolver; //solve fails without this.  Should be easier
-use clarabel::solver::settings::SettingsBuilder;  //shouldn't need to explicit import this
+use clarabel::core::*;
+use clarabel::implementations::default::*;
 
 fn _problem_data() -> (CscMatrix<f64>,Vec<f64>,CscMatrix<f64>,Vec<f64>)
 {
@@ -43,7 +34,7 @@ fn main() {
 
     let (P,q,A,b) = _problem_data();
 
-    let cone_types = [SecondOrderConeT(3)];
+    let cones = [SecondOrderConeT(3)];
 
     let settings = SettingsBuilder::default()
             .equilibrate_enable(false)
@@ -51,9 +42,8 @@ fn main() {
             .verbose(true)
             .build().unwrap();
 
-    //PJG: no borrow on settings sucks here
     let mut solver = DefaultSolver::
-        new(&P,&q,&A,&b,&cone_types, settings);
+        new(&P,&q,&A,&b,&cones, settings);
 
     solver.solve();
     
