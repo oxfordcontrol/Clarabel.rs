@@ -136,7 +136,7 @@ impl<T: FloatT> DirectLDLKKTSolver<T> {
     }
 }
 
-//PJG: Switching not supported yet.   Fix this.
+//PJG: Reconfigurable not supported yet.   
 // function _get_ldlsolver_type(s::Symbol)
 //     try
 //         return DirectLDLSolversDict[s]

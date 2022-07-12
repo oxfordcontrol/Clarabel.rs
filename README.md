@@ -3,8 +3,6 @@ To do:
 
 Check code against no_std
 
-Bug discovered in the offset_diagonal KKT code in Julia, making me realize the whole thing was fundamentally broken.   Julia is now fixed - go back to fix in Rust.
-
 Should KKT solver operate on CompositeCone or Cone?
 
 I have defined CompositeCone as a core cone type, and use this directly in the default implementation.  Maybe it should be DefaultCone === CompositeCone in that implementation though.   It also seems like the functions that populate the WtW block in the CompositeCone are implementation specific.   If so, these should be pulled out into DefaultCone.  Note Julia file structure and method names are no longer the same.
@@ -52,8 +50,6 @@ Really confusing native methods implementation for CSC matrices.   What should n
 
 Settings uses time_limit in Rust and max_time in Julia.   Or maybe time_limit is a bool   Very confusing in the settings print function.   Maybe this was just a bug in the no time limit case?   Fixed in Julia print maybe.   Perhaps Rust should use Option here.  
 
-
-maybe _offset_diagonal_KKT should be a method on a sparse matrix, rather than something implemented with the KKT solver code.   Could also add something like _assign_diagonal_KKT.   
 
 SupportedCones is really part of the default implementation's API, and not really part of the Cone trait that defines all of the required behaviours.   These should be separated I think.
 
