@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 use clarabel_algebra::*;
 use core::cmp::{max, min};
-use std::ops::Range;
 use derive_builder::Builder;
 
 #[derive(Builder, Debug)]
@@ -29,11 +28,13 @@ impl<T: FloatT> Default for QDLDLSettings<T> {
     }
 }
 
+
 #[derive(Debug)]
 pub struct QDLDLFactorisation<T = f64> {
     // permutation vector
     perm: Vec<usize>,
     // inverse permutation
+    #[allow(dead_code)]  //PJG: unused because we call ipermute in solve instead.  Keep?
     iperm: Vec<usize>,
     // lower triangular factor
     L: CscMatrix<T>,
@@ -90,8 +91,8 @@ impl<T: FloatT> QDLDLFactorisation<T> {
         let nzval = &mut self.workspace.triuA.nzval; // post perm internal data
         let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
 
-        for (i, idx) in indices.iter().enumerate() {
-            nzval[AtoPAPt[*idx]] = values[i];
+        for (i, &idx) in indices.iter().enumerate() {
+            nzval[AtoPAPt[idx]] = values[i];
         }
     }
 
@@ -99,32 +100,21 @@ impl<T: FloatT> QDLDLFactorisation<T> {
         let nzval = &mut self.workspace.triuA.nzval; // post perm internal data
         let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
 
-        for idx in indices.iter() {
-            nzval[AtoPAPt[*idx]] *= scale;
+        for &idx in indices.iter() {
+            nzval[AtoPAPt[idx]] *= scale;
         }
     }
 
-    pub fn offset_diagonal(&mut self, indices: Range<usize>, offset: T, signs: &[i8]) {
+    pub fn offset_values(&mut self, indices: &[usize], offset: T, signs: &[i8]) {
 
         assert_eq!(indices.len(),signs.len());
 
-        let nzval  = &mut self.workspace.triuA.nzval; //post permutation internal data
-        let colptr = &self.workspace.triuA.colptr; //post permutation internal data
-        let rowval = &self.workspace.triuA.rowval;
-        let iperm  = &self.iperm;
+        let nzval = &mut self.workspace.triuA.nzval; // post perm internal data
+        let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
 
-        // triuA should be full rank and upper triangular, so the diagonal element
-        // in each column should always be the last nonzero
-
-        for (col, &sign) in indices.zip(signs.iter()) {
-
-            //triu is permuted, so get the column after permutation
-            let col = iperm[col];
+        for (&idx,&sign) in indices.iter().zip(signs.iter()) {
             let sign: T = T::from_i8(sign).unwrap();
-
-            let idx = colptr[col+1] - 1;
-            assert_eq!(rowval[idx],col);
-            nzval[idx] += sign * offset;
+            nzval[AtoPAPt[idx]] += offset*sign;
         }
     }
 

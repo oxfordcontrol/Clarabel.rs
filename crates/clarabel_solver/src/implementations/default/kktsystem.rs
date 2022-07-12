@@ -11,14 +11,15 @@ use clarabel_algebra::*;
 //PJG: Need to explicitly give T:FloatT bound here
 //since Settings must be Settings<T> to allow for
 //defaults, and Settings<T> appears as a part of
-//DirectQuasidefiniteKKTSolver<T>/ Once settings is
+//DirectLDLKKTSolver<T>/ Once settings is
 //removed there, it can be removed here as well.
 
 pub struct DefaultKKTSystem<T:FloatT> {
+
     //the KKT system solver
     //PJG: This is too concrete.   Should be trait based
     //types hierarchy and folders is super confusing
-    kktsolver: DirectQuasidefiniteKKTSolver<T>,
+    kktsolver: DirectLDLKKTSolver<T>,
 
     // solution vector for constant part of KKT solves
     x1: Vec<T>,
@@ -42,7 +43,7 @@ where
     pub fn new(data: &DefaultProblemData<T>, cones: &CompositeCone<T>, settings: &Settings<T>) -> Self {
         let (m, n) = (data.m, data.n);
         let kktsolver =
-            DirectQuasidefiniteKKTSolver::<T>::new(&data.P, &data.A, cones, m, n, settings);
+            DirectLDLKKTSolver::<T>::new(&data.P, &data.A, cones, m, n, settings);
 
         //the LHS constant part of the reduced solve
         let x1 = vec![T::zero(); n];

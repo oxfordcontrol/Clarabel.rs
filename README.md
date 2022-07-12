@@ -65,8 +65,13 @@ Maybe the Settings in the KKTSolver should be a borrow with a lifetime, but I do
 
 The Ruiz equilibration is a method implemented in DefaultProblemData.  Maybe it should be associated with the DefaultEquilibration type instead.
 
+linear solver file and module organization is different between Rust and Julia.   The Julia one is I think (?) a bit nicer.
+
 Julia compat updates:
 ---------------------
+
+QDLDL iperm is not being used in either Rust or Julia code.   It could be deleted.   Instead it 
+does inverse permutation using the ipermute! function and the permutation vector.   iperm vector is declared as dead code in Rust.
 
 Coneset should be removed in favor of compositecone.  Also need to get rid of ConicVector.
 
@@ -100,4 +105,4 @@ Experiment with split step lengths for primal/dual vars?
 
 I removed old refactorization unit tests from QDLDL.   Add these back to test new update/scale/shift functions.
 
-Merge QDLDL commit from other use, but need to unpick update values test that he added.
+Merge QDLDL commit from other user, but need to unpick update values test that he added.

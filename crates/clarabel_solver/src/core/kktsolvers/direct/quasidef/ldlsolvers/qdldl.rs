@@ -3,7 +3,6 @@ use super::super::DirectLDLSolver;
 use crate::core::Settings;
 use clarabel_algebra::*;
 use clarabel_qdldl::*;
-use std::ops::Range;
 
 pub struct QDLDLDirectLDLSolver<T> {
 
@@ -48,9 +47,9 @@ impl<T: FloatT> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> {
         self.factors.scale_values(index, scale);
     }
 
-    fn offset_diagonal(&mut self, index: Range<usize>, offset: T, signs: &[i8]) {
+    fn offset_values(&mut self, index: &[usize], offset: T, signs: &[i8]) {
 
-        self.factors.offset_diagonal(index, offset, signs);
+        self.factors.offset_values(index, offset, signs);
     }
 
     fn solve(&mut self, x: &mut [T], b: &[T]) {
