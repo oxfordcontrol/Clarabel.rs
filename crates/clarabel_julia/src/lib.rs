@@ -109,7 +109,6 @@ pub extern "C" fn solve(
         .build()
         .unwrap();
 
-    //PJG: no borrow on settings sucks here
     let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
 
     solver.solve();
