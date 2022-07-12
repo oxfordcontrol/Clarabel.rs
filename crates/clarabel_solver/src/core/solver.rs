@@ -1,45 +1,41 @@
-use super::{Settings, cones::Cone};
+use super::cones::Cone;
 use super::components::*;
 use clarabel_timers::*;
 use clarabel_algebra::*;
 
-pub struct Solver<D, V, R, K, SI, SR, C, S> {
+pub struct Solver<D, V, R, K, C, SI, SR, SE> {
     pub data: D,
     pub variables: V,
     pub residuals: R,
     pub kktsystem: K,
+    pub cones: C,
     pub step_lhs: V,
     pub step_rhs: V,
     pub info: SI,
     pub result: SR,
-    pub cones: C,
-    pub settings: S,
+    pub settings: SE,
     pub timers: Option<Timers>,
 }
 
-pub trait IPSolver<T, D, V, R, K, SI, SR, C> {
+pub trait IPSolver<T, D, V, R, K, C, SI, SR, SE> {
     fn solve(&mut self);
     fn default_start(&mut self);
     fn centering_parameter(&self, α: T) -> T;
 }
 
-// PJG: Make Settings a trait and implement a
-// default settings type.   The trait should only
-// serve up basic values via getters and have no
-// other methods, so should be reusable across
-// problem format implementations
 
-impl<T, D, V, R, K, SI, SR, C> IPSolver<T, D, V, R, K, SI, SR, C>
-    for Solver<D, V, R, K, SI, SR, C, Settings<T>>
+impl<T, D, V, R, K, C, SI, SR, SE> IPSolver<T, D, V, R, K, C, SI, SR, SE>
+    for Solver<D, V, R, K, C, SI, SR, SE>
 where
     T: FloatT,
     D: ProblemData<T, V = V>,
     V: Variables<T, D = D, R = R, C = C>,
     R: Residuals<T, D = D, V = V>,
     K: KKTSystem<T, D = D, V = V, C = C>,
+    C: Cone<T>,
     SI: SolveInfo<T, D = D, V = V, R = R, C = C>,
     SR: SolveResult<T, D = D, V = V, SI = SI>,
-    C: Cone<T>,
+    SE: Settings<T>,
 {
     fn solve(&mut self) {
         let s = self;

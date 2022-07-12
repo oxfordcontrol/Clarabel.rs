@@ -1,7 +1,6 @@
 use super::*;
 
 use crate::core::{
-    Settings,Solver,
     cones::{CompositeCone,SupportedCones},
     components::ProblemData};
 
@@ -14,10 +13,10 @@ Solver<
     DefaultVariables<T>,
     DefaultResiduals<T>,
     DefaultKKTSystem<T>,
+    CompositeCone<T>,
     DefaultSolveInfo<T>,
     DefaultSolveResult<T>,
-    CompositeCone<T>,
-    Settings<T>,
+    DefaultSettings<T>,
 >;
 
 impl<T: FloatT> DefaultSolver<T> {

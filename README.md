@@ -39,7 +39,9 @@ is taking a copy of the settings to support iterative refinement.
 
 Consider whether SolveResult can be made a dependency only in the same way as Cone in the top level solver.   Maybe not since it depends on descaling equilibration stuff.
 
-Consider whether Settings can be made dependency only as well.   This should be easier since there are minimal direct field accesses in the top level solver.  Probably only max_step_fraction() is needed as a getter in solver to allow a generic settings input by trait there.
+Consider whether Settings can be made dependency only as well.   This should be easier since there are minimal direct field accesses in the top level solver.  Probably only max_step_fraction() is needed as a getter in solver to allow a generic settings input by trait there.    *HOWEVER*  I tried this and the situation is complicated by the fact that the KKT solvers are currently part of core at the moment,
+but they need access to things like static / dynamic regularization etc.   I am
+going to leave this aside for now.
 
 I am currently disassembling the cone index ranges in the KKT assembly function to pass the headidx to the different colcount and colfill functions, and then building the ranges again there.   Maybe could be improved.   [This might be fixed already?]
 

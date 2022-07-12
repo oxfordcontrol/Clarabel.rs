@@ -11,7 +11,5 @@ pub mod cones;
 pub mod kktsolvers;
 
 //partially flatten top level pieces
-mod settings;
 mod solver;
-pub use settings::*;
 pub use solver::*;

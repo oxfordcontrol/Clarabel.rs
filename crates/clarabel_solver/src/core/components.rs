@@ -1,4 +1,4 @@
-use super::{cones::Cone, Settings};
+use super::cones::Cone;
 use clarabel_algebra::*;
 use clarabel_timers::*;
 
@@ -25,14 +25,16 @@ impl Default for SolverStatus {
 }
 
 pub trait ProblemData<T: FloatT> {
+
     type V: Variables<T>;
     type C: Cone<T>;
+    type SE: Settings<T>;
 
-    fn equilibrate(&mut self, cones: &Self::C, settings: &Settings<T>);
+    fn equilibrate(&mut self, cones: &Self::C, settings: &Self::SE);
 }
 
 pub trait Variables<T: FloatT> {
-    //associated types
+
     type D: ProblemData<T>;
     type R: Residuals<T>;
     type C: Cone<T>;
@@ -88,22 +90,24 @@ pub trait KKTSystem<T: FloatT> {
 }
 
 pub trait SolveInfo<T: FloatT> {
+
     type D: ProblemData<T>;
     type V: Variables<T>;
     type R: Residuals<T>;
     type C: Cone<T>;
+    type SE: Settings<T>;
 
     fn reset(&mut self);
     fn finalize(&mut self, timers: &Timers);
 
-    fn print_header(&self, settings: &Settings<T>, data: &Self::D, cones: &Self::C);
+    fn print_header(&self, settings: &Self::SE, data: &Self::D, cones: &Self::C);
 
-    fn print_status(&self, settings: &Settings<T>);
-    fn print_footer(&self, settings: &Settings<T>);
+    fn print_status(&self, settings: &Self::SE);
+    fn print_footer(&self, settings: &Self::SE);
 
     fn update(&mut self, data: &Self::D, variables: &Self::V, residuals: &Self::R);
 
-    fn check_termination(&mut self, residuals: &Self::R, settings: &Settings<T>) -> bool;
+    fn check_termination(&mut self, residuals: &Self::R, settings: &Self::SE) -> bool;
 
     fn save_scalars(&mut self, μ: T, α: T, σ: T, iter: u32);
 }
@@ -114,4 +118,9 @@ pub trait SolveResult<T: FloatT> {
     type SI: SolveInfo<T>;
 
     fn finalize(&mut self, data: &Self::D, variables: &Self::V, info: &Self::SI);
+}
+
+
+pub trait Settings<T: FloatT> {
+
 }

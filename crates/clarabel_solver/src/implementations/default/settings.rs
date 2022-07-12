@@ -3,7 +3,7 @@ use derive_builder::Builder;
 use std::time::Duration;
 
 #[derive(Builder, Debug, Clone)]
-pub struct Settings<T: FloatT> {
+pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "50")]
     pub max_iter: u32,
 

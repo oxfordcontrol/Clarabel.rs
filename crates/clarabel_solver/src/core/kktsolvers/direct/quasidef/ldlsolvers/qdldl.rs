@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 use super::super::DirectLDLSolver;
-use crate::core::Settings;
 use clarabel_algebra::*;
 use clarabel_qdldl::*;
 
@@ -12,7 +11,7 @@ pub struct QDLDLDirectLDLSolver<T> {
 }
 
 impl<T: FloatT> QDLDLDirectLDLSolver<T> {
-    pub fn new(KKT: &CscMatrix<T>, Dsigns: &[i8], settings: &Settings<T>) -> Self {
+    pub fn new(KKT: &CscMatrix<T>, Dsigns: &[i8], settings: &DefaultSettings<T>) -> Self {
         let dim = KKT.nrows();
 
         assert!(dim == KKT.ncols(), "KKT matrix is not square");

@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 use super::*;
 use crate::core::{
-    Settings,
     cones::{Cone,CompositeCone}, 
     components::ProblemData,
 };
@@ -55,8 +54,9 @@ where
 {
     type V = DefaultVariables<T>;
     type C = CompositeCone<T>;
+    type SE = DefaultSettings<T>;
 
-    fn equilibrate(&mut self, cones: &CompositeCone<T>, settings: &Settings<T>) {
+    fn equilibrate(&mut self, cones: &CompositeCone<T>, settings: &DefaultSettings<T>) {
         let data = self;
         let equil = &mut data.equilibration;
 

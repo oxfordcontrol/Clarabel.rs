@@ -2,8 +2,7 @@
 
 use crate::core::{
     cones::*,
-    kktsolvers::KKTSolver,
-    Settings};
+    kktsolvers::KKTSolver};
 use clarabel_algebra::*;
 
 use super::*;
@@ -48,7 +47,7 @@ pub struct DirectLDLKKTSolver<T: FloatT> {
 
     // settings just points back to the main solver settings.
     // Required since there is no separate LDL settings container
-    settings: Settings<T>,
+    settings: DefaultSettings<T>,
 
     // the direct linear LDL solver
     ldlsolver: Box<dyn DirectLDLSolver<T>>,
