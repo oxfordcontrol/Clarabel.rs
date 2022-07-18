@@ -36,7 +36,7 @@ fn main() {
 
     let cones = [SecondOrderConeT(3)];
 
-    let settings = SettingsBuilder::default()
+    let settings = DefaultSettingsBuilder::default()
             .equilibrate_enable(false)
             .max_iter(50)
             .verbose(true)

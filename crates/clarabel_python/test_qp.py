@@ -20,4 +20,7 @@ b = np.array([0.,1.,1.,1.,1.]);
 
 cones = [clarabel.ZeroConeT(1), clarabel.NonnegativeConeT(4)]
 
-clarabel.solve(P,q,A,b,cones)
+settings = clarabel.DefaultSettings();
+
+solver = clarabel.DefaultSolver(P,q,A,b,cones,settings);
+solver.solve()

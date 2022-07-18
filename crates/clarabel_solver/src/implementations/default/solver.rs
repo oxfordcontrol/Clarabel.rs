@@ -1,23 +1,23 @@
 use super::*;
 
-use crate::core::{
-    Settings,Solver,
+use crate::core::{Solver,
     cones::{CompositeCone,SupportedCones},
     components::ProblemData};
 
 use clarabel_algebra::*;
 use clarabel_timers::*;
 
-pub type DefaultSolver<T = f64> = 
+pub type DefaultSolver<T = f64> =
+
 Solver<
     DefaultProblemData<T>,
     DefaultVariables<T>,
     DefaultResiduals<T>,
     DefaultKKTSystem<T>,
+    CompositeCone<T>,
     DefaultSolveInfo<T>,
     DefaultSolveResult<T>,
-    CompositeCone<T>,
-    Settings<T>,
+    DefaultSettings<T>,
 >;
 
 impl<T: FloatT> DefaultSolver<T> {
@@ -28,7 +28,7 @@ pub fn new(
     A: &CscMatrix<T>,
     b: &[T],
     cone_types: &[SupportedCones<T>],
-    settings: Settings<T>,
+    settings: DefaultSettings<T>,
 ) -> Self {
     let mut timers = Timers::default();
     let mut output;

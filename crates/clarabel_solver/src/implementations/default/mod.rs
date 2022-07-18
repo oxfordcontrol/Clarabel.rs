@@ -8,6 +8,7 @@ mod solveinfo;
 mod solveresult;
 mod variables;
 mod solver;
+mod settings;
 
 //export flattened
 pub use equilibration::*;
@@ -18,5 +19,6 @@ pub use solveinfo::*;
 pub use solveresult::*;
 pub use variables::*;
 pub use solver::*;
+pub use settings::*;
 
 

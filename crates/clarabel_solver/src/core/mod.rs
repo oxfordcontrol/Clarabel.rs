@@ -10,8 +10,9 @@ pub mod components;
 pub mod cones;
 pub mod kktsolvers;
 
+
 //partially flatten top level pieces
-mod settings;
 mod solver;
-pub use settings::*;
+mod settings;
 pub use solver::*;
+pub use settings::*;

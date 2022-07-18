@@ -1,6 +1,5 @@
 use super::*;
 use crate::core::{
-    Settings,
     components::KKTSystem,
     cones::{Cone,CompositeCone},
     kktsolvers::{*,direct::*}
@@ -9,8 +8,8 @@ use crate::core::{
 use clarabel_algebra::*;
 
 //PJG: Need to explicitly give T:FloatT bound here
-//since Settings must be Settings<T> to allow for
-//defaults, and Settings<T> appears as a part of
+//since we use DefaultSettings<T> to allow for typed
+//defaults, and DefaultSettings<T> appears as a part of
 //DirectLDLKKTSolver<T>/ Once settings is
 //removed there, it can be removed here as well.
 
@@ -40,7 +39,7 @@ impl<T> DefaultKKTSystem<T>
 where
     T: FloatT,
 {
-    pub fn new(data: &DefaultProblemData<T>, cones: &CompositeCone<T>, settings: &Settings<T>) -> Self {
+    pub fn new(data: &DefaultProblemData<T>, cones: &CompositeCone<T>, settings: &DefaultSettings<T>) -> Self {
         let (m, n) = (data.m, data.n);
         let kktsolver =
             DirectLDLKKTSolver::<T>::new(&data.P, &data.A, cones, m, n, settings);
