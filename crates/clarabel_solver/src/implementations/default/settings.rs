@@ -1,6 +1,7 @@
 use clarabel_algebra::*;
 use derive_builder::Builder;
 use std::time::Duration;
+use crate::core::components::Settings;
 
 #[derive(Builder, Debug, Clone)]
 pub struct DefaultSettings<T: FloatT> {
@@ -30,7 +31,7 @@ pub struct DefaultSettings<T: FloatT> {
 
     #[builder(default = "T::from(0.99).unwrap()")]
     pub max_step_fraction: T,
-    //
+    
     // data equilibration
     #[builder(default = "true")]
     pub equilibrate_enable: bool,
@@ -84,8 +85,14 @@ pub struct DefaultSettings<T: FloatT> {
     pub iterative_refinement_stop_ratio: T,
 }
 
-impl<T: FloatT> Default for Settings<T> {
-    fn default() -> Settings<T> {
-        SettingsBuilder::<T>::default().build().unwrap()
+impl<T: FloatT> Default for DefaultSettings<T> {
+    fn default() -> DefaultSettings<T> {
+        DefaultSettingsBuilder::<T>::default().build().unwrap()
     }
+}
+
+impl<T: FloatT> Settings<T> for DefaultSettings<T> {
+
+    //NB: CoreSettings is typedef'd to DefaultSettings
+    fn core(& self) -> &DefaultSettings<T>{self}
 }
