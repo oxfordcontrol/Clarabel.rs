@@ -9,8 +9,6 @@ use clarabel_algebra::*;
 // Variables type for default problem format
 // ---------------
 
-//PJG: pub fields here should probably be crate scope
-
 pub struct DefaultVariables<T: FloatT = f64> {
     pub x: Vec<T>,
     pub s: Vec<T>,

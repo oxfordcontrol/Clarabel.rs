@@ -10,9 +10,6 @@ pub mod core {
     //allows declaration of cone constraints
     pub use clarabel_solver::core::cones::SupportedCones::*;
 
-    //allows definitions of solver settings
-    pub use clarabel_solver::core::{Settings,SettingsBuilder};
-
     //user facing traits required to interact with solver 
     pub use clarabel_solver::core::IPSolver;
 }
@@ -21,8 +18,7 @@ pub mod implementations {
 
     //The default solver implementation and its 
     //user facing components
-    pub mod default{
-        pub use clarabel_solver::implementations::default::DefaultSolver;
+    pub mod default {
+        pub use clarabel_solver::implementations::default::*;
     }
 }
-

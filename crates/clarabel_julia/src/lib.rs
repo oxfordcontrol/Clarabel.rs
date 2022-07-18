@@ -9,7 +9,7 @@ use clarabel_solver  as solver;
 use algebra::CscMatrix;
 use solver::implementations::default::*;
 use solver::core::{cones::SupportedCones::*, 
-                   IPSolver,Settings,SettingsBuilder};
+                   IPSolver};
 
 #[repr(C)]
 #[derive(Debug)]
@@ -102,7 +102,7 @@ pub extern "C" fn solve(
     println!("q = {:?}",q);
     println!("b = {:?}",b);
 
-    let settings = SettingsBuilder::default()
+    let settings = DefaultSettingsBuilder::default()
         .equilibrate_enable(true)
         .max_iter(20)
         .verbose(true)

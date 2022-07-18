@@ -5,7 +5,10 @@ Check code against no_std
 
 Should KKT solver operate on CompositeCone or Cone?
 
-I have defined CompositeCone as a core cone type, and use this directly in the default implementation.  Maybe it should be DefaultCone === CompositeCone in that implementation though.   It also seems like the functions that populate the WtW block in the CompositeCone are implementation specific.   If so, these should be pulled out into DefaultCone.  Note Julia file structure and method names are no longer the same.
+Currently printing Detailed solve time still in rust output.   Makes 
+examination of solutions very difficult.   This was for debugging and should be disabled maybe.
+
+I have defined CompositeCone as a core cone type, and use this directly in the default implementation.  Maybe it should be DefaultCone === CompositeCone in that implementation though.   It also seems like the functions that populate the WtW block in the CompositeCone are implementation specific.   If so, these should be pulled out into DefaultCone.  Note Julia file structure and method names are no longer the same.   NB: Could typedef DefaultCone to be CompositeCone as an alternative ?
 
 Take only upper triangle of P in DefaultProblemData.   This means that something better than clone is required in the constructor.
 
@@ -13,9 +16,12 @@ There are no checks at all on CSC constructor.   At least nzval and rowval shoul
 
 Use of underscores in private function names is totally inconsistent.   What is the usual style, e.g. for the rust float formatting internal functions?
 
-Change SolveResult to Solution and then SolveInfo back to Info.
+Change SolveResult to Solution and then SolveInfo back to Info.   [NB: Maybe this is obsolete now that everything is trait based]
 
-Remove FloatT strait bounds from struct definitions and keep in the impl only?   It is also unclear whether it is really
+Maybe change crate::core::components to crate::core:traits or crate::core::component_traits.   If this happens then core pieces 
+like SolverStatus should be moved out since it is a type, not a trait.
+
+Remove FloatT trait bounds from struct definitions and keep in the impl only?   It is also unclear whether it is really
 adding value to put a generic f64 on all of these definitions.
 
 Printing functions should be a totally separate trait on DefaultSolveInfo, and should

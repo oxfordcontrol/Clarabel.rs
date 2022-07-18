@@ -42,7 +42,7 @@ fn main() {
 
     let cones = [NonnegativeConeT(b.len())];
 
-    let settings = SettingsBuilder::default()
+    let settings = DefaultSettingsBuilder::default()
             .equilibrate_enable(true)
             .max_iter(50)
             .build().unwrap();

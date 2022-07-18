@@ -1,6 +1,5 @@
 use super::*;
 use crate::core::{
-    Settings,
     cones::{CompositeCone,SupportedCones},
     components::{SolverStatus,SolveInfo},
 };
@@ -9,9 +8,6 @@ use clarabel_algebra::*;
 use clarabel_timers::Timers;
 use std::time::Duration;
 
-//PJG: do all of these need to be pub?  Used in finalization, for example
-
-//PJG: does this really need to be macro?
 macro_rules! expformat {
     ($fmt:expr,$val:expr) => {
         if $val.is_normal() {
@@ -53,6 +49,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
     type V = DefaultVariables<T>;
     type R = DefaultResiduals<T>;
     type C = CompositeCone<T>;
+    type SE = DefaultSettings<T>;
 
     fn reset(&mut self) {
         self.status = SolverStatus::Unsolved;
@@ -66,7 +63,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
 
     fn print_header(
         &self,
-        settings: &Settings<T>,
+        settings: &DefaultSettings<T>,
         data: &DefaultProblemData<T>,
         cones: &CompositeCone<T>,
     ) {
@@ -113,7 +110,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
         );
     }
 
-    fn print_status(&self, settings: &Settings<T>) {
+    fn print_status(&self, settings: &DefaultSettings<T>) {
         if !settings.verbose {
             return;
         }
@@ -135,7 +132,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
         println!();
     }
 
-    fn print_footer(&self, settings: &Settings<T>) {
+    fn print_footer(&self, settings: &DefaultSettings<T>) {
         if !settings.verbose {
             return;
         }
@@ -204,7 +201,7 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
     fn check_termination(
         &mut self,
         residuals: &DefaultResiduals<T>,
-        settings: &Settings<T>,
+        settings: &DefaultSettings<T>,
     ) -> bool {
         // optimality
         // ---------------------
@@ -257,7 +254,7 @@ fn _bool_on_off(v: bool) -> &'static str {
     }
 }
 
-fn _print_settings<T: FloatT>(settings: &Settings<T>) {
+fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
     let set = settings;
 
     println!("settings:");

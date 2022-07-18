@@ -20,7 +20,6 @@ fn __repr__cone(name: &str, dim: usize) -> String{
 }
 
 
-
 #[pyclass(name="ZeroConeT")]
 pub struct PyZeroConeT {
     #[pyo3(get)]
@@ -73,6 +72,7 @@ impl PySecondOrderConeT {
     }
 }
 
+
 // We can't implement the foreign trait FromPyObject directly on 
 // SupportedCones<f64> since both are defined outside the crate, so 
 // put a dummy wrapper around it here.
@@ -116,3 +116,13 @@ impl<'a> FromPyObject<'a> for PySupportedCones {
 }
 
 
+pub(crate) fn _py_to_native_cones(cones: Vec<PySupportedCones>) -> Vec<SupportedCones<f64>> {
+
+    //force a vector of PySupportedCones back into a vector
+    //of rust native SupportedCones.  The Py cone is just 
+    //a wrapper; deref gives us the native object.
+    cones.iter()
+         .map(|x| *x.deref())
+         .collect()
+
+}

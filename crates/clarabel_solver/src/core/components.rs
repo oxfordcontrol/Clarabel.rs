@@ -1,6 +1,7 @@
-use super::cones::Cone;
+use super::{CoreSettings,cones::Cone};
 use clarabel_algebra::*;
 use clarabel_timers::*;
+
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum SolverStatus {
@@ -122,5 +123,5 @@ pub trait SolveResult<T: FloatT> {
 
 
 pub trait Settings<T: FloatT> {
-
+    fn core(& self) -> &CoreSettings<T>;
 }

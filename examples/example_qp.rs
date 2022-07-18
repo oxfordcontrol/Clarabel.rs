@@ -36,7 +36,7 @@ fn main() {
 
     let cones = [ZeroConeT(1), NonnegativeConeT(4)];
 
-    let settings = SettingsBuilder::default()
+    let settings = DefaultSettingsBuilder::default()
             .equilibrate_enable(true)
             .max_iter(50)
             .build().unwrap();

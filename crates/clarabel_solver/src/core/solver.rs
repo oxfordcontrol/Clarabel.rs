@@ -33,11 +33,12 @@ where
     R: Residuals<T, D = D, V = V>,
     K: KKTSystem<T, D = D, V = V, C = C>,
     C: Cone<T>,
-    SI: SolveInfo<T, D = D, V = V, R = R, C = C>,
+    SI: SolveInfo<T, D = D, V = V, R = R, C = C, SE = SE>,
     SR: SolveResult<T, D = D, V = V, SI = SI>,
     SE: Settings<T>,
 {
     fn solve(&mut self) {
+
         let s = self;
 
         // various initializations
@@ -170,7 +171,7 @@ where
             // --------------
             timeit!{timers => "final step length and add"; {
             α = s.variables.calc_step_length(&s.step_lhs, &s.cones);
-            α *= s.settings.max_step_fraction;
+            α *= s.settings.core().max_step_fraction;
 
             s.variables.add_step(&s.step_lhs, α);
             }} //end "IP step" timer

@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::core::{
+    CoreSettings,
     cones::*,
     kktsolvers::KKTSolver};
 use clarabel_algebra::*;
@@ -47,7 +48,7 @@ pub struct DirectLDLKKTSolver<T: FloatT> {
 
     // settings just points back to the main solver settings.
     // Required since there is no separate LDL settings container
-    settings: DefaultSettings<T>,
+    settings: CoreSettings<T>,
 
     // the direct linear LDL solver
     ldlsolver: Box<dyn DirectLDLSolver<T>>,
@@ -60,7 +61,7 @@ impl<T: FloatT> DirectLDLKKTSolver<T> {
         cones: &CompositeCone<T>,
         m: usize,
         n: usize,
-        settings: &Settings<T>,
+        settings: &CoreSettings<T>,
     ) -> Self {
         //PJG: Cloning settings here as a workaround because
         //both the QD KKT solver requires settings for refinement
