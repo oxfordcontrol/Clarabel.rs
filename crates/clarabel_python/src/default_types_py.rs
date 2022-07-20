@@ -7,7 +7,7 @@ use std::fmt::Write;
 //so just use the internal crate definitions instead of the API.
 use clarabel_solver::core::{
     IPSolver,
-    components::SolverStatus};
+    SolverStatus};
 use clarabel_solver::implementations::default::*;
 use crate::*;
 
@@ -17,7 +17,7 @@ use crate::*;
 //in the Clarabel default implementation.   We would prefer
 //to just apply the PyO3 macros to autoderive these types,
 //except there are currently problems using cfg_attr with
-//the PyO3 get/set attribute, and it also does not seem to
+//the PyO3 get/set attribute.  Pyo3 also does not seem to
 //support autoderivation of python types from Rust structs
 //that use generics.   See here:
 //

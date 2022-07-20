@@ -1,6 +1,6 @@
 use super::*;
 use crate::core::{
-    components::KKTSystem,
+    traits::KKTSystem,
     cones::{Cone,CompositeCone},
     kktsolvers::{*,direct::*}
 };

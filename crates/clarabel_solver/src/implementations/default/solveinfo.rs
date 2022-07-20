@@ -1,7 +1,8 @@
 use super::*;
 use crate::core::{
     cones::{CompositeCone,SupportedCones},
-    components::{SolverStatus,SolveInfo},
+    traits::{SolveInfo},
+    SolverStatus,
 };
 
 use clarabel_algebra::*;

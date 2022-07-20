@@ -16,11 +16,6 @@ There are no checks at all on CSC constructor.   At least nzval and rowval shoul
 
 Use of underscores in private function names is totally inconsistent.   What is the usual style, e.g. for the rust float formatting internal functions?
 
-Change SolveResult to Solution and then SolveInfo back to Info.   [NB: Maybe this is obsolete now that everything is trait based]
-
-Maybe change crate::core::components to crate::core:traits or crate::core::component_traits.   If this happens then core pieces 
-like SolverStatus should be moved out since it is a type, not a trait.
-
 Remove FloatT trait bounds from struct definitions and keep in the impl only?   It is also unclear whether it is really
 adding value to put a generic f64 on all of these definitions.
 
@@ -56,8 +51,7 @@ kkt_fill and friends are taking a length index as the final argument, but this s
 
 Really confusing native methods implementation for CSC matrices.   What should nalgebra and others implement?   Should this go somewhere else?   Maybe I just need a "SparseMatrix" or "Matrix" trait.
 
-Settings uses time_limit in Rust and max_time in Julia.   Or maybe time_limit is a bool   Very confusing in the settings print function.   Maybe this was just a bug in the no time limit case?   Fixed in Julia print maybe.   Perhaps Rust should use Option here.  
-
+Settings.time_limit: Perhaps Rust should use Option here instead of treating Duration::ZERO() as no limit.   Does Builder support this?  
 
 SupportedCones is really part of the default implementation's API, and not really part of the Cone trait that defines all of the required behaviours.   These should be separated I think.
 
@@ -67,9 +61,9 @@ Settings must have FloatT as a bound so that Builder will work.   But then I mus
 
 Maybe the Settings in the KKTSolver should be a borrow with a lifetime, but I don't know how to implement this.
 
-The Ruiz equilibration is a method implemented in DefaultProblemData.  Maybe it should be associated with the DefaultEquilibration type instead.
-
 linear solver file and module organization is different between Rust and Julia.   The Julia one is I think (?) a bit nicer.
+
+Add timer print method to Python.
 
 Julia compat updates:
 ---------------------

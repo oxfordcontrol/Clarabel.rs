@@ -1,7 +1,40 @@
 use super::cones::Cone;
-use super::components::*;
+use super::traits::*;
 use clarabel_timers::*;
 use clarabel_algebra::*;
+
+
+// ---------------------------------
+// Solver status type 
+// ---------------------------------
+
+#[derive(PartialEq, Clone, Debug)]
+pub enum SolverStatus {
+    Unsolved,
+    Solved,
+    PrimalInfeasible,
+    DualInfeasible,
+    MaxIterations,
+    MaxTime,
+}
+
+impl std::fmt::Display for SolverStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Default for SolverStatus {
+    fn default() -> Self {
+        SolverStatus::Unsolved
+    }
+}
+
+
+// ---------------------------------
+// Solver type and standard implemention 
+// ---------------------------------
+
 
 pub struct Solver<D, V, R, K, C, SI, SR, SE> {
     pub data: D,
@@ -18,6 +51,7 @@ pub struct Solver<D, V, R, K, C, SI, SR, SE> {
 }
 
 pub trait IPSolver<T, D, V, R, K, C, SI, SR, SE> {
+    
     fn solve(&mut self);
     fn default_start(&mut self);
     fn centering_parameter(&self, α: T) -> T;
@@ -197,12 +231,6 @@ where
 
         s.info.print_footer(&s.settings);
 
-        println!("\n\n Detailed solve time\n--------");
-        s.timers.as_ref().unwrap().print();
-
-        //PJG: not clear if I am returning a result or
-        //what here.
-        // return s.result
     }
 
     fn default_start(&mut self) {

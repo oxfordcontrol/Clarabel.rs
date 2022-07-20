@@ -19,7 +19,6 @@ A = sparse.csc_matrix( \
 b = np.array([0.,1.,1.,1.,1.]);
 
 cones = [clarabel.ZeroConeT(1), clarabel.NonnegativeConeT(4)]
-
 settings = clarabel.DefaultSettings();
 
 solver = clarabel.DefaultSolver(P,q,A,b,cones,settings);

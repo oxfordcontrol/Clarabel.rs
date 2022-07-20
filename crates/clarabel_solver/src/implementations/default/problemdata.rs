@@ -2,7 +2,7 @@
 use super::*;
 use crate::core::{
     cones::{Cone,CompositeCone}, 
-    components::ProblemData,
+    traits::ProblemData,
 };
 use clarabel_algebra::*;
 
@@ -18,7 +18,7 @@ pub struct DefaultProblemData<T: FloatT = f64> {
     pub b: Vec<T>,
     pub n: usize,
     pub m: usize,
-    pub equilibration: DefaultEquilibration<T>,
+    pub equilibration: DefaultEquilibrationData<T>,
 }
 
 impl<T: FloatT> DefaultProblemData<T> {
@@ -34,7 +34,7 @@ impl<T: FloatT> DefaultProblemData<T> {
         let q = q.to_vec();
         let A = A.clone();
         let b = b.to_vec();
-        let equilibration = DefaultEquilibration::<T>::new(n, m);
+        let equilibration = DefaultEquilibrationData::<T>::new(n, m);
 
         Self {
             P,
@@ -129,6 +129,11 @@ where
         equil.einv.scalarop_from(T::recip, e);
     }
 }
+
+
+// ---------------
+// utilities
+// ---------------
 
 fn kkt_col_norms<T: FloatT>(
     P: &CscMatrix<T>,

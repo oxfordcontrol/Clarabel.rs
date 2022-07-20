@@ -1,7 +1,7 @@
 use clarabel_algebra::*;
 use derive_builder::Builder;
 use std::time::Duration;
-use crate::core::components::Settings;
+use crate::core::traits::Settings;
 
 #[derive(Builder, Debug, Clone)]
 pub struct DefaultSettings<T: FloatT> {

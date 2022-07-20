@@ -1,6 +1,6 @@
 use super::*;
 use crate::core::{
-    components::Variables,
+    traits::Variables,
     cones::{Cone,CompositeCone}
 };
 use clarabel_algebra::*;

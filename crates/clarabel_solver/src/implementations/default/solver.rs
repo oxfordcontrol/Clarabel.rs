@@ -2,7 +2,7 @@ use super::*;
 
 use crate::core::{Solver,
     cones::{CompositeCone,SupportedCones},
-    components::ProblemData};
+    traits::ProblemData};
 
 use clarabel_algebra::*;
 use clarabel_timers::*;

@@ -5,7 +5,7 @@ use clarabel_algebra::*;
 // equilibration data
 // ---------------
 
-pub struct DefaultEquilibration<T: FloatT = f64> {
+pub struct DefaultEquilibrationData<T: FloatT = f64> {
     // scaling matrices for problem data equilibration
     // fields d,e,dinv,einv are vectors of scaling values
     // to be treated as diagonal scaling data
@@ -18,7 +18,7 @@ pub struct DefaultEquilibration<T: FloatT = f64> {
     pub c: T,
 }
 
-impl<T: FloatT> DefaultEquilibration<T> {
+impl<T: FloatT> DefaultEquilibrationData<T> {
     pub fn new(n: usize, m: usize) -> Self {
         // Left/Right diagonal scaling for problem data
         let d = vec![T::one(); n];
