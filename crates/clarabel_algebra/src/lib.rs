@@ -1,7 +1,7 @@
 use num_traits::{Float, FromPrimitive, NumAssign};
 
-// PJG: This needs to be configurable
 // Here we specify the particular algebra implementation
+// For now, we only provide a handwritten interface.
 mod native;
 pub use native::*;
 
