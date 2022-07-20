@@ -26,7 +26,6 @@ path = "examples/example_qp.rs"
 name = "socp"
 path = "examples/example_socp.rs"
 
-#PJG: this is not a permanent example
 [[example]]
 name = "box"
 path = "examples/example_big_box.rs"
