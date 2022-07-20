@@ -87,11 +87,13 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
         println!("  nnz(P)        = {}", data.P.nnz());
         println!("  nnz(A)        = {}", data.A.nnz());
         println!("  cones (total) = {}", cones.len());
-        //PJG: Completing printing stuff here.  Additional functions needed
+
+        //All dims here are dummies since we just care about the cone type
         _print_conedims_by_type(cones, SupportedCones::ZeroConeT(0));
         _print_conedims_by_type(cones, SupportedCones::NonnegativeConeT(0));
         _print_conedims_by_type(cones, SupportedCones::SecondOrderConeT(0));
-        //_print_conedims_by_type(&cones, SupportedCones::PSDTriangleConeT); //PJG: SDP not implemented yet
+        //_print_conedims_by_type(&cones, SupportedCones::PSDTriangleConeT(0)); 
+
         _print_settings(settings);
         println!();
 
@@ -322,9 +324,8 @@ fn _get_precision_string<T: FloatT>() -> String {
     (::std::mem::size_of::<T>() * 8).to_string()
 }
 
-//PJG: cone dimensions are now baked into SupportedCones<T>.  Maybe
-//this function can be simplied.
 fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: SupportedCones<T>) {
+    
     let maxlistlen = 5;
 
     //skip if there are none of this type

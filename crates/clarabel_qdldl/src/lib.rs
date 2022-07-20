@@ -747,8 +747,7 @@ fn _permute_symmetric_inner<T: FloatT>(
     }
 }
 
-//PJG: temporarily pub for testing
-pub fn _get_amd_ordering<T: FloatT>(A: &CscMatrix<T>) -> (Vec<usize>, Vec<usize>) {
+fn _get_amd_ordering<T: FloatT>(A: &CscMatrix<T>) -> (Vec<usize>, Vec<usize>) {
     let control = amd::Control::default();
     let (perm, iperm, _info) = amd::order(A.nrows(), &A.colptr, &A.rowval, &control).unwrap();
     (perm, iperm)

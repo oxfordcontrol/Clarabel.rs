@@ -14,6 +14,7 @@ use clarabel_algebra::*;
 //removed there, it can be removed here as well.
 
 pub struct DefaultKKTSystem<T: FloatT> {
+
     //the KKT system solver
     //PJG: This is too concrete.   Should be trait based
     //types hierarchy and folders is super confusing
@@ -30,7 +31,6 @@ pub struct DefaultKKTSystem<T: FloatT> {
     // work vectors for assembling/dissambling vectors
     workx: Vec<T>,
     workz: Vec<T>,
-    //PJG: Is this extra work still needed given cones are dropped?
     work_conic: Vec<T>,
 }
 
@@ -43,7 +43,9 @@ where
         cones: &CompositeCone<T>,
         settings: &DefaultSettings<T>,
     ) -> Self {
+
         let (m, n) = (data.m, data.n);
+        
         let kktsolver = DirectLDLKKTSolver::<T>::new(&data.P, &data.A, cones, m, n, settings);
 
         //the LHS constant part of the reduced solve

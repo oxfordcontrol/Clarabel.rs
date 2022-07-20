@@ -80,9 +80,7 @@ pub trait AnyCone<T>: Cone<T> + AsAny<T> {}
 impl<T, V: Cone<T> + AsAny<T>> AnyCone<T> for V {}
 type BoxedCone<T> = Box<dyn AnyCone<T>>;
 
-//PJG: translation of Julia in this function is
-//probably not the best way, plus it's not a dict now
-pub fn cone_dict<T: FloatT>(cone: SupportedCones<T>) -> BoxedCone<T> {
+pub fn make_cone<T: FloatT>(cone: SupportedCones<T>) -> BoxedCone<T> {
     match cone {
         SupportedCones::NonnegativeConeT(dim) => Box::new(NonnegativeCone::<T>::new(dim)),
         SupportedCones::ZeroConeT(dim) => Box::new(ZeroCone::<T>::new(dim)),
@@ -123,12 +121,14 @@ impl<T: FloatT> CompositeCone<T> {
 
         // create cones with the given dims
         for t in types.iter() {
-            cones.push(cone_dict(*t));
+            cones.push(make_cone(*t));
         }
 
-        //  count the number of each cone type.
-        // PJG: could perhaps fix max capacity here but Enum::variant_count is not
-        // yet a stable feature.  Capacity should be number of SupportedCones variants
+        // Count the number of each cone type.
+        // NB: ideally we could fix max capacity here,  but Enum::variant_count is not
+        // yet a stable feature.  Capacity should be number of SupportedCones variants.
+        // See: https://github.com/rust-lang/rust/issues/73662
+
         let mut type_counts = HashMap::new();
         for t in types.iter() {
             *type_counts.entry(&(*t.variant_name())).or_insert(0) += 1;
@@ -139,8 +139,8 @@ impl<T: FloatT> CompositeCone<T> {
         let degree = cones.iter().map(|c| c.degree()).sum();
 
         //ranges for the subvectors associated with each cone,
-        //and the subranges associated with their corresponding
-        //entries in the WtW sparse block
+        //and the rangse for with the corresponding entries
+        //in the WtW sparse block
 
         let rng_cones = _make_rng_cones(&cones);
         let rng_blocks = _make_rng_blocks(&cones);

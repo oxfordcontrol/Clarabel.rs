@@ -243,15 +243,14 @@ where
 
         // update the scaled u and v columns.
         let mut cidx = 0; // which of the SOCs are we working on?
+
         for (i, cone) in cones.iter().enumerate() {
+
             if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
+
                 //here we need to recover the inner SOC value for
                 //this cone so we can access its fields
 
-                //PJG: This forced downcasting is not ideal and requires
-                //ugly machinery in the BoxedCone implementation to enable.
-                //Might be better for the cones to be implemented as an
-                //enum type, treating SOC as a special case.
                 let K = cone.as_any().downcast_ref::<SecondOrderCone<T>>();
 
                 match K {
@@ -366,7 +365,8 @@ impl<T: FloatT> DirectLDLKKTSolver<T> {
                 //insufficient improvement.  Exit
                 return;
             } else {
-                x.copy_from(dx); //PJG: pointer swap might be faster
+                //just swap instead of copying to x
+                std::mem::swap(x, dx); 
             }
         }
     }

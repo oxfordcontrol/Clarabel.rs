@@ -50,7 +50,6 @@ pub trait KKTSystem<T: FloatT> {
 
     fn update(&mut self, data: &Self::D, cones: &Self::C);
 
-    //PJG: steptype as string sucks here
     fn solve(
         &mut self,
         step_lhs: &mut Self::V,
