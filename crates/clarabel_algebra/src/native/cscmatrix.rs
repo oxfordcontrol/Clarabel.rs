@@ -2,8 +2,7 @@
 use super::*;
 use crate::{MatrixShape, MatrixTriangle};
 
-impl<T: FloatT> CscMatrix<T>
-{
+impl<T: FloatT> CscMatrix<T> {
     pub fn spalloc(m: usize, n: usize, nnz: usize) -> Self {
         let mut colptr = vec![0; n + 1];
         let rowval = vec![0; nnz];

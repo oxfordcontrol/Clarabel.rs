@@ -4,9 +4,9 @@ use core::cmp::{max, min};
 use derive_builder::Builder;
 
 #[derive(Builder, Debug)]
-pub struct QDLDLSettings<T> 
-where 
-    T:FloatT
+pub struct QDLDLSettings<T>
+where
+    T: FloatT,
 {
     #[builder(default = "None", setter(strip_option))]
     perm: Option<Vec<usize>>,
@@ -28,13 +28,12 @@ impl<T: FloatT> Default for QDLDLSettings<T> {
     }
 }
 
-
 #[derive(Debug)]
 pub struct QDLDLFactorisation<T = f64> {
     // permutation vector
     perm: Vec<usize>,
     // inverse permutation
-    #[allow(dead_code)]  //PJG: unused because we call ipermute in solve instead.  Keep?
+    #[allow(dead_code)] //PJG: unused because we call ipermute in solve instead.  Keep?
     iperm: Vec<usize>,
     // lower triangular factor
     L: CscMatrix<T>,
@@ -106,15 +105,14 @@ impl<T: FloatT> QDLDLFactorisation<T> {
     }
 
     pub fn offset_values(&mut self, indices: &[usize], offset: T, signs: &[i8]) {
-
-        assert_eq!(indices.len(),signs.len());
+        assert_eq!(indices.len(), signs.len());
 
         let nzval = &mut self.workspace.triuA.nzval; // post perm internal data
         let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
 
-        for (&idx,&sign) in indices.iter().zip(signs.iter()) {
+        for (&idx, &sign) in indices.iter().zip(signs.iter()) {
             let sign: T = T::from_i8(sign).unwrap();
-            nzval[AtoPAPt[idx]] += offset*sign;
+            nzval[AtoPAPt[idx]] += offset * sign;
         }
     }
 

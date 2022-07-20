@@ -1,7 +1,7 @@
 use super::*;
 use crate::core::{
-    cones::{CompositeCone,SupportedCones},
-    traits::{SolveInfo},
+    cones::{CompositeCone, SupportedCones},
+    traits::SolveInfo,
     SolverStatus,
 };
 
@@ -13,8 +13,7 @@ macro_rules! expformat {
     ($fmt:expr,$val:expr) => {
         if $val.is_normal() {
             _exp_str_reformat(format!($fmt, $val))
-        }
-        else {
+        } else {
             format!($fmt, $val)
         }
     };
@@ -142,7 +141,6 @@ impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
             "-----------------------------------------------------------------------------------"
         );
 
-        //PJG: no solver status string formatting available yet
         println!("Terminated with status = {}", self.status);
 
         println!("solve time = {:?}", self.solve_time);
@@ -261,7 +259,10 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
     println!("settings:");
 
     if set.direct_kkt_solver {
-        println!("  linear algebra: direct / TBD, precision: {} bit",  _get_precision_string::<T>());
+        println!(
+            "  linear algebra: direct / TBD, precision: {} bit",
+            _get_precision_string::<T>()
+        );
         //set.direct_solve_method, _get_precision_string<T>());
     }
 
@@ -318,7 +319,7 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
 }
 
 fn _get_precision_string<T: FloatT>() -> String {
-    (::std::mem::size_of::<T>()*8).to_string()
+    (::std::mem::size_of::<T>() * 8).to_string()
 }
 
 //PJG: cone dimensions are now baked into SupportedCones<T>.  Maybe
@@ -332,7 +333,7 @@ fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: Suppor
     }
 
     // how many of this type of cone?
-    let name  = conetype.variant_name();
+    let name = conetype.variant_name();
     let count = cones.type_counts[name];
 
     //let name  = rpad(string(type)[1:end-5],11)  #drops "ConeT part"
@@ -374,7 +375,6 @@ fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: Suppor
 // This matches the Julia output formatting.
 
 fn _exp_str_reformat(mut thestr: String) -> String {
-
     // Safe to `unwrap` as `num` is guaranteed to contain `'e'`
     let eidx = thestr.find('e').unwrap();
     let has_sign = thestr.chars().nth(eidx + 1).unwrap() == '-';

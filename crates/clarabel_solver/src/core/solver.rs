@@ -1,11 +1,10 @@
 use super::cones::Cone;
 use super::traits::*;
-use clarabel_timers::*;
 use clarabel_algebra::*;
-
+use clarabel_timers::*;
 
 // ---------------------------------
-// Solver status type 
+// Solver status type
 // ---------------------------------
 
 #[derive(PartialEq, Clone, Debug)]
@@ -30,11 +29,9 @@ impl Default for SolverStatus {
     }
 }
 
-
 // ---------------------------------
-// Solver type and standard implemention 
+// Solver type and standard implemention
 // ---------------------------------
-
 
 pub struct Solver<D, V, R, K, C, SI, SR, SE> {
     pub data: D,
@@ -51,12 +48,10 @@ pub struct Solver<D, V, R, K, C, SI, SR, SE> {
 }
 
 pub trait IPSolver<T, D, V, R, K, C, SI, SR, SE> {
-    
     fn solve(&mut self);
     fn default_start(&mut self);
     fn centering_parameter(&self, α: T) -> T;
 }
-
 
 impl<T, D, V, R, K, C, SI, SR, SE> IPSolver<T, D, V, R, K, C, SI, SR, SE>
     for Solver<D, V, R, K, C, SI, SR, SE>
@@ -72,7 +67,6 @@ where
     SE: Settings<T>,
 {
     fn solve(&mut self) {
-
         let s = self;
 
         // various initializations
@@ -230,7 +224,6 @@ where
         s.timers.replace(timers);
 
         s.info.print_footer(&s.settings);
-
     }
 
     fn default_start(&mut self) {

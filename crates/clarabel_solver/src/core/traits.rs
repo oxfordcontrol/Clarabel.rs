@@ -1,10 +1,8 @@
-use super::{CoreSettings,cones::Cone};
+use super::{cones::Cone, CoreSettings};
 use clarabel_algebra::*;
 use clarabel_timers::*;
 
-
 pub trait ProblemData<T: FloatT> {
-
     type V: Variables<T>;
     type C: Cone<T>;
     type SE: Settings<T>;
@@ -13,7 +11,6 @@ pub trait ProblemData<T: FloatT> {
 }
 
 pub trait Variables<T: FloatT> {
-
     type D: ProblemData<T>;
     type R: Residuals<T>;
     type C: Cone<T>;
@@ -69,7 +66,6 @@ pub trait KKTSystem<T: FloatT> {
 }
 
 pub trait SolveInfo<T: FloatT> {
-
     type D: ProblemData<T>;
     type V: Variables<T>;
     type R: Residuals<T>;
@@ -99,7 +95,6 @@ pub trait SolveResult<T: FloatT> {
     fn finalize(&mut self, data: &Self::D, variables: &Self::V, info: &Self::SI);
 }
 
-
 pub trait Settings<T: FloatT> {
-    fn core(& self) -> &CoreSettings<T>;
+    fn core(&self) -> &CoreSettings<T>;
 }

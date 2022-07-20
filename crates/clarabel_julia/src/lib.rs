@@ -2,14 +2,13 @@
 #![allow(non_snake_case)]
 use std::slice;
 
-//julia interface require some access to solver internals, 
+//julia interface require some access to solver internals,
 //so just use the internal crate definitions instead of the API.
-use clarabel_algebra as algebra;
-use clarabel_solver  as solver;
 use algebra::CscMatrix;
+use clarabel_algebra as algebra;
+use clarabel_solver as solver;
+use solver::core::{cones::SupportedCones::*, IPSolver};
 use solver::implementations::default::*;
-use solver::core::{cones::SupportedCones::*, 
-                   IPSolver};
 
 #[repr(C)]
 #[derive(Debug)]
@@ -18,9 +17,9 @@ pub struct VectorJl<T> {
     len: libc::size_t,
 }
 
-impl<T> VectorJl<T> 
-where 
-    T: std::clone::Clone + std::fmt::Debug
+impl<T> VectorJl<T>
+where
+    T: std::clone::Clone + std::fmt::Debug,
 {
     fn to_slice(&self) -> &[T] {
         unsafe { slice::from_raw_parts(self.p, self.len as usize) }
@@ -80,16 +79,13 @@ impl CscMatrixJl {
     }
 }
 
-
 #[no_mangle]
 pub extern "C" fn solve(
     P: &CscMatrixJl,
     q: &VectorJl<f64>,
     A: &CscMatrixJl,
     b: &VectorJl<f64>,
-) -> f64 
-
-{
+) -> f64 {
     let P = P.to_CscMatrix();
     let A = A.to_CscMatrix();
     let q = q.to_slice().to_vec();
@@ -97,10 +93,10 @@ pub extern "C" fn solve(
 
     let cones = [NonnegativeConeT(b.len())];
 
-    println!("P = {:?}",P);
-    println!("A = {:?}",A);
-    println!("q = {:?}",q);
-    println!("b = {:?}",b);
+    println!("P = {:?}", P);
+    println!("A = {:?}", A);
+    println!("q = {:?}", q);
+    println!("b = {:?}", b);
 
     let settings = DefaultSettingsBuilder::default()
         .equilibrate_enable(true)

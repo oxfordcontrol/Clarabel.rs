@@ -5,10 +5,8 @@ use clarabel_algebra::*;
 use clarabel_qdldl::*;
 
 pub struct QDLDLDirectLDLSolver<T> {
-
     //KKT matrix and its QDLDL factorization
     factors: QDLDLFactorisation<T>,
-
 }
 
 impl<T: FloatT> QDLDLDirectLDLSolver<T> {
@@ -29,26 +27,22 @@ impl<T: FloatT> QDLDLDirectLDLSolver<T> {
 
         let factors = QDLDLFactorisation::<T>::new(KKT, Some(opts));
 
-        Self {factors}
+        Self { factors }
     }
 }
 
 impl<T: FloatT> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> {
-
     fn update_values(&mut self, index: &[usize], values: &[T]) {
-
         //Update values that are stored within
         //the reordered copy held internally by QDLDL.
         self.factors.update_values(index, values);
     }
 
     fn scale_values(&mut self, index: &[usize], scale: T) {
-
         self.factors.scale_values(index, scale);
     }
 
     fn offset_values(&mut self, index: &[usize], offset: T, signs: &[i8]) {
-
         self.factors.offset_values(index, offset, signs);
     }
 
@@ -59,7 +53,6 @@ impl<T: FloatT> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> {
     }
 
     fn refactor(&mut self, _kkt: &CscMatrix<T>) {
-
         //QDLDL has maintained its own version of the permuted
         //KKT matrix through custom update/scale/offset methods,
         //so we ignore the KKT matrix provided by the caller

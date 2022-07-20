@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use super::*;
 use crate::core::{
-    cones::{Cone,CompositeCone}, 
+    cones::{CompositeCone, Cone},
     traits::ProblemData,
 };
 use clarabel_algebra::*;
@@ -129,7 +129,6 @@ where
         equil.einv.scalarop_from(T::recip, e);
     }
 }
-
 
 // ---------------
 // utilities

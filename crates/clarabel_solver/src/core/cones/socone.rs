@@ -67,7 +67,6 @@ where
     }
 
     fn update_scaling(&mut self, s: &[T], z: &[T]) {
-
         let (z1, z2) = (z[0], &z[1..]);
         let (s1, s2) = (s[0], &s[1..]);
 
@@ -171,13 +170,11 @@ where
     }
 
     fn gemv_W(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
-
         // symmetric, so ignore transpose
         _soc_gemv_W_inner(&self.w, self.η, x, y, α, β);
     }
 
     fn gemv_Winv(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
-
         // symmetric, so ignore transpose
         _soc_gemv_Winv_inner(&self.w, self.η, x, y, α, β);
     }

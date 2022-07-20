@@ -1,7 +1,7 @@
 use super::*;
 use crate::core::{
+    cones::{CompositeCone, Cone},
     traits::Variables,
-    cones::{Cone,CompositeCone}
 };
 use clarabel_algebra::*;
 
@@ -38,7 +38,6 @@ where
     type C = CompositeCone<T>;
 
     fn calc_mu(&mut self, residuals: &DefaultResiduals<T>, cones: &CompositeCone<T>) -> T {
-        //PJG: possibly gross cast here
         let denom = T::from(cones.degree() + 1).unwrap();
         (residuals.dot_sz + self.τ * self.κ) / denom
     }

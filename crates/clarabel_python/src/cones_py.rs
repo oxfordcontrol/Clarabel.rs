@@ -1,26 +1,21 @@
 #![allow(non_snake_case)]
 
 use core::ops::Deref;
-use pyo3::{prelude::*, 
-           exceptions::PyTypeError};
+use pyo3::{exceptions::PyTypeError, prelude::*};
 use std::fmt::Write;
 
 // python interface require some access to solver internals,
 // so just use the internal crate definitions instead of the API.
-use clarabel_solver::core::{
-     cones::SupportedCones::*, 
-     cones::SupportedCones};
+use clarabel_solver::core::{cones::SupportedCones, cones::SupportedCones::*};
 
-
-// generic Python display functionality for cone objects 
-fn __repr__cone(name: &str, dim: usize) -> String{
+// generic Python display functionality for cone objects
+fn __repr__cone(name: &str, dim: usize) -> String {
     let mut s = String::new();
-    write!(s, "{}({})", name ,dim).unwrap();
+    write!(s, "{}({})", name, dim).unwrap();
     s
 }
 
-
-#[pyclass(name="ZeroConeT")]
+#[pyclass(name = "ZeroConeT")]
 pub struct PyZeroConeT {
     #[pyo3(get)]
     pub dim: usize,
@@ -29,16 +24,14 @@ pub struct PyZeroConeT {
 impl PyZeroConeT {
     #[new]
     pub fn new(dim: usize) -> Self {
-        Self {dim}
+        Self { dim }
     }
     pub fn __repr__(&self) -> String {
         __repr__cone("ZeroConeT", self.dim)
     }
 }
 
-
-
-#[pyclass(name="NonnegativeConeT")]
+#[pyclass(name = "NonnegativeConeT")]
 pub struct PyNonnegativeConeT {
     #[pyo3(get)]
     pub dim: usize,
@@ -47,16 +40,14 @@ pub struct PyNonnegativeConeT {
 impl PyNonnegativeConeT {
     #[new]
     pub fn new(dim: usize) -> Self {
-        Self{dim}
+        Self { dim }
     }
     pub fn __repr__(&self) -> String {
         __repr__cone("NonnegativeConeT", self.dim)
     }
 }
 
-
-
-#[pyclass(name="SecondOrderConeT")]
+#[pyclass(name = "SecondOrderConeT")]
 pub struct PySecondOrderConeT {
     #[pyo3(get)]
     pub dim: usize,
@@ -65,16 +56,15 @@ pub struct PySecondOrderConeT {
 impl PySecondOrderConeT {
     #[new]
     pub fn new(dim: usize) -> Self {
-        Self{dim}
+        Self { dim }
     }
     pub fn __repr__(&self) -> String {
         __repr__cone("SecondOrderConeT", self.dim)
     }
 }
 
-
-// We can't implement the foreign trait FromPyObject directly on 
-// SupportedCones<f64> since both are defined outside the crate, so 
+// We can't implement the foreign trait FromPyObject directly on
+// SupportedCones<f64> since both are defined outside the crate, so
 // put a dummy wrapper around it here.
 
 #[derive(Debug)]
@@ -89,7 +79,6 @@ impl Deref for PySupportedCones {
 
 impl<'a> FromPyObject<'a> for PySupportedCones {
     fn extract(obj: &'a PyAny) -> PyResult<Self> {
-
         let thetype = obj.get_type().name()?;
 
         match thetype {
@@ -110,19 +99,13 @@ impl<'a> FromPyObject<'a> for PySupportedCones {
                 write!(errmsg, "Unrecognized cone type : {}", thetype).unwrap();
                 Err(PyTypeError::new_err(errmsg))
             }
-
         }
     }
 }
 
-
 pub(crate) fn _py_to_native_cones(cones: Vec<PySupportedCones>) -> Vec<SupportedCones<f64>> {
-
     //force a vector of PySupportedCones back into a vector
-    //of rust native SupportedCones.  The Py cone is just 
+    //of rust native SupportedCones.  The Py cone is just
     //a wrapper; deref gives us the native object.
-    cones.iter()
-         .map(|x| *x.deref())
-         .collect()
-
+    cones.iter().map(|x| *x.deref()).collect()
 }

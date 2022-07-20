@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 use super::*;
-use crate::core::cones::{CompositeCone,SupportedCones};
+use crate::core::cones::{CompositeCone, SupportedCones};
 
 pub struct LDLDataMap {
     pub P: Vec<usize>,
@@ -19,7 +19,11 @@ pub struct LDLDataMap {
 }
 
 impl LDLDataMap {
-    pub fn new<T: FloatT>(Pmat: &CscMatrix<T>, Amat: &CscMatrix<T>, cones: &CompositeCone<T>) -> Self {
+    pub fn new<T: FloatT>(
+        Pmat: &CscMatrix<T>,
+        Amat: &CscMatrix<T>,
+        cones: &CompositeCone<T>,
+    ) -> Self {
         let (m, n) = (Amat.nrows(), Pmat.nrows());
         let P = vec![0; Pmat.nnz()];
         let A = vec![0; Amat.nnz()];
@@ -42,7 +46,7 @@ impl LDLDataMap {
         let mut SOC_v = Vec::<Vec<usize>>::with_capacity(nsoc);
 
         for (i, cone) in cones.iter().enumerate() {
-            if matches!(cones.types[i],SupportedCones::SecondOrderConeT(_)) {
+            if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
                 SOC_u.push(vec![0; cone.numel()]);
                 SOC_v.push(vec![0; cone.numel()]);
             }

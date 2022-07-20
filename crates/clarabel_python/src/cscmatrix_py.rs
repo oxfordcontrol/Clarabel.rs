@@ -2,9 +2,9 @@
 #![allow(non_snake_case)]
 
 use core::ops::Deref;
-use pyo3::{prelude::*, PyClass};
 use pyo3::exceptions::PyTypeError;
-use std::{cmp::Ordering, io, fmt::Write};
+use pyo3::{prelude::*, PyClass};
+use std::{cmp::Ordering, fmt::Write, io};
 
 //python interface require some access to solver internals,
 //so just use the internal crate definitions instead of the API.

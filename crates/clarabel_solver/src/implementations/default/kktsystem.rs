@@ -1,8 +1,8 @@
 use super::*;
 use crate::core::{
+    cones::{CompositeCone, Cone},
+    kktsolvers::{direct::*, *},
     traits::KKTSystem,
-    cones::{Cone,CompositeCone},
-    kktsolvers::{*,direct::*}
 };
 
 use clarabel_algebra::*;
@@ -13,8 +13,7 @@ use clarabel_algebra::*;
 //DirectLDLKKTSolver<T>/ Once settings is
 //removed there, it can be removed here as well.
 
-pub struct DefaultKKTSystem<T:FloatT> {
-
+pub struct DefaultKKTSystem<T: FloatT> {
     //the KKT system solver
     //PJG: This is too concrete.   Should be trait based
     //types hierarchy and folders is super confusing
@@ -39,10 +38,13 @@ impl<T> DefaultKKTSystem<T>
 where
     T: FloatT,
 {
-    pub fn new(data: &DefaultProblemData<T>, cones: &CompositeCone<T>, settings: &DefaultSettings<T>) -> Self {
+    pub fn new(
+        data: &DefaultProblemData<T>,
+        cones: &CompositeCone<T>,
+        settings: &DefaultSettings<T>,
+    ) -> Self {
         let (m, n) = (data.m, data.n);
-        let kktsolver =
-            DirectLDLKKTSolver::<T>::new(&data.P, &data.A, cones, m, n, settings);
+        let kktsolver = DirectLDLKKTSolver::<T>::new(&data.P, &data.A, cones, m, n, settings);
 
         //the LHS constant part of the reduced solve
         let x1 = vec![T::zero(); n];
@@ -198,7 +200,6 @@ where
     T: FloatT,
 {
     fn solve_constant_rhs(&mut self, data: &DefaultProblemData<T>) {
-        
         self.workx.axpby(-T::one(), &data.q, T::zero()); //workx .= -q
         self.kktsolver.setrhs(&self.workx, &data.b);
         self.kktsolver.solve(Some(&mut self.x2), Some(&mut self.z2));

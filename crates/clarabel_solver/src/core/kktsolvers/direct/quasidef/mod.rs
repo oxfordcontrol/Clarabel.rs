@@ -1,14 +1,14 @@
 use clarabel_algebra::*;
 
-//ldl linear solvers kept in a submodule (not flattened) 
+//ldl linear solvers kept in a submodule (not flattened)
 pub mod ldlsolvers;
 
 //flatten direct KKT module structure
 mod datamap;
 mod directldlkktsolver;
 mod utils;
-pub use directldlkktsolver::*;
 pub use datamap::*;
+pub use directldlkktsolver::*;
 pub use utils::*;
 
 pub trait DirectLDLSolver<T: FloatT> {

@@ -1,5 +1,5 @@
-use crate::implementations::default::DefaultSettings; 
+use crate::implementations::default::DefaultSettings;
 
-//Default implemenentations only uses the 
+//Default implemenentations only uses the
 //core settings, so just typedef to the default
 pub type CoreSettings<T> = DefaultSettings<T>;

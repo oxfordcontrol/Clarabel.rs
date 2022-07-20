@@ -55,7 +55,6 @@ impl<T> Hash for SupportedCones<T> {
     }
 }
 
-
 // -------------------------------------
 // Here we make a type that will allow for convenient
 // casting back to concrete cone types when needed.   This
@@ -89,7 +88,6 @@ pub fn cone_dict<T: FloatT>(cone: SupportedCones<T>) -> BoxedCone<T> {
         SupportedCones::ZeroConeT(dim) => Box::new(ZeroCone::<T>::new(dim)),
         SupportedCones::SecondOrderConeT(dim) => Box::new(SecondOrderCone::<T>::new(dim)),
         SupportedCones::PlaceHolderT(_, _) => unimplemented!(),
-
     }
 }
 
@@ -98,7 +96,6 @@ pub fn cone_dict<T: FloatT>(cone: SupportedCones<T>) -> BoxedCone<T> {
 // -------------------------------------
 
 pub struct CompositeCone<T: FloatT = f64> {
-
     cones: Vec<BoxedCone<T>>,
 
     //Type tags and count of each cone
@@ -118,9 +115,7 @@ pub struct CompositeCone<T: FloatT = f64> {
 }
 
 impl<T: FloatT> CompositeCone<T> {
-
     pub fn new(types: &[SupportedCones<T>]) -> Self {
-
         // make an internal copy to protect from user modification
         let types = types.to_vec();
         let ncones = types.len();
@@ -218,7 +213,7 @@ where
 
 impl<T> CompositeCone<T>
 where
-    T:FloatT
+    T: FloatT,
 {
     pub fn len(&self) -> usize {
         self.cones.len()
@@ -243,7 +238,7 @@ where
 
 impl<T> Cone<T> for CompositeCone<T>
 where
-    T: FloatT
+    T: FloatT,
 {
     fn dim(&self) -> usize {
         panic!("dim() not well defined for the CompositeCone");
