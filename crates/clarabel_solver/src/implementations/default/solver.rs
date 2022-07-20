@@ -33,8 +33,6 @@ impl<T: FloatT> DefaultSolver<T> {
         let mut output;
 
         timeit! {timers => "setup"; {
-        //PJG not clear to me if I should clone or borrow
-        //on the types, dims and settings
 
         let info = DefaultSolveInfo::<T>::new();
         let cones = CompositeCone::<T>::new(cone_types);
