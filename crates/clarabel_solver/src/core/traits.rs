@@ -44,7 +44,6 @@ pub trait Residuals<T: FloatT> {
 }
 
 pub trait KKTSystem<T: FloatT> {
-    //associated types
     type D: ProblemData<T>; //should impl ProblemData
     type V: Variables<T>; //should impl Variables
     type C: Cone<T>;
