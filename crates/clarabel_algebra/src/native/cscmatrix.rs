@@ -103,15 +103,13 @@ impl<T: FloatT> CscMatrix<T> {
 
     //populate a partial column with zeros using the self.colptr as the indicator
     // the next fill location in each row.
-    //PJG: Maybe vlength is always the same as vtoKKT.len() here?
     pub fn fill_colvec(
         &mut self,
         vtoKKT: &mut [usize],
         initrow: usize,
-        initcol: usize,
-        vlength: usize,
+        initcol: usize
     ) {
-        for (i, v) in vtoKKT.iter_mut().enumerate().take(vlength) {
+        for (i, v) in vtoKKT.iter_mut().enumerate() {
             let dest = self.colptr[initcol];
             self.rowval[dest] = initrow + i;
             self.nzval[dest] = T::zero();
@@ -122,15 +120,13 @@ impl<T: FloatT> CscMatrix<T> {
 
     // populate a partial row with zeros using the self.colptr as indicator of
     // next fill location in each row.
-    //PJG: Maybe vlength is always the same as vtoKKT.len() here?
     pub fn fill_rowvec(
         &mut self,
         vtoKKT: &mut [usize],
         initrow: usize,
         initcol: usize,
-        vlength: usize,
     ) {
-        for (i, v) in vtoKKT.iter_mut().enumerate().take(vlength) {
+        for (i, v) in vtoKKT.iter_mut().enumerate() {
             let col = initcol + i;
             let dest = self.colptr[col];
             self.rowval[dest] = initrow;

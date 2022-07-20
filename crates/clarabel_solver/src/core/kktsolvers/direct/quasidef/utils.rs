@@ -172,9 +172,10 @@ fn _kkt_assemble_fill<T: FloatT>(
     // fill in dense columns for each SOC
     let mut socidx = 0; //which SOC are we working on?
 
-    for (i, (cone, rng)) in cones.iter().zip(cones.rng_cones.iter()).enumerate() {
+    for (i, rng) in cones.rng_cones.iter().enumerate() {
+
         if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
-            let nvars = cone.numel();
+
             let headidx = rng.start;
 
             // which column does u go into (if triu)?
@@ -184,13 +185,13 @@ fn _kkt_assemble_fill<T: FloatT>(
             // note v is the first extra row/column, u is second
             match shape {
                 MatrixTriangle::Triu => {
-                    K.fill_colvec(&mut maps.SOC_v[socidx], headidx + n, col, nvars); //u
-                    K.fill_colvec(&mut maps.SOC_u[socidx], headidx + n, col + 1, nvars);
+                    K.fill_colvec(&mut maps.SOC_v[socidx], headidx + n, col); //u
+                    K.fill_colvec(&mut maps.SOC_u[socidx], headidx + n, col + 1);
                     //v
                 }
                 MatrixTriangle::Tril => {
-                    K.fill_rowvec(&mut maps.SOC_v[socidx], col, headidx + n, nvars); //u
-                    K.fill_rowvec(&mut maps.SOC_u[socidx], col + 1, headidx + n, nvars);
+                    K.fill_rowvec(&mut maps.SOC_v[socidx], col, headidx + n); //u
+                    K.fill_rowvec(&mut maps.SOC_u[socidx], col + 1, headidx + n);
                     //v
                 }
             }
