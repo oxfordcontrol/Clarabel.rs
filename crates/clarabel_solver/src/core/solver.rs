@@ -60,7 +60,7 @@ where
     D: ProblemData<T, V = V>,
     V: Variables<T, D = D, R = R, C = C>,
     R: Residuals<T, D = D, V = V>,
-    K: KKTSystem<T, D = D, V = V, C = C>,
+    K: KKTSystem<T, D = D, V = V, C = C, SE = SE>,
     C: Cone<T>,
     SI: SolveInfo<T, D = D, V = V, R = R, C = C, SE = SE>,
     SR: SolveResult<T, D = D, V = V, SI = SI>,
@@ -141,7 +141,7 @@ where
             //update the KKT system and the constant
             //parts of its solution
             // --------------
-            s.kktsystem.update(&s.data, &s.cones);
+            s.kktsystem.update(&s.data, &s.cones, &s.settings);
             }} // end "kkt update" timer
 
             // calculate the affine step
@@ -159,6 +159,7 @@ where
                 &s.variables,
                 &s.cones,
                 "affine",
+                &s.settings,
             );
             }}  //end "kkt solve affine" timer
 
@@ -192,6 +193,7 @@ where
                 &s.variables,
                 &s.cones,
                 "combined",
+                &s.settings,
             );
             }} //end "kkt solve"
 
@@ -232,9 +234,9 @@ where
         // set all scalings to identity (or zero for the zero cone)
         s.cones.set_identity_scaling();
         // Refactor
-        s.kktsystem.update(&s.data, &s.cones);
+        s.kktsystem.update(&s.data, &s.cones, &s.settings);
         // solve for primal/dual initial points via KKT
-        s.kktsystem.solve_initial_point(&mut s.variables, &s.data);
+        s.kktsystem.solve_initial_point(&mut s.variables, &s.data, &s.settings);
         // fix up (z,s) so that they are in the cone
         s.variables.shift_to_cone(&s.cones);
     }

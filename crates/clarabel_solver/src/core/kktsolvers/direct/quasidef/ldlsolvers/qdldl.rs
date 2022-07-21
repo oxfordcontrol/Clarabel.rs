@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
-use super::super::DirectLDLSolver;
-use crate::core::CoreSettings;
+use crate::core::{
+    CoreSettings,
+    kktsolvers::direct::DirectLDLSolver};
 use clarabel_algebra::*;
 use clarabel_qdldl::*;
 
@@ -9,7 +10,10 @@ pub struct QDLDLDirectLDLSolver<T> {
     factors: QDLDLFactorisation<T>,
 }
 
-impl<T: FloatT> QDLDLDirectLDLSolver<T> {
+impl<T> QDLDLDirectLDLSolver<T> 
+where 
+    T: FloatT,
+{
     pub fn new(KKT: &CscMatrix<T>, Dsigns: &[i8], settings: &CoreSettings<T>) -> Self {
         let dim = KKT.nrows();
 
@@ -31,7 +35,10 @@ impl<T: FloatT> QDLDLDirectLDLSolver<T> {
     }
 }
 
-impl<T: FloatT> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> {
+impl<T> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> 
+where 
+    T: FloatT,
+{
     fn update_values(&mut self, index: &[usize], values: &[T]) {
         //Update values that are stored within
         //the reordered copy held internally by QDLDL.

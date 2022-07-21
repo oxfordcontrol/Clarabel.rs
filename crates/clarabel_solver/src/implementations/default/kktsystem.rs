@@ -2,7 +2,7 @@ use super::*;
 use crate::core::{
     cones::{CompositeCone, Cone},
     kktsolvers::{direct::*, *},
-    traits::KKTSystem,
+    traits::{KKTSystem, Settings},
 };
 
 use clarabel_algebra::*;
@@ -46,7 +46,7 @@ where
 
         let (m, n) = (data.m, data.n);
         
-        let kktsolver = DirectLDLKKTSolver::<T>::new(&data.P, &data.A, cones, m, n, settings);
+        let kktsolver = DirectLDLKKTSolver::<T>::new(&data.P, &data.A, cones, m, n, settings.core());
 
         //the LHS constant part of the reduced solve
         let x1 = vec![T::zero(); n];
@@ -83,13 +83,14 @@ where
     type D = DefaultProblemData<T>;
     type V = DefaultVariables<T>;
     type C = CompositeCone<T>;
+    type SE = DefaultSettings<T>;
 
-    fn update(&mut self, data: &DefaultProblemData<T>, cones: &CompositeCone<T>) {
+    fn update(&mut self, data: &DefaultProblemData<T>, cones: &CompositeCone<T>, settings: &DefaultSettings<T>) {
         // update the linear solver with new cones
-        self.kktsolver.update(cones);
+        self.kktsolver.update(cones,settings.core());
 
         // calculate KKT solution for constant terms
-        self.solve_constant_rhs(data);
+        self.solve_constant_rhs(data,settings.core());
     }
 
     fn solve(
@@ -100,6 +101,7 @@ where
         variables: &DefaultVariables<T>,
         cones: &CompositeCone<T>,
         steptype: &'static str,
+        settings: &DefaultSettings<T>,
     ) {
         let (x1, z1) = (&mut self.x1, &mut self.z1);
         let (x2, z2) = (&self.x2, &self.z2); //from constant solve, so not mut
@@ -135,7 +137,7 @@ where
 
         // this solves the variable part of reduced KKT system
         self.kktsolver.setrhs(workx, workz);
-        self.kktsolver.solve(Some(x1), Some(z1));
+        self.kktsolver.solve(Some(x1), Some(z1),settings.core());
 
         // solve for Δτ.
         // -----------
@@ -178,6 +180,7 @@ where
         &mut self,
         variables: &mut DefaultVariables<T>,
         data: &DefaultProblemData<T>,
+        settings: &DefaultSettings<T>,
     ) {
         // solve with [0;b] as a RHS to get (x,s) initializers
         // zero out any sparse cone variables at end
@@ -185,7 +188,7 @@ where
         self.workz.copy_from(&data.b);
         self.kktsolver.setrhs(&self.workx, &self.workz);
         self.kktsolver
-            .solve(Some(&mut variables.x), Some(&mut variables.s));
+            .solve(Some(&mut variables.x), Some(&mut variables.s),settings.core());
 
         // solve with [-c;0] as a RHS to get z initializer
         // zero out any sparse cone variables at end
@@ -193,7 +196,7 @@ where
         self.workz.fill(T::zero());
 
         self.kktsolver.setrhs(&self.workx, &self.workz);
-        self.kktsolver.solve(None, Some(&mut variables.z));
+        self.kktsolver.solve(None, Some(&mut variables.z),settings.core());
     }
 }
 
@@ -201,9 +204,9 @@ impl<T> DefaultKKTSystem<T>
 where
     T: FloatT,
 {
-    fn solve_constant_rhs(&mut self, data: &DefaultProblemData<T>) {
+    fn solve_constant_rhs(&mut self, data: &DefaultProblemData<T>, settings: &DefaultSettings<T>) {
         self.workx.axpby(-T::one(), &data.q, T::zero()); //workx .= -q
         self.kktsolver.setrhs(&self.workx, &data.b);
-        self.kktsolver.solve(Some(&mut self.x2), Some(&mut self.z2));
+        self.kktsolver.solve(Some(&mut self.x2), Some(&mut self.z2),settings.core());
     }
 }

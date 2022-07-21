@@ -15,7 +15,10 @@ use super::*;
 //defaults.  Once settings is removed here, this
 //bound in the struct definition can be removed
 
-pub struct DirectLDLKKTSolver<T: FloatT> {
+pub struct DirectLDLKKTSolver<T>
+where
+    T: FloatT,
+{
     // problem dimensions
     m: usize,
     n: usize,
@@ -42,15 +45,14 @@ pub struct DirectLDLKKTSolver<T: FloatT> {
     //unpermuted KKT matrix
     KKT: CscMatrix<T>,
 
-    // settings just points back to the main solver settings.
-    // Required since there is no separate LDL settings container
-    settings: CoreSettings<T>,
-
     // the direct linear LDL solver
     ldlsolver: Box<dyn DirectLDLSolver<T>>,
 }
 
-impl<T: FloatT> DirectLDLKKTSolver<T> {
+impl<T> DirectLDLKKTSolver<T> 
+where 
+    T: FloatT,
+{
     pub fn new(
         P: &CscMatrix<T>,
         A: &CscMatrix<T>,
@@ -59,11 +61,6 @@ impl<T: FloatT> DirectLDLKKTSolver<T> {
         n: usize,
         settings: &CoreSettings<T>,
     ) -> Self {
-        //PJG: Cloning settings here as a workaround because
-        //both the QD KKT solver requires settings for refinement
-        //and the inner QDLDL solver requires settings.
-        let settings = (*settings).clone();
-
         // solving in sparse format.  Need this many
         // extra variables for SOCs
         let p = 2 * cones.type_count("SupportedConeT");
@@ -99,7 +96,7 @@ impl<T: FloatT> DirectLDLKKTSolver<T> {
 
         //PJG: switchable solver engine not implemented yet
         // the LDL linear solver engine
-        let ldlsolver = Box::new(QDLDLDirectLDLSolver::<T>::new(&KKT, &dsigns, &settings));
+        let ldlsolver = Box::new(QDLDLDirectLDLSolver::<T>::new(&KKT, &dsigns, settings));
 
         Self {
             m,
@@ -113,7 +110,6 @@ impl<T: FloatT> DirectLDLKKTSolver<T> {
             dsigns,
             WtWblocks,
             KKT,
-            settings,
             ldlsolver,
         }
     }
@@ -229,8 +225,7 @@ impl<T> KKTSolver<T> for DirectLDLKKTSolver<T>
 where
     T: FloatT,
 {
-    fn update(&mut self, cones: &CompositeCone<T>) {
-        let settings = &self.settings;
+    fn update(&mut self, cones: &CompositeCone<T>, settings: &CoreSettings<T>) {
         let map = &self.map;
 
         // Set the elements the W^tW blocks in the KKT matrix.
@@ -245,9 +240,7 @@ where
         let mut cidx = 0; // which of the SOCs are we working on?
 
         for (i, cone) in cones.iter().enumerate() {
-
             if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
-
                 //here we need to recover the inner SOC value for
                 //this cone so we can access its fields
 
@@ -307,21 +300,28 @@ where
         self.b[n + m..(n + m + p)].fill(T::zero());
     }
 
-    fn solve(&mut self, lhsx: Option<&mut [T]>, lhsz: Option<&mut [T]>) {
+    fn solve(
+        &mut self,
+        lhsx: Option<&mut [T]>,
+        lhsz: Option<&mut [T]>,
+        settings: &CoreSettings<T>,
+    ) {
         self.ldlsolver.solve(&mut self.x, &self.b);
 
-        if self.settings.iterative_refinement_enable {
-            self.iterative_refinement();
+        if settings.iterative_refinement_enable {
+            self.iterative_refinement(settings);
         }
         self.getlhs(lhsx, lhsz);
     }
 }
 
-impl<T: FloatT> DirectLDLKKTSolver<T> {
-    fn iterative_refinement(&mut self) {
+impl<T> DirectLDLKKTSolver<T> 
+where 
+    T: FloatT,
+{
+    fn iterative_refinement(&mut self, settings: &CoreSettings<T>) {
         let (x, b) = (&mut self.x, &self.b);
         let (e, dx) = (&mut self.work_e, &mut self.work_dx);
-        let settings = &self.settings;
 
         // iterative refinement params
         let reltol = settings.iterative_refinement_reltol;
@@ -366,7 +366,7 @@ impl<T: FloatT> DirectLDLKKTSolver<T> {
                 return;
             } else {
                 //just swap instead of copying to x
-                std::mem::swap(x, dx); 
+                std::mem::swap(x, dx);
             }
         }
     }
