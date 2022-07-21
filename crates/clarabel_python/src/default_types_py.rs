@@ -265,12 +265,7 @@ impl PyDefaultSettings {
 // Solver
 // ----------------------------------
 
-//PJG: not clear if this really needs to be
-//unsendable (i.e. not sendable between threads)
-//marked unsendable for now since compilation fails
-//with complaints that some internal substructs need
-//to support the Send trait
-#[pyclass(unsendable, name = "DefaultSolver")]
+#[pyclass(name = "DefaultSolver")]
 pub struct PyDefaultSolver {
     inner: DefaultSolver<f64>,
 }

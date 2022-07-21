@@ -10,6 +10,9 @@ use super::*;
 // KKTSolver using direct LDL factorisation
 // -------------------------------------
 
+// We require Send here to allow for sendable objects 
+// when compiling for a python interface.
+type BoxedDirectLDLSolver<T> = Box<dyn DirectLDLSolver<T> + Send>;
 
 pub struct DirectLDLKKTSolver<T>
 {
@@ -40,7 +43,7 @@ pub struct DirectLDLKKTSolver<T>
     KKT: CscMatrix<T>,
 
     // the direct linear LDL solver
-    ldlsolver: Box<dyn DirectLDLSolver<T>>,
+    ldlsolver: BoxedDirectLDLSolver<T>,
 }
 
 impl<T> DirectLDLKKTSolver<T>
@@ -134,7 +137,7 @@ where
 // update entries of the KKT matrix using the given index into its CSC representation.
 // applied to both the unpermuted matrix of the kktsolver and also to the ldlsolver
 fn _update_values<T: FloatT>(
-    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>,
+    ldlsolver: &mut BoxedDirectLDLSolver<T>,
     KKT: &mut CscMatrix<T>,
     index: &[usize],
     values: &[T],
@@ -155,7 +158,7 @@ fn _update_values_KKT<T: FloatT>(KKT: &mut CscMatrix<T>, index: &[usize], values
 }
 
 fn _scale_values<T: FloatT>(
-    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>,
+    ldlsolver: &mut BoxedDirectLDLSolver<T>,
     KKT: &mut CscMatrix<T>,
     index: &[usize],
     scale: T,
@@ -177,7 +180,7 @@ fn _scale_values_KKT<T: FloatT>(KKT: &mut CscMatrix<T>, index: &[usize], scale: 
 // offset diagonal entries of the KKT matrix over the Range
 // of inices passed.  Length of signs and index must agree
 fn _offset_values<T: FloatT>(
-    ldlsolver: &mut Box<dyn DirectLDLSolver<T>>,
+    ldlsolver: &mut BoxedDirectLDLSolver<T>,
     KKT: &mut CscMatrix<T>,
     index: &[usize],
     offset: T,

@@ -9,7 +9,7 @@ mod cscmatrix;
 pub use cscmatrix::*;
 
 pub trait FloatT:
-    'static + Float + NumAssign + Default + FromPrimitive + std::fmt::Display + std::fmt::LowerExp
+    'static + Send + Float + NumAssign + Default + FromPrimitive + std::fmt::Display + std::fmt::LowerExp
 {
 }
 impl FloatT for f32 {}

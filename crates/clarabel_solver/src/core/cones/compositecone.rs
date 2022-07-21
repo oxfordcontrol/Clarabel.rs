@@ -79,8 +79,8 @@ impl<T, U: Any + Cone<T>> AsAny<T> for U {
     }
 }
 
-pub trait AnyCone<T>: Cone<T> + AsAny<T> {}
-impl<T, V: Cone<T> + AsAny<T>> AnyCone<T> for V {}
+pub trait AnyCone<T>: Cone<T> + AsAny<T> + Send {}
+impl<T, V: Cone<T> + AsAny<T>> AnyCone<T> for V where V: Send {}
 type BoxedCone<T> = Box<dyn AnyCone<T>>;
 
 pub fn make_cone<T: FloatT>(cone: SupportedCones<T>) -> BoxedCone<T> {
