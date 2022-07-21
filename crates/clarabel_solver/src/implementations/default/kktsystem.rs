@@ -7,13 +7,7 @@ use crate::core::{
 
 use clarabel_algebra::*;
 
-//PJG: Need to explicitly give T:FloatT bound here
-//since we use DefaultSettings<T> to allow for typed
-//defaults, and DefaultSettings<T> appears as a part of
-//DirectLDLKKTSolver<T>/ Once settings is
-//removed there, it can be removed here as well.
-
-pub struct DefaultKKTSystem<T: FloatT> {
+pub struct DefaultKKTSystem<T> {
 
     //the KKT system solver
     //PJG: This is too concrete.   Should be trait based

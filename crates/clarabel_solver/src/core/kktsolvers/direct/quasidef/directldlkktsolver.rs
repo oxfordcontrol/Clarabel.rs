@@ -10,14 +10,8 @@ use super::*;
 // KKTSolver using direct LDL factorisation
 // -------------------------------------
 
-//PJG: Need to explicitly give T:FloatT bound here
-//since Settings must be Settings<T> to allow for
-//defaults.  Once settings is removed here, this
-//bound in the struct definition can be removed
 
 pub struct DirectLDLKKTSolver<T>
-where
-    T: FloatT,
 {
     // problem dimensions
     m: usize,
@@ -49,8 +43,8 @@ where
     ldlsolver: Box<dyn DirectLDLSolver<T>>,
 }
 
-impl<T> DirectLDLKKTSolver<T> 
-where 
+impl<T> DirectLDLKKTSolver<T>
+where
     T: FloatT,
 {
     pub fn new(
@@ -315,8 +309,8 @@ where
     }
 }
 
-impl<T> DirectLDLKKTSolver<T> 
-where 
+impl<T> DirectLDLKKTSolver<T>
+where
     T: FloatT,
 {
     fn iterative_refinement(&mut self, settings: &CoreSettings<T>) {

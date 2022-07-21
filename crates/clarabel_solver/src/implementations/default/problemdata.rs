@@ -10,7 +10,7 @@ use clarabel_algebra::*;
 // Data type for default problem format
 // ---------------
 
-pub struct DefaultProblemData<T: FloatT = f64> {
+pub struct DefaultProblemData<T> {
     // the main KKT residuals
     pub P: CscMatrix<T>,
     pub q: Vec<T>,

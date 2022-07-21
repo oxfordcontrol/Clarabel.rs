@@ -9,7 +9,7 @@ use clarabel_algebra::*;
 // Variables type for default problem format
 // ---------------
 
-pub struct DefaultVariables<T: FloatT = f64> {
+pub struct DefaultVariables<T> {
     pub x: Vec<T>,
     pub s: Vec<T>,
     pub z: Vec<T>,
@@ -51,7 +51,6 @@ where
         variables: &Self,
         cones: &CompositeCone<T>,
     ) {
-        //PJG: Not clear why data is an argument here.
         self.x.copy_from(&residuals.rx);
         self.z.copy_from(&residuals.rz);
         cones.λ_circ_λ(&mut self.s);

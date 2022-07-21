@@ -5,7 +5,7 @@ use clarabel_algebra::*;
 // equilibration data
 // ---------------
 
-pub struct DefaultEquilibrationData<T: FloatT = f64> {
+pub struct DefaultEquilibrationData<T> {
     // scaling matrices for problem data equilibration
     // fields d,e,dinv,einv are vectors of scaling values
     // to be treated as diagonal scaling data

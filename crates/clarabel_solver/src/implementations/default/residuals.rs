@@ -8,9 +8,9 @@ use clarabel_algebra::*;
 // ---------------
 
 //PJG everything pub here should probably be
-//public within the crate
+//pub (crate).  Probably true everywhere else too.
 
-pub struct DefaultResiduals<T: FloatT = f64> {
+pub struct DefaultResiduals<T> {
     // the main KKT residuals
     pub rx: Vec<T>,
     pub rz: Vec<T>,
