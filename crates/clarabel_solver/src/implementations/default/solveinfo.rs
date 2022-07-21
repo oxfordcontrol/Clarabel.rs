@@ -38,13 +38,19 @@ pub struct DefaultSolveInfo<T> {
     pub status: SolverStatus,
 }
 
-impl<T: FloatT> DefaultSolveInfo<T> {
+impl<T> DefaultSolveInfo<T> 
+where 
+    T: FloatT,
+{
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl<T: FloatT> SolveInfo<T> for DefaultSolveInfo<T> {
+impl<T> SolveInfo<T> for DefaultSolveInfo<T> 
+where 
+    T: FloatT,
+{
     type D = DefaultProblemData<T>;
     type V = DefaultVariables<T>;
     type R = DefaultResiduals<T>;

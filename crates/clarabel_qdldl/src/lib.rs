@@ -22,7 +22,10 @@ where
     regularize_delta: T,
 }
 
-impl<T: FloatT> Default for QDLDLSettings<T> {
+impl<T> Default for QDLDLSettings<T> 
+where
+    T: FloatT,
+{
     fn default() -> QDLDLSettings<T> {
         QDLDLSettingsBuilder::<T>::default().build().unwrap()
     }
@@ -46,7 +49,10 @@ pub struct QDLDLFactorisation<T = f64> {
     is_logical: bool,
 }
 
-impl<T: FloatT> QDLDLFactorisation<T> {
+impl<T> QDLDLFactorisation<T> 
+where
+    T: FloatT,
+{
     pub fn new(Ain: &CscMatrix<T>, opts: Option<QDLDLSettings<T>>) -> QDLDLFactorisation<T> {
         _qdldl_new(Ain, opts)
     }
@@ -232,7 +238,10 @@ pub struct QDLDLWorkspace<T> {
     regularize_count: usize,
 }
 
-impl<T: FloatT> QDLDLWorkspace<T> {
+impl<T> QDLDLWorkspace<T> 
+where 
+    T: FloatT,
+{
     pub fn new(
         triuA: CscMatrix<T>,
         AtoPAPt: Vec<usize>,

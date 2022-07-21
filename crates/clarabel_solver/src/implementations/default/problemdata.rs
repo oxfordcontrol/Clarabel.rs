@@ -21,7 +21,10 @@ pub struct DefaultProblemData<T: FloatT = f64> {
     pub equilibration: DefaultEquilibrationData<T>,
 }
 
-impl<T: FloatT> DefaultProblemData<T> {
+impl<T> DefaultProblemData<T> 
+where 
+    T: FloatT,
+{
     pub fn new(P: &CscMatrix<T>, q: &[T], A: &CscMatrix<T>, b: &[T]) -> Self {
         let (m, n) = (b.len(), q.len());
 

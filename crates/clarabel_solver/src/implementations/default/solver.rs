@@ -20,7 +20,10 @@ pub type DefaultSolver<T = f64> = Solver<
     DefaultSettings<T>,
 >;
 
-impl<T: FloatT> DefaultSolver<T> {
+impl<T> DefaultSolver<T> 
+where 
+    T: FloatT,
+{
     pub fn new(
         P: &CscMatrix<T>,
         q: &[T],
@@ -29,6 +32,7 @@ impl<T: FloatT> DefaultSolver<T> {
         cone_types: &[SupportedCones<T>],
         settings: DefaultSettings<T>,
     ) -> Self {
+        
         let mut timers = Timers::default();
         let mut output;
 

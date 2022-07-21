@@ -31,7 +31,10 @@ pub struct DefaultResiduals<T: FloatT = f64> {
     pub Px: Vec<T>,
 }
 
-impl<T: FloatT> DefaultResiduals<T> {
+impl<T> DefaultResiduals<T> 
+where 
+    T: FloatT,
+{
     pub fn new(n: usize, m: usize) -> Self {
         let rx = vec![T::zero(); n];
         let rz = vec![T::zero(); m];

@@ -17,7 +17,10 @@ pub struct DefaultVariables<T: FloatT = f64> {
     pub κ: T,
 }
 
-impl<T: FloatT> DefaultVariables<T> {
+impl<T> DefaultVariables<T> 
+where
+    T: FloatT,
+{
     pub fn new(n: usize, m: usize) -> Self {
         let x = vec![T::zero(); n];
         let s = vec![T::zero(); m];
@@ -29,7 +32,7 @@ impl<T: FloatT> DefaultVariables<T> {
     }
 }
 
-impl<T: FloatT> Variables<T> for DefaultVariables<T>
+impl<T> Variables<T> for DefaultVariables<T>
 where
     T: FloatT,
 {

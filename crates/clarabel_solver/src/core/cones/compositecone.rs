@@ -31,7 +31,10 @@ impl<T> SupportedCones<T> {
     }
 }
 
-impl<T: FloatT> std::fmt::Display for SupportedCones<T> {
+impl<T> std::fmt::Display for SupportedCones<T> 
+where 
+    T: FloatT,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", &self.variant_name().to_string())
     }
@@ -112,7 +115,10 @@ pub struct CompositeCone<T: FloatT = f64> {
     pub rng_blocks: Vec<Range<usize>>,
 }
 
-impl<T: FloatT> CompositeCone<T> {
+impl<T> CompositeCone<T> 
+where 
+    T: FloatT,
+{
     pub fn new(types: &[SupportedCones<T>]) -> Self {
         // make an internal copy to protect from user modification
         let types = types.to_vec();

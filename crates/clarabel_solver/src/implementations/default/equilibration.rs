@@ -18,7 +18,10 @@ pub struct DefaultEquilibrationData<T: FloatT = f64> {
     pub c: T,
 }
 
-impl<T: FloatT> DefaultEquilibrationData<T> {
+impl<T> DefaultEquilibrationData<T> 
+where 
+    T: FloatT,
+{
     pub fn new(n: usize, m: usize) -> Self {
         // Left/Right diagonal scaling for problem data
         let d = vec![T::one(); n];

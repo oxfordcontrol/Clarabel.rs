@@ -44,12 +44,14 @@ pub trait Residuals<T: FloatT> {
 }
 
 pub trait KKTSystem<T: FloatT> {
-    type D: ProblemData<T>; //should impl ProblemData
-    type V: Variables<T>; //should impl Variables
+    type D: ProblemData<T>; 
+    type V: Variables<T>; 
     type C: Cone<T>;
+    type SE: Settings<T>;
 
-    fn update(&mut self, data: &Self::D, cones: &Self::C);
+    fn update(&mut self, data: &Self::D, cones: &Self::C, settings: &Self::SE);
 
+    #[allow(clippy::too_many_arguments)]
     fn solve(
         &mut self,
         step_lhs: &mut Self::V,
@@ -58,9 +60,10 @@ pub trait KKTSystem<T: FloatT> {
         variables: &Self::V,
         cones: &Self::C,
         steptype: &'static str,
+        settings: &Self::SE,
     );
 
-    fn solve_initial_point(&mut self, variables: &mut Self::V, data: &Self::D);
+    fn solve_initial_point(&mut self, variables: &mut Self::V, data: &Self::D, settings: &Self::SE);
 }
 
 pub trait SolveInfo<T: FloatT> {

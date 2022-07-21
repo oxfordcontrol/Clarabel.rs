@@ -85,13 +85,19 @@ pub struct DefaultSettings<T: FloatT> {
     pub iterative_refinement_stop_ratio: T,
 }
 
-impl<T: FloatT> Default for DefaultSettings<T> {
+impl<T> Default for DefaultSettings<T> 
+where 
+    T: FloatT,
+{
     fn default() -> DefaultSettings<T> {
         DefaultSettingsBuilder::<T>::default().build().unwrap()
     }
 }
 
-impl<T: FloatT> Settings<T> for DefaultSettings<T> {
+impl<T> Settings<T> for DefaultSettings<T> 
+where 
+    T: FloatT,
+{
     //NB: CoreSettings is typedef'd to DefaultSettings
     fn core(&self) -> &DefaultSettings<T> {
         self

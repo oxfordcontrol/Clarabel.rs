@@ -11,7 +11,10 @@ pub struct ZeroCone<T: FloatT = f64> {
     phantom: PhantomData<T>,
 }
 
-impl<T: FloatT> ZeroCone<T> {
+impl<T> ZeroCone<T> 
+where 
+    T: FloatT,
+{
     pub fn new(dim: usize) -> Self {
         Self {
             dim,

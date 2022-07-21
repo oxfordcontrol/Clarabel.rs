@@ -18,7 +18,10 @@ pub struct DefaultSolveResult<T> {
     //pub info: SolveInfo,
 }
 
-impl<T: FloatT> DefaultSolveResult<T> {
+impl<T> DefaultSolveResult<T> 
+where 
+    T: FloatT,
+{
     pub fn new(m: usize, n: usize) -> Self {
         let x = vec![T::zero(); n];
         let z = vec![T::zero(); m];
@@ -38,7 +41,10 @@ impl<T: FloatT> DefaultSolveResult<T> {
     }
 }
 
-impl<T: FloatT> SolveResult<T> for DefaultSolveResult<T> {
+impl<T> SolveResult<T> for DefaultSolveResult<T> 
+where 
+    T: FloatT,
+{
     type D = DefaultProblemData<T>;
     type V = DefaultVariables<T>;
     type SI = DefaultSolveInfo<T>;
