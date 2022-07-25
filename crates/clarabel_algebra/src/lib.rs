@@ -4,10 +4,12 @@
 
 mod floats;
 mod traits;
-mod cscmatrix;
+mod matrix_types;
+mod matrix_utils;
 pub use floats::*;
 pub use traits::*;
-pub use cscmatrix::*;
+pub use matrix_types::*;
+pub use matrix_utils::*;
 
 
 // here we select the particular numeric implementation of

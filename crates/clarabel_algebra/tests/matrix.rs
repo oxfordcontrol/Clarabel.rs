@@ -19,6 +19,27 @@ fn test_matrix_4x4_triu() -> CscMatrix<f64> {
     }
 }
 
+fn test_matrix_4x4() -> CscMatrix<f64> {
+
+    // A =
+    //[ 4.0  -3.0   7.0    ⋅ ]
+    //[  ⋅    8.0  -1.0    ⋅ ]
+    //[ 1.0    ⋅    2.0  -3.0]
+    //[  ⋅   -1.0    ⋅    1.0]
+
+    //NB: same as above, but with tril entries
+    let Ap = vec![0, 2, 5, 8, 10];
+    let Ai = vec![0, 2, 0, 1, 3, 0, 1, 2, 2, 3];
+    let Ax = vec![4., 1., -3., 8., -1., 7., -1., 2., -3., 1.];
+    CscMatrix {
+        m: 4,
+        n: 4,
+        colptr: Ap,
+        rowval: Ai,
+        nzval: Ax,
+    }
+}
+
 fn test_matrix_3x4() -> CscMatrix<f64> {
     // A =
     //[-1.0  -17.0  6.0  10.0]
@@ -159,4 +180,16 @@ fn test_quad_form() {
     let val = A.quad_form(&y, &x);
 
     assert_eq!(val, 15.);
+}
+
+
+#[test]
+fn test_matrix_to_triu() {
+
+    let Afull = test_matrix_4x4();
+    let Atriu = test_matrix_4x4_triu();
+
+    let B = Afull.to_triu();
+
+    assert_eq!(B,Atriu);
 }

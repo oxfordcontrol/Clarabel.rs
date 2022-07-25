@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
-use crate::{FloatT,CscMatrix,MatrixShape, MatrixTriangle};
+use crate::{CscMatrix, FloatT, MatrixShape, MatrixTriangle};
 
-impl<T> CscMatrix<T> 
+impl<T> CscMatrix<T>
 where
     T: FloatT,
 {
@@ -21,6 +21,75 @@ where
         }
     }
 
+    pub fn to_triu(&self) -> Self {
+
+        assert_eq!(self.m, self.n);
+        let (m,n) = (self.m,self.n);
+        let mut colptr = vec![0; n + 1];
+        let mut nnz = 0;
+
+        //count the number of entries in the upper triangle
+        //and place the totals into colptr
+
+        for col in 0..n {
+            //start / stop indices for the current column
+            let first = self.colptr[col];
+            let last = self.colptr[col + 1];
+            let rows = &self.rowval[first..last];
+
+            // number of entries on or above diagonal in this column,
+            // shifted by 1 (i.e. colptr keeps a 0 in the first column)
+            colptr[col + 1] = rows.iter().filter(|&row| *row <= col).count();
+            nnz += colptr[col + 1];
+        }
+
+        //allocate and copy the upper triangle entries of
+        //each column into the new value vector.
+        //NB! : assumes that entries in each column have
+        //monotonically increasing row numbers
+        let mut rowval = vec![0; nnz];
+        let mut nzval = vec![T::zero(); nnz];
+
+        for col in 0..self.n {
+            
+            let ntriu = colptr[col + 1];
+
+            //start / stop indices for the destination
+            let fdest = colptr[col];
+            let ldest = fdest + ntriu;
+
+            //start / stop indices for the source
+            let fsrc = self.colptr[col];
+            let lsrc = fsrc + ntriu;
+
+            //copy upper triangle values
+            rowval[fdest..ldest].copy_from_slice(&self.rowval[fsrc..lsrc]);
+            nzval[fdest..ldest].copy_from_slice(&self.nzval[fsrc..lsrc]);
+
+            //this should now be cumsum of the counts
+            colptr[col + 1] = ldest;
+        }
+        CscMatrix {
+            m,
+            n,
+            colptr,
+            rowval,
+            nzval,
+        }
+    }
+}
+
+//---------------------------------------------------------
+// The remainder of the CscMatrix implementation consists of
+// low-level utilities for counting / filling entries in
+// block partitioned sparse matrices.  NB:  this is still
+// impl<T> CscMatrix<T>, as above.
+//---------------------------------------------------------
+
+impl<T> CscMatrix<T>
+where
+    T: FloatT,
+{
     // increment self.colptr by the number of nonzeros
     // in a dense upper/lower triangle on the diagonal.
     pub fn colcount_dense_triangle(
@@ -105,12 +174,7 @@ where
 
     //populate a partial column with zeros using the self.colptr as the indicator
     // the next fill location in each row.
-    pub fn fill_colvec(
-        &mut self,
-        vtoKKT: &mut [usize],
-        initrow: usize,
-        initcol: usize
-    ) {
+    pub fn fill_colvec(&mut self, vtoKKT: &mut [usize], initrow: usize, initcol: usize) {
         for (i, v) in vtoKKT.iter_mut().enumerate() {
             let dest = self.colptr[initcol];
             self.rowval[dest] = initrow + i;
@@ -122,12 +186,7 @@ where
 
     // populate a partial row with zeros using the self.colptr as indicator of
     // next fill location in each row.
-    pub fn fill_rowvec(
-        &mut self,
-        vtoKKT: &mut [usize],
-        initrow: usize,
-        initcol: usize,
-    ) {
+    pub fn fill_rowvec(&mut self, vtoKKT: &mut [usize], initrow: usize, initcol: usize) {
         for (i, v) in vtoKKT.iter_mut().enumerate() {
             let col = initcol + i;
             let dest = self.colptr[col];

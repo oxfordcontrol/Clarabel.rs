@@ -33,7 +33,7 @@ where
         assert_eq!(n, P.ncols());
         assert!(P.is_square());
 
-        let P = P.clone();
+        let P = P.to_triu();
         let q = q.to_vec();
         let A = A.clone();
         let b = b.to_vec();

@@ -4,7 +4,7 @@ import numpy as np;
 from scipy import sparse;
 
 # Define problem data
-P = sparse.csc_matrix([[4., 1], [1, 2]]);
+P = sparse.csc_matrix([[0., 0.], [0, 0]]);
 P = sparse.triu(P).tocsc();
 
 q = np.array([-1.,-4.]); 

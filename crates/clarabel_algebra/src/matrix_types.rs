@@ -2,7 +2,7 @@
 // solver and math implementations are in standard
 // compressed sparse column format, as is the API.
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CscMatrix<T = f64> {
     pub m: usize,
     pub n: usize,
