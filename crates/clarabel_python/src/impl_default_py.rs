@@ -1,3 +1,7 @@
+// Python wrappers and interface for the Default solver 
+// implementation and its related types. 
+
+
 #![allow(non_snake_case)]
 
 use pyo3::prelude::*;
@@ -146,6 +150,8 @@ pub struct PyDefaultSettings {
     // KKT settings incomplete
     #[pyo3(get, set)]
     pub direct_kkt_solver: bool,
+    #[pyo3(get, set)]
+    pub direct_solve_method: String,
 
     // static regularization parameters
     #[pyo3(get, set)]
@@ -218,6 +224,7 @@ impl PyDefaultSettings {
             equilibrate_min_scaling: set.equilibrate_min_scaling,
             equilibrate_max_scaling: set.equilibrate_max_scaling,
             direct_kkt_solver: set.direct_kkt_solver,
+            direct_solve_method: set.direct_solve_method.clone(),
             static_regularization_enable: set.static_regularization_enable,
             static_regularization_eps: set.static_regularization_eps,
             dynamic_regularization_enable: set.dynamic_regularization_enable,
@@ -247,6 +254,7 @@ impl PyDefaultSettings {
             equilibrate_min_scaling: self.equilibrate_min_scaling,
             equilibrate_max_scaling: self.equilibrate_max_scaling,
             direct_kkt_solver: self.direct_kkt_solver,
+            direct_solve_method: self.direct_solve_method.clone(),
             static_regularization_enable: self.static_regularization_enable,
             static_regularization_eps: self.static_regularization_eps,
             dynamic_regularization_enable: self.dynamic_regularization_enable,
@@ -291,5 +299,17 @@ impl PyDefaultSolver {
     fn solve(&mut self) -> PyDefaultSolveResult {
         self.inner.solve();
         PyDefaultSolveResult::new_from_internal(&self.inner.result)
+    }
+
+    pub fn __repr__(&self) -> String {
+        "Clarabel model with Float precision: f64".to_string()
+    }
+
+    fn print_timers(&self) {
+        
+        match &self.inner.timers{
+            Some(timers) => timers.print(), 
+            None => println!("no timers enabled")
+        };
     }
 }

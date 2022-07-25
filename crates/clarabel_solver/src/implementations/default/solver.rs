@@ -59,12 +59,7 @@ where
         let step_rhs  = DefaultVariables::<T>::new(data.n,data.m);
         let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
 
-        // user facing results go here
-        //PJG:final argument in julia is the timer.  Made
-        //into a separate field here, since it is part of the
-        //main solver loop and we shouldn't rely on the user
-        //to provide one in a non-default implementation.
-        //Change this in Julia.
+        // user facing results go here.
         let result = DefaultSolveResult::<T>::new(data.m,data.n);
 
         output = Self{data,variables,residuals,kktsystem,step_lhs,

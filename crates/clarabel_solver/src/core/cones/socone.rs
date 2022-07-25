@@ -73,8 +73,8 @@ where
         let zscale = T::sqrt(z1 * z1 - z2.sumsq());
         let sscale = T::sqrt(s1 * s1 - s2.sumsq());
 
-        let two = T::from(2.).unwrap();
-        let half = T::recip(two);
+        let two  = T::from_f32(2.0).unwrap();
+        let half = T::from_f32(0.5).unwrap();
 
         let gamma = T::sqrt((T::one() + s.dot(z) / (zscale * sscale)) * half);
 

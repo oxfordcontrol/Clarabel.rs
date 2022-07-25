@@ -7,12 +7,14 @@ use crate::core::{
 
 use clarabel_algebra::*;
 
+// We require Send here to allow pyo3 builds to share 
+// solver objects between threads.
+
+type BoxedKKTSolver<T> = Box<dyn KKTSolver<T> + Send>;
+
 pub struct DefaultKKTSystem<T> {
 
-    //the KKT system solver
-    //PJG: This is too concrete.   Should be trait based
-    //types hierarchy and folders is super confusing
-    kktsolver: DirectLDLKKTSolver<T>,
+    kktsolver: BoxedKKTSolver<T>,
 
     // solution vector for constant part of KKT solves
     x1: Vec<T>,
@@ -37,10 +39,23 @@ where
         cones: &CompositeCone<T>,
         settings: &DefaultSettings<T>,
     ) -> Self {
-
         let (m, n) = (data.m, data.n);
-        
-        let kktsolver = DirectLDLKKTSolver::<T>::new(&data.P, &data.A, cones, m, n, settings.core());
+
+        //here we allow scope for different KKT solvers, e.g.
+        //direct vs indirect, different QR based direct methods
+        //etc.   For now, we only have direct / LDL based
+        let kktsolver = if settings.direct_kkt_solver {
+            Box::new(DirectLDLKKTSolver::<T>::new(
+                &data.P,
+                &data.A,
+                cones,
+                m,
+                n,
+                settings.core(),
+            ))
+        } else {
+            panic!("Indirect and other solve strategies not yet supported.");
+        };
 
         //the LHS constant part of the reduced solve
         let x1 = vec![T::zero(); n];
@@ -79,12 +94,17 @@ where
     type C = CompositeCone<T>;
     type SE = DefaultSettings<T>;
 
-    fn update(&mut self, data: &DefaultProblemData<T>, cones: &CompositeCone<T>, settings: &DefaultSettings<T>) {
+    fn update(
+        &mut self,
+        data: &DefaultProblemData<T>,
+        cones: &CompositeCone<T>,
+        settings: &DefaultSettings<T>,
+    ) {
         // update the linear solver with new cones
-        self.kktsolver.update(cones,settings.core());
+        self.kktsolver.update(cones, settings.core());
 
         // calculate KKT solution for constant terms
-        self.solve_constant_rhs(data,settings.core());
+        self.solve_constant_rhs(data, settings.core());
     }
 
     fn solve(
@@ -131,7 +151,7 @@ where
 
         // this solves the variable part of reduced KKT system
         self.kktsolver.setrhs(workx, workz);
-        self.kktsolver.solve(Some(x1), Some(z1),settings.core());
+        self.kktsolver.solve(Some(x1), Some(z1), settings.core());
 
         // solve for Δτ.
         // -----------
@@ -181,8 +201,11 @@ where
         self.workx.fill(T::zero());
         self.workz.copy_from(&data.b);
         self.kktsolver.setrhs(&self.workx, &self.workz);
-        self.kktsolver
-            .solve(Some(&mut variables.x), Some(&mut variables.s),settings.core());
+        self.kktsolver.solve(
+            Some(&mut variables.x),
+            Some(&mut variables.s),
+            settings.core(),
+        );
 
         // solve with [-c;0] as a RHS to get z initializer
         // zero out any sparse cone variables at end
@@ -190,7 +213,8 @@ where
         self.workz.fill(T::zero());
 
         self.kktsolver.setrhs(&self.workx, &self.workz);
-        self.kktsolver.solve(None, Some(&mut variables.z),settings.core());
+        self.kktsolver
+            .solve(None, Some(&mut variables.z), settings.core());
     }
 }
 
@@ -201,6 +225,7 @@ where
     fn solve_constant_rhs(&mut self, data: &DefaultProblemData<T>, settings: &DefaultSettings<T>) {
         self.workx.axpby(-T::one(), &data.q, T::zero()); //workx .= -q
         self.kktsolver.setrhs(&self.workx, &data.b);
-        self.kktsolver.solve(Some(&mut self.x2), Some(&mut self.z2),settings.core());
+        self.kktsolver
+            .solve(Some(&mut self.x2), Some(&mut self.z2), settings.core());
     }
 }

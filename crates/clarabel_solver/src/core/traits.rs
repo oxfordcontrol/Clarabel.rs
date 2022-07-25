@@ -73,19 +73,15 @@ pub trait SolveInfo<T: FloatT> {
     type C: Cone<T>;
     type SE: Settings<T>;
 
-    fn reset(&mut self);
-    fn finalize(&mut self, timers: &Timers);
+    fn reset(&mut self, timers: &mut Timers);
+    fn finalize(&mut self, timers: &mut Timers);
+    fn update(&mut self, data: &Self::D, variables: &Self::V, residuals: &Self::R, timers: &Timers);
+    fn check_termination(&mut self, residuals: &Self::R, settings: &Self::SE) -> bool;
+    fn save_scalars(&mut self, μ: T, α: T, σ: T, iter: u32);
 
     fn print_header(&self, settings: &Self::SE, data: &Self::D, cones: &Self::C);
-
     fn print_status(&self, settings: &Self::SE);
     fn print_footer(&self, settings: &Self::SE);
-
-    fn update(&mut self, data: &Self::D, variables: &Self::V, residuals: &Self::R);
-
-    fn check_termination(&mut self, residuals: &Self::R, settings: &Self::SE) -> bool;
-
-    fn save_scalars(&mut self, μ: T, α: T, σ: T, iter: u32);
 }
 
 pub trait SolveResult<T: FloatT> {

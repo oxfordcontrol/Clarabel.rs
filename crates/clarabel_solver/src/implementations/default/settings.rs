@@ -45,16 +45,16 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "T::from(1e+4).unwrap()")]
     pub equilibrate_max_scaling: T,
 
-    // can be :qdldl or :mkl
+    
+    // only support direct / qdldl at the moment
     #[builder(default = "true")]
     pub direct_kkt_solver: bool,
-
-    // //pub direct_solve_method: Symbol,   PJG:Add this later
+    #[builder(default = r#""qdldl".to_string()"#)]
+    pub direct_solve_method: String,  
 
     // static regularization parameters
     #[builder(default = "true")]
     pub static_regularization_enable: bool,
-
     #[builder(default = "T::from(1e-8).unwrap()")]
     pub static_regularization_eps: T,
 

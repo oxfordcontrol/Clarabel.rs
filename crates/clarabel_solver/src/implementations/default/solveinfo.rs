@@ -38,8 +38,8 @@ pub struct DefaultSolveInfo<T> {
     pub status: SolverStatus,
 }
 
-impl<T> DefaultSolveInfo<T> 
-where 
+impl<T> DefaultSolveInfo<T>
+where
     T: FloatT,
 {
     pub fn new() -> Self {
@@ -47,8 +47,8 @@ where
     }
 }
 
-impl<T> SolveInfo<T> for DefaultSolveInfo<T> 
-where 
+impl<T> SolveInfo<T> for DefaultSolveInfo<T>
+where
     T: FloatT,
 {
     type D = DefaultProblemData<T>;
@@ -57,13 +57,17 @@ where
     type C = CompositeCone<T>;
     type SE = DefaultSettings<T>;
 
-    fn reset(&mut self) {
+    fn reset(&mut self, timers: &mut Timers) {
+
         self.status = SolverStatus::Unsolved;
         self.iterations = 0;
         self.solve_time = Duration::ZERO;
+
+        timers.reset_timer("solve");
+
     }
 
-    fn finalize(&mut self, timers: &Timers) {
+    fn finalize(&mut self, timers: &mut Timers) {
         self.solve_time = timers.total_time();
     }
 
@@ -98,7 +102,7 @@ where
         _print_conedims_by_type(cones, SupportedCones::ZeroConeT(0));
         _print_conedims_by_type(cones, SupportedCones::NonnegativeConeT(0));
         _print_conedims_by_type(cones, SupportedCones::SecondOrderConeT(0));
-        //_print_conedims_by_type(&cones, SupportedCones::PSDTriangleConeT(0)); 
+        //_print_conedims_by_type(&cones, SupportedCones::PSDTriangleConeT(0));
 
         _print_settings(settings);
         println!();
@@ -159,6 +163,7 @@ where
         data: &DefaultProblemData<T>,
         variables: &DefaultVariables<T>,
         residuals: &DefaultResiduals<T>,
+        timers: &Timers,
     ) {
         // optimality termination check should be computed w.r.t
         // the pre-homogenization x and z variables.
@@ -201,8 +206,7 @@ where
         self.ktratio = variables.κ / variables.τ;
 
         // solve time so far (includes setup)
-        //PJG: wtf is this?
-        //self.get_solve_time();
+        self.solve_time = timers.total_time();
     }
 
     fn check_termination(
@@ -331,7 +335,6 @@ fn _get_precision_string<T: FloatT>() -> String {
 }
 
 fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: SupportedCones<T>) {
-    
     let maxlistlen = 5;
 
     //skip if there are none of this type

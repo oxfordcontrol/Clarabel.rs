@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use super::*;
 use crate::core::traits::SolveResult;
 use crate::core::SolverStatus;
@@ -7,42 +9,40 @@ pub struct DefaultSolveResult<T> {
     pub x: Vec<T>,
     pub z: Vec<T>,
     pub s: Vec<T>,
-    pub obj_val: T,
     pub status: SolverStatus,
-    //PJG: leaving out solveinfo for now since
-    //it contains a timer etc, plus not sure
-    //now to initialize it since there is also
-    //one held by the solver itself.   I guess
-    //it will need to be cloned or something.
-
-    //pub info: SolveInfo,
+    pub obj_val: T,
+    pub solve_time: std::time::Duration,
+    pub iterations: u32,
+    pub r_prim: T,
+    pub r_dual: T,
 }
 
-impl<T> DefaultSolveResult<T> 
-where 
+impl<T> DefaultSolveResult<T>
+where
     T: FloatT,
 {
     pub fn new(m: usize, n: usize) -> Self {
+
         let x = vec![T::zero(); n];
         let z = vec![T::zero(); m];
         let s = vec![T::zero(); m];
-
-        let obj_val = T::nan();
-        let status = SolverStatus::Unsolved;
-        //let info = ???
 
         Self {
             x,
             z,
             s,
-            obj_val,
-            status,
+            status: SolverStatus::Unsolved,
+            obj_val: T::nan(),
+            solve_time: Duration::ZERO,
+            iterations: 0,
+            r_prim: T::nan(),
+            r_dual: T::nan(),
         }
     }
 }
 
-impl<T> SolveResult<T> for DefaultSolveResult<T> 
-where 
+impl<T> SolveResult<T> for DefaultSolveResult<T>
+where
     T: FloatT,
 {
     type D = DefaultProblemData<T>;
@@ -90,12 +90,9 @@ where
         self.z.scale(T::recip(cscale));
         self.s.hadamard(einv);
 
-        //PJG : Leaving this out since the SolveInfo is not defined,
-        //and it is also now super confusing with the type names of
-        //the internal info object.
-        // self.info.r_prim 	   = info.res_primal;
-        // self.info.r_dual 	   = info.res_dual;
-        // self.info.iter	   = info.iterations;
-        // self.info.solve_time = info.solve_time;
+        self.iterations  = info.iterations;
+        self.solve_time  = info.solve_time;
+        self.r_prim 	 = info.res_primal;
+        self.r_dual 	 = info.res_dual;
     }
 }

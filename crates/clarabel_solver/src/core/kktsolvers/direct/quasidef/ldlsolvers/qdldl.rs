@@ -65,4 +65,8 @@ where
         //so we ignore the KKT matrix provided by the caller
         self.factors.refactor();
     }
+
+    fn required_matrix_shape() -> MatrixTriangle {
+        MatrixTriangle::Triu
+    }
 }

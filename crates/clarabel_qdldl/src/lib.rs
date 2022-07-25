@@ -36,7 +36,7 @@ pub struct QDLDLFactorisation<T = f64> {
     // permutation vector
     perm: Vec<usize>,
     // inverse permutation
-    #[allow(dead_code)] //PJG: unused because we call ipermute in solve instead.  Keep anyway?
+    #[allow(dead_code)] //Unused because we call ipermute in solve instead.  Keep anyway.
     iperm: Vec<usize>,
     // lower triangular factor
     L: CscMatrix<T>,

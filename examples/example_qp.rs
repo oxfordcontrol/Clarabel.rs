@@ -3,7 +3,8 @@
 use clarabel::core::*;
 use clarabel::implementations::default::*;
 
-fn _problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
+fn _problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) 
+{
     let P: CscMatrix<f64> = CscMatrix {
         m: 2,
         n: 2,

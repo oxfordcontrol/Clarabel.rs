@@ -7,9 +7,6 @@ use clarabel_algebra::*;
 // Residuals type for default problem format
 // ---------------
 
-//PJG everything pub here should probably be
-//pub (crate).  Probably true everywhere else too.
-
 pub struct DefaultResiduals<T> {
     // the main KKT residuals
     pub rx: Vec<T>,

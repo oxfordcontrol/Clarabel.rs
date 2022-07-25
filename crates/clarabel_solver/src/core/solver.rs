@@ -69,21 +69,23 @@ where
     fn solve(&mut self) {
         let s = self;
 
-        // various initializations
-        s.info.reset();
-        let mut iter: u32 = 0;
-
         //timers is stored as an option so that
         //we can swap it out here and avoid
         //borrow conflicts with other fields.
         let mut timers = s.timers.take().unwrap();
+
+        // various initializations
+        s.info.reset(&mut timers);
+        let mut iter: u32 = 0;
+
         // reset the "solve" timer, but keep the "setup"
         timers.reset_timer("solve");
 
         // solver release info, solver config
         // problem dimensions, cone types etc
-        // @notimeit //PJG fix
-        s.info.print_header(&s.settings, &s.data, &s.cones);
+        notimeit! {timers; {
+            s.info.print_header(&s.settings, &s.data, &s.cones);
+        }}
 
         timeit! {timers => "solve"; {
 
@@ -117,7 +119,7 @@ where
             let isdone;
             timeit!{timers => "check termination"; {
             s.info
-                .update(&s.data, &s.variables, &s.residuals);
+                .update(&s.data, &s.variables, &s.residuals,&timers);
 
             isdone = s.info.check_termination(&s.residuals, &s.settings);
             }} //end "check termination" timer
@@ -219,8 +221,8 @@ where
         }} // end "solve" timer
 
         //store final solution, timing etc
+        s.info.finalize(&mut timers);
         s.result.finalize(&s.data, &s.variables, &s.info);
-        s.info.finalize(&timers);
 
         //stow the timers back into Option in the solver struct
         s.timers.replace(timers);
@@ -236,7 +238,8 @@ where
         // Refactor
         s.kktsystem.update(&s.data, &s.cones, &s.settings);
         // solve for primal/dual initial points via KKT
-        s.kktsystem.solve_initial_point(&mut s.variables, &s.data, &s.settings);
+        s.kktsystem
+            .solve_initial_point(&mut s.variables, &s.data, &s.settings);
         // fix up (z,s) so that they are in the cone
         s.variables.shift_to_cone(&s.cones);
     }

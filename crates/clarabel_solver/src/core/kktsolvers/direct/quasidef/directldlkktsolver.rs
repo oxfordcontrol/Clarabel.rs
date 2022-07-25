@@ -10,12 +10,12 @@ use super::*;
 // KKTSolver using direct LDL factorisation
 // -------------------------------------
 
-// We require Send here to allow for sendable objects 
-// when compiling for a python interface.
+// We require Send here to allow pyo3 builds to share
+// solver objects between threads.
+
 type BoxedDirectLDLSolver<T> = Box<dyn DirectLDLSolver<T> + Send>;
 
-pub struct DirectLDLKKTSolver<T>
-{
+pub struct DirectLDLKKTSolver<T> {
     // problem dimensions
     m: usize,
     n: usize,
@@ -76,14 +76,11 @@ where
         // assigned here before updating matrix entries
         let WtWblocks = _allocate_kkt_WtW_blocks::<T, T>(cones);
 
-        // which LDL solver should I use?
-        //PJG: commented out and QDLDL hardcoded for now
-        // ldlsolverT = _get_ldlsolver_type(settings.direct_solve_method);
+        // get a constructor for the LDL solver we should use,
+        // and also the matrix shape it requires
+        let (kktshape, ldl_ctor) = _get_ldlsolver_config(settings);
 
-        //PJG: hardcoding shape since only 1 solver is supported so far
-        // does it want a :triu or :tril KKT matrix?
-        //kktshape = required_matrix_shape(ldlsolverT);
-        let kktshape = MatrixTriangle::Triu;
+        //construct a KKT matrix of the right shape
         let (mut KKT, map) = _assemble_kkt_matrix(P, A, cones, kktshape);
 
         if settings.static_regularization_enable {
@@ -91,9 +88,8 @@ where
             _offset_values_KKT(&mut KKT, &map.diag_full[0..n], eps, &dsigns[0..n]);
         }
 
-        //PJG: switchable solver engine not implemented yet
-        // the LDL linear solver engine
-        let ldlsolver = Box::new(QDLDLDirectLDLSolver::<T>::new(&KKT, &dsigns, settings));
+        // now make the LDL linear solver engine
+        let ldlsolver = ldl_ctor(&KKT, &dsigns, settings);
 
         Self {
             m,
@@ -125,14 +121,40 @@ where
     }
 }
 
-//PJG: Reconfigurable not supported yet.
-// function _get_ldlsolver_type(s::Symbol)
-//     try
-//         return DirectLDLSolversDict[s]
-//     catch
-//         throw(error("Unsupported direct LDL linear solver :", s))
-//     end
-// end
+type LDLConstructor<T> = fn(&CscMatrix<T>, &[i8], &CoreSettings<T>) -> BoxedDirectLDLSolver<T>;
+
+fn _get_ldlsolver_config<T: FloatT>(
+    settings: &CoreSettings<T>,
+) -> (MatrixTriangle, LDLConstructor<T>)
+where
+    T: FloatT,
+{
+    //The Julia version implements this using a module scope dictionary,
+    //which allows users to register custom solver types.  That seems much
+    //harder to do in Rust since a static mutable Hashmap is unsafe.  For
+    //now, we use a fixed lookup table, so any new suppored solver types
+    //supported must be added here.   It should be possible to allow a
+    //"custom" LDL solver in the settings in well, whose constructor and
+    //and matrix shape could then be registered as some (probably hidden)
+    //options in the settings.
+
+    let ldlptr: LDLConstructor<T>;
+    let kktshape: MatrixTriangle;
+
+    match settings.direct_solve_method.as_str() {
+        "qdldl" => {
+            kktshape = QDLDLDirectLDLSolver::<T>::required_matrix_shape();
+            ldlptr = |M, D, S| Box::new(QDLDLDirectLDLSolver::<T>::new(M, D, S));
+        }
+        "custom" => {
+            unimplemented!();
+        }
+        _ => {
+            panic! {"Unrecognized LDL solver type"};
+        }
+    }
+    (kktshape, ldlptr)
+}
 
 // update entries of the KKT matrix using the given index into its CSC representation.
 // applied to both the unpermuted matrix of the kktsolver and also to the ldlsolver
@@ -146,8 +168,8 @@ fn _update_values<T: FloatT>(
     _update_values_KKT(KKT, index, values);
 
     // give the LDL subsolver an opportunity to update the same
-    // values if needed.   This latter is useful for QDLDL
-    // since it stores its own permuted copy
+    // values if needed.   This latter is useful for QDLDL since
+    // it stores its own permuted copy internally
     ldlsolver.update_values(index, values);
 }
 
@@ -272,7 +294,7 @@ where
         // Perturb the diagonal terms WtW that we have just overwritten
         // with static regularizers.  Note that we don't want to shift
         // elements in the ULHS (corresponding to P) since we already
-        // shifted them at initialization and haven't overwritten then
+        // shifted them at initialization and haven't overwritten them
         if settings.static_regularization_enable {
             let eps = settings.static_regularization_eps;
             let (m, n, p) = (self.m, self.n, self.p);
