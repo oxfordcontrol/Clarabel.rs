@@ -66,32 +66,43 @@ pub trait KKTSystem<T: FloatT> {
     fn solve_initial_point(&mut self, variables: &mut Self::V, data: &Self::D, settings: &Self::SE);
 }
 
-pub trait SolveInfo<T: FloatT> {
+pub trait InfoPrint<T> 
+where 
+    T:FloatT
+{
     type D: ProblemData<T>;
-    type V: Variables<T>;
-    type R: Residuals<T>;
     type C: Cone<T>;
     type SE: Settings<T>;
+
+    fn print_configuration(&self, settings: &Self::SE, data: &Self::D, cones: &Self::C);
+    fn print_status_header(&self, settings: &Self::SE);
+    fn print_status(&self, settings: &Self::SE);
+    fn print_footer(&self, settings: &Self::SE);
+}
+
+pub trait Info<T> : InfoPrint<T>
+where 
+    T: FloatT
+{
+    type V: Variables<T>;
+    type R: Residuals<T>;
 
     fn reset(&mut self, timers: &mut Timers);
     fn finalize(&mut self, timers: &mut Timers);
     fn update(&mut self, data: &Self::D, variables: &Self::V, residuals: &Self::R, timers: &Timers);
     fn check_termination(&mut self, residuals: &Self::R, settings: &Self::SE) -> bool;
     fn save_scalars(&mut self, μ: T, α: T, σ: T, iter: u32);
-
-    fn print_header(&self, settings: &Self::SE, data: &Self::D, cones: &Self::C);
-    fn print_status(&self, settings: &Self::SE);
-    fn print_footer(&self, settings: &Self::SE);
 }
 
-pub trait SolveResult<T: FloatT> {
+pub trait Solution<T: FloatT> {
     type D: ProblemData<T>;
     type V: Variables<T>;
-    type SI: SolveInfo<T>;
+    type I: Info<T>;
 
-    fn finalize(&mut self, data: &Self::D, variables: &Self::V, info: &Self::SI);
+    fn finalize(&mut self, data: &Self::D, variables: &Self::V, info: &Self::I);
 }
 
 pub trait Settings<T: FloatT> {
     fn core(&self) -> &CoreSettings<T>;
+    fn core_mut(&mut self) -> &mut CoreSettings<T>;
 }

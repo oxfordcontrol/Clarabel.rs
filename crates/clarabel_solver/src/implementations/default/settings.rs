@@ -8,7 +8,7 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "50")]
     pub max_iter: u32,
 
-    #[builder(default = "Duration::ZERO")]
+    #[builder(default = "Duration::MAX")]
     pub time_limit: Duration,
 
     #[builder(default = "true")]
@@ -99,7 +99,10 @@ where
     T: FloatT,
 {
     //NB: CoreSettings is typedef'd to DefaultSettings
-    fn core(&self) -> &DefaultSettings<T> {
+    fn core(&self) -> & DefaultSettings<T> {
+        self
+    }
+    fn core_mut(&mut self) -> &mut DefaultSettings<T> {
         self
     }
 }

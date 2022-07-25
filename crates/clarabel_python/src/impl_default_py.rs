@@ -1,6 +1,5 @@
-// Python wrappers and interface for the Default solver 
-// implementation and its related types. 
-
+// Python wrappers and interface for the Default solver
+// implementation and its related types.
 
 #![allow(non_snake_case)]
 
@@ -10,7 +9,10 @@ use std::fmt::Write;
 //python interface require some access to solver internals,
 //so just use the internal crate definitions instead of the API.
 use crate::*;
-use clarabel_solver::core::{IPSolver, SolverStatus};
+use clarabel_solver::core::{
+    traits::{InfoPrint, Settings},
+    IPSolver, SolverStatus,
+};
 use clarabel_solver::implementations::default::*;
 
 //Here we end up repeating several datatypes defined internally
@@ -26,12 +28,12 @@ use clarabel_solver::implementations::default::*;
 // https://github.com/PyO3/pyo3/issues/1088
 
 // ----------------------------------
-// DefaultSolveResult
+// DefaultSolution
 // ----------------------------------
 
 #[derive(Debug)]
-#[pyclass(name = "DefaultSolveResult")]
-pub struct PyDefaultSolveResult {
+#[pyclass(name = "DefaultSolution")]
+pub struct PyDefaultSolution {
     #[pyo3(get)]
     pub x: Vec<f64>,
     #[pyo3(get)]
@@ -44,8 +46,8 @@ pub struct PyDefaultSolveResult {
     pub status: PySolverStatus,
 }
 
-impl PyDefaultSolveResult {
-    pub(crate) fn new_from_internal(result: &DefaultSolveResult<f64>) -> Self {
+impl PyDefaultSolution {
+    pub(crate) fn new_from_internal(result: &DefaultSolution<f64>) -> Self {
         let x = result.x.clone();
         let s = result.s.clone();
         let z = result.z.clone();
@@ -62,7 +64,7 @@ impl PyDefaultSolveResult {
 }
 
 #[pymethods]
-impl PyDefaultSolveResult {
+impl PyDefaultSolution {
     pub fn __repr__(&self) -> String {
         "Clarabel solution object".to_string()
     }
@@ -195,7 +197,7 @@ impl PyDefaultSettings {
 
     pub fn __repr__(&self) -> String {
         let mut s = String::new();
-        write!(s, "{:#?}", self.to_internal()).unwrap();
+        write!(s, "{:#?}", self).unwrap();
         s
     }
 }
@@ -209,9 +211,18 @@ impl Default for PyDefaultSettings {
 
 impl PyDefaultSettings {
     pub(crate) fn new_from_internal(set: &DefaultSettings<f64>) -> Self {
-        PyDefaultSettings {
+        // convert rust settings -> python
+        let time_limit = {
+            if set.time_limit >= std::time::Duration::MAX {
+                std::f64::INFINITY
+            } else {
+                set.time_limit.as_secs_f64()
+            }
+        };
+
+        let out = PyDefaultSettings {
             max_iter: set.max_iter,
-            time_limit: set.time_limit.as_secs_f64(),
+            time_limit,
             verbose: set.verbose,
             tol_gap_abs: set.tol_gap_abs,
             tol_gap_rel: set.tol_gap_rel,
@@ -235,13 +246,31 @@ impl PyDefaultSettings {
             iterative_refinement_abstol: set.iterative_refinement_abstol,
             iterative_refinement_max_iter: set.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
-        }
+        };
+
+        println!("Done with new_from_internal");
+        out
     }
 
     pub(crate) fn to_internal(&self) -> DefaultSettings<f64> {
+        // convert python settings -> Rust
+
+        // some caution is required when converting to / from
+        // extremely large or inf values, otherwise we get a panic
+        let time_limit = {
+            if self.time_limit.is_infinite()
+                || self.time_limit.is_nan()
+                || self.time_limit >= std::time::Duration::MAX.as_secs_f64() - 1.
+            {
+                std::time::Duration::MAX
+            } else {
+                std::time::Duration::from_secs_f64(self.time_limit)
+            }
+        };
+
         DefaultSettings::<f64> {
             max_iter: self.max_iter,
-            time_limit: std::time::Duration::from_secs_f64(self.time_limit),
+            time_limit,
             verbose: self.verbose,
             tol_gap_abs: self.tol_gap_abs,
             tol_gap_rel: self.tol_gap_rel,
@@ -296,20 +325,35 @@ impl PyDefaultSolver {
         Self { inner: solver }
     }
 
-    fn solve(&mut self) -> PyDefaultSolveResult {
+    fn solve(&mut self) -> PyDefaultSolution {
         self.inner.solve();
-        PyDefaultSolveResult::new_from_internal(&self.inner.result)
+        PyDefaultSolution::new_from_internal(&self.inner.solution)
     }
 
     pub fn __repr__(&self) -> String {
         "Clarabel model with Float precision: f64".to_string()
     }
 
+    fn print_configuration(&mut self) {
+        // force a print of the configuration regardless
+        // of the verbosity settings.   Save them here first.
+        let verbose = self.inner.settings.core().verbose;
+
+        self.inner.settings.core_mut().verbose = true;
+        self.inner.info.print_configuration(
+            &self.inner.settings,
+            &self.inner.data,
+            &self.inner.cones,
+        );
+
+        // revert back to user option
+        self.inner.settings.core_mut().verbose = verbose;
+    }
+
     fn print_timers(&self) {
-        
-        match &self.inner.timers{
-            Some(timers) => timers.print(), 
-            None => println!("no timers enabled")
+        match &self.inner.timers {
+            Some(timers) => timers.print(),
+            None => println!("no timers enabled"),
         };
     }
 }

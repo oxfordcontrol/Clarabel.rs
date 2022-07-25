@@ -1,77 +1,32 @@
+use clarabel_algebra::*;
+use std::time::Duration;
+
 use super::*;
 use crate::core::{
     cones::{CompositeCone, SupportedCones},
-    traits::SolveInfo,
-    SolverStatus,
+    traits::InfoPrint,
 };
-
-use clarabel_algebra::*;
-use clarabel_timers::Timers;
-use std::time::Duration;
 
 macro_rules! expformat {
     ($fmt:expr,$val:expr) => {
-        if $val.is_normal() {
+        if $val.is_finite() {
             _exp_str_reformat(format!($fmt, $val))
         } else {
             format!($fmt, $val)
         }
     };
 }
+    
 
-#[derive(Default)]
-pub struct DefaultSolveInfo<T> {
-    pub μ: T,
-    pub sigma: T,
-    pub step_length: T,
-    pub iterations: u32,
-    pub cost_primal: T,
-    pub cost_dual: T,
-    pub res_primal: T,
-    pub res_dual: T,
-    pub res_primal_inf: T,
-    pub res_dual_inf: T,
-    pub gap_abs: T,
-    pub gap_rel: T,
-    pub ktratio: T,
-    pub solve_time: Duration,
-    pub status: SolverStatus,
-}
-
-impl<T> DefaultSolveInfo<T>
+impl<T> InfoPrint<T> for DefaultInfo<T>
 where
-    T: FloatT,
+    T: FloatT
 {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl<T> SolveInfo<T> for DefaultSolveInfo<T>
-where
-    T: FloatT,
-{
-    type D = DefaultProblemData<T>;
-    type V = DefaultVariables<T>;
-    type R = DefaultResiduals<T>;
-    type C = CompositeCone<T>;
+    type D  = DefaultProblemData<T>;
+    type C  = CompositeCone<T>;
     type SE = DefaultSettings<T>;
 
-    fn reset(&mut self, timers: &mut Timers) {
-
-        self.status = SolverStatus::Unsolved;
-        self.iterations = 0;
-        self.solve_time = Duration::ZERO;
-
-        timers.reset_timer("solve");
-
-    }
-
-    fn finalize(&mut self, timers: &mut Timers) {
-        self.solve_time = timers.total_time();
-    }
-
-    fn print_header(
+    fn print_configuration(
         &self,
         settings: &DefaultSettings<T>,
         data: &DefaultProblemData<T>,
@@ -81,17 +36,7 @@ where
             return;
         }
 
-        const VERSION: &str = env!("CARGO_PKG_VERSION");
-
-        println!("-------------------------------------------------------------");
-        println!(
-            "           Clarabel.rs v{}  -  Clever Acronym              \n",
-            VERSION
-        );
-        println!("                   (c) Paul Goulart                          ");
-        println!("                University of Oxford, 2022                   ");
-        println!("-------------------------------------------------------------");
-        println!("problem: \n");
+        println!("\nproblem:");
         println!("  variables     = {}", data.n);
         println!("  constraints   = {}", data.m);
         println!("  nnz(P)        = {}", data.P.nnz());
@@ -104,8 +49,19 @@ where
         _print_conedims_by_type(cones, SupportedCones::SecondOrderConeT(0));
         //_print_conedims_by_type(&cones, SupportedCones::PSDTriangleConeT(0));
 
+        println!();
         _print_settings(settings);
         println!();
+
+    }
+
+    fn print_status_header(
+        &self,
+        settings: &DefaultSettings<T>,
+    ) {
+        if !settings.verbose {
+            return;
+        }
 
         //print a subheader for the iterations info
         print!("iter    ");
@@ -158,104 +114,6 @@ where
         println!("solve time = {:?}", self.solve_time);
     }
 
-    fn update(
-        &mut self,
-        data: &DefaultProblemData<T>,
-        variables: &DefaultVariables<T>,
-        residuals: &DefaultResiduals<T>,
-        timers: &Timers,
-    ) {
-        // optimality termination check should be computed w.r.t
-        // the pre-homogenization x and z variables.
-        let τinv = T::recip(variables.τ);
-
-        // shortcuts for the equilibration matrices
-        let dinv = &data.equilibration.dinv;
-        let einv = &data.equilibration.einv;
-        let cscale = data.equilibration.c;
-
-        // primal and dual costs. dot products are invariant w.r.t
-        // equilibration, but we still need to back out the overall
-        // objective scaling term c
-        let two = T::from(2.).unwrap();
-        let xPx_τinvsq_over2 = residuals.dot_xPx * τinv * τinv / two;
-        self.cost_primal = (residuals.dot_qx * τinv + xPx_τinvsq_over2) / cscale;
-        self.cost_dual = (-residuals.dot_bz * τinv - xPx_τinvsq_over2) / cscale;
-
-        // primal and dual residuals.   Need to invert the equilibration
-        self.res_primal = residuals.rz.norm_scaled(einv) * τinv;
-        self.res_dual = residuals.rx.norm_scaled(dinv) * τinv;
-
-        // primal and dual infeasibility residuals.   Need to invert the equilibration
-        self.res_primal_inf = residuals.rx_inf.norm_scaled(dinv);
-        self.res_dual_inf = T::max(
-            residuals.Px.norm_scaled(dinv),
-            residuals.rz_inf.norm_scaled(einv),
-        );
-
-        // absolute and relative gaps
-        self.gap_abs = residuals.dot_sz * τinv * τinv;
-
-        if (self.cost_primal > T::zero()) && (self.cost_dual < T::zero()) {
-            self.gap_rel = T::max_value();
-        } else {
-            self.gap_rel = self.gap_abs / T::min(T::abs(self.cost_primal), T::abs(self.cost_dual));
-        }
-
-        // κ/τ
-        self.ktratio = variables.κ / variables.τ;
-
-        // solve time so far (includes setup)
-        self.solve_time = timers.total_time();
-    }
-
-    fn check_termination(
-        &mut self,
-        residuals: &DefaultResiduals<T>,
-        settings: &DefaultSettings<T>,
-    ) -> bool {
-        // optimality
-        // ---------------------
-        self.status = SolverStatus::Unsolved; //ensure default state
-
-        if ((self.gap_abs < settings.tol_gap_abs) || (self.gap_rel < settings.tol_gap_rel))
-            && (self.res_primal < settings.tol_feas)
-            && (self.res_dual < settings.tol_feas)
-        {
-            self.status = SolverStatus::Solved;
-        } else if self.ktratio > T::one() {
-            if (residuals.dot_bz < -settings.tol_infeas_rel)
-                && (self.res_primal_inf < -settings.tol_infeas_abs * residuals.dot_bz)
-            {
-                self.status = SolverStatus::PrimalInfeasible;
-            } else if (residuals.dot_qx < -settings.tol_infeas_rel)
-                && (self.res_dual_inf < -settings.tol_infeas_abs * residuals.dot_qx)
-            {
-                self.status = SolverStatus::DualInfeasible;
-            }
-        }
-
-        // time or iteration limits
-        // ----------------------
-        if self.status == SolverStatus::Unsolved {
-            if settings.max_iter == self.iterations {
-                self.status = SolverStatus::MaxIterations;
-            } else if settings.time_limit > Duration::ZERO && self.solve_time > settings.time_limit
-            {
-                self.status = SolverStatus::MaxTime;
-            }
-        }
-
-        // return TRUE if we settled on a final status
-        self.status != SolverStatus::Unsolved
-    }
-
-    fn save_scalars(&mut self, μ: T, α: T, σ: T, iter: u32) {
-        self.μ = μ;
-        self.step_length = α;
-        self.sigma = σ;
-        self.iterations = iter;
-    }
 }
 
 fn _bool_on_off(v: bool) -> &'static str {
@@ -272,21 +130,21 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
 
     if set.direct_kkt_solver {
         println!(
-            "  linear algebra: direct / TBD, precision: {} bit",
+            "  linear algebra: direct / {}, precision: {} bit",
+            set.direct_solve_method,
             _get_precision_string::<T>()
         );
-        //set.direct_solve_method, _get_precision_string<T>());
     }
 
     let time_lim_str = {
-        if set.time_limit == Duration::ZERO {
-            "none".to_string()
+        if set.time_limit == Duration::MAX {
+            "Inf".to_string()
         } else {
             format!("{:?}", set.time_limit)
         }
     };
     println!(
-        "  max iter = {}, time limit = {:?},  max step = {:.3}",
+        "  max iter = {}, time limit = {},  max step = {:.3}",
         set.max_iter, time_lim_str, set.max_step_fraction
     );
 
@@ -379,9 +237,9 @@ fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: Suppor
     println!();
 }
 
-// convert a string in LowerExp display format into
-// one that 1) always has a sign after the exponent,
-// and 2) has at least two digits in the exponent.
+// convert a string in LowerExp display format into one that 
+// 1) always has a sign after the exponent, and
+// 2) has at least two digits in the exponent.
 // This matches the Julia output formatting.
 
 fn _exp_str_reformat(mut thestr: String) -> String {

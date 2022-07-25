@@ -1,11 +1,11 @@
 use std::time::Duration;
 
 use super::*;
-use crate::core::traits::SolveResult;
+use crate::core::traits::Solution;
 use crate::core::SolverStatus;
 use clarabel_algebra::*;
 
-pub struct DefaultSolveResult<T> {
+pub struct DefaultSolution<T> {
     pub x: Vec<T>,
     pub z: Vec<T>,
     pub s: Vec<T>,
@@ -17,7 +17,7 @@ pub struct DefaultSolveResult<T> {
     pub r_dual: T,
 }
 
-impl<T> DefaultSolveResult<T>
+impl<T> DefaultSolution<T>
 where
     T: FloatT,
 {
@@ -41,19 +41,19 @@ where
     }
 }
 
-impl<T> SolveResult<T> for DefaultSolveResult<T>
+impl<T> Solution<T> for DefaultSolution<T>
 where
     T: FloatT,
 {
     type D = DefaultProblemData<T>;
     type V = DefaultVariables<T>;
-    type SI = DefaultSolveInfo<T>;
+    type I = DefaultInfo<T>;
 
     fn finalize(
         &mut self,
         data: &DefaultProblemData<T>,
         variables: &DefaultVariables<T>,
-        info: &DefaultSolveInfo<T>,
+        info: &DefaultInfo<T>,
     ) {
         self.status = info.status.clone();
         self.obj_val = info.cost_primal;

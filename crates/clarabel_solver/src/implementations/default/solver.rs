@@ -15,8 +15,8 @@ pub type DefaultSolver<T = f64> = Solver<
     DefaultResiduals<T>,
     DefaultKKTSystem<T>,
     CompositeCone<T>,
-    DefaultSolveInfo<T>,
-    DefaultSolveResult<T>,
+    DefaultInfo<T>,
+    DefaultSolution<T>,
     DefaultSettings<T>,
 >;
 
@@ -37,7 +37,7 @@ where
 
         timeit! {timers => "setup"; {
 
-        let info = DefaultSolveInfo::<T>::new();
+        let info = DefaultInfo::<T>::new();
         let cones = CompositeCone::<T>::new(cone_types);
         let mut data = DefaultProblemData::<T>::new(P,q,A,b);
         let variables = DefaultVariables::<T>::new(data.n,data.m);
@@ -46,7 +46,7 @@ where
         // equilibrate problem data immediately on setup.
         // this prevents multiple equlibrations if solve!
         // is called more than once.
-        timeit!{timers => "equilibrate"; {
+        timeit!{timers => "equilibration"; {
             data.equilibrate(&cones,&settings);
         }}
 
@@ -60,10 +60,10 @@ where
         let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
 
         // user facing results go here.
-        let result = DefaultSolveResult::<T>::new(data.m,data.n);
+        let solution = DefaultSolution::<T>::new(data.m,data.n);
 
         output = Self{data,variables,residuals,kktsystem,step_lhs,
-             step_rhs,info,result,cones,settings,timers: None};
+             step_rhs,info,solution,cones,settings,timers: None};
 
         }} //end "setup" timer.
 

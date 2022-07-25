@@ -12,7 +12,7 @@ fn clarabel_python(_py: Python, m: &PyModule) -> PyResult<()> {
 
     //other API data types
     m.add_class::<PySolverStatus>()?;
-    m.add_class::<PyDefaultSolveResult>()?;
+    m.add_class::<PyDefaultSolution>()?;
     m.add_class::<PyDefaultSettings>()?;
 
     // Main solver object
