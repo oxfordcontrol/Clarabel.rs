@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
-use super::*;
-use crate::{MatrixShape, MatrixTriangle};
+use crate::{FloatT,CscMatrix,MatrixShape, MatrixTriangle};
 
 impl<T> CscMatrix<T> 
 where

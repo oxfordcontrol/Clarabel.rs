@@ -73,8 +73,8 @@ where
         let zscale = T::sqrt(z1 * z1 - z2.sumsq());
         let sscale = T::sqrt(s1 * s1 - s2.sumsq());
 
-        let two  = T::from_f32(2.0).unwrap();
-        let half = T::from_f32(0.5).unwrap();
+        let two  = (2.0).as_T();
+        let half = (0.5).as_T();
 
         let gamma = T::sqrt((T::one() + s.dot(z) / (zscale * sscale)) * half);
 
@@ -201,8 +201,8 @@ where
     // the quadratic equation:
     // ||x₁+αy₁||^2 = (x₀ + αy₀)^2
 
-    let two = T::from(2.).unwrap();
-    let four = T::from(4.).unwrap();
+    let two  : T = (2.).as_T();
+    let four : T = (4.).as_T();
 
     let a = y[0] * y[0] - y[1..].sumsq();
     let b = two * (x[0] * y[0] - x[1..].dot(&y[1..]));

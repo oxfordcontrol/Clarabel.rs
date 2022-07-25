@@ -14,22 +14,22 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub verbose: bool,
 
-    #[builder(default = "T::from(1e-8).unwrap()")]
+    #[builder(default = "(1e-8).as_T()")]
     pub tol_gap_abs: T,
 
-    #[builder(default = "T::from(1e-8).unwrap()")]
+    #[builder(default = "(1e-8).as_T()")]
     pub tol_gap_rel: T,
 
-    #[builder(default = "T::from(1e-5).unwrap()")]
+    #[builder(default = "(1e-5).as_T()")]
     pub tol_feas: T,
 
-    #[builder(default = "T::from(1e-8).unwrap()")]
+    #[builder(default = "(1e-8).as_T()")]
     pub tol_infeas_abs: T,
 
-    #[builder(default = "T::from(1e-8).unwrap()")]
+    #[builder(default = "(1e-8).as_T()")]
     pub tol_infeas_rel: T,
 
-    #[builder(default = "T::from(0.99).unwrap()")]
+    #[builder(default = "(0.99).as_T()")]
     pub max_step_fraction: T,
 
     // data equilibration
@@ -39,10 +39,10 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "10")]
     pub equilibrate_max_iter: u32,
 
-    #[builder(default = "T::from(1e-4).unwrap()")]
+    #[builder(default = "(1e-4).as_T()")]
     pub equilibrate_min_scaling: T,
 
-    #[builder(default = "T::from(1e+4).unwrap()")]
+    #[builder(default = "(1e+4).as_T()")]
     pub equilibrate_max_scaling: T,
 
     
@@ -55,33 +55,33 @@ pub struct DefaultSettings<T: FloatT> {
     // static regularization parameters
     #[builder(default = "true")]
     pub static_regularization_enable: bool,
-    #[builder(default = "T::from(1e-8).unwrap()")]
+    #[builder(default = "(1e-8).as_T()")]
     pub static_regularization_eps: T,
 
     // dynamic regularization parameters
     #[builder(default = "true")]
     pub dynamic_regularization_enable: bool,
 
-    #[builder(default = "T::from(1e-13).unwrap()")]
+    #[builder(default = "(1e-13).as_T()")]
     pub dynamic_regularization_eps: T,
 
-    #[builder(default = "T::from(2e-7).unwrap()")]
+    #[builder(default = "(2e-7).as_T()")]
     pub dynamic_regularization_delta: T,
 
     // iterative refinement (for QDLDL)
     #[builder(default = "true")]
     pub iterative_refinement_enable: bool,
 
-    #[builder(default = "T::from(1e-10).unwrap()")]
+    #[builder(default = "(1e-10).as_T()")]
     pub iterative_refinement_reltol: T,
 
-    #[builder(default = "T::from(1e-10).unwrap()")]
+    #[builder(default = "(1e-10).as_T()")]
     pub iterative_refinement_abstol: T,
 
     #[builder(default = "10")]
     pub iterative_refinement_max_iter: u32,
 
-    #[builder(default = "T::from(2.).unwrap()")]
+    #[builder(default = "(2.0).as_T()")]
     pub iterative_refinement_stop_ratio: T,
 }
 

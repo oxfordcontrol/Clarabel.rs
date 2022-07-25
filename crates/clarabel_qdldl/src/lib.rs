@@ -16,9 +16,9 @@ where
     Dsigns: Option<Vec<i8>>,
     #[builder(default = "true")]
     regularize_enable: bool,
-    #[builder(default = "T::from_f64(1e-12).unwrap()")]
+    #[builder(default = "(1e-12).as_T()")]
     regularize_eps: T,
-    #[builder(default = "T::from_f64(1e-7).unwrap()")]
+    #[builder(default = "(1e-7).as_T()")]
     regularize_delta: T,
 }
 
