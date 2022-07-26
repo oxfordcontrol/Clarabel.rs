@@ -1,8 +1,6 @@
 #![allow(non_snake_case)]
 
-use clarabel::algebra::*;
-use clarabel::core::*;
-use clarabel::implementations::default::*;
+use clarabel::{algebra::*, solver::*};
 
 #[allow(clippy::type_complexity)]
 fn basic_socp_data() -> (

@@ -1,8 +1,7 @@
 #![allow(non_snake_case)]
 
 use clarabel::algebra::*;
-use clarabel::core::*;
-use clarabel::implementations::default::*;
+use clarabel::solver::*;
 
 fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
     let P: CscMatrix<f64> = CscMatrix::new(
