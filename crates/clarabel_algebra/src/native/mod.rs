@@ -67,6 +67,14 @@ impl<T: FloatT> VectorMath<T> for [T] {
             .fold(T::zero(), |acc, (&x, &y)| acc + x * y)
     }
 
+    fn dist(&self, y: &Self) -> T {
+        let dist2 = 
+            self.iter()
+                .zip(y)
+                .fold(T::zero(), |acc, (&x, &y)| acc + T::powi(x - y,2));
+        T::sqrt(dist2)
+    }
+
     fn sumsq(&self) -> T {
         self.dot(self)
     }
@@ -148,24 +156,16 @@ impl<T: FloatT> VectorMath<T> for [T] {
 }
 
 impl<T: FloatT> MatrixMath<T, [T]> for CscMatrix<T> {
-    //matrix properties
-    fn nrows(&self) -> usize {
-        self.m
-    }
-    fn ncols(&self) -> usize {
-        self.n
-    }
-    fn nnz(&self) -> usize {
-        self.colptr[self.n]
-    }
-    fn is_square(&self) -> bool {
-        self.m == self.n
-    }
 
     //scalar mut operations
     fn scale(&mut self, c: T) {
         self.nzval.scale(c);
     }
+
+    fn negate(&mut self) {
+        self.nzval.negate();
+    }
+
 
     fn col_norms(&self, norms: &mut [T]) {
         norms.fill(T::zero());

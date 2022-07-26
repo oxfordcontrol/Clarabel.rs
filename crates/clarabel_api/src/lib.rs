@@ -2,16 +2,22 @@
 //structure that defines a of set user-facing
 //solver API functions and types
 
-pub mod core {
+pub mod algebra {
 
     //user facing algebra functions
-    pub use clarabel_algebra::CscMatrix;
+    pub use clarabel_algebra::*;
+
+}
+
+pub mod core {
 
     //allows declaration of cone constraints
-    pub use clarabel_solver::core::cones::SupportedCones::*;
+    pub use clarabel_solver::core::cones::
+            {SupportedCones, SupportedCones::*};
 
     //user facing traits required to interact with solver
-    pub use clarabel_solver::core::IPSolver;
+    pub use clarabel_solver::core::
+            {IPSolver,SolverStatus};
 }
 
 pub mod implementations {

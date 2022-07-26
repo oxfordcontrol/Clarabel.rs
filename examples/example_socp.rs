@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 
+use clarabel::algebra::*;
 use clarabel::core::*;
 use clarabel::implementations::default::*;
 

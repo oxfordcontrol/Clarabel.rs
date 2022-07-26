@@ -101,6 +101,15 @@ fn test_dot() {
 }
 
 #[test]
+fn test_dist() {
+    let x = vec![3., 0., 2., 1.];
+    let y = vec![-1., -2., 3., 4.];
+
+    assert_eq!(x.dist(&y), f64::sqrt(30.));
+    assert_eq!(y.dist(&x), f64::sqrt(30.));
+}
+
+#[test]
 fn test_sumsq() {
     let x = vec![-1., 2., -3., 4.];
     assert_eq!(x.sumsq(), 30.);

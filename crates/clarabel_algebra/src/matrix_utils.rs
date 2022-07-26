@@ -5,12 +5,26 @@ impl<T> CscMatrix<T>
 where
     T: FloatT,
 {
+    //matrix properties
+    pub fn nrows(&self) -> usize {
+        self.m
+    }
+    pub fn ncols(&self) -> usize {
+        self.n
+    }
+    pub fn nnz(&self) -> usize {
+        self.colptr[self.n]
+    }
+    pub fn is_square(&self) -> bool {
+        self.m == self.n
+    }
+
     pub fn spalloc(m: usize, n: usize, nnz: usize) -> Self {
         let mut colptr = vec![0; n + 1];
         let rowval = vec![0; nnz];
         let nzval = vec![T::zero(); nnz];
 
-        colptr[n] = nnz + 1;
+        colptr[n] = nnz;
 
         CscMatrix {
             m,
@@ -21,10 +35,80 @@ where
         }
     }
 
-    pub fn to_triu(&self) -> Self {
+    pub fn identity(n: usize) -> Self {
+        let colptr = (0usize..=n).collect();
+        let rowval = (0usize..n).collect();
+        let nzval = vec![T::one(); n];
 
+        CscMatrix {
+            m: n,
+            n,
+            colptr,
+            rowval,
+            nzval,
+        }
+    }
+
+    //horizontal matrix concatenation: C = [A B]
+    pub fn hcat(A: &Self, B: &Self) -> Self {
+        //first check for compatible row dimensions
+        assert_eq!(A.m, B.m);
+
+        //dimensions for C = [A B];
+        let nnz = A.nnz() + B.nnz();
+        let m = A.m; //rows
+        let n = A.n + B.n; //cols s
+        let mut C = CscMatrix::spalloc(m, n, nnz);
+
+        //we make dummy mapping indices since we don't care 
+        //where the entries go.  An alternative would be to 
+        //modify the fill_block method to accept Option<_>
+        let mut amap = vec![0usize; A.nnz()];
+        let mut bmap = vec![0usize; B.nnz()];
+
+        //compute column counts and fill
+        C.colcount_block(A, 0, MatrixShape::N);
+        C.colcount_block(B, A.n, MatrixShape::N); 
+        C.colcount_to_colptr();
+        
+        C.fill_block(A, &mut amap, 0, 0, MatrixShape::N);
+        C.fill_block(B, &mut bmap, 0, A.n, MatrixShape::N);
+        C.backshift_colptrs();
+
+        C
+    }
+
+    //vertical matrix concatenation: C = [A; B]
+    pub fn vcat(A: &Self, B: &Self) -> Self {
+        //first check for compatible column dimensions
+        assert_eq!(A.n, B.n);
+
+        //dimensions for C = [A; B];
+        let nnz = A.nnz() + B.nnz();
+        let m = A.m + B.m; //rows
+        let n = A.n; //cols s
+        let mut C = CscMatrix::spalloc(m, n, nnz);
+
+        //we make dummy mapping indices since we don't care 
+        //where the entries go.  An alternative would be to 
+        //modify the fill_block method to accept Option<_>
+        let mut amap = vec![0usize; A.nnz()];
+        let mut bmap = vec![0usize; B.nnz()];
+
+        //compute column counts and fill
+        C.colcount_block(A, 0, MatrixShape::N);
+        C.colcount_block(B, 0, MatrixShape::N);   
+        C.colcount_to_colptr();
+
+        C.fill_block(A, &mut amap, 0, 0, MatrixShape::N);
+        C.fill_block(B, &mut bmap, A.m, 0, MatrixShape::N);
+        C.backshift_colptrs();
+        C
+    }
+
+    pub fn to_triu(&self) -> Self {
         assert_eq!(self.m, self.n);
-        let (m,n) = (self.m,self.n);
+        let (m, n) = (self.m, self.n);
         let mut colptr = vec![0; n + 1];
         let mut nnz = 0;
 
@@ -51,7 +135,6 @@ where
         let mut nzval = vec![T::zero(); nnz];
 
         for col in 0..self.n {
-            
             let ntriu = colptr[col + 1];
 
             //start / stop indices for the destination
@@ -229,8 +312,8 @@ where
                 let dest = self.colptr[col];
                 self.rowval[dest] = row;
                 self.nzval[dest] = Mval;
-                MtoKKT[j] = dest;
                 self.colptr[col] += 1;
+                MtoKKT[j] = dest;
             }
         }
     }

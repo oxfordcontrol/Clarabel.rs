@@ -29,11 +29,13 @@ pub trait VectorMath<T> {
 
     //norms and friends
     fn dot(&self, y: &Self) -> T;
+    fn dist(&self, y: &Self) -> T; //2-norm distance
     fn sumsq(&self) -> T;
     fn norm(&self) -> T;
     fn norm_scaled(&self, v: &Self) -> T;
     fn norm_inf(&self) -> T;
     fn norm_one(&self) -> T;
+    
 
     //stats
     fn minimum(&self) -> T;
@@ -46,12 +48,7 @@ pub trait VectorMath<T> {
 }
 
 pub trait MatrixMath<T, V: ?Sized> {
-    //matrix properties
-    fn nrows(&self) -> usize;
-    fn ncols(&self) -> usize;
-    fn nnz(&self) -> usize;
-    fn is_square(&self) -> bool;
-
+ 
     //inf norms of rows and columns
     fn col_norms(&self, norms: &mut V);
     fn col_norms_no_reset(&self, norms: &mut V);
@@ -62,6 +59,7 @@ pub trait MatrixMath<T, V: ?Sized> {
 
     //scalar mut operations
     fn scale(&mut self, c: T);
+    fn negate(&mut self);
 
     //left and right multiply by diagonals
     fn lscale(&mut self, l: &V);
