@@ -24,18 +24,12 @@ impl Deref for PyCscMatrix {
 impl<'a> FromPyObject<'a> for PyCscMatrix {
     fn extract(obj: &'a PyAny) -> PyResult<Self> {
         let nzval: Vec<f64> = obj.getattr("data")?.extract()?;
-        let indices: Vec<usize> = obj.getattr("indices")?.extract()?;
-        let indptr: Vec<usize> = obj.getattr("indptr")?.extract()?;
+        let rowval: Vec<usize> = obj.getattr("indices")?.extract()?;
+        let colptr: Vec<usize> = obj.getattr("indptr")?.extract()?;
         let nnz: usize = obj.getattr("nnz")?.extract()?;
         let shape: Vec<usize> = obj.getattr("shape")?.extract()?;
 
-        let mat = CscMatrix {
-            m: shape[0],
-            n: shape[1],
-            colptr: indptr,
-            rowval: indices,
-            nzval,
-        };
+        let mat = CscMatrix::new(shape[0], shape[1], colptr, rowval, nzval);
 
         Ok(PyCscMatrix(mat))
     }

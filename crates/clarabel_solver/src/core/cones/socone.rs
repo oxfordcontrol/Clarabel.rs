@@ -59,7 +59,7 @@ where
         δ.reciprocal();
         δ.scale(e.mean());
 
-        false
+        true // scalar equilibration
     }
 
     fn WtW_is_diagonal(&self) -> bool {

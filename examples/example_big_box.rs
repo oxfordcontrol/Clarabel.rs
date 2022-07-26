@@ -4,7 +4,7 @@ use clarabel::algebra::*;
 use clarabel::core::*;
 use clarabel::implementations::default::*;
 
-fn _problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
+fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
     let n = 20000;
 
     let mut P = CscMatrix::<f64>::spalloc(n, n, n);
@@ -34,7 +34,7 @@ fn _problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
 }
 
 fn main() {
-    let (P, q, A, b) = _problem_data();
+    let (P, q, A, b) = problem_data();
 
     let cones = [NonnegativeConeT(b.len())];
 

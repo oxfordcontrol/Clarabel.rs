@@ -58,13 +58,7 @@ impl CscMatrixJl {
         //println!("Getting nzval");
         let nzval = self.nzval.to_vec();
 
-        let mut m = CscMatrix {
-            m: self.m,
-            n: self.n,
-            colptr,
-            rowval,
-            nzval,
-        };
+        let mut m = CscMatrix::new(self.m, self.n, colptr, rowval, nzval);
 
         //need to back shift all of the indices since
         //Julia stores matrices as 1-indexed

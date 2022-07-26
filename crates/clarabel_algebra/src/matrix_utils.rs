@@ -5,6 +5,22 @@ impl<T> CscMatrix<T>
 where
     T: FloatT,
 {
+    //constructor with rudimentary sanity checks.
+    //Does not check for proper ordering or rows
+    //out of bounds
+    pub fn new(m: usize, n: usize, colptr: Vec<usize>, rowval: Vec<usize>, nzval: Vec<T>) -> Self {
+        assert_eq!(rowval.len(), nzval.len());
+        assert_eq!(colptr.len(), n + 1);
+        assert_eq!(colptr[n], rowval.len());
+        CscMatrix {
+            m,
+            n,
+            colptr,
+            rowval,
+            nzval,
+        }
+    }
+
     //matrix properties
     pub fn nrows(&self) -> usize {
         self.m
@@ -20,19 +36,14 @@ where
     }
 
     pub fn spalloc(m: usize, n: usize, nnz: usize) -> Self {
+        //allocates space for a sparse matrix with nnz elements
+
         let mut colptr = vec![0; n + 1];
         let rowval = vec![0; nnz];
         let nzval = vec![T::zero(); nnz];
-
         colptr[n] = nnz;
 
-        CscMatrix {
-            m,
-            n,
-            colptr,
-            rowval,
-            nzval,
-        }
+        CscMatrix::new(m, n, colptr, rowval, nzval)
     }
 
     pub fn identity(n: usize) -> Self {
@@ -40,13 +51,7 @@ where
         let rowval = (0usize..n).collect();
         let nzval = vec![T::one(); n];
 
-        CscMatrix {
-            m: n,
-            n,
-            colptr,
-            rowval,
-            nzval,
-        }
+        CscMatrix::new(n, n, colptr, rowval, nzval)
     }
 
     //horizontal matrix concatenation: C = [A B]
@@ -152,13 +157,7 @@ where
             //this should now be cumsum of the counts
             colptr[col + 1] = ldest;
         }
-        CscMatrix {
-            m,
-            n,
-            colptr,
-            rowval,
-            nzval,
-        }
+        CscMatrix::new(m, n, colptr, rowval, nzval)
     }
 }
 

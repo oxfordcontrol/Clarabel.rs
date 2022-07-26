@@ -10,13 +10,7 @@ fn test_matrix_4x4_triu() -> CscMatrix<f64> {
     let Ap = vec![0, 1, 3, 6, 8];
     let Ai = vec![0, 0, 1, 0, 1, 2, 2, 3];
     let Ax = vec![4., -3., 8., 7., -1., 2., -3., 1.];
-    CscMatrix {
-        m: 4,
-        n: 4,
-        colptr: Ap,
-        rowval: Ai,
-        nzval: Ax,
-    }
+    CscMatrix::new(4, 4, Ap, Ai, Ax)
 }
 
 fn test_matrix_4x4() -> CscMatrix<f64> {
@@ -30,13 +24,7 @@ fn test_matrix_4x4() -> CscMatrix<f64> {
     let Ap = vec![0, 2, 5, 8, 10];
     let Ai = vec![0, 2, 0, 1, 3, 0, 1, 2, 2, 3];
     let Ax = vec![4., 1., -3., 8., -1., 7., -1., 2., -3., 1.];
-    CscMatrix {
-        m: 4,
-        n: 4,
-        colptr: Ap,
-        rowval: Ai,
-        nzval: Ax,
-    }
+    CscMatrix::new(4, 4, Ap, Ai, Ax)
 }
 
 fn test_matrix_3x4() -> CscMatrix<f64> {
@@ -47,13 +35,7 @@ fn test_matrix_3x4() -> CscMatrix<f64> {
     let Ap = vec![0, 2, 4, 6, 8];
     let Ai = vec![0, 1, 0, 2, 0, 1, 0, 2];
     let Ax = vec![-1., 3., -17., -4., 6., 7., 10., -5.];
-    CscMatrix {
-        m: 3,
-        n: 4,
-        colptr: Ap,
-        rowval: Ai,
-        nzval: Ax,
-    }
+    CscMatrix::new(3, 4, Ap, Ai, Ax)
 }
 
 #[test]

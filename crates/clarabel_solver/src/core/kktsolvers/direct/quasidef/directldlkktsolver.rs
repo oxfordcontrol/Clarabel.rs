@@ -60,7 +60,7 @@ where
     ) -> Self {
         // solving in sparse format.  Need this many
         // extra variables for SOCs
-        let p = 2 * cones.type_count("SupportedConeT");
+        let p = 2 * cones.type_count("SecondOrderConeT");
 
         // LHS/RHS/work for iterative refinement
         let x = vec![T::zero(); n + m + p];

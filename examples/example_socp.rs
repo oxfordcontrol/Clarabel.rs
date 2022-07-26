@@ -4,24 +4,24 @@ use clarabel::algebra::*;
 use clarabel::core::*;
 use clarabel::implementations::default::*;
 
-fn _problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
-    let P: CscMatrix<f64> = CscMatrix {
-        m: 2,
-        n: 2,
-        colptr: vec![0, 0, 1],
-        rowval: vec![1],
-        nzval: vec![2.],
-    };
+fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
+    let P: CscMatrix<f64> = CscMatrix::new(
+        2,             // m
+        2,             // n
+        vec![0, 0, 1], // colptr
+        vec![1],       // rowval
+        vec![2.],      // nzval
+    );
 
     let q = vec![0., 0.];
 
-    let A: CscMatrix<f64> = CscMatrix {
-        m: 3,
-        n: 2,
-        colptr: vec![0, 1, 2],
-        rowval: vec![1, 2],
-        nzval: vec![-2., -1.],
-    };
+    let A: CscMatrix<f64> = CscMatrix::new(
+        3,              // m
+        2,              // n
+        vec![0, 1, 2],  // colptr
+        vec![1, 2],     // rowval
+        vec![-2., -1.], // nzval
+    );
 
     let b = vec![1., -2., -2.];
 
@@ -29,7 +29,7 @@ fn _problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
 }
 
 fn main() {
-    let (P, q, A, b) = _problem_data();
+    let (P, q, A, b) = problem_data();
 
     let cones = [SecondOrderConeT(3)];
 
