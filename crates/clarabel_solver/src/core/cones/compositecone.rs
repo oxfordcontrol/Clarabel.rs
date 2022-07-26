@@ -31,8 +31,8 @@ impl<T> SupportedCones<T> {
     }
 }
 
-impl<T> std::fmt::Display for SupportedCones<T> 
-where 
+impl<T> std::fmt::Display for SupportedCones<T>
+where
     T: FloatT,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -115,8 +115,8 @@ pub struct CompositeCone<T: FloatT = f64> {
     pub rng_blocks: Vec<Range<usize>>,
 }
 
-impl<T> CompositeCone<T> 
-where 
+impl<T> CompositeCone<T>
+where
     T: FloatT,
 {
     pub fn new(types: &[SupportedCones<T>]) -> Self {

@@ -173,9 +173,7 @@ fn _kkt_assemble_fill<T: FloatT>(
     let mut socidx = 0; //which SOC are we working on?
 
     for (i, rng) in cones.rng_cones.iter().enumerate() {
-
         if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
-
             let headidx = rng.start;
 
             // which column does u go into (if triu)?

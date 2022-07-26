@@ -22,7 +22,6 @@ where
     T: FloatT,
 {
     pub fn new(m: usize, n: usize) -> Self {
-
         let x = vec![T::zero(); n];
         let z = vec![T::zero(); m];
         let s = vec![T::zero(); m];
@@ -90,9 +89,9 @@ where
         self.z.scale(T::recip(cscale));
         self.s.hadamard(einv);
 
-        self.iterations  = info.iterations;
-        self.solve_time  = info.solve_time;
-        self.r_prim 	 = info.res_primal;
-        self.r_dual 	 = info.res_dual;
+        self.iterations = info.iterations;
+        self.solve_time = info.solve_time;
+        self.r_prim = info.res_primal;
+        self.r_dual = info.res_dual;
     }
 }

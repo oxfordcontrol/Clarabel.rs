@@ -44,8 +44,8 @@ pub trait Residuals<T: FloatT> {
 }
 
 pub trait KKTSystem<T: FloatT> {
-    type D: ProblemData<T>; 
-    type V: Variables<T>; 
+    type D: ProblemData<T>;
+    type V: Variables<T>;
     type C: Cone<T>;
     type SE: Settings<T>;
 
@@ -66,9 +66,9 @@ pub trait KKTSystem<T: FloatT> {
     fn solve_initial_point(&mut self, variables: &mut Self::V, data: &Self::D, settings: &Self::SE);
 }
 
-pub trait InfoPrint<T> 
-where 
-    T:FloatT
+pub trait InfoPrint<T>
+where
+    T: FloatT,
 {
     type D: ProblemData<T>;
     type C: Cone<T>;
@@ -80,9 +80,9 @@ where
     fn print_footer(&self, settings: &Self::SE);
 }
 
-pub trait Info<T> : InfoPrint<T>
-where 
-    T: FloatT
+pub trait Info<T>: InfoPrint<T>
+where
+    T: FloatT,
 {
     type V: Variables<T>;
     type R: Residuals<T>;

@@ -1,4 +1,4 @@
-// All internal matrix representations in the default 
+// All internal matrix representations in the default
 // solver and math implementations are in standard
 // compressed sparse column format, as is the API.
 
@@ -11,7 +11,7 @@ pub struct CscMatrix<T = f64> {
     pub nzval: Vec<T>,
 }
 
-// Convenience types for marking matrix orientation 
+// Convenience types for marking matrix orientation
 // and sparsity patterns.
 
 // T = transpose, N = non-transpose

@@ -7,13 +7,12 @@ use crate::core::{
 
 use clarabel_algebra::*;
 
-// We require Send here to allow pyo3 builds to share 
+// We require Send here to allow pyo3 builds to share
 // solver objects between threads.
 
 type BoxedKKTSolver<T> = Box<dyn KKTSolver<T> + Send>;
 
 pub struct DefaultKKTSystem<T> {
-
     kktsolver: BoxedKKTSolver<T>,
 
     // solution vector for constant part of KKT solves

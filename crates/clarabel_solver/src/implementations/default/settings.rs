@@ -45,12 +45,11 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "(1e+4).as_T()")]
     pub equilibrate_max_scaling: T,
 
-    
     // only support direct / qdldl at the moment
     #[builder(default = "true")]
     pub direct_kkt_solver: bool,
     #[builder(default = r#""qdldl".to_string()"#)]
-    pub direct_solve_method: String,  
+    pub direct_solve_method: String,
 
     // static regularization parameters
     #[builder(default = "true")]
@@ -85,8 +84,8 @@ pub struct DefaultSettings<T: FloatT> {
     pub iterative_refinement_stop_ratio: T,
 }
 
-impl<T> Default for DefaultSettings<T> 
-where 
+impl<T> Default for DefaultSettings<T>
+where
     T: FloatT,
 {
     fn default() -> DefaultSettings<T> {
@@ -94,12 +93,12 @@ where
     }
 }
 
-impl<T> Settings<T> for DefaultSettings<T> 
-where 
+impl<T> Settings<T> for DefaultSettings<T>
+where
     T: FloatT,
 {
     //NB: CoreSettings is typedef'd to DefaultSettings
-    fn core(&self) -> & DefaultSettings<T> {
+    fn core(&self) -> &DefaultSettings<T> {
         self
     }
     fn core_mut(&mut self) -> &mut DefaultSettings<T> {

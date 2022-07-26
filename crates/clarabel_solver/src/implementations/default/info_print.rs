@@ -16,14 +16,13 @@ macro_rules! expformat {
         }
     };
 }
-    
 
 impl<T> InfoPrint<T> for DefaultInfo<T>
 where
-    T: FloatT
+    T: FloatT,
 {
-    type D  = DefaultProblemData<T>;
-    type C  = CompositeCone<T>;
+    type D = DefaultProblemData<T>;
+    type C = CompositeCone<T>;
     type SE = DefaultSettings<T>;
 
     fn print_configuration(
@@ -52,13 +51,9 @@ where
         println!();
         _print_settings(settings);
         println!();
-
     }
 
-    fn print_status_header(
-        &self,
-        settings: &DefaultSettings<T>,
-    ) {
+    fn print_status_header(&self, settings: &DefaultSettings<T>) {
         if !settings.verbose {
             return;
         }
@@ -113,7 +108,6 @@ where
 
         println!("solve time = {:?}", self.solve_time);
     }
-
 }
 
 fn _bool_on_off(v: bool) -> &'static str {
@@ -237,7 +231,7 @@ fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: Suppor
     println!();
 }
 
-// convert a string in LowerExp display format into one that 
+// convert a string in LowerExp display format into one that
 // 1) always has a sign after the exponent, and
 // 2) has at least two digits in the exponent.
 // This matches the Julia output formatting.

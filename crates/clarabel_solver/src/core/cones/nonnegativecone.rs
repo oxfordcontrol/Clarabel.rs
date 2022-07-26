@@ -11,8 +11,8 @@ pub struct NonnegativeCone<T: FloatT = f64> {
     λ: Vec<T>,
 }
 
-impl<T> NonnegativeCone<T> 
-where 
+impl<T> NonnegativeCone<T>
+where
     T: FloatT,
 {
     pub fn new(dim: usize) -> Self {

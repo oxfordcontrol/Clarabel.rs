@@ -22,7 +22,7 @@ where
     regularize_delta: T,
 }
 
-impl<T> Default for QDLDLSettings<T> 
+impl<T> Default for QDLDLSettings<T>
 where
     T: FloatT,
 {
@@ -49,7 +49,7 @@ pub struct QDLDLFactorisation<T = f64> {
     is_logical: bool,
 }
 
-impl<T> QDLDLFactorisation<T> 
+impl<T> QDLDLFactorisation<T>
 where
     T: FloatT,
 {
@@ -238,8 +238,8 @@ pub struct QDLDLWorkspace<T> {
     regularize_count: usize,
 }
 
-impl<T> QDLDLWorkspace<T> 
-where 
+impl<T> QDLDLWorkspace<T>
+where
     T: FloatT,
 {
     pub fn new(

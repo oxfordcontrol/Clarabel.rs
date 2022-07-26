@@ -17,5 +17,7 @@ pub trait DirectLDLSolver<T: FloatT> {
     fn offset_values(&mut self, index: &[usize], offset: T, signs: &[i8]);
     fn solve(&mut self, x: &mut [T], b: &[T]);
     fn refactor(&mut self, kkt: &CscMatrix<T>);
-    fn required_matrix_shape() -> MatrixTriangle where Self: Sized; 
+    fn required_matrix_shape() -> MatrixTriangle
+    where
+        Self: Sized;
 }

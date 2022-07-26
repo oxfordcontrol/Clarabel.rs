@@ -1,13 +1,9 @@
 use super::*;
-use crate::core::{
-    traits::Info,
-    SolverStatus,
-};
+use crate::core::{traits::Info, SolverStatus};
 
 use clarabel_algebra::*;
 use clarabel_timers::Timers;
 use std::time::Duration;
-
 
 #[derive(Default)]
 pub struct DefaultInfo<T> {
@@ -45,13 +41,11 @@ where
     type R = DefaultResiduals<T>;
 
     fn reset(&mut self, timers: &mut Timers) {
-
         self.status = SolverStatus::Unsolved;
         self.iterations = 0;
         self.solve_time = Duration::ZERO;
 
         timers.reset_timer("solve");
-
     }
 
     fn finalize(&mut self, timers: &mut Timers) {
@@ -140,8 +134,7 @@ where
         if self.status == SolverStatus::Unsolved {
             if settings.max_iter == self.iterations {
                 self.status = SolverStatus::MaxIterations;
-            } else if self.solve_time > settings.time_limit
-            {
+            } else if self.solve_time > settings.time_limit {
                 self.status = SolverStatus::MaxTime;
             }
         }

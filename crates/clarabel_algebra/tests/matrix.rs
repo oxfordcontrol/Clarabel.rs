@@ -20,7 +20,6 @@ fn test_matrix_4x4_triu() -> CscMatrix<f64> {
 }
 
 fn test_matrix_4x4() -> CscMatrix<f64> {
-
     // A =
     //[ 4.0  -3.0   7.0    ⋅ ]
     //[  ⋅    8.0  -1.0    ⋅ ]
@@ -182,14 +181,12 @@ fn test_quad_form() {
     assert_eq!(val, 15.);
 }
 
-
 #[test]
 fn test_matrix_to_triu() {
-
     let Afull = test_matrix_4x4();
     let Atriu = test_matrix_4x4_triu();
 
     let B = Afull.to_triu();
 
-    assert_eq!(B,Atriu);
+    assert_eq!(B, Atriu);
 }

@@ -1,7 +1,5 @@
 #![allow(non_snake_case)]
-use crate::core::{
-    CoreSettings,
-    kktsolvers::direct::DirectLDLSolver};
+use crate::core::{kktsolvers::direct::DirectLDLSolver, CoreSettings};
 use clarabel_algebra::*;
 use clarabel_qdldl::*;
 
@@ -10,8 +8,8 @@ pub struct QDLDLDirectLDLSolver<T> {
     factors: QDLDLFactorisation<T>,
 }
 
-impl<T> QDLDLDirectLDLSolver<T> 
-where 
+impl<T> QDLDLDirectLDLSolver<T>
+where
     T: FloatT,
 {
     pub fn new(KKT: &CscMatrix<T>, Dsigns: &[i8], settings: &CoreSettings<T>) -> Self {
@@ -35,8 +33,8 @@ where
     }
 }
 
-impl<T> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T> 
-where 
+impl<T> DirectLDLSolver<T> for QDLDLDirectLDLSolver<T>
+where
     T: FloatT,
 {
     fn update_values(&mut self, index: &[usize], values: &[T]) {

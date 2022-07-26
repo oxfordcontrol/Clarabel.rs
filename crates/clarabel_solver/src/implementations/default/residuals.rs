@@ -28,8 +28,8 @@ pub struct DefaultResiduals<T> {
     pub Px: Vec<T>,
 }
 
-impl<T> DefaultResiduals<T> 
-where 
+impl<T> DefaultResiduals<T>
+where
     T: FloatT,
 {
     pub fn new(n: usize, m: usize) -> Self {

@@ -17,7 +17,7 @@ pub struct DefaultVariables<T> {
     pub κ: T,
 }
 
-impl<T> DefaultVariables<T> 
+impl<T> DefaultVariables<T>
 where
     T: FloatT,
 {

@@ -15,7 +15,7 @@ fn __repr__cone(name: &str, dim: usize) -> String {
     s
 }
 
-#[pyclass(name = "ZeroConeT")] 
+#[pyclass(name = "ZeroConeT")]
 pub struct PyZeroConeT {
     #[pyo3(get)]
     pub dim: usize,

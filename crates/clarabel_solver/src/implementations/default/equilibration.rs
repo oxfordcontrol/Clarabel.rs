@@ -18,8 +18,8 @@ pub struct DefaultEquilibrationData<T> {
     pub c: T,
 }
 
-impl<T> DefaultEquilibrationData<T> 
-where 
+impl<T> DefaultEquilibrationData<T>
+where
     T: FloatT,
 {
     pub fn new(n: usize, m: usize) -> Self {

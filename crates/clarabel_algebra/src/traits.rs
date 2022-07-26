@@ -1,8 +1,8 @@
-use crate::{MatrixShape,MatrixTriangle};
+use crate::{MatrixShape, MatrixTriangle};
 
 // All internal math for all solver implementations should go
 // through these core traits, which are implemented generically
-// for floats of type FloatT.   
+// for floats of type FloatT.
 
 pub trait ScalarMath<T> {
     fn clip(s: T, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T;
@@ -35,7 +35,6 @@ pub trait VectorMath<T> {
     fn norm_scaled(&self, v: &Self) -> T;
     fn norm_inf(&self) -> T;
     fn norm_one(&self) -> T;
-    
 
     //stats
     fn minimum(&self) -> T;
@@ -48,7 +47,6 @@ pub trait VectorMath<T> {
 }
 
 pub trait MatrixMath<T, V: ?Sized> {
- 
     //inf norms of rows and columns
     fn col_norms(&self, norms: &mut V);
     fn col_norms_no_reset(&self, norms: &mut V);
