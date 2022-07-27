@@ -1,7 +1,7 @@
 
 <h1 align="center" margin=0px>
-  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main//assets/logos/logo-banner-light.png#gh-light-mode-only" width=60%>
-  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main//assets/logos/logo-banner-dark.png#gh-dark-mode-only"   width=60%>
+  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main//assets/logo-banner-light.png#gh-light-mode-only" width=60%>
+  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main//assets/logo-banner-dark.png#gh-dark-mode-only"   width=60%>
   <br>
 Interior Point Conic Optimization for Rust
 </h1>
@@ -23,8 +23,8 @@ Interior Point Conic Optimization for Rust
 __Clarabel.rs__ is a Rust implementation of an interior point numerical solver for convex optimization problems using a novel homogeneous embedding.  Clarabel.rs solves the following problem:
 
 <p align="center">
-  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main/assets/logos/problem_format-light.png#gh-light-mode-only" width=30%>
-  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main/assets/logos/problem_format-dark.png#gh-dark-mode-only"   width=30%>
+  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main/assets/problem_format-light.png#gh-light-mode-only" width=30%>
+  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main/assets/problem_format-dark.png#gh-dark-mode-only"   width=30%>
 </p>
 
 with decision variables 
