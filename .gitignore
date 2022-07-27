@@ -2,4 +2,5 @@
 Cargo.lock
 .DS_Store
 .vscode
+.env*
 notes.txt
