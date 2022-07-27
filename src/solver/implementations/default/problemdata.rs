@@ -130,7 +130,6 @@ where
         // update the inverse scaling data
         equil.dinv.scalarop_from(T::recip, d);
         equil.einv.scalarop_from(T::recip, e);
-        println!("FOOO!!!!!")
     }
 }
 

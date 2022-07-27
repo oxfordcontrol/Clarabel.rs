@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 /// Python module and registry, which includes registration of the
 /// data types defined in the other files in this rust module
 #[pymodule]
-fn clarabel_python(_py: Python, m: &PyModule) -> PyResult<()> {
+fn clarabel(_py: Python, m: &PyModule) -> PyResult<()> {
     // API Cone types
     m.add_class::<PyZeroConeT>()?;
     m.add_class::<PyNonnegativeConeT>()?;

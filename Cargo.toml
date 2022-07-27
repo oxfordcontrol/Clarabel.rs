@@ -16,16 +16,15 @@ amd = "0.2.1"
 
 [[example]]
 name = "qp"
-path = "examples/example_qp.rs"
+path = "examples/rust/example_qp.rs"
 
 [[example]]
 name = "socp"
-path = "examples/example_socp.rs"
+path = "examples/rust/example_socp.rs"
 
 [[example]]
 name = "box"
-path = "examples/example_big_box.rs"
-
+path = "examples/rust/example_box.rs"
 
 # ------------------------------
 # Optional python interface 
@@ -35,6 +34,7 @@ path = "examples/example_big_box.rs"
 # enables python interface build via pyo3
 python = ["dep:pyo3"]
 
+
 [dependencies.pyo3]
 optional = true
 version = "0.16.1"
@@ -42,3 +42,8 @@ version = "0.16.1"
 # "abi3-py37" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.7
 features = ["extension-module", "abi3-py37"]
 
+[lib]
+name = "clarabel"
+# "cdylib" is necessary to produce a shared library for Python to import from.
+# "lib" is necessary to allow the ./examples to build
+crate-type = ["cdylib","lib"]
