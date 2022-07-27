@@ -1,12 +1,9 @@
 #![allow(non_snake_case)]
 
+use crate::solver::core::{cones::SupportedCones, cones::SupportedCones::*};
 use core::ops::Deref;
 use pyo3::{exceptions::PyTypeError, prelude::*};
 use std::fmt::Write;
-
-// python interface require some access to solver internals,
-// so just use the internal crate definitions instead of the API.
-use clarabel_solver::core::{cones::SupportedCones, cones::SupportedCones::*};
 
 // generic Python display functionality for cone objects
 fn __repr__cone(name: &str, dim: usize) -> String {

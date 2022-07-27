@@ -1,9 +1,9 @@
 mod cones_py;
 mod cscmatrix_py;
 mod impl_default_py;
-mod module;
+mod module_py;
 
 pub use cones_py::*;
 pub use cscmatrix_py::*;
 pub use impl_default_py::*;
-pub use module::*;
+pub use module_py::*;

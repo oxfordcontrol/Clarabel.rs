@@ -1,14 +1,11 @@
 #![allow(unused)]
 #![allow(non_snake_case)]
 
+use crate::algebra::CscMatrix;
 use core::ops::Deref;
 use pyo3::exceptions::PyTypeError;
 use pyo3::{prelude::*, PyClass};
 use std::{cmp::Ordering, fmt::Write, io};
-
-//python interface require some access to solver internals,
-//so just use the internal crate definitions instead of the API.
-use clarabel_algebra::CscMatrix;
 
 //We can't implement the foreign trait FromPyObject directly on CscMatrix
 //since it is outside the crate, so put a dummy wrapper around it here.

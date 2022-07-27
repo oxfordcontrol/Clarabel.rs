@@ -1,4 +1,4 @@
-use crate::*;
+use super::*;
 use pyo3::prelude::*;
 
 /// Python module and registry, which includes registration of the

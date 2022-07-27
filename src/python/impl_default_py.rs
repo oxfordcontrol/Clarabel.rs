@@ -3,17 +3,16 @@
 
 #![allow(non_snake_case)]
 
+use super::*;
+use crate::solver::{
+    core::{
+        traits::{InfoPrint, Settings},
+        IPSolver, SolverStatus,
+    },
+    implementations::default::*,
+};
 use pyo3::prelude::*;
 use std::fmt::Write;
-
-//python interface require some access to solver internals,
-//so just use the internal crate definitions instead of the API.
-use crate::*;
-use clarabel_solver::core::{
-    traits::{InfoPrint, Settings},
-    IPSolver, SolverStatus,
-};
-use clarabel_solver::implementations::default::*;
 
 //Here we end up repeating several datatypes defined internally
 //in the Clarabel default implementation.   We would prefer
