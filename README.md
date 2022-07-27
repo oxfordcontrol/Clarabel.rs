@@ -17,7 +17,7 @@ Interior Point Conic Optimization for Rust
   <a href="#features">Features</a> •
   <a href="#installation">Installation</a> •
   <a href="#license-">License</a> •
-  <a href="https://oxfordcontrol.github.io/Clarabel.rss/stable">Documentation</a>
+  <a href="https://oxfordcontrol.github.io/Clarabel.rs/stable">Documentation</a>
 </p>
 
 __Clarabel.rs__ is a Rust implementation of an interior point numerical solver for convex optimization problems using a novel homogeneous embedding.  Clarabel.rs solves the following problem:
@@ -38,11 +38,11 @@ $b \in \mathbb{R}^m$.
 The convex set $\mathcal{K}$ is a composition of convex cones.
 
 
-__For more information see the Clarabel.jl Documentation ([stable](https://oxfordcontrol.github.io/Clarabel.rs/stable) |  [dev](https://oxfordcontrol.github.io/Clarabel.rs/dev)).__
+__For more information see the Clarabel Documentation ([stable](https://oxfordcontrol.github.io/Clarabel.rs/stable) |  [dev](https://oxfordcontrol.github.io/Clarabel.rs/dev)).__
 
 ## Features
 
-* __Versatile__: Clarabel.rss solves linear programs (LPs), quadratic programs (QPs) and second-order cone programs (SOCPs).  Future versions will provide support for problems involving positive semidefinite, exponential and power cones.
+* __Versatile__: Clarabel.rs solves linear programs (LPs), quadratic programs (QPs) and second-order cone programs (SOCPs).  Future versions will provide support for problems involving positive semidefinite, exponential and power cones.
 * __Quadratic objectives__: Unlike interior point solvers based on the standard homogeneous self-dual embedding (HSDE), Clarabel.rs handles quadratic objectives without requiring any epigraphical reformulation of the objective.   It can therefore be significantly faster than other HSDE-based solvers for problems with quadratic objective functions.
 * __Infeasibility detection__: Infeasible problems are detected using a homogeneous embedding technique.
 * __Open Source__: Our code is available on [GitHub](https://github.com/oxfordcontrol/Clarabel.rs) and distributed under the Apache 2.0 License

@@ -38,7 +38,6 @@ path = "examples/rust/example_box.rs"
 # enables python interface build via pyo3
 python = ["dep:pyo3"]
 
-
 [dependencies.pyo3]
 optional = true
 version = "0.16.1"
@@ -48,6 +47,6 @@ features = ["extension-module", "abi3-py37"]
 
 [lib]
 name = "clarabel"
-# "cdylib" is necessary to produce a shared library for Python to import from.
+# "cdylib" is necessary to produce a shared library that Python can import.
 # "lib" is necessary to allow the ./examples to build
 crate-type = ["cdylib","lib"]
