@@ -10,7 +10,7 @@ Interior Point Conic Optimization for Rust and Python
   <a href="https://codecov.io/gh/oxfordcontrol/Clarabel.rs"><img src="https://codecov.io/gh/oxfordcontrol/Clarabel.rs/branch/master/graph/badge.svg"></a>
   <a href="https://oxfordcontrol.github.io/ClarabelDocs/stable"><img src="https://img.shields.io/badge/Documentation-stable-purple.svg"></a>
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
-  <a href="https://github.com/oxfordcontrol/Clarabel.rs/releases"><img src="https://img.shields.io/badge/Release-v0.1.1-blue.svg"></a>
+  <a href="https://github.com/oxfordcontrol/Clarabel.rs/releases"><img src="https://img.shields.io/badge/Release-v0.1.2-blue.svg"></a>
 </p>
 
 <p align="center">
@@ -37,8 +37,10 @@ $A \in \mathbb{R}^{m \times n}$, and
 $b \in \mathbb{R}^m$.
 The convex set $\mathcal{K}$ is a composition of convex cones.
 
-
 __For more information see the Clarabel Documentation ([stable](https://oxfordcontrol.github.io/ClarabelDocs/stable) |  [dev](https://oxfordcontrol.github.io/ClarabelDocs/dev)).__
+
+Clarabel is also available in a Julia implementation.  See [here](https://github.com/oxfordcontrol/Clarabel.jl).
+ 
 
 ## Features
 
