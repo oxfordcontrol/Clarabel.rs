@@ -11,7 +11,7 @@ fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
 
     //a 2-d box constraint, separated into 4 inequalities.
     //A = [I; -I]
-    let A: CscMatrix<f64> = CscMatrix::new(
+    let A = CscMatrix::new(
         4,                      // m
         2,                      // n
         vec![0, 2, 4],          // colptr

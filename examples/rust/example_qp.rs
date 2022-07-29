@@ -1,10 +1,14 @@
 #![allow(non_snake_case)]
-
 use clarabel::algebra::*;
 use clarabel::solver::*;
 
-fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
-    let P: CscMatrix<f64> = CscMatrix::new(
+fn main() {
+    // QP Example
+
+    // let P = CscMatrix::identity(2);    // For P = I
+    // let P = CscMatrix::spalloc(2,2,0); // For P = 0
+
+    let P = CscMatrix::new(
         2,             // m
         2,             // n
         vec![0, 1, 2], // colptr
@@ -14,7 +18,7 @@ fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
 
     let q = vec![-1., -4.];
 
-    let A: CscMatrix<f64> = CscMatrix::new(
+    let A = CscMatrix::new(
         5,                               // m
         2,                               // n
         vec![0, 3, 6],                   // colptr
@@ -24,21 +28,13 @@ fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
 
     let b = vec![0., 1., 1., 1., 1.];
 
-    (P, q, A, b)
-}
-
-fn main() {
-    let (P, q, A, b) = problem_data();
-
     let cones = [ZeroConeT(1), NonnegativeConeT(4)];
 
-    let settings = DefaultSettingsBuilder::default()
-        .equilibrate_enable(true)
-        .max_iter(50)
-        .build()
-        .unwrap();
+    let settings = DefaultSettings::default();
 
     let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
 
     solver.solve();
+
+    println!("Solution = {:?}", solver.solution.x);
 }

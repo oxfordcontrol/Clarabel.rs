@@ -89,7 +89,7 @@ where
             kkt_col_norms(P, A, dwork, ework);
 
             dwork.scalarop(|x| limit_scaling(x, scale_min, scale_max));
-            dwork.scalarop(|x| limit_scaling(x, scale_min, scale_max));
+            ework.scalarop(|x| limit_scaling(x, scale_min, scale_max));
 
             dwork.rsqrt();
             ework.rsqrt();

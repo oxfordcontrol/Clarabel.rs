@@ -12,6 +12,7 @@ pub trait FloatT:
     + FromPrimitive
     + std::fmt::Display
     + std::fmt::LowerExp
+    + std::fmt::Debug
 {
 }
 impl FloatT for f32 {}
