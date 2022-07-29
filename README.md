@@ -1,14 +1,14 @@
 
 <h1 align="center" margin=0px>
-  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main//assets/logo-banner-light.png#gh-light-mode-only" width=60%>
-  <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main//assets/logo-banner-dark.png#gh-dark-mode-only"   width=60%>
+  <img src="https://github.com/oxfordcontrol/ClarabelDocs/blob/main/docs/src/assets/logo-banner-light-rs.png#gh-light-mode-only" width=60%>
+  <img src="https://github.com/oxfordcontrol/ClarabelDocs/blob/main/docs/src/assets/logo-banner-dark-rs.png#gh-dark-mode-only"   width=60%>
   <br>
-Interior Point Conic Optimization for Rust
+Interior Point Conic Optimization for Rust and Python
 </h1>
 <p align="center">
    <a href="https://github.com/oxfordcontrol/Clarabel.rs/actions"><img src="https://github.com/oxfordcontrol/Clarabel.rs/workflows/ci/badge.svg?branch=main"></a>
   <a href="https://codecov.io/gh/oxfordcontrol/Clarabel.rs"><img src="https://codecov.io/gh/oxfordcontrol/Clarabel.rs/branch/master/graph/badge.svg"></a>
-  <a href="https://oxfordcontrol.github.io/Clarabel.rs/stable"><img src="https://img.shields.io/badge/Documentation-stable-purple.svg"></a>
+  <a href="https://oxfordcontrol.github.io/ClarabelDocs/stable"><img src="https://img.shields.io/badge/Documentation-stable-purple.svg"></a>
   <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"></a>
   <a href="https://github.com/oxfordcontrol/Clarabel.rs/releases"><img src="https://img.shields.io/badge/Release-v0.1.1-blue.svg"></a>
 </p>
@@ -17,7 +17,7 @@ Interior Point Conic Optimization for Rust
   <a href="#features">Features</a> •
   <a href="#installation">Installation</a> •
   <a href="#license-">License</a> •
-  <a href="https://oxfordcontrol.github.io/Clarabel.rs/stable">Documentation</a>
+  <a href="https://oxfordcontrol.github.io/ClarabelDocs/stable">Documentation</a>
 </p>
 
 __Clarabel.rs__ is a Rust implementation of an interior point numerical solver for convex optimization problems using a novel homogeneous embedding.  Clarabel.rs solves the following problem:
@@ -27,18 +27,18 @@ __Clarabel.rs__ is a Rust implementation of an interior point numerical solver f
   <img src="https://github.com/oxfordcontrol/Clarabel.rs/blob/main/assets/problem_format-dark.png#gh-dark-mode-only"   width=30%>
 </p>
 
-with decision variables 
+with decision variables
 $x \in \mathbb{R}^n$,
 $s \in \mathbb{R}^m$
-and data matrices 
+and data matrices
 $P=P^\top \succeq 0$,
-$q \in \mathbb{R}^n$, 
+$q \in \mathbb{R}^n$,
 $A \in \mathbb{R}^{m \times n}$, and
 $b \in \mathbb{R}^m$.
 The convex set $\mathcal{K}$ is a composition of convex cones.
 
 
-__For more information see the Clarabel Documentation ([stable](https://oxfordcontrol.github.io/Clarabel.rs/stable) |  [dev](https://oxfordcontrol.github.io/Clarabel.rs/dev)).__
+__For more information see the Clarabel Documentation ([stable](https://oxfordcontrol.github.io/ClarabelDocs/stable) |  [dev](https://oxfordcontrol.github.io/ClarabelDocs/dev)).__
 
 ## Features
 
@@ -47,6 +47,21 @@ __For more information see the Clarabel Documentation ([stable](https://oxfordco
 * __Infeasibility detection__: Infeasible problems are detected using a homogeneous embedding technique.
 * __Open Source__: Our code is available on [GitHub](https://github.com/oxfordcontrol/Clarabel.rs) and distributed under the Apache 2.0 License
 
+# Installation
+
+Clarabel can be imported to Cargo based Rust projects by adding
+```rust
+[dependencies]
+clarabel = "0"  
+```
+to the project's `Cargo.toml` file.   To install from source, see the [Rust Installation Documentation](https://oxfordcontrol.github.io/ClarabelDocs/stable/rust/installation_rs/).
+
+To use the Python interface to the solver:
+```
+pip install clarabel
+```
+
+To install the Python interface from source, see the [Python Installation Documentation](https://oxfordcontrol.github.io/ClarabelDocs/stable/rust/installation_py/).
+
 ## License 🔍
 This project is licensed under the Apache License - see the [LICENSE.md](LICENSE.md) file for details.
-s
