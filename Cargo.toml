@@ -50,3 +50,11 @@ name = "clarabel"
 # "cdylib" is necessary to produce a shared library that Python can import.
 # "lib" is necessary to allow the ./examples to build
 crate-type = ["cdylib","lib"]
+
+# ------------------------------
+# enable latex in docs 
+# credit: https://github.com/victe/rust-latex-doc-minimal-example
+# ------------------------------
+
+[package.metadata.docs.rs]
+rustdoc-args = [ "--html-in-header", "./html/docs-header.html" ]

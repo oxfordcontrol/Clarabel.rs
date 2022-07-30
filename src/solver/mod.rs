@@ -1,6 +1,21 @@
+//! Clarabel solver main module.
+//!
+//! This module contains the main types and traits for the Clarabel solver.
+//!
+//! The solver comes with a [default implementation](crates::solver::implementations::default)
+//! of all required traits.   This produces a solver that solves problems in the standard format
+//! described in the top level [API page](crate) and the
+//! [User's guide](https://oxfordcontrol.github.io/ClarabelDocs/stable).   This implementation
+//! is the most appropriate choice for nearly all users.
+//!
+//! It is also possible to implement a custom solver by defining a collection
+//! of custom types that together implement all of the required core
+//! [traits](crate::solver::core::traits) for
+//! objects in Clarabel's core solver.
+
 // internal module structure
 pub(crate) mod core;
-pub(crate) mod implementations;
+pub mod implementations;
 
 //Here we expose only part of the solver internals
 //and rearrange public modules a bit to give a more
@@ -26,6 +41,7 @@ pub use crate::solver::core::traits;
 //     }
 // }
 
+pub use crate::solver::implementations::default;
 pub use crate::solver::implementations::default::*;
 
 //configure tests of internals
