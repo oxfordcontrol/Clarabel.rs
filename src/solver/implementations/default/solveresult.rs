@@ -6,6 +6,8 @@ use crate::{
     solver::core::{traits::Solution, SolverStatus},
 };
 
+/// Standard-form solver type implementing the [Solution](crate::solver::core::traits::Solution) trait
+
 pub struct DefaultSolution<T> {
     pub x: Vec<T>,
     pub z: Vec<T>,

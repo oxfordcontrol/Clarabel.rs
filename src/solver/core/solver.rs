@@ -7,13 +7,21 @@ use crate::timers::*;
 // Solver status type
 // ---------------------------------
 
+/// Status of solver at termination
+
 #[derive(PartialEq, Clone, Debug)]
 pub enum SolverStatus {
+    /// Problem is not solved (solver hasn't run)
     Unsolved,
+    /// Solved successfully
     Solved,
+    /// Primal infeasibility certificate found
     PrimalInfeasible,
+    /// Dual infeasibilty certificate found
     DualInfeasible,
+    /// Maximum number of iterations reached
     MaxIterations,
+    /// Maximum allowable time reached
     MaxTime,
 }
 
@@ -32,6 +40,11 @@ impl Default for SolverStatus {
 // ---------------------------------
 // top level solver container type
 // ---------------------------------
+
+// The top-level solver.
+
+// This trait is defined with a collection of mutually interacting associated types.
+// See the [DefaultSolver](crate::solver::implementations::default) for an example.
 
 pub struct Solver<D, V, R, K, C, I, SO, SE> {
     pub data: D,
@@ -67,9 +80,16 @@ fn _print_banner(is_verbose: bool) {
 // IPSolver trait and its standard implementation.
 // ---------------------------------
 
+/// An interior point solver implementing a predictor-corrector scheme
+
 pub trait IPSolver<T, D, V, R, K, C, I, SO, SE> {
+    /// Run the solver
     fn solve(&mut self);
+
+    /// Find an initial condition
     fn default_start(&mut self);
+
+    /// Compute a centering parameter
     fn centering_parameter(&self, α: T) -> T;
 }
 

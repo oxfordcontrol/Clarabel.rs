@@ -5,6 +5,8 @@ use crate::algebra::*;
 // equilibration data
 // ---------------
 
+/// Data from the Ruiz equilibration procedure
+
 pub struct DefaultEquilibrationData<T> {
     // scaling matrices for problem data equilibration
     // fields d,e,dinv,einv are vectors of scaling values

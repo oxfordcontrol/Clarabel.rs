@@ -1,3 +1,6 @@
+//! Implementation of core type for the standard problem format
+//! described in the documentation [main page](crate).
+
 #![allow(non_snake_case)]
 
 mod equilibration;
@@ -11,7 +14,7 @@ mod solver;
 mod solveresult;
 mod variables;
 
-//export flattened
+// export flattened
 pub use equilibration::*;
 pub use info::*;
 pub use info_print::*;

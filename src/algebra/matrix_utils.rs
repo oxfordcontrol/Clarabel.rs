@@ -5,9 +5,17 @@ impl<T> CscMatrix<T>
 where
     T: FloatT,
 {
-    //constructor with rudimentary sanity checks.
-    //Does not check for proper ordering or rows
-    //out of bounds
+    /// CscMatrix constructor.
+    ///
+    /// # Panics
+    /// Makes rudimentary dimensional compatibility checks and panics on
+    /// failure.   This constructor does __not__
+    /// ensure that rows indices are all in bounds or that data is arranged
+    /// such that entries within each column appear in order of increasing
+    /// row index.   Responsibility for ensuring these conditions hold
+    /// is left to the caller.
+    ///
+
     pub fn new(m: usize, n: usize, colptr: Vec<usize>, rowval: Vec<usize>, nzval: Vec<T>) -> Self {
         assert_eq!(rowval.len(), nzval.len());
         assert_eq!(colptr.len(), n + 1);
@@ -21,23 +29,31 @@ where
         }
     }
 
-    //matrix properties
+    /// number of rows
     pub fn nrows(&self) -> usize {
         self.m
     }
+    /// number of columns
     pub fn ncols(&self) -> usize {
         self.n
     }
+    /// number of nonzeros
     pub fn nnz(&self) -> usize {
         self.colptr[self.n]
     }
+    /// true if `self.nrows() == self.ncols()`
     pub fn is_square(&self) -> bool {
         self.m == self.n
     }
 
-    pub fn spalloc(m: usize, n: usize, nnz: usize) -> Self {
-        //allocates space for a sparse matrix with nnz elements
+    /// allocate space for a sparse matrix with `nnz` elements
+    ///
+    /// To make an m x n matrix of zeros, use
+    /// ```
+    /// let A = spalloc(m,n,0);
+    /// ```
 
+    pub fn spalloc(m: usize, n: usize, nnz: usize) -> Self {
         let mut colptr = vec![0; n + 1];
         let rowval = vec![0; nnz];
         let nzval = vec![T::zero(); nnz];
@@ -46,6 +62,7 @@ where
         CscMatrix::new(m, n, colptr, rowval, nzval)
     }
 
+    /// Identity matrix of size `n`
     pub fn identity(n: usize) -> Self {
         let colptr = (0usize..=n).collect();
         let rowval = (0usize..n).collect();
@@ -54,7 +71,13 @@ where
         CscMatrix::new(n, n, colptr, rowval, nzval)
     }
 
-    //horizontal matrix concatenation: C = [A B]
+    /// horizontal matrix concatenation:
+    /// ```
+    /// C = [A B]
+    /// ```
+    /// # Panics
+    /// Panics if row dimensions are incompatible
+
     pub fn hcat(A: &Self, B: &Self) -> Self {
         //first check for compatible row dimensions
         assert_eq!(A.m, B.m);
@@ -83,7 +106,15 @@ where
         C
     }
 
-    //vertical matrix concatenation: C = [A; B]
+    /// vertical matrix concatenation:
+    /// ```sh
+    /// C = [ A ]
+    ///     [ B ]
+    /// ```
+    ///
+    /// # Panics
+    /// Panics if column dimensions are incompatible
+
     pub fn vcat(A: &Self, B: &Self) -> Self {
         //first check for compatible column dimensions
         assert_eq!(A.n, B.n);
@@ -110,6 +141,8 @@ where
         C.backshift_colptrs();
         C
     }
+
+    /// Allocates a new matrix containing only entries from the upper triangular part
 
     pub fn to_triu(&self) -> Self {
         assert_eq!(self.m, self.n);

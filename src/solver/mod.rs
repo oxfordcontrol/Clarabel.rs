@@ -2,7 +2,7 @@
 //!
 //! This module contains the main types and traits for the Clarabel solver.
 //!
-//! The solver comes with a [default implementation](crates::solver::implementations::default)
+//! The solver comes with a [default implementation](crate::solver::implementations::default)
 //! of all required traits.   This produces a solver that solves problems in the standard format
 //! described in the top level [API page](crate) and the
 //! [User's guide](https://oxfordcontrol.github.io/ClarabelDocs/stable).   This implementation
@@ -29,6 +29,7 @@ pub use crate::solver::core::{IPSolver, SolverStatus};
 
 //user facing traits required to define new implementatiions
 pub use crate::solver::core::traits;
+pub use crate::solver::core::CoreSettings;
 
 //If we have implemtations for multple alternative
 //problem formats, they would live here.   Since we

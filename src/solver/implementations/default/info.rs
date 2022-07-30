@@ -4,6 +4,8 @@ use crate::solver::core::{traits::Info, SolverStatus};
 use crate::timers::*;
 use std::time::Duration;
 
+/// Standard-form solver type implementing the [Info](crate::solver::core::traits::Info) and [InfoPrint](crate::solver::core::traits::InfoPrint) traits
+
 #[derive(Default)]
 pub struct DefaultInfo<T> {
     pub μ: T,

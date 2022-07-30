@@ -4,7 +4,7 @@ use super::{MatrixShape, MatrixTriangle};
 // through these core traits, which are implemented generically
 // for floats of type FloatT.
 
-/// Scalar operations on [FloatT](FloatT)
+/// Scalar operations on [FloatT](crate::algebra::FloatT)
 
 pub trait ScalarMath<T> {
     /// Applies a threshold value.   
@@ -15,7 +15,7 @@ pub trait ScalarMath<T> {
     fn clip(s: T, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T;
 }
 
-/// Vector operations on slices of [FloatT](FloatT)
+/// Vector operations on slices of [FloatT](crate::algebra::FloatT)
 
 pub trait VectorMath<T> {
     /// Copy values from `src` to `self`
@@ -91,7 +91,7 @@ pub trait VectorMath<T> {
     fn waxpby(&mut self, a: T, x: &Self, b: T, y: &Self);
 }
 
-/// Matrix operations for matrices of [FloatT](FloatT)
+/// Matrix operations for matrices of [FloatT](crate::algebra::FloatT)
 
 pub trait MatrixMath<T, V: ?Sized> {
     /// Compute columnwise infinity norm operations on

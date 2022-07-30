@@ -3,6 +3,8 @@ use crate::solver::core::traits::Settings;
 use derive_builder::Builder;
 use std::time::Duration;
 
+/// Standard-form solver type implementing the [Settings](crate::solver::core::traits::Settings) trait
+
 #[derive(Builder, Debug, Clone)]
 pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "50")]

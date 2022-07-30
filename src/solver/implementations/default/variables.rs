@@ -9,11 +9,18 @@ use crate::solver::core::{
 // Variables type for default problem format
 // ---------------
 
+/// Standard-form solver type implementing the [Variables](crate::solver::core::traits::Variables) trait
+
 pub struct DefaultVariables<T> {
+    /// scaled primal variables
     pub x: Vec<T>,
+    /// slack variables
     pub s: Vec<T>,
+    /// scaled dual variables
     pub z: Vec<T>,
+    /// homogenization scalar τ
     pub τ: T,
+    /// homogenization scalar κ
     pub κ: T,
 }
 

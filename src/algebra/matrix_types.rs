@@ -4,6 +4,24 @@
 
 /// Sparse matrix in standard Compressed Sparse Column (CSC) format
 ///
+/// __Example usage__ : To construct the 3 x 2 matrix
+/// ```sh
+/// A = [1.  3.  5.]
+///     [2.  0.  6.]
+///     [0.  4.  7.]
+/// ```
+///
+/// ```
+/// let A = CscMatrix::new(
+///    3,                                // m
+///    2,                                // n
+///    vec![0, 2, 4, 7],                 //colptr
+///    vec![0, 1, 0, 2],                 //rowval
+///    vec![1., 2., 3., 4., 5., 6., 7.], //nzval
+///  );
+/// ```
+///
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CscMatrix<T = f64> {
     /// number of rows

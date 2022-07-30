@@ -1,5 +1,8 @@
 use crate::solver::implementations::default::DefaultSettings;
 
-//Default implemenentations only uses the
-//core settings, so just typedef to the default
+/// Solver general core settings are the same as in the default solver.
+///
+/// Go [here](crate::solver::implementations::default::DefaultSettings)
+/// to view the complete list.
+///
 pub type CoreSettings<T> = DefaultSettings<T>;

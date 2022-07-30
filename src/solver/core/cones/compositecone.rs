@@ -12,15 +12,34 @@ use std::ops::Range;
 use core::hash::{Hash, Hasher};
 use std::{cmp::PartialEq, mem::discriminant};
 
+/// API type describing the type of a conic constraint.
+///  
 #[derive(Debug, Clone, Copy)]
 pub enum SupportedCones<T> {
-    ZeroConeT(usize),        // params: cone_dim
-    NonnegativeConeT(usize), // params: cone_dim
-    SecondOrderConeT(usize), // params: cone_dim
-    PlaceHolderT(usize, T),  // params: cone_dim, exponent
+    /// The zero cone (used for equality constraints).
+    ///
+    /// The parameter indicates the cones dimension.
+    ZeroConeT(usize),
+    /// The nonnegative orthant.  
+    ///
+    /// The parameter indicates the cones dimension.
+    NonnegativeConeT(usize),
+    /// The second order cone / Lorenz cone / ice-cream cone.
+    ///  
+    /// The parameter indicates the cones dimension.
+    SecondOrderConeT(usize),
+    /// A placeholder type with no corresponding implementation.
+    ///
+    /// This type exists to allow for future implementation of
+    /// conic constraints with a floating point parameter, e.g.
+    /// the power cone.
+    #[doc(hidden)]
+    PlaceHolderT(usize, T), // params: cone_dim, exponent
 }
 
 impl<T> SupportedCones<T> {
+    /// Returns the name of the cone from its enum.  Used for printing progress.
+
     pub fn variant_name(&self) -> &'static str {
         match self {
             SupportedCones::ZeroConeT(_) => "ZeroConeT",

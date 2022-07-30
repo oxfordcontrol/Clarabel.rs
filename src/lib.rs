@@ -1,3 +1,8 @@
+// Add a stylish Clarabel cow and gear logo to the docs
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/oxfordcontrol/ClarabelDocs/main/docs/src/assets/cow-and-gear-logo.png"
+)]
+
 //! <p align="center">
 //! <picture>
 //! <source srcset="https://github.com/oxfordcontrol/ClarabelDocs/blob/main/docs/src/assets/logo-banner-dark-rs.png?raw=true" media="(prefers-color-scheme: dark)" width=50% >
@@ -9,8 +14,8 @@
 //!
 //! $$
 //! \begin{array}{rl}
-//! \text{minimize} & \frac{1}{2}x^T P x + q^T x\\\\[2ex]
-//!  \text{subject to} & Ax + s = b \\\\[1ex]
+//! \text{minimize} & \frac{1}{2}x^T P x + q^T x\\\\\[2ex\]
+//!  \text{subject to} & Ax + s = b \\\\\[1ex\]
 //!         & s \in \mathcal{K}
 //!  \end{array}
 //! $$

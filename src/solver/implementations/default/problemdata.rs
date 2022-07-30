@@ -10,6 +10,8 @@ use crate::solver::core::{
 // Data type for default problem format
 // ---------------
 
+/// Standard-form solver type implementing the [ProblemData](crate::solver::core::traits::ProblemData) trait
+
 pub struct DefaultProblemData<T> {
     // the main KKT residuals
     pub P: CscMatrix<T>,
