@@ -1,0 +1,7 @@
+# ------------------------------
+# enable latex in docs 
+# credit: https://github.com/victe/rust-latex-doc-minimal-example
+# ------------------------------
+    
+[build]
+rustdocflags = [ "--html-in-header", "./html/docs-header.html" ]
