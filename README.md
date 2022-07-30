@@ -22,10 +22,13 @@ Interior Point Conic Optimization for Rust and Python
 
 __Clarabel.rs__ is a Rust implementation of an interior point numerical solver for convex optimization problems using a novel homogeneous embedding.  Clarabel.rs solves the following problem:
 
-<p align="center">
-  <img src="https://github.com/oxfordcontrol/ClarabelDocs/blob/main/docs/src/assets/problem_format-light.png#gh-light-mode-only" width=30%>
-  <img src="https://github.com/oxfordcontrol/ClarabelDocs/blob/main/docs/src/assets/problem_format-dark.png#gh-dark-mode-only"   width=30%>
-</p>
+$$
+\begin{array}{r}
+\text{minimize} & \frac{1}{2}x^T P x + q^T x\\[2ex]
+ \text{subject to} & Ax + s = b \\[1ex]
+        & s \in \mathcal{K}
+ \end{arra}
+$$
 
 with decision variables
 $x \in \mathbb{R}^n$,
