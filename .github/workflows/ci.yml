@@ -1,4 +1,4 @@
-name: Cargo build and test
+name: ci
 
 on:
   push:
@@ -20,3 +20,6 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - uses: codecov/codecov-action@v1
+       with:
+          file: lcov.info
