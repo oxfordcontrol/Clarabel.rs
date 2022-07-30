@@ -3,6 +3,8 @@ use crate::algebra::*;
 use core::cmp::{max, min};
 use derive_builder::Builder;
 
+/// Required settings for [QDLDLFactorisation](QDLDLFactorisation)
+
 #[derive(Builder, Debug)]
 pub struct QDLDLSettings<T>
 where
@@ -30,6 +32,8 @@ where
         QDLDLSettingsBuilder::<T>::default().build().unwrap()
     }
 }
+
+/// Performs $LDL^T$ factorization of a symmetric quasidefinite matrix.
 
 #[derive(Debug)]
 pub struct QDLDLFactorisation<T = f64> {
