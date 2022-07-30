@@ -24,8 +24,8 @@ __Clarabel.rs__ is a Rust implementation of an interior point numerical solver f
 
 $$
 \begin{array}{r}
-\text{minimize} & \frac{1}{2}x^T P x + q^T x\\[2ex]
- \text{subject to} & Ax + s = b \\[1ex]
+\text{minimize} & \frac{1}{2}x^T P x + q^T x\\\\[2ex]
+ \text{subject to} & Ax + s = b \\\\[1ex]
         & s \in \mathcal{K}
  \end{array}
 $$
