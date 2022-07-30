@@ -1,0 +1,71 @@
+name: Build and deploy to PyPI
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PACKAGE_NAME: clarabel
+  PYTHON_VERSION: "3.7" # to build abi3 wheels
+  PYTHON_EXTRAS: "numpy scipt" # to run test examples 
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          architecture: x64
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Build wheels - x86_64
+        uses: messense/maturin-action@v1
+        with:
+          target: x86_64
+          args: --release --out dist --sdist --features python
+      - name: Install built wheel - x86_64
+        run: |
+          pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
+          python -c "import clarabel"
+          examples/python/example_qp.py 
+      - name: Build wheels - universal2
+        uses: messense/maturin-action@v1
+        with:
+          args: --release --universal2 --out dist
+      - name: Install built wheel - universal2
+        run: |
+          pip install dist/${{ env.PACKAGE_NAME }}-*universal2.whl --force-reinstall
+          examples/python/example_qp.py 
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: "startsWith(github.ref, 'refs/tags/')"
+    needs: 
+      - macos
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: wheels
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Publish to PyPi
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          pip install --upgrade twine
+          twine upload --skip-existing --repository testpypi *
