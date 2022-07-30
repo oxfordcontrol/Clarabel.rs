@@ -1,13 +1,14 @@
 [package]
 name = "clarabel"
-version = "0.1.2"
+version = "0.1.0"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 license = "Apache-2.0"
-description = "Clarabel Conic Interior Point Solver"
+description = "Clarabel Conic Interior Point Solver for Rust / Python"
 readme = "README.md"
-keywords = ["optimization", "math"]
-categories = ["optimization"]
+repository = "https://github.com/oxfordcontrol/Clarabel.rs"
+keywords = ["convex optimization", "interior point", "quadratic programming", "linear programming", "conic programming"]
+categories = ["mathematics"]
 
 [dependencies]
 num-traits = "0.2"
