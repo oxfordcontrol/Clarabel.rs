@@ -1,6 +1,7 @@
 // Add a stylish Clarabel cow and gear logo to the docs
 #![doc(
-    html_logo_url = "https://raw.githubusercontent.com/oxfordcontrol/ClarabelDocs/main/docs/src/assets/cow-and-gear-logo.png"
+    html_logo_url = "https://raw.githubusercontent.com/oxfordcontrol/ClarabelDocs/main/docs/src/assets/cow-and-gear-logo.png",
+    html_favicon_url = "https://raw.githubusercontent.com/oxfordcontrol/ClarabelDocs/main/docs/src/assets/favicon.ico"
 )]
 
 //! <p align="center">

@@ -50,7 +50,10 @@ where
     ///
     /// To make an m x n matrix of zeros, use
     /// ```
-    /// let A = spalloc(m,n,0);
+    /// # use clarabel::algebra::CscMatrix;
+    /// # let m = 3;
+    /// # let n = 4;
+    /// let A : CscMatrix<f64> = CscMatrix::spalloc(m,n,0);
     /// ```
 
     pub fn spalloc(m: usize, n: usize, nnz: usize) -> Self {
@@ -72,7 +75,7 @@ where
     }
 
     /// horizontal matrix concatenation:
-    /// ```
+    /// ```text
     /// C = [A B]
     /// ```
     /// # Panics
@@ -107,7 +110,7 @@ where
     }
 
     /// vertical matrix concatenation:
-    /// ```sh
+    /// ```text
     /// C = [ A ]
     ///     [ B ]
     /// ```
