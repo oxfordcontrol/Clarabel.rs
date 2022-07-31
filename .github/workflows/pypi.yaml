@@ -1,4 +1,4 @@
-name: pypi_deploy
+name: pypi
 
 on:
   pull_request:
