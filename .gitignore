@@ -5,3 +5,4 @@ Cargo.lock
 .env*
 notes*.txt
 julia   
+/dist
