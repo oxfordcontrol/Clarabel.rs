@@ -8,7 +8,7 @@ on:
 env:
   PACKAGE_NAME: clarabel
   PYTHON_VERSION: "3.7" # to build abi3 wheels
-  PYTHON_EXTRAS: "numpy scipt" # to run test examples 
+  PYPI_TARGET: testpypi        # use "testpypi" for testing, "pypi" otherwise
 
 jobs:
   macos:
@@ -44,7 +44,8 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install dist/${{ env.PACKAGE_NAME }}-*universal2.whl --force-reinstall
-          examples/python/example_qp.py 
+          python -c "import clarabel"
+          python examples/python/example_qp.py 
       - name: Upload wheels
         uses: actions/upload-artifact@v2
         with:
@@ -70,4 +71,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           pip install --upgrade twine
-          twine upload --skip-existing --repository testpypi *
+          twine upload --skip-existing --repository ${{ env.PYPI_TARGET  }} *
