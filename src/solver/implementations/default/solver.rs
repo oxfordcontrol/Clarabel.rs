@@ -33,6 +33,9 @@ where
         cone_types: &[SupportedCones<T>],
         settings: DefaultSettings<T>,
     ) -> Self {
+        //sanity check problem dimensions
+        _check_dimensions(P, q, A, b, cone_types);
+
         let mut timers = Timers::default();
         let mut output;
 
@@ -74,4 +77,25 @@ where
 
         output
     }
+}
+
+fn _check_dimensions<T: FloatT>(
+    P: &CscMatrix<T>,
+    q: &[T],
+    A: &CscMatrix<T>,
+    b: &[T],
+    cone_types: &[SupportedCones<T>],
+) {
+    let m = b.len();
+    let n = q.len();
+    let p = cone_types.iter().fold(0, |acc, cone| acc + cone.nvars());
+
+    assert!(m == A.nrows(), "A and b incompatible dimensions.");
+    assert!(
+        p == m,
+        "Constraint dimensions inconsistent with size of cones."
+    );
+    assert!(n == A.ncols(), "A and q incompatible dimensions.");
+    assert!(n == P.ncols(), "P and q incompatible dimensions.");
+    assert!(P.is_square(), "P not square.");
 }

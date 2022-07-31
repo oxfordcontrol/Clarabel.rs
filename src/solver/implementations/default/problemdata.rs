@@ -28,12 +28,9 @@ where
     T: FloatT,
 {
     pub fn new(P: &CscMatrix<T>, q: &[T], A: &CscMatrix<T>, b: &[T]) -> Self {
-        let (m, n) = (b.len(), q.len());
-
-        assert_eq!(m, A.nrows());
-        assert_eq!(n, A.ncols());
-        assert_eq!(n, P.ncols());
-        assert!(P.is_square());
+        // dimension checks will have already been
+        // performed during problem setup, so skip here
+        let (m, n) = (A.nrows(), A.ncols());
 
         let P = P.to_triu();
         let q = q.to_vec();
