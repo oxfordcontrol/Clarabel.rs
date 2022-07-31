@@ -44,8 +44,7 @@ jobs:
 
   macos:
     runs-on: macos-latest
-      # don't build mac os on every push, just on release 
-      if: "startsWith(github.ref, 'refs/tags/v')"
+      if: "startsWith(github.ref, 'refs/tags/v')" # skip on untagged push
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -87,8 +86,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
-        # don't build windows on every push, just on release 
-        if: "startsWith(github.ref, 'refs/tags/v')"
+        if: "startsWith(github.ref, 'refs/tags/v')" # skip on untagged push
     strategy:
       matrix:
         target: [x64, x86]
