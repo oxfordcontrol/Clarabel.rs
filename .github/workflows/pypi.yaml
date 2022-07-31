@@ -8,7 +8,7 @@ on:
 env:
   PACKAGE_NAME: clarabel
   PYTHON_VERSION: "3.7" # to build abi3 wheels
-  PYPI_TARGET: testpypi        # use "testpypi" for testing, "pypi" otherwise
+  PYPI_TARGET: testpypi # use "testpypi" for testing, "pypi" otherwise
 
 jobs:
   macos:
@@ -51,6 +51,71 @@ jobs:
         with:
           name: wheels
           path: dist
+
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x64, x86]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          architecture: ${{ matrix.target }}
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --features python -i python${{ env.PYTHON_VERSION }}
+      - name: Install built wheel
+        shell: bash
+        run: |
+          python -m pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
+          python -c "import clarabel"
+          python examples/python/example_qp.py 
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64, i686]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          architecture: x64
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: auto
+          args: --release --out dist --features python -i python${{ env.PYTHON_VERSION }}
+      - name: Install built wheel
+        if: matrix.target == 'x86_64'
+        run: |
+          python -m pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
+          python -c "import clarabel"
+          python examples/python/example_qp.py 
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+  
 
   release:
     name: Release
