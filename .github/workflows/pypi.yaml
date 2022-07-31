@@ -1,16 +1,21 @@
 name: Build and deploy to PyPI
 
 on:
+  pull_request:
+    branches:    
+      - main
   push:
     branches:
       - main
+    tags:        
+      - *
 
 env:
   PACKAGE_NAME: clarabel
   PYTHON_VERSION: "3.7" # to build abi3 wheels
   PYPI_TARGET: testpypi # use "testpypi" for testing, "pypi" otherwise
 
-# NB: only linux is built unless this is a tagged release
+# NB: only linux is built unless this is a tagged version release
 
 jobs:
 
