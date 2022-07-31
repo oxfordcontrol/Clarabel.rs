@@ -1,4 +1,4 @@
-name: Build and deploy to PyPI
+name: pypi_deploy
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
     branches:
       - main
     tags:        
-      - *
+      - **
 
 env:
   PACKAGE_NAME: clarabel
