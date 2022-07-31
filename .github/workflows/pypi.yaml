@@ -6,14 +6,14 @@ on:
       - main
   push:
     branches:
-      - main
+      - main  
     tags:        
       - v*
 
 env:
   PACKAGE_NAME: clarabel
   PYTHON_VERSION: "3.7" # to build abi3 wheels
-  PYPI_TARGET: testpypi # use "testpypi" for testing, "pypi" otherwise
+  PYPI_TARGET: pypi # use "testpypi" for testing, "pypi" otherwise
 
 # NB: only linux is built unless this is a tagged version release
 
