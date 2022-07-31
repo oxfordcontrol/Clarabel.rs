@@ -10,6 +10,8 @@ env:
   PYTHON_VERSION: "3.7" # to build abi3 wheels
   PYPI_TARGET: testpypi # use "testpypi" for testing, "pypi" otherwise
 
+# NB: only linux is built unless this is a tagged release
+
 jobs:
 
   linux:
