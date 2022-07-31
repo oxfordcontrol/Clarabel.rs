@@ -44,7 +44,7 @@ jobs:
 
   macos:
     runs-on: macos-latest
-      if: "startsWith(github.ref, 'refs/tags/v')" # skip on untagged push
+      if: "startsWith(github.ref, 'refs/tags/v')" 
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -86,7 +86,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
-        if: "startsWith(github.ref, 'refs/tags/v')" # skip on untagged push
+        if: "startsWith(github.ref, 'refs/tags/v')" 
     strategy:
       matrix:
         target: [x64, x86]
