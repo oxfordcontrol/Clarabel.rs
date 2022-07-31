@@ -10,7 +10,7 @@ env:
   PYTHON_VERSION: "3.7" # to build abi3 wheels
   PYPI_TARGET: testpypi # use "testpypi" for testing, "pypi" otherwise
 
-# NB: only the linux test build is enabled for non-tagged release versions. 
+# NB: only the linux test builds are enabled unless this is a tagged release.
 
 jobs:
 
@@ -45,7 +45,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
-    strategy:
+    if: "startsWith(github.ref, 'refs/tags/v')" 
       matrix:
         target: [x64, x86]
     steps:
@@ -79,6 +79,7 @@ jobs:
 
   macos:
     runs-on: macos-latest
+    if: "startsWith(github.ref, 'refs/tags/v')" 
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -121,7 +122,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-      if: "startsWith(github.ref, 'refs/tags/v')"
+    if: "startsWith(github.ref, 'refs/tags/v')"
     needs: 
       - macos
       - windows
