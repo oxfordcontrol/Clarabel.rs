@@ -21,13 +21,6 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - uses: codecov/codecov-action@v3
-
-
-  check:
-
-    runs-on: ubuntu-latest
-    
-    steps:
     - name: Run cargo-tarpaulin
       uses: actions-rs/tarpaulin@v0.1
     - name: Upload to codecov.io
