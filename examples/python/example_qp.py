@@ -23,6 +23,6 @@ settings = clarabel.DefaultSettings();
 solver = clarabel.DefaultSolver(P,q,A,b,cones,settings);
 solution = solver.solve()
 print(
-    f"Solver terminated with status: {solution.status}, objective {solution.obj_val}, ,\n"
+    f"Solver terminated with status: {solution.status}, objective {solution.obj_val},\n"
     f"and solution: {dict(s=solution.s, x=solution.x, z=solution.z)}"
 )
