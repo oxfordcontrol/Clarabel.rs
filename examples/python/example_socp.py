@@ -21,4 +21,8 @@ settings.max_iter = 15;
 settings.verbose = True;
 
 solver = clarabel.DefaultSolver(P,q,A,b,cones,settings);
-solver.solve()
+solution = solver.solve()
+print(
+    f"Solver terminated with status: {solution.status}, objective {solution.obj_val}, ,\n"
+    f"and solution: {dict(s=solution.s, x=solution.x, z=solution.z)}"
+)
