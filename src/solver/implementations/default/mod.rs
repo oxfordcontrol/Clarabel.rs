@@ -10,8 +10,8 @@ mod kktsystem;
 mod problemdata;
 mod residuals;
 mod settings;
+mod solution;
 mod solver;
-mod solveresult;
 mod variables;
 
 // export flattened
@@ -22,6 +22,6 @@ pub use kktsystem::*;
 pub use problemdata::*;
 pub use residuals::*;
 pub use settings::*;
+pub use solution::*;
 pub use solver::*;
-pub use solveresult::*;
 pub use variables::*;
