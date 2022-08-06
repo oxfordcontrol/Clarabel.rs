@@ -4,4 +4,4 @@
 # ------------------------------
     
 [build]
-rustdocflags = [ "--html-in-header", "./html/docs-header.html" ]
+rustdocflags = [ "--html-in-header", "./html/rustdocs-header.html" ]
