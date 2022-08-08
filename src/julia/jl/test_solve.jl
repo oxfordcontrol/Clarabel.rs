@@ -1,10 +1,11 @@
-using SparseArrays
+using SparseArrays, Clarabel
 
-include("./types.jl")
-include("./clarabel_rs.jl")
+include("./ClarabelRs.jl")
 
-using Clarabel
-using TimerOutputs
+#force open /close library to allow recompile
+hdl = Base.Libc.dlopen(ClarabelRs.LIBRUST)
+hdl = Base.Libc.dlclose(hdl)
+
 
 using Random
 Random.seed!(1234)
@@ -20,22 +21,22 @@ A = sparse([1.  0.;    #<-- LHS of inequality constraint (upper bound)
 b = [ones(4);   #<-- RHS of inequality constraints
     ]
 
-    cones =
-    [Clarabel.NonnegativeConeT(4)]    #<--- for the inequality constraints
+cones = Clarabel.SupportedCone[
+    Clarabel.ZeroConeT(1) #<--- for the inequality constraints
+    Clarabel.SecondOrderConeT(3) #<--- for the inequality constraints
+]    
 
 
-println("\n\n Calling Julia implementation\n-----------------")
-TimerOutputs.enable_debug_timings(Clarabel)
-settings = Clarabel.Settings(max_iter = 20, verbose = true)
-solver   = Clarabel.Solver(settings)
+settings = Clarabel.Settings(max_iter = 25, verbose = true)
 
-Clarabel.setup!(solver, P, q, A, b, cones)
-result = Clarabel.solve!(solver)
-print(solver.info.timer) 
-
-println("\n\n Calling Rust implementation Rust\n-----------------")
-
-solve_time = solve_rs((P), q, A, b, cones)
+println("Rust version")
+solver1 = ClarabelRs.Solver(P, q, A, b, cones, settings)
+solution1 = ClarabelRs.solve!(solver1)
+info1 = ClarabelRs.get_info(solver1)
 
 
+println("Julia version")
+solver2 = Clarabel.Solver(P, q, A, b, cones, settings)
+solution2 = Clarabel.solve!(solver2)
+info2 = solver2.info
 

@@ -210,18 +210,9 @@ impl Default for PyDefaultSettings {
 
 impl PyDefaultSettings {
     pub(crate) fn new_from_internal(set: &DefaultSettings<f64>) -> Self {
-        // convert rust settings -> python
-        let time_limit = {
-            if set.time_limit >= std::time::Duration::MAX {
-                std::f64::INFINITY
-            } else {
-                set.time_limit.as_secs_f64()
-            }
-        };
-
-        let out = PyDefaultSettings {
+        PyDefaultSettings {
             max_iter: set.max_iter,
-            time_limit,
+            time_limit: set.time_limit,
             verbose: set.verbose,
             tol_gap_abs: set.tol_gap_abs,
             tol_gap_rel: set.tol_gap_rel,
@@ -245,31 +236,15 @@ impl PyDefaultSettings {
             iterative_refinement_abstol: set.iterative_refinement_abstol,
             iterative_refinement_max_iter: set.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
-        };
-
-        println!("Done with new_from_internal");
-        out
+        }
     }
 
     pub(crate) fn to_internal(&self) -> DefaultSettings<f64> {
         // convert python settings -> Rust
 
-        // some caution is required when converting to / from
-        // extremely large or inf values, otherwise we get a panic
-        let time_limit = {
-            if self.time_limit.is_infinite()
-                || self.time_limit.is_nan()
-                || self.time_limit >= std::time::Duration::MAX.as_secs_f64() - 1.
-            {
-                std::time::Duration::MAX
-            } else {
-                std::time::Duration::from_secs_f64(self.time_limit)
-            }
-        };
-
         DefaultSettings::<f64> {
             max_iter: self.max_iter,
-            time_limit,
+            time_limit: self.time_limit,
             verbose: self.verbose,
             tol_gap_abs: self.tol_gap_abs,
             tol_gap_rel: self.tol_gap_rel,
@@ -314,7 +289,7 @@ impl PyDefaultSolver {
         q: Vec<f64>,
         A: PyCscMatrix,
         b: Vec<f64>,
-        cones: Vec<PySupportedCones>,
+        cones: Vec<PySupportedCone>,
         settings: PyDefaultSettings,
     ) -> Self {
         let cones = _py_to_native_cones(cones);

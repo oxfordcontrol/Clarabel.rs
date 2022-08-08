@@ -22,7 +22,7 @@ pub mod implementations;
 //user friendly API
 
 //allows declaration of cone constraints
-pub use crate::solver::core::cones::{SupportedCones, SupportedCones::*};
+pub use crate::solver::core::cones::{SupportedCone, SupportedCone::*};
 
 //user facing traits required to interact with solver
 pub use crate::solver::core::{IPSolver, SolverStatus};

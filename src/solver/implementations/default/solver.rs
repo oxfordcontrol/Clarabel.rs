@@ -1,6 +1,6 @@
 use super::*;
 use crate::solver::core::{
-    cones::{CompositeCone, SupportedCones},
+    cones::{CompositeCone, SupportedCone},
     traits::ProblemData,
     Solver,
 };
@@ -30,7 +30,7 @@ where
         q: &[T],
         A: &CscMatrix<T>,
         b: &[T],
-        cone_types: &[SupportedCones<T>],
+        cone_types: &[SupportedCone<T>],
         settings: DefaultSettings<T>,
     ) -> Self {
         //sanity check problem dimensions
@@ -84,7 +84,7 @@ fn _check_dimensions<T: FloatT>(
     q: &[T],
     A: &CscMatrix<T>,
     b: &[T],
-    cone_types: &[SupportedCones<T>],
+    cone_types: &[SupportedCone<T>],
 ) {
     let m = b.len();
     let n = q.len();

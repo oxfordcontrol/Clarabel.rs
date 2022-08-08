@@ -2,7 +2,7 @@
 
 use super::datamap::*;
 use crate::algebra::*;
-use crate::solver::core::cones::{CompositeCone, SupportedCones};
+use crate::solver::core::cones::{CompositeCone, SupportedCone};
 use num_traits::Zero;
 
 pub(crate) fn allocate_kkt_WtW_blocks<T, Z>(cones: &CompositeCone<T>) -> Vec<Z>
@@ -101,7 +101,7 @@ fn _kkt_assemble_colcounts<T: FloatT>(
     let mut socidx = 0; // which SOC are we working on?
 
     for (i, cone) in cones.iter().enumerate() {
-        if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
+        if matches!(cones.types[i], SupportedCone::SecondOrderConeT(_)) {
             // we will add the u and v columns for this cone
             let nvars = cone.numel();
             let headidx = cones.rng_cones[i].start;
@@ -173,7 +173,7 @@ fn _kkt_assemble_fill<T: FloatT>(
     let mut socidx = 0; //which SOC are we working on?
 
     for (i, rng) in cones.rng_cones.iter().enumerate() {
-        if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
+        if matches!(cones.types[i], SupportedCone::SecondOrderConeT(_)) {
             let headidx = rng.start;
 
             // which column does u go into (if triu)?

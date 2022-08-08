@@ -1,9 +1,8 @@
 use crate::algebra::*;
-use std::time::Duration;
 
 use super::*;
 use crate::solver::core::{
-    cones::{CompositeCone, SupportedCones},
+    cones::{CompositeCone, SupportedCone},
     traits::InfoPrint,
 };
 
@@ -43,10 +42,10 @@ where
         println!("  cones (total) = {}", cones.len());
 
         //All dims here are dummies since we just care about the cone type
-        _print_conedims_by_type(cones, SupportedCones::ZeroConeT(0));
-        _print_conedims_by_type(cones, SupportedCones::NonnegativeConeT(0));
-        _print_conedims_by_type(cones, SupportedCones::SecondOrderConeT(0));
-        //_print_conedims_by_type(&cones, SupportedCones::PSDTriangleConeT(0));
+        _print_conedims_by_type(cones, SupportedCone::ZeroConeT(0));
+        _print_conedims_by_type(cones, SupportedCone::NonnegativeConeT(0));
+        _print_conedims_by_type(cones, SupportedCone::SecondOrderConeT(0));
+        //_print_conedims_by_type(&cones, SupportedCone::PSDTriangleConeT(0));
 
         println!();
         _print_settings(settings);
@@ -131,7 +130,7 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
     }
 
     let time_lim_str = {
-        if set.time_limit == Duration::MAX {
+        if set.time_limit.is_infinite() {
             "Inf".to_string()
         } else {
             format!("{:?}", set.time_limit)
@@ -186,7 +185,7 @@ fn _get_precision_string<T: FloatT>() -> String {
     (::std::mem::size_of::<T>() * 8).to_string()
 }
 
-fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: SupportedCones<T>) {
+fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: SupportedCone<T>) {
     let maxlistlen = 5;
 
     //skip if there are none of this type

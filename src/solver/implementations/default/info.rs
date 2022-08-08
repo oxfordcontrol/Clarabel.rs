@@ -2,11 +2,11 @@ use super::*;
 use crate::algebra::*;
 use crate::solver::core::{traits::Info, SolverStatus};
 use crate::timers::*;
-use std::time::Duration;
 
 /// Standard-form solver type implementing the [Info](crate::solver::core::traits::Info) and [InfoPrint](crate::solver::core::traits::InfoPrint) traits
 
-#[derive(Default)]
+#[repr(C)]
+#[derive(Default, Debug, Clone)]
 pub struct DefaultInfo<T> {
     pub μ: T,
     pub sigma: T,
@@ -21,7 +21,7 @@ pub struct DefaultInfo<T> {
     pub gap_abs: T,
     pub gap_rel: T,
     pub ktratio: T,
-    pub solve_time: Duration,
+    pub solve_time: f64,
     pub status: SolverStatus,
 }
 
@@ -44,13 +44,13 @@ where
     fn reset(&mut self, timers: &mut Timers) {
         self.status = SolverStatus::Unsolved;
         self.iterations = 0;
-        self.solve_time = Duration::ZERO;
+        self.solve_time = 0f64;
 
         timers.reset_timer("solve");
     }
 
     fn finalize(&mut self, timers: &mut Timers) {
-        self.solve_time = timers.total_time();
+        self.solve_time = timers.total_time().as_secs_f64();
     }
 
     fn update(
@@ -101,7 +101,7 @@ where
         self.ktratio = variables.κ / variables.τ;
 
         // solve time so far (includes setup)
-        self.solve_time = timers.total_time();
+        self.solve_time = timers.total_time().as_secs_f64();
     }
 
     fn check_termination(

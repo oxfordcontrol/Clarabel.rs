@@ -8,7 +8,7 @@ fn basic_qp_data() -> (
     Vec<f64>,
     CscMatrix<f64>,
     Vec<f64>,
-    Vec<SupportedCones<f64>>,
+    Vec<SupportedCone<f64>>,
 ) {
     // P = [4. 1;1 2]
     let P = CscMatrix::new(
@@ -46,7 +46,7 @@ fn basic_qp_data_dual_inf() -> (
     Vec<f64>,
     CscMatrix<f64>,
     Vec<f64>,
-    Vec<SupportedCones<f64>>,
+    Vec<SupportedCone<f64>>,
 ) {
     // P = [1. 1;1 1]
     let P = CscMatrix::new(

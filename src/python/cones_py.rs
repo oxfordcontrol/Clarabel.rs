@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::solver::core::{cones::SupportedCones, cones::SupportedCones::*};
+use crate::solver::core::{cones::SupportedCone, cones::SupportedCone::*};
 use core::ops::Deref;
 use pyo3::{exceptions::PyTypeError, prelude::*};
 use std::fmt::Write;
@@ -61,35 +61,35 @@ impl PySecondOrderConeT {
 }
 
 // We can't implement the foreign trait FromPyObject directly on
-// SupportedCones<f64> since both are defined outside the crate, so
+// SupportedCone<f64> since both are defined outside the crate, so
 // put a dummy wrapper around it here.
 
 #[derive(Debug)]
-pub struct PySupportedCones(SupportedCones<f64>);
+pub struct PySupportedCone(SupportedCone<f64>);
 
-impl Deref for PySupportedCones {
-    type Target = SupportedCones<f64>;
+impl Deref for PySupportedCone {
+    type Target = SupportedCone<f64>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<'a> FromPyObject<'a> for PySupportedCones {
+impl<'a> FromPyObject<'a> for PySupportedCone {
     fn extract(obj: &'a PyAny) -> PyResult<Self> {
         let thetype = obj.get_type().name()?;
 
         match thetype {
             "ZeroConeT" => {
                 let dim: usize = obj.getattr("dim")?.extract()?;
-                Ok(PySupportedCones(ZeroConeT(dim)))
+                Ok(PySupportedCone(ZeroConeT(dim)))
             }
             "NonnegativeConeT" => {
                 let dim: usize = obj.getattr("dim")?.extract()?;
-                Ok(PySupportedCones(NonnegativeConeT(dim)))
+                Ok(PySupportedCone(NonnegativeConeT(dim)))
             }
             "SecondOrderConeT" => {
                 let dim: usize = obj.getattr("dim")?.extract()?;
-                Ok(PySupportedCones(SecondOrderConeT(dim)))
+                Ok(PySupportedCone(SecondOrderConeT(dim)))
             }
             _ => {
                 let mut errmsg = String::new();
@@ -100,9 +100,9 @@ impl<'a> FromPyObject<'a> for PySupportedCones {
     }
 }
 
-pub(crate) fn _py_to_native_cones(cones: Vec<PySupportedCones>) -> Vec<SupportedCones<f64>> {
-    //force a vector of PySupportedCones back into a vector
-    //of rust native SupportedCones.  The Py cone is just
+pub(crate) fn _py_to_native_cones(cones: Vec<PySupportedCone>) -> Vec<SupportedCone<f64>> {
+    //force a vector of PySupportedCone back into a vector
+    //of rust native SupportedCone.  The Py cone is just
     //a wrapper; deref gives us the native object.
     cones.iter().map(|x| *x.deref()).collect()
 }

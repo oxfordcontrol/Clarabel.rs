@@ -1,17 +1,20 @@
 use crate::algebra::*;
 use crate::solver::core::traits::Settings;
 use derive_builder::Builder;
-use std::time::Duration;
+
+#[cfg(feature = "julia")]
+use serde::{Deserialize, Serialize};
 
 /// Standard-form solver type implementing the [Settings](crate::solver::core::traits::Settings) trait
 
 #[derive(Builder, Debug, Clone)]
+#[cfg_attr(feature = "julia", derive(Serialize, Deserialize))]
 pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "50")]
     pub max_iter: u32,
 
-    #[builder(default = "Duration::MAX")]
-    pub time_limit: Duration,
+    #[builder(default = "f64::INFINITY")]
+    pub time_limit: f64,
 
     #[builder(default = "true")]
     pub verbose: bool,
@@ -69,7 +72,7 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "(2e-7).as_T()")]
     pub dynamic_regularization_delta: T,
 
-    // iterative refinement (for QDLDL)
+    // iterative refinement (for direct solves)
     #[builder(default = "true")]
     pub iterative_refinement_enable: bool,
 

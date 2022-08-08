@@ -258,7 +258,7 @@ where
         let mut cidx = 0; // which of the SOCs are we working on?
 
         for (i, cone) in cones.iter().enumerate() {
-            if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
+            if matches!(cones.types[i], SupportedCone::SecondOrderConeT(_)) {
                 //here we need to recover the inner SOC value for
                 //this cone so we can access its fields
 

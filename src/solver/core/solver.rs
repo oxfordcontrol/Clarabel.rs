@@ -9,7 +9,8 @@ use crate::timers::*;
 
 /// Status of solver at termination
 
-#[derive(PartialEq, Clone, Debug)]
+#[repr(u32)]
+#[derive(PartialEq, Clone, Debug, Copy)]
 pub enum SolverStatus {
     /// Problem is not solved (solver hasn't run)
     Unsolved,

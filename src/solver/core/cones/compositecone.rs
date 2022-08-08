@@ -15,7 +15,7 @@ use std::{cmp::PartialEq, mem::discriminant};
 /// API type describing the type of a conic constraint.
 ///  
 #[derive(Debug, Clone, Copy)]
-pub enum SupportedCones<T> {
+pub enum SupportedCone<T> {
     /// The zero cone (used for equality constraints).
     ///
     /// The parameter indicates the cones dimension.
@@ -37,15 +37,15 @@ pub enum SupportedCones<T> {
     PlaceHolderT(usize, T), // params: cone_dim, exponent
 }
 
-impl<T> SupportedCones<T> {
+impl<T> SupportedCone<T> {
     /// Returns the name of the cone from its enum.  Used for printing progress.
 
     pub fn variant_name(&self) -> &'static str {
         match self {
-            SupportedCones::ZeroConeT(_) => "ZeroConeT",
-            SupportedCones::NonnegativeConeT(_) => "NonnegativeConeT",
-            SupportedCones::SecondOrderConeT(_) => "SecondOrderConeT",
-            SupportedCones::PlaceHolderT(_, _) => "PlaceHolderConeT",
+            SupportedCone::ZeroConeT(_) => "ZeroConeT",
+            SupportedCone::NonnegativeConeT(_) => "NonnegativeConeT",
+            SupportedCone::SecondOrderConeT(_) => "SecondOrderConeT",
+            SupportedCone::PlaceHolderT(_, _) => "PlaceHolderConeT",
         }
     }
 
@@ -55,17 +55,17 @@ impl<T> SupportedCones<T> {
 
     pub(crate) fn nvars(&self) -> usize {
         match self {
-            SupportedCones::ZeroConeT(dim) => *dim,
-            SupportedCones::NonnegativeConeT(dim) => *dim,
-            SupportedCones::SecondOrderConeT(dim) => *dim,
-            SupportedCones::PlaceHolderT(dim, _) => *dim,
+            SupportedCone::ZeroConeT(dim) => *dim,
+            SupportedCone::NonnegativeConeT(dim) => *dim,
+            SupportedCone::SecondOrderConeT(dim) => *dim,
+            SupportedCone::PlaceHolderT(dim, _) => *dim,
             // For PSDTriangleT, we will need
             // (dim*(dim+1)) >> 1
         }
     }
 }
 
-impl<T> std::fmt::Display for SupportedCones<T>
+impl<T> std::fmt::Display for SupportedCone<T>
 where
     T: FloatT,
 {
@@ -74,19 +74,19 @@ where
     }
 }
 
-// we will use the SupportedCones as a user facing marker
+// we will use the SupportedCone as a user facing marker
 // for the constraint types, and then map them through
 // a dictionary to get the internal cone representations.
 // we will also make a HashMap of cone type counts, so need
 // to define custom hashing and comparator ops
-impl<T> Eq for SupportedCones<T> {}
-impl<T> PartialEq for SupportedCones<T> {
+impl<T> Eq for SupportedCone<T> {}
+impl<T> PartialEq for SupportedCone<T> {
     fn eq(&self, other: &Self) -> bool {
         discriminant(self) == discriminant(other)
     }
 }
 
-impl<T> Hash for SupportedCones<T> {
+impl<T> Hash for SupportedCone<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         discriminant(self).hash(state);
     }
@@ -117,12 +117,12 @@ pub trait AnyCone<T>: Cone<T> + AsAny<T> + Send {}
 impl<T, V: Cone<T> + AsAny<T>> AnyCone<T> for V where V: Send {}
 type BoxedCone<T> = Box<dyn AnyCone<T>>;
 
-pub fn make_cone<T: FloatT>(cone: SupportedCones<T>) -> BoxedCone<T> {
+pub fn make_cone<T: FloatT>(cone: SupportedCone<T>) -> BoxedCone<T> {
     match cone {
-        SupportedCones::NonnegativeConeT(dim) => Box::new(NonnegativeCone::<T>::new(dim)),
-        SupportedCones::ZeroConeT(dim) => Box::new(ZeroCone::<T>::new(dim)),
-        SupportedCones::SecondOrderConeT(dim) => Box::new(SecondOrderCone::<T>::new(dim)),
-        SupportedCones::PlaceHolderT(_, _) => unimplemented!(),
+        SupportedCone::NonnegativeConeT(dim) => Box::new(NonnegativeCone::<T>::new(dim)),
+        SupportedCone::ZeroConeT(dim) => Box::new(ZeroCone::<T>::new(dim)),
+        SupportedCone::SecondOrderConeT(dim) => Box::new(SecondOrderCone::<T>::new(dim)),
+        SupportedCone::PlaceHolderT(_, _) => unimplemented!(),
     }
 }
 
@@ -134,7 +134,7 @@ pub struct CompositeCone<T: FloatT = f64> {
     cones: Vec<BoxedCone<T>>,
 
     //Type tags and count of each cone
-    pub types: Vec<SupportedCones<T>>,
+    pub types: Vec<SupportedCone<T>>,
     pub type_counts: HashMap<&'static str, usize>,
 
     //overall size of the composite cone
@@ -153,7 +153,7 @@ impl<T> CompositeCone<T>
 where
     T: FloatT,
 {
-    pub fn new(types: &[SupportedCones<T>]) -> Self {
+    pub fn new(types: &[SupportedCone<T>]) -> Self {
         // make an internal copy to protect from user modification
         let types = types.to_vec();
         let ncones = types.len();
@@ -166,7 +166,7 @@ where
 
         // Count the number of each cone type.
         // NB: ideally we could fix max capacity here,  but Enum::variant_count is not
-        // yet a stable feature.  Capacity should be number of SupportedCones variants.
+        // yet a stable feature.  Capacity should be number of SupportedCone variants.
         // See: https://github.com/rust-lang/rust/issues/73662
 
         let mut type_counts = HashMap::new();

@@ -32,12 +32,34 @@ name = "box"
 path = "examples/rust/example_box.rs"
 
 # ------------------------------
-# Optional python interface 
+# Optional julia and python interface 
 # ------------------------------
 
 [features]
-# enables python interface build via pyo3
+
+# enables julia interface 
+julia = ["dep:libc","dep:num-derive","dep:serde", "dep:serde_json"] 
+ 
+# enables python interface via pyo3.
+# should only be used with maturin builds.
 python = ["dep:pyo3"]
+
+[dependencies.num-derive]
+optional = true 
+version = "0.2"
+
+[dependencies.serde]
+optional = true 
+version = "1"
+features = ["derive"]
+
+[dependencies.serde_json]
+optional = true 
+version = "1"
+
+[dependencies.libc]
+optional = true 
+version = "0.2"
 
 [dependencies.pyo3]
 optional = true
@@ -51,6 +73,7 @@ name = "clarabel"
 # "cdylib" is necessary to produce a shared library that Python can import.
 # "lib" is necessary to allow the ./examples to build
 crate-type = ["cdylib","lib"]
+
 
 # ------------------------------
 # enable latex in docs 

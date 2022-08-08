@@ -8,7 +8,7 @@ fn basic_socp_data() -> (
     Vec<f64>,
     CscMatrix<f64>,
     Vec<f64>,
-    Vec<SupportedCones<f64>>,
+    Vec<SupportedCone<f64>>,
 ) {
     // P matrix data taken from corresponding Julia unit test.
     // These nzvals form a 3x3 positive definite matrix

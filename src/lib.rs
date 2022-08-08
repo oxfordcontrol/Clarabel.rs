@@ -63,3 +63,6 @@ pub mod timers;
 
 #[cfg(feature = "python")]
 pub mod python;
+
+#[cfg(feature = "julia")]
+pub mod julia;
