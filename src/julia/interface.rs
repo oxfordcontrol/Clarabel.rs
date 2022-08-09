@@ -93,8 +93,6 @@ pub(crate) extern "C" fn solver_solve_jlrs(ptr: *mut c_void) -> SolutionJLRS {
 
 #[no_mangle]
 pub(crate) extern "C" fn solver_get_info_jlrs(ptr: *mut c_void) -> DefaultInfo<f64> {
-    println!("Entering solver_get_info_jlrs");
-
     let solver = from_ptr(ptr);
 
     let info = solver.info.clone();

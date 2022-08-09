@@ -5,6 +5,7 @@ use crate::solver::core::{
     cones::{CompositeCone, SupportedCone},
     traits::InfoPrint,
 };
+use std::time::Duration;
 
 macro_rules! expformat {
     ($fmt:expr,$val:expr) => {
@@ -105,7 +106,10 @@ where
 
         println!("Terminated with status = {}", self.status);
 
-        println!("solve time = {:?}", self.solve_time);
+        println!(
+            "solve time = {:?}",
+            Duration::from_secs_f64(self.solve_time)
+        );
     }
 }
 

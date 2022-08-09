@@ -1,14 +1,5 @@
 using SparseArrays, Clarabel
-
-include("./ClarabelRs.jl")
-
-#force open /close library to allow recompile
-hdl = Base.Libc.dlopen(ClarabelRs.LIBRUST)
-hdl = Base.Libc.dlclose(hdl)
-
-
-using Random
-Random.seed!(1234)
+using ClarabelRs
 
 P = sparse([3. 1.;1. 2.].*2)
 q = [-1., -4.]

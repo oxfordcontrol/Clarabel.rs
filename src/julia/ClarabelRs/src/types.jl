@@ -1,6 +1,3 @@
-using SparseArrays, BenchmarkTools
-using Random
-
 # The types defined here are for exchanging data
 # between Rust and Julia.   
 
@@ -80,7 +77,7 @@ end
 end
 
 
-mutable struct Solver 
+mutable struct Solver <: Clarabel.AbstractSolver{Float64}
     ptr:: Ptr{Cvoid}
 
     function Solver(ptr)
