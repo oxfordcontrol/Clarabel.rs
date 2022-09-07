@@ -56,6 +56,8 @@
 //Rust hates greek characters
 #![allow(confusable_idents)]
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 pub mod algebra;
 pub mod qdldl;
 pub mod solver;

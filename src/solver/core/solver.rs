@@ -64,12 +64,11 @@ fn _print_banner(is_verbose: bool) {
     if !is_verbose {
         return;
     }
-    const VERSION: &str = env!("CARGO_PKG_VERSION");
 
     println!("-------------------------------------------------------------");
     println!(
         "           Clarabel.rs v{}  -  Clever Acronym              \n",
-        VERSION
+        crate::VERSION
     );
     println!("                   (c) Paul Goulart                          ");
     println!("                University of Oxford, 2022                   ");
