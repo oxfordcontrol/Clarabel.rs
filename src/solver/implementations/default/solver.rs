@@ -62,12 +62,13 @@ where
         // work variables for assembling step direction LHS/RHS
         let step_rhs  = DefaultVariables::<T>::new(data.n,data.m);
         let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
+        let prev_vars = DefaultVariables::<T>::new(data.n,data.m);
 
         // user facing results go here.
         let solution = DefaultSolution::<T>::new(data.m,data.n);
 
         output = Self{data,variables,residuals,kktsystem,step_lhs,
-             step_rhs,info,solution,cones,settings,timers: None};
+             step_rhs,prev_vars,info,solution,cones,settings,timers: None};
 
         }} //end "setup" timer.
 

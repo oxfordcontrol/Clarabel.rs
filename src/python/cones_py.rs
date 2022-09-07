@@ -1,4 +1,5 @@
 #![allow(non_snake_case)]
+#![allow(clippy::new_without_default)]
 
 use crate::solver::core::{cones::SupportedCone, cones::SupportedCone::*};
 use core::ops::Deref;
@@ -60,6 +61,19 @@ impl PySecondOrderConeT {
     }
 }
 
+#[pyclass(name = "ExponentialConeT")]
+pub struct PyExponentialConeT {}
+#[pymethods]
+impl PyExponentialConeT {
+    #[new]
+    pub fn new() -> Self {
+        Self {}
+    }
+    pub fn __repr__(&self) -> String {
+        __repr__cone("ExponentialConeT", 3)
+    }
+}
+
 // We can't implement the foreign trait FromPyObject directly on
 // SupportedCone<f64> since both are defined outside the crate, so
 // put a dummy wrapper around it here.
@@ -91,6 +105,7 @@ impl<'a> FromPyObject<'a> for PySupportedCone {
                 let dim: usize = obj.getattr("dim")?.extract()?;
                 Ok(PySupportedCone(SecondOrderConeT(dim)))
             }
+            "ExponentialConeT" => Ok(PySupportedCone(ExponentialConeT())),
             _ => {
                 let mut errmsg = String::new();
                 write!(errmsg, "Unrecognized cone type : {}", thetype).unwrap();

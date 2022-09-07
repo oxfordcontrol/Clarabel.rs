@@ -100,12 +100,18 @@ where
         data: &DefaultProblemData<T>,
         cones: &CompositeCone<T>,
         settings: &DefaultSettings<T>,
-    ) {
+    ) -> bool {
         // update the linear solver with new cones
-        self.kktsolver.update(cones, settings.core());
+        let is_success = self.kktsolver.update(cones, settings.core());
+
+        if !is_success {
+            return is_success;
+        }
 
         // calculate KKT solution for constant terms
-        self.solve_constant_rhs(data, settings.core());
+        return self.solve_constant_rhs(data, settings.core());
+
+        //PJG is_success should be a Result in rust
     }
 
     fn solve(
@@ -117,7 +123,9 @@ where
         cones: &CompositeCone<T>,
         steptype: &'static str,
         settings: &DefaultSettings<T>,
-    ) {
+    ) -> bool {
+        //PJG: steptype should be an enum in Rust
+        // Probably also in Julia, although symbol is not too bad
         let (x1, z1) = (&mut self.x1, &mut self.z1);
         let (x2, z2) = (&self.x2, &self.z2); //from constant solve, so not mut
         let (workx, workz) = (&mut self.workx, &mut self.workz);
@@ -126,33 +134,31 @@ where
         // -----------
         workx.copy_from(&rhs.x);
 
-        // compute Wᵀ(λ \ ds), with shortcut in affine case
-        let Wtlinvds = &mut self.work_conic;
+        // compute the vector c in the step equation HₛΔz + Δs = -c,
+        // with shortcut in affine case
+        let Δs_const_term = &mut self.work_conic;
 
         match steptype {
             "affine" => {
-                Wtlinvds.copy_from(&variables.s);
+                Δs_const_term.copy_from(&variables.s);
             }
             "combined" => {
-                // :combined expected, but any general RHS should do this
-                // we can use the overall LHS output as
-                // additional workspace for the moment
-                let tmp = &mut lhs.z;
-                tmp.copy_from(&rhs.z); //Don't want to modify our RHS
-                cones.λ_inv_circ_op(tmp, &rhs.s); //tmp = λ \ ds
-                cones.gemv_W(MatrixShape::T, tmp, Wtlinvds, T::one(), T::zero());
-                // Wᵀ(λ \ ds) = Wᵀ(tmp)
+                cones.Δs_from_Δz_offset(Δs_const_term, &rhs.s, &mut lhs.z);
             }
             _ => {
                 panic!("Bad step direction specified");
             }
         }
 
-        workz.waxpby(T::one(), Wtlinvds, -T::one(), &rhs.z);
+        workz.waxpby(T::one(), Δs_const_term, -T::one(), &rhs.z);
 
+        // ---------------------------------------------------
         // this solves the variable part of reduced KKT system
         self.kktsolver.setrhs(workx, workz);
-        self.kktsolver.solve(Some(x1), Some(z1), settings.core());
+        let is_success = self.kktsolver.solve(Some(x1), Some(z1), settings.core());
+        if !is_success {
+            return false;
+        }
 
         // solve for Δτ.
         // -----------
@@ -160,7 +166,7 @@ where
         let ξ = workx;
         ξ.axpby(T::recip(variables.τ), &variables.x, T::zero());
 
-        let two = T::from(2.).unwrap();
+        let two: T = (2.).as_T();
         let tau_num = rhs.τ - rhs.κ / variables.τ
             + data.q.dot(x1)
             + data.b.dot(z1)
@@ -179,16 +185,21 @@ where
         lhs.x.waxpby(T::one(), x1, lhs.τ, x2);
         lhs.z.waxpby(T::one(), z1, lhs.τ, z2);
 
-        // solve for Δs = -Wᵀ(λ \ dₛ + WΔz) = -Wᵀ(λ \ dₛ) - WᵀWΔz
-        // where the first part is already in work_conic
+        // solve for Δs
         // -------------
-        cones.gemv_W(MatrixShape::N, &lhs.z, workz, T::one(), T::zero()); // work = WΔz
-        cones.gemv_W(MatrixShape::T, workz, &mut lhs.s, -T::one(), T::zero()); //Δs = -WᵀWΔz
-        lhs.s.axpby(-T::one(), Wtlinvds, T::one()); // s .= -Wtlinvds;
+        //  compute the linear term HₛΔz, where Hs = WᵀW for symmetric
+        //  cones and Hs = μH(z) for asymmetric cones
+        cones.mul_Hs(&mut lhs.s, &lhs.z, workz);
+        lhs.s.axpby(-T::one(), Δs_const_term, -T::one()); // lhs.s = -(lhs.s+Δs_const_term);
 
         // solve for Δκ
         // --------------
         lhs.κ = -(rhs.κ + variables.κ * lhs.τ) / variables.τ;
+
+        // we don't check the validity of anything
+        // after the KKT solve, so just return is_success
+        // without further validation
+        is_success
     }
 
     fn solve_initial_point(
@@ -223,10 +234,17 @@ impl<T> DefaultKKTSystem<T>
 where
     T: FloatT,
 {
-    fn solve_constant_rhs(&mut self, data: &DefaultProblemData<T>, settings: &DefaultSettings<T>) {
+    fn solve_constant_rhs(
+        &mut self,
+        data: &DefaultProblemData<T>,
+        settings: &DefaultSettings<T>,
+    ) -> bool {
         self.workx.axpby(-T::one(), &data.q, T::zero()); //workx .= -q
         self.kktsolver.setrhs(&self.workx, &data.b);
-        self.kktsolver
-            .solve(Some(&mut self.x2), Some(&mut self.z2), settings.core());
+        let is_success =
+            self.kktsolver
+                .solve(Some(&mut self.x2), Some(&mut self.z2), settings.core());
+
+        is_success
     }
 }

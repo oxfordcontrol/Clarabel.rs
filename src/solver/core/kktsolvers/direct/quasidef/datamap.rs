@@ -8,7 +8,7 @@ use super::*;
 pub struct LDLDataMap {
     pub P: Vec<usize>,
     pub A: Vec<usize>,
-    pub WtWblocks: Vec<usize>,  //indices of the lower RHS blocks (by cone)
+    pub Hsblocks: Vec<usize>,   //indices of the lower RHS blocks (by cone)
     pub SOC_u: Vec<Vec<usize>>, //off diag dense columns u
     pub SOC_v: Vec<Vec<usize>>, //off diag dense columns v
     pub SOC_D: Vec<usize>,      //diag of just the sparse SOC expansion D
@@ -37,8 +37,8 @@ impl LDLDataMap {
         // index Pdiag that are not present in the index P
         let diagP = vec![0; n];
 
-        // make an index for each of the WtW blocks for each cone
-        let WtWblocks = allocate_kkt_WtW_blocks::<T, usize>(cones);
+        // make an index for each of the Hs blocks for each cone
+        let Hsblocks = allocate_kkt_Hsblocks::<T, usize>(cones);
 
         // now do the SOC expansion pieces
         let nsoc = cones.type_count("SecondOrderConeT");
@@ -60,7 +60,7 @@ impl LDLDataMap {
         Self {
             P,
             A,
-            WtWblocks,
+            Hsblocks,
             SOC_u,
             SOC_v,
             SOC_D,

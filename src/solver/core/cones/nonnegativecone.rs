@@ -1,5 +1,8 @@
-use super::Cone;
-use crate::algebra::*;
+use super::{Cone, JordanAlgebra, SymmetricCone, SymmetricConeUtils};
+use crate::{
+    algebra::*,
+    solver::{core::ScalingStrategy, CoreSettings},
+};
 
 // -------------------------------------
 // Nonnegative Cone
@@ -40,16 +43,32 @@ where
         self.dim()
     }
 
+    fn is_symmetric(&self) -> bool {
+        true
+    }
+
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
         δ.copy_from(e);
         false
     }
 
-    fn WtW_is_diagonal(&self) -> bool {
-        true
+    fn shift_to_cone(&self, z: &mut [T]) {
+        // do this elementwise, otherwise splitting a nonnegative cone
+        // into multiple small cones will give us a different solution
+        let thresh = T::sqrt(T::epsilon());
+        z.scalarop(|zi| if zi < thresh { T::one() } else { zi });
     }
 
-    fn update_scaling(&mut self, s: &[T], z: &[T]) {
+    fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
+        z.fill(T::one());
+        s.fill(T::one());
+    }
+
+    fn set_identity_scaling(&mut self) {
+        self.w.fill(T::one());
+    }
+
+    fn update_scaling(&mut self, s: &[T], z: &[T], _μ: T, _scaling_strategy: ScalingStrategy) {
         let λw = self.λ.iter_mut().zip(self.w.iter_mut());
         let sz = s.iter().zip(z.iter());
 
@@ -59,81 +78,54 @@ where
         }
     }
 
-    fn set_identity_scaling(&mut self) {
-        self.w.fill(T::one());
+    fn Hs_is_diagonal(&self) -> bool {
+        true
     }
 
-    fn λ_circ_λ(&self, x: &mut [T]) {
-        assert_eq!(self.λ.len(), x.len());
-        for (xi, &λi) in x.iter_mut().zip(self.λ.iter()) {
-            *xi = λi * λi;
-        }
-    }
-
-    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        let yz = y.iter().zip(z.iter());
-
-        for (x, (y, z)) in x.iter_mut().zip(yz) {
-            *x = (*y) * (*z);
-        }
-    }
-
-    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
-        self.inv_circ_op(x, &self.λ, z)
-    }
-
-    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        let yz = y.iter().zip(z.iter());
-
-        for (x, (y, z)) in x.iter_mut().zip(yz) {
-            *x = (*z) / (*y);
-        }
-    }
-
-    fn shift_to_cone(&self, z: &mut [T]) {
-        let α = z.minimum();
-        if α < T::epsilon() {
-            //done in two stages since otherwise (1-α) = -α for
-            //large α, which makes z exactly 0. (or worse, -0.0 )
-            self.add_scaled_e(z, -α);
-            self.add_scaled_e(z, T::one());
-        }
-    }
-
-    fn get_WtW_block(&self, WtWblock: &mut [T]) {
-        assert_eq!(self.w.len(), WtWblock.len());
-        for (blki, &wi) in WtWblock.iter_mut().zip(self.w.iter()) {
+    fn get_Hs(&self, Hsblock: &mut [T]) {
+        assert_eq!(self.w.len(), Hsblock.len());
+        for (blki, &wi) in Hsblock.iter_mut().zip(self.w.iter()) {
             *blki = wi * wi;
         }
     }
 
-    fn gemv_W(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
-        assert_eq!(y.len(), x.len());
-        assert_eq!(y.len(), self.w.len());
-        for i in 0..y.len() {
-            y[i] = α * (x[i] * self.w[i]) + β * y[i];
+    fn mul_Hs(&self, y: &mut [T], x: &[T], _work: &mut [T]) {
+        //NB : seemingly sensitive to order of multiplication
+        for (yi, (&wi, &xi)) in y.iter_mut().zip(self.w.iter().zip(x)) {
+            *yi = wi * (wi * xi)
         }
     }
 
-    fn gemv_Winv(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
-        assert_eq!(y.len(), x.len());
-        assert_eq!(y.len(), self.w.len());
-        for i in 0..y.len() {
-            y[i] = α * (x[i] / self.w[i]) + β * y[i];
+    fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
+        assert_eq!(self.λ.len(), ds.len());
+        for (dsi, &λi) in ds.iter_mut().zip(self.λ.iter()) {
+            *dsi = λi * λi;
         }
     }
 
-    fn add_scaled_e(&self, x: &mut [T], α: T) {
-        x.translate(α);
+    fn combined_ds_shift(&mut self, dz: &mut [T], step_z: &[T], step_s: &[T], σμ: T) {
+        self._combined_ds_shift_symmetric(dz, step_z, step_s, σμ);
     }
 
-    fn step_length(&self, dz: &[T], ds: &[T], z: &[T], s: &[T]) -> (T, T) {
-        let mut αz = T::max_value();
-        let mut αs = T::max_value();
+    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
+        self._Δs_from_Δz_offset_symmetric(out, ds, work);
+    }
 
+    fn step_length(
+        &self,
+        dz: &[T],
+        ds: &[T],
+        z: &[T],
+        s: &[T],
+        _settings: &CoreSettings<T>,
+        αmax: T,
+    ) -> (T, T) {
         assert_eq!(z.len(), s.len());
         assert_eq!(dz.len(), z.len());
         assert_eq!(ds.len(), s.len());
+
+        let mut αz = αmax;
+        let mut αs = αmax;
 
         for i in 0..z.len() {
             if dz[i] < T::zero() {
@@ -144,5 +136,78 @@ where
             }
         }
         (αz, αs)
+    }
+
+    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+        assert_eq!(z.len(), s.len());
+        assert_eq!(dz.len(), z.len());
+        assert_eq!(ds.len(), s.len());
+        let mut barrier = T::zero();
+        let s_ds = s.iter().zip(ds.iter());
+        let z_dz = z.iter().zip(dz.iter());
+        for ((&s, &ds), (&z, &dz)) in s_ds.zip(z_dz) {
+            let si = s + α * ds;
+            let zi = z + α * dz;
+            barrier += (si * zi).logsafe();
+        }
+        barrier
+    }
+}
+
+// ---------------------------------------------
+// operations supported by symmetric cones only
+// ---------------------------------------------
+
+impl<T> SymmetricCone<T> for NonnegativeCone<T>
+where
+    T: FloatT,
+{
+    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
+        self.inv_circ_op(x, &self.λ, z)
+    }
+
+    fn add_scaled_e(&self, x: &mut [T], α: T) {
+        x.translate(α);
+    }
+
+    fn mul_W(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+        assert_eq!(y.len(), x.len());
+        assert_eq!(y.len(), self.w.len());
+        for i in 0..y.len() {
+            y[i] = α * (x[i] * self.w[i]) + β * y[i];
+        }
+    }
+
+    fn mul_Winv(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+        assert_eq!(y.len(), x.len());
+        assert_eq!(y.len(), self.w.len());
+        for i in 0..y.len() {
+            y[i] = α * (x[i] / self.w[i]) + β * y[i];
+        }
+    }
+}
+
+// ---------------------------------------------
+// Jordan algebra operations for symmetric cones
+// ---------------------------------------------
+
+impl<T> JordanAlgebra<T> for NonnegativeCone<T>
+where
+    T: FloatT,
+{
+    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
+        let yz = y.iter().zip(z.iter());
+
+        for (x, (y, z)) in x.iter_mut().zip(yz) {
+            *x = (*y) * (*z);
+        }
+    }
+
+    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
+        let yz = y.iter().zip(z.iter());
+
+        for (x, (y, z)) in x.iter_mut().zip(yz) {
+            *x = (*z) / (*y);
+        }
     }
 }

@@ -46,6 +46,7 @@ where
         _print_conedims_by_type(cones, SupportedCone::ZeroConeT(0));
         _print_conedims_by_type(cones, SupportedCone::NonnegativeConeT(0));
         _print_conedims_by_type(cones, SupportedCone::SecondOrderConeT(0));
+        _print_conedims_by_type(cones, SupportedCone::ExponentialConeT());
         //_print_conedims_by_type(&cones, SupportedCone::PSDTriangleConeT(0));
 
         println!();
@@ -62,6 +63,7 @@ where
         print!("iter    ");
         print!("pcost        ");
         print!("dcost       ");
+        print!("gap       ");
         print!("pres      ");
         print!("dres      ");
         print!("k/t       ");
@@ -69,7 +71,7 @@ where
         print!("step      ");
         println!();
         println!(
-            "-----------------------------------------------------------------------------------"
+            "---------------------------------------------------------------------------------------------"
         );
     }
 
@@ -81,6 +83,8 @@ where
         print!("{:>3}  ", self.iterations);
         print!("{}  ", expformat!("{:+8.4e}", self.cost_primal));
         print!("{}  ", expformat!("{:+8.4e}", self.cost_dual));
+        let gapprint = T::min(self.gap_abs, self.gap_rel);
+        print!("{}  ", expformat!("{:6.2e}", gapprint));
         print!("{}  ", expformat!("{:6.2e}", self.res_primal));
         print!("{}  ", expformat!("{:6.2e}", self.res_dual));
         print!("{}  ", expformat!("{:6.2e}", self.ktratio));
@@ -101,7 +105,7 @@ where
         }
 
         println!(
-            "-----------------------------------------------------------------------------------"
+            "---------------------------------------------------------------------------------------------"
         );
 
         println!("Terminated with status = {}", self.status);
@@ -151,9 +155,10 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
     );
 
     println!(
-        "  static reg : {}, ϵ = {:.1e}",
+        "  static reg : {}, ϵ1 = {:.1e}, ϵ2 = {:.1e}",
         _bool_on_off(set.static_regularization_enable),
-        set.static_regularization_eps
+        set.static_regularization_constant,
+        set.static_regularization_proportional,
     );
 
     println!(

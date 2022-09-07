@@ -12,7 +12,12 @@ pub trait ScalarMath<T> {
     /// If `s < min_thresh`, it is assigned the new value `min_new`.  
     ///
     /// If `s > max_thresh`, it assigned the new value `max_new`.
-    fn clip(s: T, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T;
+    fn clip(&self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T;
+
+    /// Safe calculation for log barriers.
+    ///
+    /// Returns log(s) if s > 0   -Infinity otherwise.
+    fn logsafe(&self) -> T;
 }
 
 /// Vector operations on slices of [FloatT](crate::algebra::FloatT)
@@ -31,8 +36,14 @@ pub trait VectorMath<T> {
     /// Elementwise translation.
     fn translate(&mut self, c: T);
 
+    /// set all elements to the same value
+    fn set(&mut self, c: T);
+
     /// Elementwise scaling.
     fn scale(&mut self, c: T);
+
+    /// Normalize, returning the norm.  Do nothing if norm == 0.  
+    fn normalize(&mut self) -> T;
 
     /// Elementwise reciprocal.
     fn reciprocal(&mut self);
@@ -54,6 +65,9 @@ pub trait VectorMath<T> {
 
     /// Dot product
     fn dot(&self, y: &Self) -> T;
+
+    // computes dot(z + αdz,s + αds) without intermediate allocation
+    fn dot_shifted(z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T;
 
     /// Standard Euclidian or 2-norm distance from `self` to `y`
     fn dist(&self, y: &Self) -> T;

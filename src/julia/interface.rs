@@ -45,6 +45,7 @@ fn ccall_arrays_to_cones(
             Some(ConeEnumJLRS::ZeroConeT) => ZeroConeT(cones_ints[i] as usize),
             Some(ConeEnumJLRS::NonnegativeConeT) => NonnegativeConeT(cones_ints[i] as usize),
             Some(ConeEnumJLRS::SecondOrderConeT) => SecondOrderConeT(cones_ints[i] as usize),
+            Some(ConeEnumJLRS::ExponentialConeT) => ExponentialConeT(),
             None => panic!("Received unrecognized cone type"),
         };
         cones.push(cone)

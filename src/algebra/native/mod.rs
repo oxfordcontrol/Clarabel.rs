@@ -1,13 +1,21 @@
 use super::*;
 
 impl<T: FloatT> ScalarMath<T> for T {
-    fn clip(s: T, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T {
-        if s < min_thresh {
+    fn clip(&self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T {
+        if *self < min_thresh {
             min_new
-        } else if s > max_thresh {
+        } else if *self > max_thresh {
             max_new
         } else {
-            s
+            *self
+        }
+    }
+
+    fn logsafe(&self) -> T {
+        if *self <= T::zero() {
+            -T::infinity()
+        } else {
+            self.ln()
         }
     }
 }
@@ -33,8 +41,21 @@ impl<T: FloatT> VectorMath<T> for [T] {
         self.scalarop(|x| x + c);
     }
 
+    fn set(&mut self, c: T) {
+        self.scalarop(|_x| c);
+    }
+
     fn scale(&mut self, c: T) {
         self.scalarop(|x| x * c);
+    }
+
+    fn normalize(&mut self) -> T {
+        let norm = self.norm();
+        if norm == T::zero() {
+            return T::zero();
+        }
+        self.scale(norm.recip());
+        norm
     }
 
     fn reciprocal(&mut self) {
@@ -58,13 +79,29 @@ impl<T: FloatT> VectorMath<T> for [T] {
     }
 
     fn clip(&mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) {
-        self.scalarop(|x| T::clip(x, min_thresh, max_thresh, min_new, max_new));
+        self.scalarop(|x| x.clip(min_thresh, max_thresh, min_new, max_new));
     }
 
     fn dot(&self, y: &[T]) -> T {
         self.iter()
             .zip(y)
             .fold(T::zero(), |acc, (&x, &y)| acc + x * y)
+    }
+
+    fn dot_shifted(z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+        assert_eq!(z.len(), s.len());
+        assert_eq!(z.len(), dz.len());
+        assert_eq!(s.len(), ds.len());
+
+        let s_ds = s.iter().zip(ds.iter());
+        let z_dz = z.iter().zip(dz.iter());
+        let mut out = T::zero();
+        for ((&s, &ds), (&z, &dz)) in s_ds.zip(z_dz) {
+            let si = s + α * ds;
+            let zi = z + α * dz;
+            out += si * zi;
+        }
+        out
     }
 
     fn dist(&self, y: &Self) -> T {
@@ -129,6 +166,11 @@ impl<T: FloatT> VectorMath<T> for [T] {
 
     fn axpby(&mut self, a: T, x: &[T], b: T) {
         assert_eq!(self.len(), x.len());
+
+        //PJG could be faster when a = 1, b = 1, i.e. just a vector
+        //addition.  This is needed in particular in ds_affine + ds_shift
+        //NB: translate is a scalar shift of all variables and is only
+        //used in the NN cone function to place into the cone
 
         //handle b = 1 / 0 / -1 separately
         let yx = self.iter_mut().zip(x);

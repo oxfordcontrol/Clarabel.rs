@@ -40,7 +40,7 @@ function solver_new_jlrs(P,q,A,b,cones,settings)
     # first flatten the cones to three primitive arrays 
     (cone_enums, cone_ints, cone_floats) = ccall_cones_to_arrays(cones)
 
-    ptr = ccall((:solver_new_jlrs,LIBRUST),Ptr{Cvoid},
+    ptr = ccall(Libdl.dlsym(librust,:solver_new_jlrs),Ptr{Cvoid},
         (
             Ref{CscMatrixJLRS},         #P
             Ref{VectorJLRS{Float64}},   #q
@@ -67,21 +67,21 @@ end
 
 function solver_solve_jlrs(solver::Solver)
 
-    ccall((:solver_solve_jlrs,LIBRUST),SolutionJLRS,
+    ccall(Libdl.dlsym(librust,:solver_solve_jlrs),SolutionJLRS,
         (Ptr{Cvoid},), solver.ptr)
 
 end 
 
 function solver_get_info_jlrs(solver::Solver)
 
-    ccall((:solver_get_info_jlrs,LIBRUST),Clarabel.DefaultInfo{Float64},
+    ccall(Libdl.dlsym(librust,:solver_get_info_jlrs),Clarabel.DefaultInfo{Float64},
     (Ptr{Cvoid},), solver.ptr)
     
 end
 
 
 function solver_drop_jlrs(solver::Solver)
-    ccall((:solver_drop_jlrs,LIBRUST),Cvoid,
+    ccall(Libdl.dlsym(librust,:solver_drop_jlrs),Cvoid,
         (Ptr{Cvoid},), solver.ptr)
 
 end 
@@ -122,6 +122,9 @@ function ccall_cones_to_arrays(cones::Vector{Clarabel.SupportedCone})
         elseif isa(cone, Clarabel.SecondOrderConeT)
             cone_enums[i] = UInt8(SecondOrderConeT::ConeEnumJLRS) 
             cone_ints[i]  = cone.dim;
+
+        elseif isa(cone, Clarabel.ExponentialConeT)
+            cone_enums[i] = UInt8(ExponentialConeT::ConeEnumJLRS) 
 
         else 
             error("Cone type ", typeof(cone), " is not supported through this interface.");

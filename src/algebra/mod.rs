@@ -12,10 +12,12 @@
 // of core numeric types and matrix / vector traits.
 
 mod floats;
+mod matrix_dense_3;
 mod matrix_types;
 mod matrix_utils;
 mod traits;
 pub use floats::*;
+pub(crate) use matrix_dense_3::*;
 pub use matrix_types::*;
 pub use matrix_utils::*;
 pub use traits::*;

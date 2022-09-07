@@ -9,6 +9,7 @@ fn clarabel(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyZeroConeT>()?;
     m.add_class::<PyNonnegativeConeT>()?;
     m.add_class::<PySecondOrderConeT>()?;
+    m.add_class::<PyExponentialConeT>()?;
 
     //other API data types
     m.add_class::<PySolverStatus>()?;

@@ -122,4 +122,5 @@ pub(crate) enum ConeEnumJLRS {
     ZeroConeT = 0,
     NonnegativeConeT = 1,
     SecondOrderConeT = 2,
+    ExponentialConeT = 3,
 }

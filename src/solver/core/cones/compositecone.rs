@@ -1,5 +1,5 @@
 use super::*;
-use crate::algebra::*;
+use crate::{algebra::AsFloatT, solver::CoreSettings};
 use std::any::Any;
 use std::collections::HashMap;
 use std::ops::Range;
@@ -28,11 +28,10 @@ pub enum SupportedCone<T> {
     ///  
     /// The parameter indicates the cones dimension.
     SecondOrderConeT(usize),
-    /// A placeholder type with no corresponding implementation.
+    /// The exponential cone in R^3.
     ///
-    /// This type exists to allow for future implementation of
-    /// conic constraints with a floating point parameter, e.g.
-    /// the power cone.
+    /// This cone takes no parameters
+    ExponentialConeT(),
     #[doc(hidden)]
     PlaceHolderT(usize, T), // params: cone_dim, exponent
 }
@@ -45,6 +44,7 @@ impl<T> SupportedCone<T> {
             SupportedCone::ZeroConeT(_) => "ZeroConeT",
             SupportedCone::NonnegativeConeT(_) => "NonnegativeConeT",
             SupportedCone::SecondOrderConeT(_) => "SecondOrderConeT",
+            SupportedCone::ExponentialConeT() => "ExponentialConeT",
             SupportedCone::PlaceHolderT(_, _) => "PlaceHolderConeT",
         }
     }
@@ -58,6 +58,7 @@ impl<T> SupportedCone<T> {
             SupportedCone::ZeroConeT(dim) => *dim,
             SupportedCone::NonnegativeConeT(dim) => *dim,
             SupportedCone::SecondOrderConeT(dim) => *dim,
+            SupportedCone::ExponentialConeT() => 3,
             SupportedCone::PlaceHolderT(dim, _) => *dim,
             // For PSDTriangleT, we will need
             // (dim*(dim+1)) >> 1
@@ -107,14 +108,17 @@ pub trait AsAny<T> {
     fn as_any(&self) -> &dyn Any;
 }
 
-impl<T, U: Any + Cone<T>> AsAny<T> for U {
+impl<T, U: Any + Cone<T>> AsAny<T> for U
+where
+    T: FloatT,
+{
     fn as_any(&self) -> &dyn Any {
         self
     }
 }
 
-pub trait AnyCone<T>: Cone<T> + AsAny<T> + Send {}
-impl<T, V: Cone<T> + AsAny<T>> AnyCone<T> for V where V: Send {}
+pub trait AnyCone<T: FloatT>: Cone<T> + AsAny<T> + Send {}
+impl<T: FloatT, V: Cone<T> + AsAny<T>> AnyCone<T> for V where V: Send {}
 type BoxedCone<T> = Box<dyn AnyCone<T>>;
 
 pub fn make_cone<T: FloatT>(cone: SupportedCone<T>) -> BoxedCone<T> {
@@ -122,6 +126,7 @@ pub fn make_cone<T: FloatT>(cone: SupportedCone<T>) -> BoxedCone<T> {
         SupportedCone::NonnegativeConeT(dim) => Box::new(NonnegativeCone::<T>::new(dim)),
         SupportedCone::ZeroConeT(dim) => Box::new(ZeroCone::<T>::new(dim)),
         SupportedCone::SecondOrderConeT(dim) => Box::new(SecondOrderCone::<T>::new(dim)),
+        SupportedCone::ExponentialConeT() => Box::new(ExponentialCone::<T>::new()),
         SupportedCone::PlaceHolderT(_, _) => unimplemented!(),
     }
 }
@@ -144,9 +149,12 @@ pub struct CompositeCone<T: FloatT = f64> {
     //ranges for the indices of the constituent cones
     pub rng_cones: Vec<Range<usize>>,
 
-    //ranges for the indices of the constituent WtW blocks
+    //ranges for the indices of the constituent Hs blocks
     //associated with each cone
     pub rng_blocks: Vec<Range<usize>>,
+
+    // the flag for symmetric cone check
+    _is_symmetric: bool,
 }
 
 impl<T> CompositeCone<T>
@@ -159,11 +167,6 @@ where
         let ncones = types.len();
         let mut cones: Vec<BoxedCone<T>> = Vec::with_capacity(ncones);
 
-        // create cones with the given dims
-        for t in types.iter() {
-            cones.push(make_cone(*t));
-        }
-
         // Count the number of each cone type.
         // NB: ideally we could fix max capacity here,  but Enum::variant_count is not
         // yet a stable feature.  Capacity should be number of SupportedCone variants.
@@ -174,13 +177,26 @@ where
             *type_counts.entry(&(*t.variant_name())).or_insert(0) += 1;
         }
 
+        // assumed symmetric to start
+        let mut _is_symmetric = true;
+
+        // create cones with the given dims
+        for t in types.iter() {
+            _is_symmetric &= !matches!(
+                t,
+                SupportedCone::ExponentialConeT() | SupportedCone::PlaceHolderT(_, _)
+            );
+
+            cones.push(make_cone(*t));
+        }
+
         // count up elements and degree
         let numel = cones.iter().map(|c| c.numel()).sum();
         let degree = cones.iter().map(|c| c.degree()).sum();
 
         //ranges for the subvectors associated with each cone,
         //and the rangse for with the corresponding entries
-        //in the WtW sparse block
+        //in the Hs sparse block
 
         let rng_cones = _make_rng_cones(&cones);
         let rng_blocks = _make_rng_blocks(&cones);
@@ -193,6 +209,7 @@ where
             degree,
             rng_cones,
             rng_blocks,
+            _is_symmetric,
         }
     }
 }
@@ -225,7 +242,7 @@ where
         for cone in cones {
             let nvars = cone.numel();
             let stop = start + {
-                if cone.WtW_is_diagonal() {
+                if cone.Hs_is_diagonal() {
                     nvars
                 } else {
                     (nvars * (nvars + 1)) >> 1
@@ -292,6 +309,10 @@ where
         self.numel
     }
 
+    fn is_symmetric(&self) -> bool {
+        self._is_symmetric
+    }
+
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
         let mut any_changed = false;
 
@@ -306,28 +327,15 @@ where
         any_changed
     }
 
-    fn WtW_is_diagonal(&self) -> bool {
-        //This function should probably never be called since
-        //we only us it to interrogate the blocks, but we can
-        //implement something reasonable anyway
-        let mut is_diag = true;
-        for cone in self.iter() {
-            is_diag &= cone.WtW_is_diagonal();
-            if !is_diag {
-                break;
-            }
+    fn shift_to_cone(&self, z: &mut [T]) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+            cone.shift_to_cone(&mut z[rng.clone()]);
         }
-        is_diag
     }
 
-    fn update_scaling(&mut self, s: &[T], z: &[T]) {
-        let cones = &mut self.cones;
-        let rngs = &self.rng_cones;
-
-        for (cone, rng) in cones.iter_mut().zip(rngs.iter()) {
-            let si = &s[rng.clone()];
-            let zi = &z[rng.clone()];
-            cone.update_scaling(si, zi);
+    fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+            cone.unit_initialization(&mut z[rng.clone()], &mut s[rng.clone()]);
         }
     }
 
@@ -337,88 +345,137 @@ where
         }
     }
 
+    fn update_scaling(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy) {
+        let cones = &mut self.cones;
+        let rngs = &self.rng_cones;
+
+        for (cone, rng) in cones.iter_mut().zip(rngs.iter()) {
+            let si = &s[rng.clone()];
+            let zi = &z[rng.clone()];
+            cone.update_scaling(si, zi, μ, scaling_strategy);
+        }
+    }
+
+    fn Hs_is_diagonal(&self) -> bool {
+        //This function should probably never be called since
+        //we only us it to interrogate the blocks, but we can
+        //implement something reasonable anyway
+        let mut is_diag = true;
+        for cone in self.iter() {
+            is_diag &= cone.Hs_is_diagonal();
+            if !is_diag {
+                break;
+            }
+        }
+        is_diag
+    }
+
     #[allow(non_snake_case)]
-    fn get_WtW_block(&self, WtWblock: &mut [T]) {
+    fn get_Hs(&self, Hsblock: &mut [T]) {
         for (cone, rng) in self.iter().zip(self.rng_blocks.iter()) {
-            cone.get_WtW_block(&mut WtWblock[rng.clone()]);
+            cone.get_Hs(&mut Hsblock[rng.clone()]);
         }
     }
 
-    fn λ_circ_λ(&self, x: &mut [T]) {
+    fn mul_Hs(&self, y: &mut [T], x: &[T], work: &mut [T]) {
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            cone.λ_circ_λ(&mut x[rng.clone()]);
+            cone.mul_Hs(&mut y[rng.clone()], &x[rng.clone()], &mut work[rng.clone()]);
         }
     }
 
-    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
+    fn affine_ds(&self, ds: &mut [T], s: &[T]) {
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            let xi = &mut x[rng.clone()];
-            let yi = &y[rng.clone()];
-            let zi = &z[rng.clone()];
-            cone.circ_op(xi, yi, zi);
+            let dsi = &mut ds[rng.clone()];
+            let si = &s[rng.clone()];
+            cone.affine_ds(dsi, si);
         }
     }
 
-    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            let xi = &mut x[rng.clone()];
-            let zi = &z[rng.clone()];
-            cone.λ_inv_circ_op(xi, zi);
+    fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &[T], step_s: &[T], σμ: T) {
+        // Here we must first explicitly borrow the subvector
+        // of cones, since trying to access it using self.iter_mut
+        // causes a borrow conflict with ranges.
+
+        // It is necessary for the function to mutate self since
+        // nonsymmetric cones modify their internal state when
+        // computing the ds_shift
+
+        let cones = &mut self.cones;
+        let rngs = &self.rng_cones;
+
+        for (cone, rng) in cones.iter_mut().zip(rngs) {
+            let shifti = &mut shift[rng.clone()];
+            let step_zi = &step_z[rng.clone()];
+            let step_si = &step_s[rng.clone()];
+            cone.combined_ds_shift(shifti, step_zi, step_si, σμ);
         }
     }
 
-    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
+    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            let xi = &mut x[rng.clone()];
-            let yi = &y[rng.clone()];
-            let zi = &z[rng.clone()];
-            cone.inv_circ_op(xi, yi, zi);
-        }
-    }
-
-    fn shift_to_cone(&self, z: &mut [T]) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            cone.shift_to_cone(&mut z[rng.clone()]);
-        }
-    }
-
-    #[allow(non_snake_case)]
-    fn gemv_W(&self, is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            let xi = &x[rng.clone()];
-            let yi = &mut y[rng.clone()];
-            cone.gemv_W(is_transpose, xi, yi, α, β);
-        }
-    }
-
-    #[allow(non_snake_case)]
-    fn gemv_Winv(&self, is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            let xi = &x[rng.clone()];
-            let yi = &mut y[rng.clone()];
-            cone.gemv_Winv(is_transpose, xi, yi, α, β);
-        }
-    }
-
-    fn add_scaled_e(&self, x: &mut [T], α: T) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            cone.add_scaled_e(&mut x[rng.clone()], α);
-        }
-    }
-
-    fn step_length(&self, dz: &[T], ds: &[T], z: &[T], s: &[T]) -> (T, T) {
-        let huge = T::max_value();
-        let (mut αz, mut αs) = (huge, huge);
-
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            let dzi = &dz[rng.clone()];
+            let outi = &mut out[rng.clone()];
             let dsi = &ds[rng.clone()];
+            let worki = &mut work[rng.clone()];
+            cone.Δs_from_Δz_offset(outi, dsi, worki);
+        }
+    }
+
+    fn step_length(
+        &self,
+        dz: &[T],
+        ds: &[T],
+        z: &[T],
+        s: &[T],
+        settings: &CoreSettings<T>,
+        αmax: T,
+    ) -> (T, T) {
+        let mut α = αmax;
+
+        // Force symmetric cones first.
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+            if !cone.is_symmetric() {
+                continue;
+            }
+            let (dzi, dsi) = (&dz[rng.clone()], &ds[rng.clone()]);
+            let (zi, si) = (&z[rng.clone()], &s[rng.clone()]);
+            let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si, settings, α);
+            α = T::min(α, T::min(nextαz, nextαs));
+        }
+
+        // if we have any nonsymmetric cones, then back off from full steps slightly
+        // so that centrality checks and logarithms don't fail right at the boundaries
+        // PJG: is this still necessary?
+        // NB: Initial alphamax is called alpha in Julia.  Problem here since it is a
+        // mutable parameter.   Change in Julia for consistency, and check all cones are the same
+        // This could also be implemented as a single loop with the symmetric flag as an
+        // outer iterator
+        if !self.is_symmetric() {
+            let ceil: T = (0.99_f64).as_T();
+            α = T::min(ceil, α);
+        }
+        // Force asymmetric cones last.
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+            if cone.is_symmetric() {
+                continue;
+            }
+            let (dzi, dsi) = (&dz[rng.clone()], &ds[rng.clone()]);
+            let (zi, si) = (&z[rng.clone()], &s[rng.clone()]);
+            let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si, settings, α);
+            α = T::min(α, T::min(nextαz, nextαs));
+        }
+
+        (α, α)
+    }
+
+    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+        let mut barrier = T::zero();
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             let zi = &z[rng.clone()];
             let si = &s[rng.clone()];
-            let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si);
-            αz = T::min(αz, nextαz);
-            αs = T::min(αs, nextαs);
+            let dzi = &dz[rng.clone()];
+            let dsi = &ds[rng.clone()];
+            barrier += cone.compute_barrier(zi, si, dzi, dsi, α);
         }
-        (αz, αs)
+        barrier
     }
 }

@@ -80,10 +80,16 @@ pub enum PySolverStatus {
     Solved,
     PrimalInfeasible,
     DualInfeasible,
+    AlmostSolved,
+    AlmostPrimalInfeasible,
+    AlmostDualInfeasible,
     MaxIterations,
     MaxTime,
+    NumericalError,
+    InsufficientProgress,
 }
 
+//PJG: aadd missing fields
 impl PySolverStatus {
     pub(crate) fn new_from_internal(status: &SolverStatus) -> Self {
         match status {
@@ -91,8 +97,13 @@ impl PySolverStatus {
             SolverStatus::Solved => PySolverStatus::Solved,
             SolverStatus::PrimalInfeasible => PySolverStatus::PrimalInfeasible,
             SolverStatus::DualInfeasible => PySolverStatus::DualInfeasible,
+            SolverStatus::AlmostSolved => PySolverStatus::AlmostSolved,
+            SolverStatus::AlmostPrimalInfeasible => PySolverStatus::AlmostPrimalInfeasible,
+            SolverStatus::AlmostDualInfeasible => PySolverStatus::AlmostDualInfeasible,
             SolverStatus::MaxIterations => PySolverStatus::MaxIterations,
             SolverStatus::MaxTime => PySolverStatus::MaxTime,
+            SolverStatus::NumericalError => PySolverStatus::NumericalError,
+            SolverStatus::InsufficientProgress => PySolverStatus::InsufficientProgress,
         }
     }
 }
@@ -105,8 +116,13 @@ impl PySolverStatus {
             PySolverStatus::Solved => "Solved",
             PySolverStatus::PrimalInfeasible => "PrimalInfeasible",
             PySolverStatus::DualInfeasible => "DualInfeasible",
+            PySolverStatus::AlmostSolved => "AlmostSolved",
+            PySolverStatus::AlmostPrimalInfeasible => "AlmostPrimalInfeasible",
+            PySolverStatus::AlmostDualInfeasible => "AlmostDualInfeasible",
             PySolverStatus::MaxIterations => "MaxIterations",
             PySolverStatus::MaxTime => "MaxTime",
+            PySolverStatus::NumericalError => "NumericalError",
+            PySolverStatus::InsufficientProgress => "InsufficientProgress",
         }
         .to_string()
     }
@@ -126,6 +142,10 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub verbose: bool,
     #[pyo3(get, set)]
+    pub max_step_fraction: f64,
+
+    //full accuracy solution tolerances
+    #[pyo3(get, set)]
     pub tol_gap_abs: f64,
     #[pyo3(get, set)]
     pub tol_gap_rel: f64,
@@ -136,7 +156,21 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub tol_infeas_rel: f64,
     #[pyo3(get, set)]
-    pub max_step_fraction: f64,
+    pub tol_ktratio: f64,
+
+    //reduced accuracy solution tolerances
+    #[pyo3(get, set)]
+    pub reduced_tol_gap_abs: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_gap_rel: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_feas: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_infeas_abs: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_infeas_rel: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_ktratio: f64,
 
     // data equilibration
     #[pyo3(get, set)]
@@ -148,6 +182,14 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub equilibrate_max_scaling: f64,
 
+    //step size settings
+    #[pyo3(get, set)]
+    pub linesearch_backtrack_step: f64,
+    #[pyo3(get, set)]
+    pub min_switch_step_length: f64,
+    #[pyo3(get, set)]
+    pub min_terminate_step_length: f64,
+
     // KKT settings incomplete
     #[pyo3(get, set)]
     pub direct_kkt_solver: bool,
@@ -158,7 +200,9 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub static_regularization_enable: bool,
     #[pyo3(get, set)]
-    pub static_regularization_eps: f64,
+    pub static_regularization_constant: f64,
+    #[pyo3(get, set)]
+    pub static_regularization_proportional: f64,
 
     // dynamic regularization parameters
     #[pyo3(get, set)]
@@ -219,15 +263,26 @@ impl PyDefaultSettings {
             tol_feas: set.tol_feas,
             tol_infeas_abs: set.tol_infeas_abs,
             tol_infeas_rel: set.tol_infeas_rel,
+            tol_ktratio: set.tol_ktratio,
+            reduced_tol_gap_abs: set.reduced_tol_gap_abs,
+            reduced_tol_gap_rel: set.reduced_tol_gap_rel,
+            reduced_tol_feas: set.reduced_tol_feas,
+            reduced_tol_infeas_abs: set.reduced_tol_infeas_abs,
+            reduced_tol_infeas_rel: set.reduced_tol_infeas_rel,
+            reduced_tol_ktratio: set.reduced_tol_ktratio,
             max_step_fraction: set.max_step_fraction,
             equilibrate_enable: set.equilibrate_enable,
             equilibrate_max_iter: set.equilibrate_max_iter,
             equilibrate_min_scaling: set.equilibrate_min_scaling,
             equilibrate_max_scaling: set.equilibrate_max_scaling,
+            linesearch_backtrack_step: set.linesearch_backtrack_step,
+            min_switch_step_length: set.min_switch_step_length,
+            min_terminate_step_length: set.min_terminate_step_length,
             direct_kkt_solver: set.direct_kkt_solver,
             direct_solve_method: set.direct_solve_method.clone(),
             static_regularization_enable: set.static_regularization_enable,
-            static_regularization_eps: set.static_regularization_eps,
+            static_regularization_constant: set.static_regularization_constant,
+            static_regularization_proportional: set.static_regularization_proportional,
             dynamic_regularization_enable: set.dynamic_regularization_enable,
             dynamic_regularization_eps: set.dynamic_regularization_eps,
             dynamic_regularization_delta: set.dynamic_regularization_delta,
@@ -251,15 +306,26 @@ impl PyDefaultSettings {
             tol_feas: self.tol_feas,
             tol_infeas_abs: self.tol_infeas_abs,
             tol_infeas_rel: self.tol_infeas_rel,
+            tol_ktratio: self.tol_ktratio,
+            reduced_tol_gap_abs: self.reduced_tol_gap_abs,
+            reduced_tol_gap_rel: self.reduced_tol_gap_rel,
+            reduced_tol_feas: self.reduced_tol_feas,
+            reduced_tol_infeas_abs: self.reduced_tol_infeas_abs,
+            reduced_tol_infeas_rel: self.reduced_tol_infeas_rel,
+            reduced_tol_ktratio: self.reduced_tol_ktratio,
             max_step_fraction: self.max_step_fraction,
             equilibrate_enable: self.equilibrate_enable,
             equilibrate_max_iter: self.equilibrate_max_iter,
             equilibrate_min_scaling: self.equilibrate_min_scaling,
             equilibrate_max_scaling: self.equilibrate_max_scaling,
+            linesearch_backtrack_step: self.linesearch_backtrack_step,
+            min_switch_step_length: self.min_switch_step_length,
+            min_terminate_step_length: self.min_terminate_step_length,
             direct_kkt_solver: self.direct_kkt_solver,
             direct_solve_method: self.direct_solve_method.clone(),
             static_regularization_enable: self.static_regularization_enable,
-            static_regularization_eps: self.static_regularization_eps,
+            static_regularization_constant: self.static_regularization_constant,
+            static_regularization_proportional: self.static_regularization_proportional,
             dynamic_regularization_enable: self.dynamic_regularization_enable,
             dynamic_regularization_eps: self.dynamic_regularization_eps,
             dynamic_regularization_delta: self.dynamic_regularization_delta,

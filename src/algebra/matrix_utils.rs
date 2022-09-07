@@ -373,7 +373,7 @@ where
             }
 
             MatrixTriangle::Tril => {
-                self._fill_dense_triangle_triu(blocktoKKT, offset, blockdim);
+                self._fill_dense_triangle_tril(blocktoKKT, offset, blockdim);
             }
         }
     }
@@ -386,7 +386,7 @@ where
     ) {
         let mut kidx = 0;
         for col in offset..(offset + blockdim) {
-            for row in offset..col {
+            for row in offset..=col {
                 let dest = self.colptr[col];
                 self.rowval[dest] = row;
                 self.nzval[dest] = T::zero(); //structural zero
@@ -405,7 +405,7 @@ where
     ) {
         let mut kidx = 0;
         for col in offset..(offset + blockdim) {
-            for row in offset..col {
+            for row in offset..=col {
                 let dest = self.colptr[col];
                 self.rowval[dest] = row;
                 self.nzval[dest] = T::zero(); //structural zero

@@ -74,6 +74,7 @@ end
     ZeroConeT = 0
     NonnegativeConeT = 1
     SecondOrderConeT = 2
+    ExponentialConeT = 3
 end
 
 

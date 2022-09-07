@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 #[cfg_attr(feature = "julia", derive(Serialize, Deserialize))]
 pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "50")]
+    // Main algorithm settings
     pub max_iter: u32,
 
     #[builder(default = "f64::INFINITY")]
@@ -19,13 +20,17 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub verbose: bool,
 
+    #[builder(default = "(0.99).as_T()")]
+    pub max_step_fraction: T,
+
+    // Full accuracy settings
     #[builder(default = "(1e-8).as_T()")]
     pub tol_gap_abs: T,
 
     #[builder(default = "(1e-8).as_T()")]
     pub tol_gap_rel: T,
 
-    #[builder(default = "(1e-5).as_T()")]
+    #[builder(default = "(1e-8).as_T()")]
     pub tol_feas: T,
 
     #[builder(default = "(1e-8).as_T()")]
@@ -34,10 +39,29 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "(1e-8).as_T()")]
     pub tol_infeas_rel: T,
 
-    #[builder(default = "(0.99).as_T()")]
-    pub max_step_fraction: T,
+    #[builder(default = "(1e-7).as_T()")]
+    pub tol_ktratio: T,
 
-    // data equilibration
+    // Reduced accuracy settings
+    #[builder(default = "(1e-6).as_T()")]
+    pub reduced_tol_gap_abs: T,
+
+    #[builder(default = "(1e-6).as_T()")]
+    pub reduced_tol_gap_rel: T,
+
+    #[builder(default = "(1e-5).as_T()")]
+    pub reduced_tol_feas: T,
+
+    #[builder(default = "(5e-5).as_T()")]
+    pub reduced_tol_infeas_abs: T,
+
+    #[builder(default = "(5e-5).as_T()")]
+    pub reduced_tol_infeas_rel: T,
+
+    #[builder(default = "(1e-4).as_T()")]
+    pub reduced_tol_ktratio: T,
+
+    // data equilibration settings
     #[builder(default = "true")]
     pub equilibrate_enable: bool,
 
@@ -50,7 +74,17 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "(1e+4).as_T()")]
     pub equilibrate_max_scaling: T,
 
-    // only support direct / qdldl at the moment
+    // Step size settings
+    #[builder(default = "(0.8).as_T()")]
+    pub linesearch_backtrack_step: T,
+
+    #[builder(default = "(1e-1).as_T()")]
+    pub min_switch_step_length: T,
+
+    #[builder(default = "(1e-4).as_T()")]
+    pub min_terminate_step_length: T,
+
+    // Linear solver settings
     #[builder(default = "true")]
     pub direct_kkt_solver: bool,
     #[builder(default = r#""qdldl".to_string()"#)]
@@ -59,8 +93,10 @@ pub struct DefaultSettings<T: FloatT> {
     // static regularization parameters
     #[builder(default = "true")]
     pub static_regularization_enable: bool,
-    #[builder(default = "(1e-8).as_T()")]
-    pub static_regularization_eps: T,
+    #[builder(default = "(1e-7).as_T()")]
+    pub static_regularization_constant: T,
+    #[builder(default = "T::epsilon()*T::epsilon()")]
+    pub static_regularization_proportional: T,
 
     // dynamic regularization parameters
     #[builder(default = "true")]
@@ -76,16 +112,16 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub iterative_refinement_enable: bool,
 
-    #[builder(default = "(1e-10).as_T()")]
+    #[builder(default = "(1e-13).as_T()")]
     pub iterative_refinement_reltol: T,
 
-    #[builder(default = "(1e-10).as_T()")]
+    #[builder(default = "(1e-14).as_T()")]
     pub iterative_refinement_abstol: T,
 
     #[builder(default = "10")]
     pub iterative_refinement_max_iter: u32,
 
-    #[builder(default = "(2.0).as_T()")]
+    #[builder(default = "(5.0).as_T()")]
     pub iterative_refinement_stop_ratio: T,
 }
 

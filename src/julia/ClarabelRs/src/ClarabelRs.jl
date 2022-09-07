@@ -1,16 +1,36 @@
 module ClarabelRs 
 
-    using SparseArrays, JSON 
+    using SparseArrays, JSON, Libdl
     #we use the main Clarabel Julia implementation 
     #for things like settings instead of redefining 
     #them in this Rust wrapper module 
     using Clarabel
 
-    # this incredibly fragile path is where one should expect the 
-    # rust static lib to appear if compiled with : 
-    # > cargo build --release --features julia
-    const LIBPATH = joinpath(@__DIR__, "../../../../target/release/")
-    const LIBRUST = joinpath(LIBPATH,"libclarabel." * Base.Libc.dlext)
+    function __init__()
+
+        # this incredibly fragile path is where one should expect the 
+        # rust static lib to appear if compiled with : 
+        # > cargo build --release --features julia
+        global libpath = joinpath(@__DIR__, 
+                        "../../../../target/release/",
+                        "libclarabel." * Base.Libc.dlext
+                )
+        global librust = Libdl.dlopen(libpath)
+    end
+
+    function reload()
+        global libpath
+        global librust
+        
+        result = true
+        while result
+            result = Libdl.dlclose(librust)
+        end 
+        librust = Libdl.dlopen(libpath)
+    
+        println("Clarabel rust lib reloaded at", librust)
+    end
+    
     
     include("./types.jl")
     include("./interface.jl")

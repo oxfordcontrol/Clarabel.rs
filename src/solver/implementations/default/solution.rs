@@ -67,9 +67,7 @@ where
         // using κ to get an infeasibility certificate.
         // Otherwise use τ to get a solution.
         let scaleinv;
-        if info.status == SolverStatus::PrimalInfeasible
-            || info.status == SolverStatus::DualInfeasible
-        {
+        if info.status.is_infeasible() {
             scaleinv = T::recip(variables.κ);
             self.obj_val = T::nan();
         } else {

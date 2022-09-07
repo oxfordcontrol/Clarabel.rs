@@ -13,7 +13,7 @@ categories = ["mathematics"]
 [dependencies]
 num-traits = "0.2"
 derive_builder = "0.11"
-amd = "0.2.1"
+amd = "0.2.2"
 
 [[example]]
 name = "lp"
@@ -26,6 +26,10 @@ path = "examples/rust/example_qp.rs"
 [[example]]
 name = "socp"
 path = "examples/rust/example_socp.rs"
+
+[[example]]
+name = "expcone"
+path = "examples/rust/example_expcone.rs"
 
 [[example]]
 name = "box"
@@ -70,9 +74,9 @@ features = ["extension-module", "abi3-py37"]
 
 [lib]
 name = "clarabel"
-# "cdylib" is necessary to produce a shared library that Python can import.
+# "cdylib" is necessary to produce a shared libraries for Python/Julia
 # "lib" is necessary to allow the ./examples to build
-crate-type = ["cdylib","lib"]
+crate-type = ["lib","cdylib"] 
 
 
 # ------------------------------

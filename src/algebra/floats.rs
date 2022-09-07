@@ -1,4 +1,4 @@
-use num_traits::{Float, FromPrimitive, NumAssign};
+use num_traits::{Float, FloatConst, FromPrimitive, NumAssign};
 
 /// Trait for floating point types used in the Clarabel solver
 ///
@@ -14,6 +14,7 @@ pub trait FloatT:
     'static
     + Send
     + Float
+    + FloatConst
     + NumAssign
     + Default
     + FromPrimitive
@@ -46,7 +47,7 @@ macro_rules! impl_as_T {
     ($ty:ty, $ident:ident) => {
         impl<T> AsFloatT<T> for $ty
         where
-            T: FromPrimitive + 'static,
+            T: std::ops::Mul<T, Output = T> + FromPrimitive + 'static,
         {
             #[inline]
             fn as_T(&self) -> T {
@@ -57,5 +58,6 @@ macro_rules! impl_as_T {
 }
 impl_as_T!(u32, from_u32);
 impl_as_T!(u64, from_u64);
+impl_as_T!(usize, from_usize);
 impl_as_T!(f32, from_f32);
 impl_as_T!(f64, from_f64);
