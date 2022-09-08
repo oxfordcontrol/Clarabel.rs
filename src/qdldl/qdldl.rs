@@ -543,12 +543,13 @@ fn _factor_inner<T: FloatT>(
                 let y_vals_cidx = y_vals[cidx];
 
                 let (f, l) = (Lp[cidx], tmp_idx);
-                for (&Lxj, &Lij) in Lx[f..l].iter().zip(Li[f..l].iter()) {
+                unsafe {
                     //Safety : Here the Lij index comes from the rowval
                     //field of the sparse L factor matrix, and should
                     //always be bounded by the matrix dimension.
-                    unsafe {
-                        //y_vals[Lij] -= Lxj*y_vals_cidx;
+                    let Lx_inner = Lx.get_unchecked(f..l);
+                    let Li_inner = Li.get_unchecked(f..l);
+                    for (&Lxj, &Lij) in Lx_inner.iter().zip(Li_inner.iter()) {
                         *(y_vals.get_unchecked_mut(Lij)) -= Lxj * y_vals_cidx;
                     }
                 }
@@ -596,36 +597,84 @@ fn _factor_inner<T: FloatT>(
     Ok(positiveValuesInD)
 }
 
-// Solves (L+I)x = b, with x replacing b
-fn _lsolve<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
+// Solves (L+I)x = b, with x replacing b (with standard bounds checks)
+fn _lsolve_safe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
     for i in 0..x.len() {
         let xi = x[i];
         let (f, l) = (Lp[i], Lp[i + 1]);
         let Lx = &Lx[f..l];
         let Li = &Li[f..l];
-        for (Lij, Lxj) in Li.iter().zip(Lx.iter()) {
-            x[*Lij] -= (*Lxj) * xi;
+        for (&Lij, &Lxj) in Li.iter().zip(Lx.iter()) {
+            x[Lij] -= Lxj * xi;
         }
     }
 }
 
-// Solves (L+I)'x = b, with x replacing b
-fn _ltsolve<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
+// Solves (L+I)'x = b, with x replacing b (with standard bounds checks)
+fn _ltsolve_safe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
     for i in (0..x.len()).rev() {
         let mut s = T::zero();
         let (f, l) = (Lp[i], Lp[i + 1]);
-        for (Lij, Lxj) in Li[f..l].iter().zip(Lx[f..l].iter()) {
-            s += (*Lxj) * x[*Lij];
+        let Lx = &Lx[f..l];
+        let Li = &Li[f..l];
+        for (&Lij, &Lxj) in Li.iter().zip(Lx.iter()) {
+            s += Lxj * x[Lij];
         }
         x[i] -= s;
     }
 }
 
+// -------------------------------------
+// Versions of L\x and Lᵀ \ x that use unchecked indexing.
+//
+// Safety : The values in colptr array Lp at the time this
+// function is reached should be bounded by the sizes of the
+// arrays in Lx and Li.  The length of x should be compatible
+// with the row index entries in Li
+// -------------------------------------
+
+// Solves (L+I)x = b, with x replacing b.  Unchecked version
+fn _lsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
+    unsafe {
+        for i in 0..x.len() {
+            let xi = *x.get_unchecked(i);
+            let f = *Lp.get_unchecked(i);
+            let l = *Lp.get_unchecked(i + 1);
+            let Lx = Lx.get_unchecked(f..l);
+            let Li = Li.get_unchecked(f..l);
+            for (&Lij, &Lxj) in Li.iter().zip(Lx.iter()) {
+                *(x.get_unchecked_mut(Lij)) -= Lxj * xi;
+            }
+        }
+    }
+}
+
+// Solves (L+I)'x = b, with x replacing b.  Unchecked version.
+fn _ltsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
+    unsafe {
+        for i in (0..x.len()).rev() {
+            let mut s = T::zero();
+            let f = *Lp.get_unchecked(i);
+            let l = *Lp.get_unchecked(i + 1);
+            let Lx = Lx.get_unchecked(f..l);
+            let Li = Li.get_unchecked(f..l);
+            for (&Lij, &Lxj) in Li.iter().zip(Lx.iter()) {
+                s += Lxj * (*x.get_unchecked(Lij));
+            }
+            *x.get_unchecked_mut(i) -= s;
+        }
+    }
+}
+
 // Solves Ax = b where A has given LDL factors, with x replacing b
 fn _solve<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], Dinv: &[T], b: &mut [T]) {
-    _lsolve(Lp, Li, Lx, b);
+    // We call the `unsafe`d version of the forward and backward substitution
+    // functions here, since the matrix data should be well posed and x of
+    // compatible dimensions.   For super safety or debugging purposes, there
+    // are also `safe` versions implemented above.
+    _lsolve_unsafe(Lp, Li, Lx, b);
     b.iter_mut().zip(Dinv).for_each(|(b, d)| *b *= *d);
-    _ltsolve(Lp, Li, Lx, b);
+    _ltsolve_unsafe(Lp, Li, Lx, b);
 }
 
 // Construct an inverse permutation from a permutation
