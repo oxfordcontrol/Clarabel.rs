@@ -11,6 +11,8 @@ use crate::solver::{
     },
     implementations::default::*,
 };
+use num_derive::ToPrimitive;
+use num_traits::ToPrimitive;
 use pyo3::prelude::*;
 use std::fmt::Write;
 
@@ -40,9 +42,17 @@ pub struct PyDefaultSolution {
     #[pyo3(get)]
     pub z: Vec<f64>,
     #[pyo3(get)]
+    pub status: PySolverStatus,
+    #[pyo3(get)]
     pub obj_val: f64,
     #[pyo3(get)]
-    pub status: PySolverStatus,
+    pub solve_time: f64,
+    #[pyo3(get)]
+    pub iterations: u32,
+    #[pyo3(get)]
+    pub r_prim: f64,
+    #[pyo3(get)]
+    pub r_dual: f64,
 }
 
 impl PyDefaultSolution {
@@ -50,14 +60,17 @@ impl PyDefaultSolution {
         let x = result.x.clone();
         let s = result.s.clone();
         let z = result.z.clone();
-        let obj_val = result.obj_val;
         let status = PySolverStatus::new_from_internal(&result.status);
         Self {
             x,
             s,
             z,
-            obj_val,
+            obj_val: result.obj_val,
             status,
+            solve_time: result.solve_time,
+            iterations: result.iterations,
+            r_prim: result.r_prim,
+            r_dual: result.r_dual,
         }
     }
 }
@@ -73,10 +86,10 @@ impl PyDefaultSolution {
 // Solver Status
 // ----------------------------------
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, ToPrimitive)]
 #[pyclass(name = "SolverStatus")]
 pub enum PySolverStatus {
-    Unsolved,
+    Unsolved = 0,
     Solved,
     PrimalInfeasible,
     DualInfeasible,
@@ -125,6 +138,11 @@ impl PySolverStatus {
             PySolverStatus::InsufficientProgress => "InsufficientProgress",
         }
         .to_string()
+    }
+
+    // mapping of solver status to CVXPY keys is done via a hash
+    pub fn __hash__(&self) -> u32 {
+        self.to_u32().unwrap()
     }
 }
 
