@@ -9,15 +9,17 @@ use crate::{
 // -------------------------------------
 
 pub struct ExponentialCone<T: FloatT = f64> {
-    // current μH and gradient
-    H: DenseMatrix3<T>,
+    // Hessian of the dual barrier at z
+    H_dual: DenseMatrixSym3<T>,
+
+    // scaling matrix, i.e. μH(z)
+    Hs: DenseMatrixSym3<T>,
+
+    // gradient of the dual barrier at z
     grad: [T; 3],
 
-    // workspace data
-    HBFGS: DenseMatrix3<T>,
+    // holds copy of z at scaling point
     z: [T; 3],
-
-    cholH: DenseMatrix3<T>,
 }
 
 impl<T> ExponentialCone<T>
@@ -26,15 +28,10 @@ where
 {
     pub fn new() -> Self {
         Self {
-            H: DenseMatrix3::zeros(),
+            H_dual: DenseMatrixSym3::zeros(),
+            Hs: DenseMatrixSym3::zeros(),
             grad: [T::zero(); 3],
-
-            // workspace data
-            HBFGS: DenseMatrix3::zeros(),
             z: [T::zero(); 3],
-
-            //cholesky factor of H
-            cholH: DenseMatrix3::zeros(),
         }
     }
 }
@@ -88,9 +85,10 @@ where
 
     fn update_scaling(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy) {
         // update both gradient and Hessian for function f*(z) at the point z
-        // NB: the update order can't be switched as we reuse memory in the
-        // Hessian computation Hessian update
-        self.update_grad_HBFGS(s, z, μ, scaling_strategy);
+        self.update_dual_grad_H(z);
+
+        // update the scaling matrix Hs
+        self.update_Hs(s, z, μ, scaling_strategy);
 
         // K.z .= z
         self.z.copy_from(z);
@@ -101,15 +99,12 @@ where
     }
 
     fn get_Hs(&self, Hsblock: &mut [T]) {
-        // stores triu(K.HBFGS) into a vector
-        self.HBFGS.pack_triu(Hsblock);
+        // Hs data is already in packed triu form, so just copy
+        Hsblock.copy_from(&self.Hs.data);
     }
 
     fn mul_Hs(&self, y: &mut [T], x: &[T], _work: &mut [T]) {
-        let H = &self.HBFGS;
-        for i in 0..3 {
-            y[i] = H[(i, 0)] * x[0] + H[(i, 1)] * x[1] + H[(i, 2)] * x[2];
-        }
+        self.Hs.mul(y, x);
     }
 
     fn affine_ds(&self, ds: &mut [T], s: &[T]) {
@@ -193,8 +188,6 @@ where
     //      = -2*log(s2) - log(s3) - log((1-barω)^2/barω) - 3,
     // where barω = ω(1 - s1/s2 - log(s2) - log(s3))
     // NB: ⟨s,g(s)⟩ = -3 = - ν
-
-    //PJG: many compile errors.  Double check.
 
     let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
 
@@ -323,8 +316,25 @@ where
     w
 }
 
-// 3rd-order correction at the point z,
-// wrt directions u,v. Writes in η.
+// 3rd-order correction at the point z.  Output is η.
+//
+// η = -0.5*[(dot(u,Hψ,v)*ψ - 2*dotψu*dotψv)/(ψ*ψ*ψ)*gψ +
+//      dotψu/(ψ*ψ)*Hψv + dotψv/(ψ*ψ)*Hψu - dotψuv/ψ + dothuv]
+//
+// where :
+// Hψ = [  1/z[1]    0   -1/z[3];
+//           0       0   0;
+//         -1/z[3]   0   z[1]/(z[3]*z[3]);]
+// dotψuv = [-u[1]*v[1]/(z[1]*z[1]) + u[3]*v[3]/(z[3]*z[3]);
+//            0;
+//           (u[3]*v[1]+u[1]*v[3])/(z[3]*z[3]) - 2*z[1]*u[3]*v[3]/(z[3]*z[3]*z[3])]
+//
+// dothuv = [-2*u[1]*v[1]/(z[1]*z[1]*z[1]) ;
+//            0;
+//           -2*u[3]*v[3]/(z[3]*z[3]*z[3])]
+// Hψv = Hψ*v
+// Hψu = Hψ*u
+// gψ is used inside η
 
 impl<T> ExponentialCone<T>
 where
@@ -335,10 +345,10 @@ where
         T: FloatT,
     {
         // u for H^{-1}*Δs
-        let H = &self.H;
+        let H = &self.H_dual;
         let mut u = [T::zero(); 3];
         let z = &self.z;
-        let cholH = &mut self.cholH;
+        let mut cholH = DenseMatrixSym3::zeros();
 
         // solve H*u = ds
         let issuccess = cholH.cholesky_3x3_explicit_factor(H);
@@ -357,25 +367,6 @@ where
 
         let dotψu = u.dot(&η[..]);
         let dotψv = v.dot(&η[..]);
-
-        // 3rd order correction:
-        // η = -0.5*[(dot(u,Hψ,v)*ψ - 2*dotψu*dotψv)/(ψ*ψ*ψ)*gψ +
-        //      dotψu/(ψ*ψ)*Hψv + dotψv/(ψ*ψ)*Hψu - dotψuv/ψ + dothuv]
-        //
-        // where :
-        // Hψ = [  1/z[1]    0   -1/z[3];
-        //           0       0   0;
-        //         -1/z[3]   0   z[1]/(z[3]*z[3]);]
-        // dotψuv = [-u[1]*v[1]/(z[1]*z[1]) + u[3]*v[3]/(z[3]*z[3]);
-        //            0;
-        //           (u[3]*v[1]+u[1]*v[3])/(z[3]*z[3]) - 2*z[1]*u[3]*v[3]/(z[3]*z[3]*z[3])]
-        //
-        // dothuv = [-2*u[1]*v[1]/(z[1]*z[1]*z[1]) ;
-        //            0;
-        //           -2*u[3]*v[3]/(z[3]*z[3]*z[3])]
-        // Hψv = Hψ*v
-        // Hψu = Hψ*u
-        // gψ is used inside η
 
         let two: T = (2.).as_T();
         let coef =
@@ -414,15 +405,19 @@ impl<T> ExponentialCone<T>
 where
     T: FloatT,
 {
-    fn update_grad_HBFGS(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy) {
-        let st = &mut self.grad;
-        let mut zt = [T::zero(); 3];
-        let mut δs = [T::zero(); 3];
+    fn update_Hs(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy) {
+        // Choose the scaling strategy
+        if scaling_strategy == ScalingStrategy::Dual {
+            // Dual scaling: Hs = μ*H
+            self.use_dual_scaling(μ);
+        } else {
+            self.use_primal_dual_scaling(s, z);
+        }
+    }
 
-        //shared for δz, tmp, axis_z
-        let mut tmp = [T::zero(); 3];
-        let H = &mut self.H;
-        let HBFGS = &mut self.HBFGS;
+    fn update_dual_grad_H(&mut self, z: &[T]) {
+        let grad = &mut self.grad;
+        let H = &mut self.H_dual;
 
         // Hessian computation, compute μ locally
         let l = (-z[2] / z[0]).logsafe();
@@ -431,9 +426,9 @@ where
         // compute the gradient at z
         let c2 = r.recip();
 
-        st[0] = c2 * l - z[0].recip();
-        st[1] = -c2;
-        st[2] = (c2 * z[0] - T::one()) / z[2];
+        grad[0] = c2 * l - z[0].recip();
+        grad[1] = -c2;
+        grad[2] = (c2 * z[0] - T::one()) / z[2];
 
         // compute_Hessian(K,z,H)
         H[(0, 0)] = (r * r - z[0] * r + l * l * z[0] * z[0]) / (r * z[0] * z[0] * r);
@@ -445,92 +440,81 @@ where
         H[(1, 2)] = -z[0] / (r * r * z[2]);
         H[(2, 1)] = H[(1, 2)];
         H[(2, 2)] = (r * r - z[0] * r + z[0] * z[0]) / (r * r * z[2] * z[2]);
+    }
 
-        // Use the local mu with primal dual strategy.  Otherwise
-        // we use the global one
-        if scaling_strategy == ScalingStrategy::Dual {
-            //HBFGS .= μ*H
-            for i in 0..3 {
-                for j in 0..3 {
-                    //PJG: not rusty
-                    HBFGS[(i, j)] = μ * H[(i, j)];
-                }
-            }
-        }
+    // implements dual only scaling
+    fn use_dual_scaling(&mut self, μ: T) {
+        self.Hs.scaled_from(μ, &self.H_dual);
+    }
 
+    //implements primal dual scaling
+    fn use_primal_dual_scaling(&mut self, s: &[T], z: &[T]) {
         let three: T = (3.).as_T();
-        let dot_sz = s.dot(z);
-        let μ = dot_sz / three;
+
+        let Hs = &mut self.Hs;
+        let H_dual = &self.H_dual;
+
+        let mut zt = [T::zero(); 3];
+        let st = &mut self.grad;
+        let mut δs = [T::zero(); 3];
+        let mut tmp = [T::zero(); 3];
 
         // compute zt,st,μt locally
         // NB: zt,st have different sign convention wrt Mosek paper
-        _gradient_primal(&mut zt[..], s);
-
+        _gradient_primal(&mut zt, &s);
+        let dot_sz = s.dot(z);
+        let μ = dot_sz / three;
         let μt = st[..].dot(&zt[..]) / three;
 
         // δs = s + μ*st
         // δz = z + μ*zt
         let mut δz = tmp;
-
         for i in 0..3 {
             δs[i] = s[i] + μ * st[i];
             δz[i] = z[i] + μ * zt[i];
         }
-
         let dot_δsz = δs[..].dot(&δz[..]);
 
         let de1 = μ * μt - T::one();
-        let de2 = H.quad_form(&zt, &zt) - three * μt * μt;
+        let de2 = H_dual.quad_form(&zt, &zt) - three * μt * μt;
 
-        if !(de1.abs() > T::epsilon() && de2.abs() > T::epsilon()) {
-            // HBFGS when s,z are on the central path
-            for i in 0..3 {
-                for j in 0..3 {
-                    //PJG: not rusty
-                    HBFGS[(i, j)] = μ * H[(i, j)];
-                }
+        if de1.abs() < T::sqrt(T::epsilon()) {
+            // Hs = μH when s,z are on the central path
+            self.use_dual_scaling(μ);
+            return;
+        }
+
+        // compute t
+        // tmp = μt*st - H*zt
+        H_dual.mul(&mut tmp, &zt);
+        for i in 0..3 {
+            tmp[i] = μt * st[i] - tmp[i]
+        }
+
+        // Hs as a workspace (only need to write the upper triangle)
+        Hs.copy_from(&H_dual);
+        for i in 0..3 {
+            for j in i..3 {
+                Hs[(i, j)] -= st[i] * st[j] / three + tmp[i] * tmp[j] / de2;
             }
-        } else {
-            // compute t
-            // tmp = μt*st - H*zt
-            // PJG: need a gemv style function for DenseMatrix3
-            for i in 0..3 {
-                tmp[i] = μt * st[i] - H[(i, 0)] * zt[0] - H[(i, 1)] * zt[1] - H[(i, 2)] * zt[2];
+        }
+        let t = μ * Hs.norm_fro(); //Frobenius norm
+
+        // generate the remaining axis
+        // axis_z = cross(z,zt)
+        let mut axis_z = tmp;
+        axis_z[0] = z[1] * zt[2] - z[2] * zt[1];
+        axis_z[1] = z[2] * zt[0] - z[0] * zt[2];
+        axis_z[2] = z[0] * zt[1] - z[1] * zt[0];
+        axis_z.normalize();
+
+        // HBFGS = s*s'/⟨s,z⟩ + δs*δs'/⟨δs,δz⟩ + t*axis_z*axis_z'
+        // (only need to write the upper triangle)
+        for i in 0..3 {
+            for j in i..3 {
+                Hs[(i, j)] =
+                    s[i] * s[j] / dot_sz + δs[i] * δs[j] / dot_δsz + t * axis_z[i] * axis_z[j];
             }
-
-            // HBFGS as a workspace
-            HBFGS.copy_from(H);
-            for i in 0..3 {
-                for j in i..3 {
-                    HBFGS[(i, j)] -= st[i] * st[j] / three + tmp[i] * tmp[j] / de2;
-                }
-            }
-            // symmetrize matrix
-            HBFGS[(1, 0)] = HBFGS[(0, 1)];
-            HBFGS[(2, 0)] = HBFGS[(0, 2)];
-            HBFGS[(2, 1)] = HBFGS[(1, 2)];
-
-            let t = μ * HBFGS.data.norm(); //Frobenius norm
-
-            // generate the remaining axis
-            // axis_z = cross(z,zt)
-            let mut axis_z = tmp;
-            axis_z[0] = z[1] * zt[2] - z[2] * zt[1];
-            axis_z[1] = z[2] * zt[0] - z[0] * zt[2];
-            axis_z[2] = z[0] * zt[1] - z[1] * zt[0];
-            axis_z.normalize();
-
-            // HBFGS = s*s'/⟨s,z⟩ + δs*δs'/⟨δs,δz⟩ + t*axis_z*axis_z'
-            for i in 0..3 {
-                for j in i..3 {
-                    HBFGS[(i, j)] =
-                        s[i] * s[j] / dot_sz + δs[i] * δs[j] / dot_δsz + t * axis_z[i] * axis_z[j];
-                }
-            }
-            // symmetrize matrix
-            HBFGS[(1, 0)] = HBFGS[(0, 1)];
-            HBFGS[(2, 0)] = HBFGS[(0, 2)];
-            HBFGS[(2, 1)] = HBFGS[(1, 2)];
         }
     }
 }
