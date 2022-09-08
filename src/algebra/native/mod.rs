@@ -308,8 +308,8 @@ impl<T: FloatT> MatrixMath<T, [T]> for CscMatrix<T> {
         //way.  The argument serves only as a reminder that
         //the caller should only pass a triangular form
         match tri {
-            MatrixTriangle::Triu => _csc_symv(self, y, x, a, b),
-            MatrixTriangle::Tril => _csc_symv(self, y, x, a, b),
+            MatrixTriangle::Triu => _csc_symv_unsafe(self, y, x, a, b),
+            MatrixTriangle::Tril => _csc_symv_unsafe(self, y, x, a, b),
         }
     }
 
@@ -319,7 +319,7 @@ impl<T: FloatT> MatrixMath<T, [T]> for CscMatrix<T> {
 }
 
 #[allow(non_snake_case)]
-fn _csc_symv<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
+fn _csc_symv_safe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     y.scale(b);
 
     assert!(x.len() == A.n);
@@ -338,6 +338,40 @@ fn _csc_symv<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
             if row != col {
                 //don't double up on the diagonal
                 y[col] += a * Aij * x[row];
+            }
+        }
+    }
+}
+
+// Safety: The function below checks that x and y are compatible with
+// the dimensions of A, so safety is assured so long as the the matrix
+// A as rowval and colptr arrays that are consistent with its dimension.
+// A bounds checked version is provided above.
+//
+// This `unsafe`d version is preferred the multiplication K*x, with K
+// the symmetric KKT matrix, is used heavily in iterative refinement of
+// direct linear solves.
+#[allow(non_snake_case)]
+fn _csc_symv_unsafe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
+    y.scale(b);
+
+    assert!(x.len() == A.n);
+    assert!(y.len() == A.n);
+    assert!(A.n == A.m);
+    unsafe {
+        for (col, &xcol) in x.iter().enumerate() {
+            let first = *A.colptr.get_unchecked(col);
+            let last = *A.colptr.get_unchecked(col + 1);
+            let rows = A.rowval.get_unchecked(first..last);
+            let nzvals = A.nzval.get_unchecked(first..last);
+
+            for (&row, &Aij) in rows.iter().zip(nzvals.iter()) {
+                *y.get_unchecked_mut(row) += a * Aij * xcol;
+
+                if row != col {
+                    //don't double up on the diagonal
+                    *y.get_unchecked_mut(col) += a * Aij * (*x.get_unchecked(row));
+                }
             }
         }
     }
