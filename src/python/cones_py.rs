@@ -13,6 +13,22 @@ fn __repr__cone(name: &str, dim: usize) -> String {
     s
 }
 
+// generic Python display functionality for cone objects
+// with no parameters, specifically 3d expcone
+fn __repr__cone__noparams(name: &str) -> String {
+    let mut s = String::new();
+    write!(s, "{}()", name).unwrap();
+    s
+}
+
+// generic Python display functionality for cone objects
+// with floating point parameters (specifically power cone)
+fn __repr__cone__float(name: &str, pow: f64) -> String {
+    let mut s = String::new();
+    write!(s, "{}({})", name, pow).unwrap();
+    s
+}
+
 #[pyclass(name = "ZeroConeT")]
 pub struct PyZeroConeT {
     #[pyo3(get)]
@@ -70,7 +86,23 @@ impl PyExponentialConeT {
         Self {}
     }
     pub fn __repr__(&self) -> String {
-        __repr__cone("ExponentialConeT", 3)
+        __repr__cone__noparams("ExponentialConeT")
+    }
+}
+
+#[pyclass(name = "PowerConeT")]
+pub struct PyPowerConeT {
+    #[pyo3(get)]
+    pub α: f64,
+}
+#[pymethods]
+impl PyPowerConeT {
+    #[new]
+    pub fn new(α: f64) -> Self {
+        Self { α }
+    }
+    pub fn __repr__(&self) -> String {
+        __repr__cone__float("PowerConeT", self.α)
     }
 }
 
@@ -106,6 +138,10 @@ impl<'a> FromPyObject<'a> for PySupportedCone {
                 Ok(PySupportedCone(SecondOrderConeT(dim)))
             }
             "ExponentialConeT" => Ok(PySupportedCone(ExponentialConeT())),
+            "PowerConeT" => {
+                let α: f64 = obj.getattr("α")?.extract()?;
+                Ok(PySupportedCone(PowerConeT(α)))
+            }
             _ => {
                 let mut errmsg = String::new();
                 write!(errmsg, "Unrecognized cone type : {}", thetype).unwrap();

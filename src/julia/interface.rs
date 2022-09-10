@@ -38,7 +38,7 @@ fn ccall_arrays_to_cones(
     // convert to rust vector types from raw pointers
     let cones_enums = Vec::from(cones_enums);
     let cones_ints = Vec::from(cones_ints);
-    let _cones_float = Vec::from(cones_floats);
+    let _cones_floats = Vec::from(cones_floats);
 
     for i in 0..cones_enums.len() {
         let cone = match FromPrimitive::from_u8(cones_enums[i]) {
@@ -46,6 +46,7 @@ fn ccall_arrays_to_cones(
             Some(ConeEnumJLRS::NonnegativeConeT) => NonnegativeConeT(cones_ints[i] as usize),
             Some(ConeEnumJLRS::SecondOrderConeT) => SecondOrderConeT(cones_ints[i] as usize),
             Some(ConeEnumJLRS::ExponentialConeT) => ExponentialConeT(),
+            Some(ConeEnumJLRS::PowerConeT) => PowerConeT(_cones_floats[i]),
             None => panic!("Received unrecognized cone type"),
         };
         cones.push(cone)

@@ -126,6 +126,10 @@ function ccall_cones_to_arrays(cones::Vector{Clarabel.SupportedCone})
         elseif isa(cone, Clarabel.ExponentialConeT)
             cone_enums[i] = UInt8(ExponentialConeT::ConeEnumJLRS) 
 
+        elseif isa(cone, Clarabel.PowerConeT)
+            cone_enums[i] = UInt8(PowerConeT::ConeEnumJLRS) 
+            cone_floats[i] = cone.α
+
         else 
             error("Cone type ", typeof(cone), " is not supported through this interface.");
         end

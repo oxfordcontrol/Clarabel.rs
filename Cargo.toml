@@ -28,6 +28,10 @@ name = "socp"
 path = "examples/rust/example_socp.rs"
 
 [[example]]
+name = "powcone"
+path = "examples/rust/example_powcone.rs"
+
+[[example]]
 name = "expcone"
 path = "examples/rust/example_expcone.rs"
 
