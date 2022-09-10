@@ -5,7 +5,7 @@ use crate::algebra::{FloatT, MatrixShape, VectorMath};
 mod compositecone;
 mod expcone;
 mod nonnegativecone;
-//mod powcone;
+mod powcone;
 mod socone;
 mod zerocone;
 
@@ -13,7 +13,7 @@ mod zerocone;
 pub use compositecone::*;
 pub use expcone::*;
 pub use nonnegativecone::*;
-//pub use powcone::*;
+pub use powcone::*;
 pub use socone::*;
 pub use zerocone::*;
 
@@ -81,14 +81,18 @@ pub trait Cone<T: FloatT> {
     //     Δs = - ( Wᵀ(λ \ ds) + WᵀW Δz)
     // The "offset" in Δs_from_Δz_offset! is then Wᵀ(λ \ ds)
     //
-    // Not that the Δs_from_Δz_offset! function is only needed in the
+    // Note that the Δs_from_Δz_offset! function is only needed in the
     // general combined step direction.   In the affine step direction,
     // we have the identity Wᵀ(λ \ (λ ∘ λ )) = s.  The symmetric and
     // nonsymmetric cases coincide and offset is taken directly as s.
     //
+    // The affine step directions terms steps_z and step_s are
+    // passed to combined_ds_shift as mutable.  Once they have been
+    // used to compute the combined ds shift they are no longer needed,
+    // so may be modified in place as workspace.
     // ---------------------------------------------------------
     fn affine_ds(&self, ds: &mut [T], s: &[T]);
-    fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &[T], step_s: &[T], σμ: T);
+    fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T);
     fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]);
 
     // Find the maximum step length in some search direction
@@ -134,7 +138,13 @@ pub trait Nonsymmetric3DCone<T: FloatT> {}
 // Provides functions that are identical across types
 
 pub(super) trait SymmetricConeUtils<T: FloatT> {
-    fn _combined_ds_shift_symmetric(&self, shift: &mut [T], step_z: &[T], step_s: &[T], σμ: T);
+    fn _combined_ds_shift_symmetric(
+        &self,
+        shift: &mut [T],
+        step_z: &mut [T],
+        step_s: &mut [T],
+        σμ: T,
+    );
     fn _Δs_from_Δz_offset_symmetric(&self, out: &mut [T], ds: &[T], work: &mut [T]);
 }
 
@@ -148,7 +158,13 @@ where
     // The affine term (computed in affine_ds!) is λ ∘ λ
     // The shift term is W⁻¹Δs ∘ WΔz - σμe
 
-    fn _combined_ds_shift_symmetric(&self, shift: &mut [T], step_z: &[T], step_s: &[T], σμ: T) {
+    fn _combined_ds_shift_symmetric(
+        &self,
+        shift: &mut [T],
+        step_z: &mut [T],
+        step_s: &mut [T],
+        σμ: T,
+    ) {
         // The shift must be assembled carefully if we want to be economical with
         // allocated memory.  Will modify the step.z and step.s in place since
         // they are from the affine step and not needed anymore.
@@ -159,13 +175,17 @@ where
         // shift vector used as workspace for a few steps
         let tmp = shift;
 
+        //PJG : order of arguments is now like Julia, but it fails because
+        //step_z and step_s must be taken as mutable so that I can modify them
+        //in place.
+
         //Δz <- Wdz
         tmp.copy_from(step_z);
-        self.mul_W(MatrixShape::N, tmp, step_z, T::one(), T::zero());
+        self.mul_W(MatrixShape::N, step_z, tmp, T::one(), T::zero());
 
         //Δs <- W⁻¹Δs
         tmp.copy_from(step_s);
-        self.mul_Winv(MatrixShape::T, tmp, step_s, T::one(), T::zero());
+        self.mul_Winv(MatrixShape::T, step_s, tmp, T::one(), T::zero());
 
         //shift = W⁻¹Δs ∘ WΔz - σμe
         let shift = tmp;
@@ -188,10 +208,11 @@ where
 // --------------------------------------
 // Trait with blanket implementation for the 3 dimensional
 // Exp and Pow cones
-
+#[allow(clippy::too_many_arguments)]
 pub(super) trait Nonsymmetric3DConeUtils<T: FloatT> {
     fn step_length_3d_cone(
         &self,
+        wq: &mut [T],
         dq: &[T],
         q: &[T],
         α_init: T,
@@ -216,6 +237,7 @@ where
 
     fn step_length_3d_cone(
         &self,
+        wq: &mut [T],
         dq: &[T],
         q: &[T],
         α_init: T,
@@ -223,18 +245,15 @@ where
         backtrack: T,
         is_in_cone_fcn: impl Fn(&[T]) -> bool,
     ) -> T {
-        // fixed length work vector
-        let mut wq = [T::zero(); 3];
-
         let mut α = α_init;
 
         loop {
             // wq = q + α*dq
             for i in 0..3 {
-                wq[i] = q[i] + α * dq[i]
+                wq[i] = q[i] + α * dq[i];
             }
 
-            if is_in_cone_fcn(&wq) {
+            if is_in_cone_fcn(wq) {
                 break;
             }
             α *= backtrack;

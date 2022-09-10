@@ -47,6 +47,7 @@ where
         _print_conedims_by_type(cones, SupportedCone::NonnegativeConeT(0));
         _print_conedims_by_type(cones, SupportedCone::SecondOrderConeT(0));
         _print_conedims_by_type(cones, SupportedCone::ExponentialConeT());
+        _print_conedims_by_type(cones, SupportedCone::PowerConeT(T::zero()));
         //_print_conedims_by_type(&cones, SupportedCone::PSDTriangleConeT(0));
 
         println!();

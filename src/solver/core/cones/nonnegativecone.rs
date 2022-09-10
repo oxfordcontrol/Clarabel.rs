@@ -103,11 +103,13 @@ where
         }
     }
 
-    fn combined_ds_shift(&mut self, dz: &mut [T], step_z: &[T], step_s: &[T], σμ: T) {
+    fn combined_ds_shift(&mut self, dz: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T) {
+        //PJG: could be done faster for nonnegatives?
         self._combined_ds_shift_symmetric(dz, step_z, step_s, σμ);
     }
 
     fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
+        //PJG: could be done faster for nonnegatives?
         self._Δs_from_Δz_offset_symmetric(out, ds, work);
     }
 

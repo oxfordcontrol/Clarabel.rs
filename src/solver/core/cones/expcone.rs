@@ -111,7 +111,7 @@ where
         ds.copy_from(s);
     }
 
-    fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &[T], step_s: &[T], σμ: T) {
+    fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T) {
         //3rd order correction requires input variables.z
 
         let mut η = [T::zero(); 3];
@@ -138,8 +138,11 @@ where
         let step = settings.linesearch_backtrack_step;
         let αmin = settings.min_terminate_step_length;
 
-        let αz = self.step_length_3d_cone(dz, z, αmax, αmin, step, _is_dual_feasible_expcone);
-        let αs = self.step_length_3d_cone(ds, s, αmax, αmin, step, _is_primal_feasible_expcone);
+        // final backtracked position
+        let wq = &mut [T::zero(); 3];
+
+        let αz = self.step_length_3d_cone(wq, dz, z, αmax, αmin, step, _is_dual_feasible_expcone);
+        let αs = self.step_length_3d_cone(wq, ds, s, αmax, αmin, step, _is_primal_feasible_expcone);
 
         (αz, αs)
     }
@@ -150,15 +153,15 @@ where
         let cur_z = [z[0] + α * dz[0], z[1] + α * dz[1], z[2] + α * dz[2]];
         let cur_s = [s[0] + α * ds[0], s[1] + α * ds[1], s[2] + α * ds[2]];
 
-        barrier += _barrier_dual(&cur_z);
-        barrier += _barrier_primal(&cur_s);
+        barrier += self.barrier_dual(&cur_z);
+        barrier += self.barrier_primal(&cur_s);
 
         barrier
     }
 }
 
 // implement this marker trait to get access to
-// functions to common to exp and pow cones
+// functions common to exp and pow cones
 impl<T> Nonsymmetric3DCone<T> for ExponentialCone<T> where T: FloatT {}
 
 // -----------------------------------------
@@ -166,35 +169,7 @@ impl<T> Nonsymmetric3DCone<T> for ExponentialCone<T> where T: FloatT {}
 //
 // Primal exponential cone: s3 ≥ s2*e^(s1/s2), s3,s2 > 0
 // Dual exponential cone: z3 ≥ -z1*e^(z2/z1 - 1), z3 > 0, z1 < 0
-// We use the dual barrier function:
-// f*(z) = -log(z2 - z1 - z1*log(z3/-z1)) - log(-z1) - log(z3)
-// -----------------------------------------
-
-fn _barrier_dual<T>(z: &[T]) -> T
-where
-    T: FloatT,
-{
-    // Dual barrier
-    let l = (-z[2] / z[0]).logsafe();
-    -(-z[2] * z[0]).logsafe() - (z[1] - z[0] - z[0] * l).logsafe()
-}
-
-fn _barrier_primal<T>(s: &[T]) -> T
-where
-    T: FloatT,
-{
-    // Primal barrier:
-    // f(s) = ⟨s,g(s)⟩ - f*(-g(s))
-    //      = -2*log(s2) - log(s3) - log((1-barω)^2/barω) - 3,
-    // where barω = ω(1 - s1/s2 - log(s2) - log(s3))
-    // NB: ⟨s,g(s)⟩ = -3 = - ν
-
-    let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
-
-    let ω = (ω - T::one()) * (ω - T::one()) / ω;
-
-    -ω.logsafe() - (s[1].logsafe()) * ((2.).as_T()) - s[2].logsafe() - (3.).as_T()
-}
+// ----------------------------------------
 
 // Returns true if s is primal feasible
 fn _is_primal_feasible_expcone<T>(s: &[T]) -> bool
@@ -226,7 +201,6 @@ where
 }
 
 // Compute the primal gradient of f(s) at s
-// solve it by the Newton-Raphson method
 fn _gradient_primal<T>(g: &mut [T], s: &[T])
 where
     T: FloatT,
@@ -246,11 +220,6 @@ where
 //  Algorithms for Unsymmetric Cone Optimization and an
 //  Implementation for Problems with the Exponential Cone
 //  https://web.stanford.edu/group/SOL/dissertations/ThesisAkleAdobe-augmented.pdf
-
-//PJG: This function is crying out for a unit test,
-//as are all of the other fiddly functions in this file
-//I had to move a lot of constant terms around because
-//I couldn't get two sided multiplication to work initially
 
 fn _wright_omega<T>(z: T) -> T
 where
@@ -340,6 +309,34 @@ impl<T> ExponentialCone<T>
 where
     T: FloatT,
 {
+    fn barrier_dual(&self, z: &[T]) -> T
+    where
+        T: FloatT,
+    {
+        // Dual barrier:
+        // f*(z) = -log(z2 - z1 - z1*log(z3/-z1)) - log(-z1) - log(z3)
+        // -----------------------------------------
+        let l = (-z[2] / z[0]).logsafe();
+        -(-z[2] * z[0]).logsafe() - (z[1] - z[0] - z[0] * l).logsafe()
+    }
+
+    fn barrier_primal(&self, s: &[T]) -> T
+    where
+        T: FloatT,
+    {
+        // Primal barrier:
+        // f(s) = ⟨s,g(s)⟩ - f*(-g(s))
+        //      = -2*log(s2) - log(s3) - log((1-barω)^2/barω) - 3,
+        // where barω = ω(1 - s1/s2 - log(s2) - log(s3))
+        // NB: ⟨s,g(s)⟩ = -3 = - ν
+
+        let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
+
+        let ω = (ω - T::one()) * (ω - T::one()) / ω;
+
+        -ω.logsafe() - (s[1].logsafe()) * ((2.).as_T()) - s[2].logsafe() - (3.).as_T()
+    }
+
     fn higher_correction(&mut self, η: &mut [T; 3], ds: &[T], v: &[T])
     where
         T: FloatT,
@@ -348,6 +345,9 @@ where
         let H = &self.H_dual;
         let mut u = [T::zero(); 3];
         let z = &self.z;
+
+        //Fine to use symmetric here because the upper
+        //triangle is ignored anyway
         let mut cholH = DenseMatrixSym3::zeros();
 
         // solve H*u = ds
@@ -430,15 +430,13 @@ where
         grad[1] = -c2;
         grad[2] = (c2 * z[0] - T::one()) / z[2];
 
-        // compute_Hessian(K,z,H)
+        // compute_Hessian(K,z,H).   Type is symmetric, so
+        // only need to assign upper triangle.
         H[(0, 0)] = (r * r - z[0] * r + l * l * z[0] * z[0]) / (r * z[0] * z[0] * r);
         H[(0, 1)] = -l / (r * r);
-        H[(1, 0)] = H[(0, 1)];
         H[(1, 1)] = (r * r).recip();
         H[(0, 2)] = (z[1] - z[0]) / (r * r * z[2]);
-        H[(2, 0)] = H[(0, 2)];
         H[(1, 2)] = -z[0] / (r * r * z[2]);
-        H[(2, 1)] = H[(1, 2)];
         H[(2, 2)] = (r * r - z[0] * r + z[0] * z[0]) / (r * r * z[2] * z[2]);
     }
 
@@ -448,6 +446,10 @@ where
     }
 
     //implements primal dual scaling
+    //PJG: This is identical to the power cone except
+    //for the way the gradient is called.   A few other
+    //functions are the same / close as well.   Need to
+    //consolidate this into a 3d cone Trait.
     fn use_primal_dual_scaling(&mut self, s: &[T], z: &[T]) {
         let three: T = (3.).as_T();
 
@@ -461,7 +463,7 @@ where
 
         // compute zt,st,μt locally
         // NB: zt,st have different sign convention wrt Mosek paper
-        _gradient_primal(&mut zt, &s);
+        _gradient_primal(&mut zt, s);
         let dot_sz = s.dot(z);
         let μ = dot_sz / three;
         let μt = st[..].dot(&zt[..]) / three;
@@ -492,7 +494,7 @@ where
         }
 
         // Hs as a workspace (only need to write the upper triangle)
-        Hs.copy_from(&H_dual);
+        Hs.copy_from(H_dual);
         for i in 0..3 {
             for j in i..3 {
                 Hs[(i, j)] -= st[i] * st[j] / three + tmp[i] * tmp[j] / de2;
@@ -508,7 +510,7 @@ where
         axis_z[2] = z[0] * zt[1] - z[1] * zt[0];
         axis_z.normalize();
 
-        // HBFGS = s*s'/⟨s,z⟩ + δs*δs'/⟨δs,δz⟩ + t*axis_z*axis_z'
+        // Hs = s*s'/⟨s,z⟩ + δs*δs'/⟨δs,δz⟩ + t*axis_z*axis_z'
         // (only need to write the upper triangle)
         for i in 0..3 {
             for j in i..3 {

@@ -32,8 +32,10 @@ pub enum SupportedCone<T> {
     ///
     /// This cone takes no parameters
     ExponentialConeT(),
-    #[doc(hidden)]
-    PlaceHolderT(usize, T), // params: cone_dim, exponent
+    /// The power cone in R^3.
+    ///
+    /// The parameter indicates the power.
+    PowerConeT(T),
 }
 
 impl<T> SupportedCone<T> {
@@ -45,7 +47,7 @@ impl<T> SupportedCone<T> {
             SupportedCone::NonnegativeConeT(_) => "NonnegativeConeT",
             SupportedCone::SecondOrderConeT(_) => "SecondOrderConeT",
             SupportedCone::ExponentialConeT() => "ExponentialConeT",
-            SupportedCone::PlaceHolderT(_, _) => "PlaceHolderConeT",
+            SupportedCone::PowerConeT(_) => "PowerConeT",
         }
     }
 
@@ -59,7 +61,7 @@ impl<T> SupportedCone<T> {
             SupportedCone::NonnegativeConeT(dim) => *dim,
             SupportedCone::SecondOrderConeT(dim) => *dim,
             SupportedCone::ExponentialConeT() => 3,
-            SupportedCone::PlaceHolderT(dim, _) => *dim,
+            SupportedCone::PowerConeT(_) => 3,
             // For PSDTriangleT, we will need
             // (dim*(dim+1)) >> 1
         }
@@ -127,7 +129,7 @@ pub fn make_cone<T: FloatT>(cone: SupportedCone<T>) -> BoxedCone<T> {
         SupportedCone::ZeroConeT(dim) => Box::new(ZeroCone::<T>::new(dim)),
         SupportedCone::SecondOrderConeT(dim) => Box::new(SecondOrderCone::<T>::new(dim)),
         SupportedCone::ExponentialConeT() => Box::new(ExponentialCone::<T>::new()),
-        SupportedCone::PlaceHolderT(_, _) => unimplemented!(),
+        SupportedCone::PowerConeT(α) => Box::new(PowerCone::<T>::new(α)),
     }
 }
 
@@ -184,7 +186,7 @@ where
         for t in types.iter() {
             _is_symmetric &= !matches!(
                 t,
-                SupportedCone::ExponentialConeT() | SupportedCone::PlaceHolderT(_, _)
+                SupportedCone::ExponentialConeT() | SupportedCone::PowerConeT(_)
             );
 
             cones.push(make_cone(*t));
@@ -391,7 +393,7 @@ where
         }
     }
 
-    fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &[T], step_s: &[T], σμ: T) {
+    fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T) {
         // Here we must first explicitly borrow the subvector
         // of cones, since trying to access it using self.iter_mut
         // causes a borrow conflict with ranges.
@@ -405,8 +407,8 @@ where
 
         for (cone, rng) in cones.iter_mut().zip(rngs) {
             let shifti = &mut shift[rng.clone()];
-            let step_zi = &step_z[rng.clone()];
-            let step_si = &step_s[rng.clone()];
+            let step_zi = &mut step_z[rng.clone()];
+            let step_si = &mut step_s[rng.clone()];
             cone.combined_ds_shift(shifti, step_zi, step_si, σμ);
         }
     }

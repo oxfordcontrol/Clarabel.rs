@@ -84,7 +84,9 @@ where
         ds.fill(T::zero());
     }
 
-    fn combined_ds_shift(&mut self, shift: &mut [T], _step_z: &[T], _step_s: &[T], _σμ: T) {
+    fn combined_ds_shift(
+        &mut self, shift: &mut [T], _step_z: &mut [T], _step_s: &mut [T], _σμ: T
+    ) {
         shift.fill(T::zero());
     }
 

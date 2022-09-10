@@ -11,7 +11,7 @@ use crate::solver::core::{
 // ---------------
 
 /// Standard-form solver type implementing the [Variables](crate::solver::core::traits::Variables) trait
-
+#[derive(Debug)]
 pub struct DefaultVariables<T> {
     /// scaled primal variables
     pub x: Vec<T>,
@@ -84,7 +84,7 @@ where
         // ds is different for symmetric and asymmetric cones:
         // Symmetric cones: d.s = λ ◦ λ + W⁻¹Δs ∘ WΔz − σμe
         // Asymmetric cones: d.s = s + σμ*g(z)
-        cones.combined_ds_shift(&mut self.z, &step.z, &step.s, dotσμ);
+        cones.combined_ds_shift(&mut self.z, &mut step.z, &mut step.s, dotσμ);
 
         //We are relying on d.s = affine_ds already here
         self.s.axpby(T::one(), &self.z, T::one());

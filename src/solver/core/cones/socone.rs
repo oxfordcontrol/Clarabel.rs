@@ -74,7 +74,7 @@ where
 
         let α = _soc_residual(z);
 
-        if α < T::epsilon() {
+        if α < T::sqrt(T::epsilon()) {
             //done in two stages since otherwise (1.-α) = -α for
             //large α, which makes z exactly 0.0 (or worse, -0.0 )
             z[0] -= α;
@@ -163,8 +163,8 @@ where
         self.circ_op(ds, &self.λ, &self.λ);
     }
 
-    fn combined_ds_shift(&mut self, dz: &mut [T], step_z: &[T], step_s: &[T], σμ: T) {
-        self._combined_ds_shift_symmetric(dz, step_z, step_s, σμ);
+    fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T) {
+        self._combined_ds_shift_symmetric(shift, step_z, step_s, σμ);
     }
 
     fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
@@ -328,10 +328,12 @@ where
     // See §1.4: Goldberg, ACM Computing Surveys, 1991
     // https://dl.acm.org/doi/pdf/10.1145/103162.103163
 
-    let t = if b >= T::zero() {
-        -b - T::sqrt(d)
-    } else {
-        -b + T::sqrt(d)
+    let t = {
+        if b >= T::zero() {
+            -b - T::sqrt(d)
+        } else {
+            -b + T::sqrt(d)
+        }
     };
 
     let r1: T = (two * c) / t;
@@ -344,8 +346,8 @@ where
     T::min(αmax, T::min(r1, r2))
 }
 
-// We move the actual implementations of gemv_{W,Winv} outside
-// here.  The operation λ = Wz produces a borrow conflict
+// Must move the actual implementations of W*x to an outside
+// fcn.  The operation λ = Wz produces a borrow conflict
 // otherwise because λ is part of the cone's internal data
 // and we can't borrow self and &mut λ at the same time.
 
