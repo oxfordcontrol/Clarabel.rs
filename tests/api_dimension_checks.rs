@@ -10,7 +10,7 @@ fn api_dim_check_data() -> (
     Vec<f64>,
     CscMatrix<f64>,
     Vec<f64>,
-    Vec<SupportedCone<f64>>,
+    Vec<SupportedConeT<f64>>,
 ) {
     let P = CscMatrix::<f64>::spalloc(4, 4, 0);
     let q = vec![0.; 4];
