@@ -2,7 +2,7 @@ use crate::algebra::*;
 
 use super::*;
 use crate::solver::core::{
-    cones::{CompositeCone, SupportedCone},
+    cones::{CompositeCone, Cone, SupportedConeT},
     traits::InfoPrint,
 };
 use std::time::Duration;
@@ -43,11 +43,11 @@ where
         println!("  cones (total) = {}", cones.len());
 
         //All dims here are dummies since we just care about the cone type
-        _print_conedims_by_type(cones, SupportedCone::ZeroConeT(0));
-        _print_conedims_by_type(cones, SupportedCone::NonnegativeConeT(0));
-        _print_conedims_by_type(cones, SupportedCone::SecondOrderConeT(0));
-        _print_conedims_by_type(cones, SupportedCone::ExponentialConeT());
-        _print_conedims_by_type(cones, SupportedCone::PowerConeT(T::zero()));
+        _print_conedims_by_type(cones, SupportedConeT::ZeroConeT(0));
+        _print_conedims_by_type(cones, SupportedConeT::NonnegativeConeT(0));
+        _print_conedims_by_type(cones, SupportedConeT::SecondOrderConeT(0));
+        _print_conedims_by_type(cones, SupportedConeT::ExponentialConeT());
+        _print_conedims_by_type(cones, SupportedConeT::PowerConeT(T::zero()));
         //_print_conedims_by_type(&cones, SupportedCone::PSDTriangleConeT(0));
 
         println!();
@@ -195,7 +195,7 @@ fn _get_precision_string<T: FloatT>() -> String {
     (::std::mem::size_of::<T>() * 8).to_string()
 }
 
-fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: SupportedCone<T>) {
+fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: SupportedConeT<T>) {
     let maxlistlen = 5;
 
     //skip if there are none of this type

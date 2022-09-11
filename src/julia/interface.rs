@@ -3,7 +3,7 @@
 use super::types::*;
 use crate::solver::{
     core::{
-        cones::{SupportedCone, SupportedCone::*},
+        cones::{SupportedConeT, SupportedConeT::*},
         IPSolver,
     },
     implementations::default::*,
@@ -29,8 +29,8 @@ fn ccall_arrays_to_cones(
     cones_enums: &VectorJLRS<u8>,
     cones_ints: &VectorJLRS<u64>,
     cones_floats: &VectorJLRS<f64>,
-) -> Vec<SupportedCone<f64>> {
-    let mut cones: Vec<SupportedCone<f64>> = Vec::new();
+) -> Vec<SupportedConeT<f64>> {
+    let mut cones: Vec<SupportedConeT<f64>> = Vec::new();
 
     assert_eq!(cones_enums.len(), cones_ints.len());
     assert_eq!(cones_enums.len(), cones_floats.len());

@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
 use crate::algebra::*;
-use crate::solver::core::cones::{CompositeCone, SupportedCone};
+use crate::solver::core::cones::*;
+use crate::solver::core::cones::*;
 
 use super::*;
 
@@ -48,10 +49,15 @@ impl LDLDataMap {
         let mut SOC_u = Vec::<Vec<usize>>::with_capacity(nsoc);
         let mut SOC_v = Vec::<Vec<usize>>::with_capacity(nsoc);
 
-        for (i, cone) in cones.iter().enumerate() {
-            if matches!(cones.types[i], SupportedCone::SecondOrderConeT(_)) {
-                SOC_u.push(vec![0; cone.numel()]);
-                SOC_v.push(vec![0; cone.numel()]);
+        for cone in cones.iter() {
+            // `cone` here will be of our SupportedCone enum wrapper, so
+            //  we match on it and see if can extract an SecondOrderCone `K`
+            match cone {
+                SupportedCone::SecondOrderCone(K) => {
+                    SOC_u.push(vec![0; K.numel()]);
+                    SOC_v.push(vec![0; K.numel()]);
+                }
+                _ => {}
             }
         }
 
