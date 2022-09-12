@@ -5,9 +5,9 @@ use crate::algebra::*;
 use std::ops::{Index, IndexMut};
 
 // Dense matrix types are restricted to the crate
-// PJG: Implements a basic symmetric 3x3 container
+// NB: Implements a basic symmetric 3x3 container
 // to support power and exponential cones.
-// For PSDs we will want something more general
+// For PSDs we will want something more general that
 // is compatible (interchangeably) with nalgebra /
 // ndarray / some other blas like interface
 //

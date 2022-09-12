@@ -202,15 +202,17 @@ where
 }
 
 // Compute the primal gradient of f(s) at s
-fn _gradient_primal<T>(g: &mut [T], s: &[T])
+fn _gradient_primal<T>(s: &[T]) -> [T; 3]
 where
     T: FloatT,
 {
+    let mut g = [T::zero(); 3];
     let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
 
     g[0] = T::one() / ((ω - T::one()) * s[1]);
     g[1] = g[0] + g[0] * ((ω * s[1] / s[2]).logsafe()) - T::one() / s[1];
     g[2] = ω / ((T::one() - ω) * s[2]);
+    g
 }
 
 // ω(z) is the Wright-Omega function
@@ -457,14 +459,13 @@ where
         let Hs = &mut self.Hs;
         let H_dual = &self.H_dual;
 
-        let mut zt = [T::zero(); 3];
         let st = &mut self.grad;
         let mut δs = [T::zero(); 3];
         let mut tmp = [T::zero(); 3];
 
         // compute zt,st,μt locally
         // NB: zt,st have different sign convention wrt Mosek paper
-        _gradient_primal(&mut zt, s);
+        let zt: [T; 3] = _gradient_primal(s);
         let dot_sz = s.dot(z);
         let μ = dot_sz / three;
         let μt = st[..].dot(&zt[..]) / three;
@@ -481,43 +482,49 @@ where
         let de1 = μ * μt - T::one();
         let de2 = H_dual.quad_form(&zt, &zt) - three * μt * μt;
 
-        if de1.abs() < T::sqrt(T::epsilon()) {
+        // use the primal-dual scaling
+        if T::abs(de1) > T::sqrt(T::epsilon()) &&      // too close to central path
+           T::abs(de2) > T::epsilon()          &&      // others for numerical stability
+           dot_sz > T::zero()                  &&
+           dot_δsz > T::zero()
+        {
+            // compute t
+            // tmp = μt*st - H*zt
+            H_dual.mul(&mut tmp, &zt);
+            for i in 0..3 {
+                tmp[i] = μt * st[i] - tmp[i]
+            }
+
+            // Hs as a workspace (only need to write the upper triangle)
+            Hs.copy_from(H_dual);
+            for i in 0..3 {
+                for j in i..3 {
+                    Hs[(i, j)] -= st[i] * st[j] / three + tmp[i] * tmp[j] / de2;
+                }
+            }
+            let t = μ * Hs.norm_fro(); //Frobenius norm
+
+            // generate the remaining axis
+            // axis_z = cross(z,zt)
+            let mut axis_z = tmp;
+            axis_z[0] = z[1] * zt[2] - z[2] * zt[1];
+            axis_z[1] = z[2] * zt[0] - z[0] * zt[2];
+            axis_z[2] = z[0] * zt[1] - z[1] * zt[0];
+            axis_z.normalize();
+
+            // Hs = s*s'/⟨s,z⟩ + δs*δs'/⟨δs,δz⟩ + t*axis_z*axis_z'
+            // (only need to write the upper triangle)
+            for i in 0..3 {
+                for j in i..3 {
+                    Hs[(i, j)] =
+                        s[i] * s[j] / dot_sz + δs[i] * δs[j] / dot_δsz + t * axis_z[i] * axis_z[j];
+                }
+            }
+
+        // use the dual scaling
+        } else {
             // Hs = μH when s,z are on the central path
             self.use_dual_scaling(μ);
-            return;
-        }
-
-        // compute t
-        // tmp = μt*st - H*zt
-        H_dual.mul(&mut tmp, &zt);
-        for i in 0..3 {
-            tmp[i] = μt * st[i] - tmp[i]
-        }
-
-        // Hs as a workspace (only need to write the upper triangle)
-        Hs.copy_from(H_dual);
-        for i in 0..3 {
-            for j in i..3 {
-                Hs[(i, j)] -= st[i] * st[j] / three + tmp[i] * tmp[j] / de2;
-            }
-        }
-        let t = μ * Hs.norm_fro(); //Frobenius norm
-
-        // generate the remaining axis
-        // axis_z = cross(z,zt)
-        let mut axis_z = tmp;
-        axis_z[0] = z[1] * zt[2] - z[2] * zt[1];
-        axis_z[1] = z[2] * zt[0] - z[0] * zt[2];
-        axis_z[2] = z[0] * zt[1] - z[1] * zt[0];
-        axis_z.normalize();
-
-        // Hs = s*s'/⟨s,z⟩ + δs*δs'/⟨δs,δz⟩ + t*axis_z*axis_z'
-        // (only need to write the upper triangle)
-        for i in 0..3 {
-            for j in i..3 {
-                Hs[(i, j)] =
-                    s[i] * s[j] / dot_sz + δs[i] * δs[j] / dot_δsz + t * axis_z[i] * axis_z[j];
-            }
         }
     }
 }

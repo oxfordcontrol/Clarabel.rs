@@ -124,8 +124,6 @@ where
         steptype: &'static str,
         settings: &DefaultSettings<T>,
     ) -> bool {
-        //PJG: steptype should be an enum in Rust
-        // Probably also in Julia, although symbol is not too bad
         let (x1, z1) = (&mut self.x1, &mut self.z1);
         let (x2, z2) = (&self.x2, &self.z2); //from constant solve, so not mut
         let (workx, workz) = (&mut self.workx, &mut self.workz);
