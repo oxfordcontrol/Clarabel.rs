@@ -22,6 +22,7 @@ pub struct ExponentialCone<T: FloatT = f64> {
     z: [T; 3],
 }
 
+#[allow(clippy::new_without_default)]
 impl<T> ExponentialCone<T>
 where
     T: FloatT,

@@ -63,7 +63,7 @@ where
     ) -> Self {
         // solving in sparse format.  Need this many
         // extra variables for SOCs
-        let p = 2 * cones.type_count("SecondOrderConeT");
+        let p = 2 * cones.type_count(SupportedConeTag::SecondOrderCone);
 
         // LHS/RHS/work for iterative refinement
         let x = vec![T::zero(); n + m + p];
@@ -127,37 +127,27 @@ where
         // update the scaled u and v columns.
         let mut cidx = 0; // which of the SOCs are we working on?
 
-        for (i, cone) in cones.iter().enumerate() {
-            if matches!(cones.types[i], SupportedCone::SecondOrderConeT(_)) {
-                //here we need to recover the inner SOC value for
-                //this cone so we can access its fields
+        for cone in cones.iter() {
+            // `cone` here will be of our SupportedCone enum wrapper, so
+            //  we can extract a SecondOrderCone `soc`
+            if let SupportedCone::SecondOrderCone(soc) = cone {
+                let η2 = T::powi(soc.η, 2);
 
-                let K = cone.as_any().downcast_ref::<SecondOrderCone<T>>();
+                //off diagonal columns (or rows)s
+                let KKT = &mut self.KKT;
+                let ldlsolver = &mut self.ldlsolver;
 
-                match K {
-                    None => {
-                        panic!("cone type list is corrupt.");
-                    }
-                    Some(K) => {
-                        let η2 = T::powi(K.η, 2);
+                _update_values(ldlsolver, KKT, &map.SOC_u[cidx], &soc.u);
+                _update_values(ldlsolver, KKT, &map.SOC_v[cidx], &soc.v);
+                _scale_values(ldlsolver, KKT, &map.SOC_u[cidx], -η2);
+                _scale_values(ldlsolver, KKT, &map.SOC_v[cidx], -η2);
 
-                        //off diagonal columns (or rows)s
-                        let KKT = &mut self.KKT;
-                        let ldlsolver = &mut self.ldlsolver;
+                //add η^2*(-1/1) to diagonal in the extended rows/cols
+                _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2]], &[-η2; 1]);
+                _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
 
-                        _update_values(ldlsolver, KKT, &map.SOC_u[cidx], &K.u);
-                        _update_values(ldlsolver, KKT, &map.SOC_v[cidx], &K.v);
-                        _scale_values(ldlsolver, KKT, &map.SOC_u[cidx], -η2);
-                        _scale_values(ldlsolver, KKT, &map.SOC_v[cidx], -η2);
-
-                        //add η^2*(-1/1) to diagonal in the extended rows/cols
-                        _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2]], &[-η2; 1]);
-                        _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
-
-                        cidx += 1;
-                    }
-                } //end match
-            } //end if SOC
+                cidx += 1;
+            } //end match
         } //end for
 
         self.regularize_and_refactor(settings)

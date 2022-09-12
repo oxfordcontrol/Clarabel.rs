@@ -342,10 +342,10 @@ where
         self.solution
             .finalize(&self.data, &self.variables, &self.info);
 
+        self.info.print_footer(&self.settings);
+
         //stow the timers back into Option in the solver struct
         self.timers.replace(timers);
-
-        self.info.print_footer(&self.settings);
     }
 }
 

@@ -547,9 +547,9 @@ fn _factor_inner<T: FloatT>(
                     //Safety : Here the Lij index comes from the rowval
                     //field of the sparse L factor matrix, and should
                     //always be bounded by the matrix dimension.
-                    let Lx_inner = Lx.get_unchecked(f..l);
-                    let Li_inner = Li.get_unchecked(f..l);
-                    for (&Lxj, &Lij) in Lx_inner.iter().zip(Li_inner.iter()) {
+                    for j in f..l {
+                        let Lxj = *Lx.get_unchecked(j);
+                        let Lij = *Li.get_unchecked(j);
                         *(y_vals.get_unchecked_mut(Lij)) -= Lxj * y_vals_cidx;
                     }
                 }
@@ -640,9 +640,9 @@ fn _lsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) 
             let xi = *x.get_unchecked(i);
             let f = *Lp.get_unchecked(i);
             let l = *Lp.get_unchecked(i + 1);
-            let Lx = Lx.get_unchecked(f..l);
-            let Li = Li.get_unchecked(f..l);
-            for (&Lij, &Lxj) in Li.iter().zip(Lx.iter()) {
+            for j in f..l {
+                let Lxj = *Lx.get_unchecked(j);
+                let Lij = *Li.get_unchecked(j);
                 *(x.get_unchecked_mut(Lij)) -= Lxj * xi;
             }
         }
@@ -656,9 +656,9 @@ fn _ltsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T])
             let mut s = T::zero();
             let f = *Lp.get_unchecked(i);
             let l = *Lp.get_unchecked(i + 1);
-            let Lx = Lx.get_unchecked(f..l);
-            let Li = Li.get_unchecked(f..l);
-            for (&Lij, &Lxj) in Li.iter().zip(Lx.iter()) {
+            for j in f..l {
+                let Lxj = *Lx.get_unchecked(j);
+                let Lij = *Li.get_unchecked(j);
                 s += Lxj * (*x.get_unchecked(Lij));
             }
             *x.get_unchecked_mut(i) -= s;

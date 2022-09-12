@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 #![allow(clippy::new_without_default)]
 
-use crate::solver::core::{cones::SupportedCone, cones::SupportedCone::*};
+use crate::solver::core::{cones::SupportedConeT, cones::SupportedConeT::*};
 use core::ops::Deref;
 use pyo3::{exceptions::PyTypeError, prelude::*};
 use std::fmt::Write;
@@ -111,10 +111,10 @@ impl PyPowerConeT {
 // put a dummy wrapper around it here.
 
 #[derive(Debug)]
-pub struct PySupportedCone(SupportedCone<f64>);
+pub struct PySupportedCone(SupportedConeT<f64>);
 
 impl Deref for PySupportedCone {
-    type Target = SupportedCone<f64>;
+    type Target = SupportedConeT<f64>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -151,7 +151,7 @@ impl<'a> FromPyObject<'a> for PySupportedCone {
     }
 }
 
-pub(crate) fn _py_to_native_cones(cones: Vec<PySupportedCone>) -> Vec<SupportedCone<f64>> {
+pub(crate) fn _py_to_native_cones(cones: Vec<PySupportedCone>) -> Vec<SupportedConeT<f64>> {
     //force a vector of PySupportedCone back into a vector
     //of rust native SupportedCone.  The Py cone is just
     //a wrapper; deref gives us the native object.

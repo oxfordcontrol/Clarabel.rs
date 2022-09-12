@@ -1,8 +1,11 @@
-use crate::algebra::*;
+use crate::{
+    algebra::*,
+    solver::core::cones::{SupportedConeAsTag, SupportedConeTag},
+};
 
 use super::*;
 use crate::solver::core::{
-    cones::{CompositeCone, SupportedCone},
+    cones::{CompositeCone, Cone},
     traits::InfoPrint,
 };
 use std::time::Duration;
@@ -43,11 +46,11 @@ where
         println!("  cones (total) = {}", cones.len());
 
         //All dims here are dummies since we just care about the cone type
-        _print_conedims_by_type(cones, SupportedCone::ZeroConeT(0));
-        _print_conedims_by_type(cones, SupportedCone::NonnegativeConeT(0));
-        _print_conedims_by_type(cones, SupportedCone::SecondOrderConeT(0));
-        _print_conedims_by_type(cones, SupportedCone::ExponentialConeT());
-        _print_conedims_by_type(cones, SupportedCone::PowerConeT(T::zero()));
+        _print_conedims_by_type(cones, SupportedConeTag::ZeroCone);
+        _print_conedims_by_type(cones, SupportedConeTag::NonnegativeCone);
+        _print_conedims_by_type(cones, SupportedConeTag::SecondOrderCone);
+        _print_conedims_by_type(cones, SupportedConeTag::ExponentialCone);
+        _print_conedims_by_type(cones, SupportedConeTag::PowerCone);
         //_print_conedims_by_type(&cones, SupportedCone::PSDTriangleConeT(0));
 
         println!();
@@ -195,25 +198,25 @@ fn _get_precision_string<T: FloatT>() -> String {
     (::std::mem::size_of::<T>() * 8).to_string()
 }
 
-fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: SupportedCone<T>) {
+fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetag: SupportedConeTag) {
     let maxlistlen = 5;
 
     //skip if there are none of this type
-    if !cones.type_counts.contains_key(&conetype.variant_name()) {
+    if !cones.type_counts.contains_key(&conetag) {
         return;
     }
 
     // how many of this type of cone?
-    let name = conetype.variant_name();
-    let count = cones.type_counts[name];
+    let name = conetag.as_str();
+    let count = cones.type_counts[&conetag];
 
-    //let name  = rpad(string(type)[1:end-5],11)  #drops "ConeT part"
-    let name = &name[0..name.len() - 5];
+    // drops trailing "Cone" part of name
+    let name = &name[0..name.len() - 4];
     let name = format!("{:>11}", name);
 
     let mut nvars = Vec::with_capacity(count);
-    for (i, cone) in cones.iter().enumerate() {
-        if cones.types[i] == conetype {
+    for cone in cones.iter() {
+        if cone.as_tag() == conetag {
             nvars.push(cone.numel());
         }
     }

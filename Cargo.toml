@@ -13,6 +13,7 @@ categories = ["mathematics"]
 [dependencies]
 num-traits = "0.2"
 derive_builder = "0.11"
+enum_dispatch = "0.3.8"
 amd = "0.2.2"
 
 [[example]]
@@ -38,6 +39,16 @@ path = "examples/rust/example_expcone.rs"
 [[example]]
 name = "box"
 path = "examples/rust/example_box.rs"
+
+
+
+# -------------------------------
+# custom build profiles 
+# -------------------------------
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+
 
 # ------------------------------
 # Optional julia and python interface 
