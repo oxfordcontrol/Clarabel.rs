@@ -178,155 +178,155 @@ where
 
         timeit! {timers => "solve"; {
 
-                // initialize variables to some reasonable starting point
-                timeit!{timers => "default start"; {
-                    self.default_start();
-                }}
+        // initialize variables to some reasonable starting point
+        timeit!{timers => "default start"; {
+            self.default_start();
+        }}
 
-                timeit!{timers => "IP iteration"; {
+        timeit!{timers => "IP iteration"; {
 
-                // ----------
-                // main loop
-                // ----------
+        // ----------
+        // main loop
+        // ----------
 
-                let mut scaling = ScalingStrategy::PrimalDual;
+        let mut scaling = ScalingStrategy::PrimalDual;
 
-                loop {
+        loop {
 
-                    //update the residuals
-                    //--------------
-                    self.residuals.update(&self.variables, &self.data);
+            //update the residuals
+            //--------------
+            self.residuals.update(&self.variables, &self.data);
 
-                    //calculate duality gap (scaled)
-                    //--------------
-                    μ = self.variables.calc_mu(&self.residuals, &self.cones);
+            //calculate duality gap (scaled)
+            //--------------
+            μ = self.variables.calc_mu(&self.residuals, &self.cones);
 
-                    // record scalar values from most recent iteration.
-                    // This captures μ at iteration zero.
-                    self.info.save_scalars(μ, α, σ, iter);
+            // record scalar values from most recent iteration.
+            // This captures μ at iteration zero.
+            self.info.save_scalars(μ, α, σ, iter);
 
-                    // convergence check and printing
-                    // --------------
-                    self.info.update(
+            // convergence check and printing
+            // --------------
+            self.info.update(
+                &self.data,
+                &self.variables,
+                &self.residuals,&timers);
+
+            notimeit!{timers; {
+                self.info.print_status(&self.settings);
+            }}
+
+            let isdone = self.info.check_termination(&self.residuals, &self.settings, iter);
+
+            // check for termination due to slow progress and update strategy
+            if isdone{
+                    match self.strategy_checkpoint_insufficient_progress(scaling){
+                        StrategyCheckpoint::NoUpdate | StrategyCheckpoint::Fail => {break}
+                        StrategyCheckpoint::Update(s) => {scaling = s; continue}
+                    }
+            }  // allows continuation if new strategy provided
+
+            //increment counter here because we only count
+            //iterations that produce a KKT update
+            iter += 1;
+
+            //
+            // update the scalings
+            // --------------
+            self.variables.scale_cones(&mut self.cones,μ,scaling);
+
+            // Update the KKT system and the constant parts of its solution.
+            // Keep track of the success of each step that calls KKT
+            // --------------
+            //PJG: This should be a Result in Rust, but needs changes down
+            //into the KKT solvers to do that.
+            let mut is_kkt_solve_success : bool;
+            timeit!{timers => "kkt update"; {
+                is_kkt_solve_success = self.kktsystem.update(&self.data, &self.cones, &self.settings);
+            }} // end "kkt update" timer
+
+            // calculate the affine step
+            // --------------
+            self.step_rhs
+                .affine_step_rhs(&self.residuals, &self.variables, &self.cones);
+
+            timeit!{timers => "kkt solve"; {
+                is_kkt_solve_success = is_kkt_solve_success &&
+                self.kktsystem.solve(
+                    &mut self.step_lhs,
+                    &self.step_rhs,
+                    &self.data,
+                    &self.variables,
+                    &self.cones,
+                    "affine",
+                    &self.settings,
+                );
+            }}  //end "kkt solve affine" timer
+
+            // combined step only on affine step success
+            if is_kkt_solve_success {
+
+                //calculate step length and centering parameter
+                // --------------
+                α = self.get_step_length("affine",scaling);
+                σ = self.centering_parameter(α);
+
+                // calculate the combined step and length
+                // --------------
+                self.step_rhs.combined_step_rhs(
+                    &self.residuals,
+                    &self.variables,
+                    &mut self.cones,
+                    &mut self.step_lhs,
+                    σ,
+                    μ,
+                );
+
+                timeit!{timers => "kkt solve" ; {
+                    is_kkt_solve_success =
+                    self.kktsystem.solve(
+                        &mut self.step_lhs,
+                        &self.step_rhs,
                         &self.data,
                         &self.variables,
-                        &self.residuals,&timers);
+                        &self.cones,
+                        "combined",
+                        &self.settings,
+                    );
+                }} //end "kkt solve"
+            }
 
-                    notimeit!{timers; {
-                        self.info.print_status(&self.settings);
-                    }}
-
-                    let isdone = self.info.check_termination(&self.residuals, &self.settings, iter);
-
-                    // check for termination due to slow progress and update strategy
-                    if isdone{
-                            match self.strategy_checkpoint_insufficient_progress(scaling){
-                                StrategyCheckpoint::NoUpdate | StrategyCheckpoint::Fail => {break}
-                                StrategyCheckpoint::Update(s) => {scaling = s; continue}
-                            }
-                    }  // allows continuation if new strategy provided
-
-        ;            //increment counter here because we only count
-                    //iterations that produce a KKT update
-                    iter += 1;
-
-                    //
-                    // update the scalings
-                    // --------------
-                    self.variables.scale_cones(&mut self.cones,μ,scaling);
-
-                    // Update the KKT system and the constant parts of its solution.
-                    // Keep track of the success of each step that calls KKT
-                    // --------------
-                    //PJG: This should be a Result in Rust, but needs changes down
-                    //into the KKT solvers to do that.
-                    let mut is_kkt_solve_success : bool;
-                    timeit!{timers => "kkt update"; {
-                        is_kkt_solve_success = self.kktsystem.update(&self.data, &self.cones, &self.settings);
-                    }} // end "kkt update" timer
-
-                    // calculate the affine step
-                    // --------------
-                    self.step_rhs
-                        .affine_step_rhs(&self.residuals, &self.variables, &self.cones);
-
-                    timeit!{timers => "kkt solve"; {
-                        is_kkt_solve_success = is_kkt_solve_success &&
-                        self.kktsystem.solve(
-                            &mut self.step_lhs,
-                            &self.step_rhs,
-                            &self.data,
-                            &self.variables,
-                            &self.cones,
-                            "affine",
-                            &self.settings,
-                        );
-                    }}  //end "kkt solve affine" timer
-
-                    // combined step only on affine step success
-                    if is_kkt_solve_success {
-
-                        //calculate step length and centering parameter
-                        // --------------
-                        α = self.get_step_length("affine",scaling);
-                        σ = self.centering_parameter(α);
-
-                        // calculate the combined step and length
-                        // --------------
-                        self.step_rhs.combined_step_rhs(
-                            &self.residuals,
-                            &self.variables,
-                            &mut self.cones,
-                            &mut self.step_lhs,
-                            σ,
-                            μ,
-                        );
-
-                        timeit!{timers => "kkt solve" ; {
-                            is_kkt_solve_success =
-                            self.kktsystem.solve(
-                                &mut self.step_lhs,
-                                &self.step_rhs,
-                                &self.data,
-                                &self.variables,
-                                &self.cones,
-                                "combined",
-                                &self.settings,
-                            );
-                        }} //end "kkt solve"
-                    }
-
-                    // check for numerical failure and update strategy
-                    match self.strategy_checkpoint_numerical_error(is_kkt_solve_success,scaling) {
-                        StrategyCheckpoint::NoUpdate => {}
-                        StrategyCheckpoint::Update(s) => {α = T::zero(); scaling = s; continue}
-                        StrategyCheckpoint::Fail => {α = T::zero(); break}
-                    }
+            // check for numerical failure and update strategy
+            match self.strategy_checkpoint_numerical_error(is_kkt_solve_success,scaling) {
+                StrategyCheckpoint::NoUpdate => {}
+                StrategyCheckpoint::Update(s) => {α = T::zero(); scaling = s; continue}
+                StrategyCheckpoint::Fail => {α = T::zero(); break}
+            }
 
 
-                    // compute final step length and update the current iterate
-                    // --------------
-                    α = self.get_step_length("combined",scaling);
+            // compute final step length and update the current iterate
+            // --------------
+            α = self.get_step_length("combined",scaling);
 
-                    // check for undersized step and update strategy
-                    match self.strategy_checkpoint_small_step(α, scaling) {
-                        StrategyCheckpoint::NoUpdate => {}
-                        StrategyCheckpoint::Update(s) => {α = T::zero(); scaling = s; continue}
-                        StrategyCheckpoint::Fail => {α = T::zero(); break}
-                    }
+            // check for undersized step and update strategy
+            match self.strategy_checkpoint_small_step(α, scaling) {
+                StrategyCheckpoint::NoUpdate => {}
+                StrategyCheckpoint::Update(s) => {α = T::zero(); scaling = s; continue}
+                StrategyCheckpoint::Fail => {α = T::zero(); break}
+            }
 
-                    // Copy previous iterate in case the next one is a dud
-                    self.info.save_prev_iterate(&self.variables,&mut self.prev_vars);
+            // Copy previous iterate in case the next one is a dud
+            self.info.save_prev_iterate(&self.variables,&mut self.prev_vars);
 
-                    self.variables.add_step(&self.step_lhs, α);
+            self.variables.add_step(&self.step_lhs, α);
 
-                } //end loop
-                // ----------
-                // ----------
+        } //end loop
+        // ----------
+        // ----------
 
-                }} //end "IP iteration" timer
+        }} //end "IP iteration" timer
 
-                }} // end "solve" timer
+        }} // end "solve" timer
 
         // Check we if actually took a final step.  If not, we need
         // to recapture the scalars and print one last line
