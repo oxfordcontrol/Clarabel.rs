@@ -1,21 +1,34 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{FloatT, MatrixShape, VectorMath};
+use crate::algebra::FloatT;
 use enum_dispatch::*;
 
-mod compositecone;
+//primitive cone types
 mod expcone;
 mod nonnegativecone;
 mod powcone;
 mod socone;
 mod zerocone;
 
+//the supported cone wrapper type for primitives
+//and the composite cone
+mod compositecone;
+mod supportedcone;
+
+//partially specialized traits and blanket implementataions
+mod exppow_common;
+mod symmetric_common;
+
 //flatten all cone implementations to appear in this module
 pub use compositecone::*;
+pub use compositecone::*;
 pub use expcone::*;
+use exppow_common::*;
 pub use nonnegativecone::*;
 pub use powcone::*;
 pub use socone::*;
+pub use supportedcone::*;
+pub use symmetric_common::*;
 pub use zerocone::*;
 
 use crate::solver::{core::ScalingStrategy, CoreSettings};
@@ -113,317 +126,4 @@ where
 
     // return the barrier function at (z+αdz,s+αds)
     fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T;
-}
-
-// Operations supported on symmetric cones only
-pub trait SymmetricCone<T: FloatT>: JordanAlgebra<T> {
-    // Add the scaled identity element e
-    fn add_scaled_e(&self, x: &mut [T], α: T);
-
-    // Multiplication by the scaling point
-    fn mul_W(&self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T);
-    fn mul_Winv(&self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T);
-
-    // x = λ \ z
-    // Included as a special case since q \ z for general q is difficult
-    // to implement for general q i PSD cone and never actually needed.
-    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]);
-}
-
-pub trait JordanAlgebra<T: FloatT> {
-    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]);
-    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]);
-}
-
-// Marker trait for 3 dimensional nonsymmetric cones, i.e. exp and pow cones
-pub trait Nonsymmetric3DCone<T: FloatT> {}
-
-// --------------------------------------
-// Trait with blanket implementation for all symmetric cones
-// Provides functions that are identical across types
-
-pub(super) trait SymmetricConeUtils<T: FloatT> {
-    fn _combined_ds_shift_symmetric(
-        &self,
-        shift: &mut [T],
-        step_z: &mut [T],
-        step_s: &mut [T],
-        σμ: T,
-    );
-    fn _Δs_from_Δz_offset_symmetric(&self, out: &mut [T], ds: &[T], work: &mut [T]);
-}
-
-impl<T, C> SymmetricConeUtils<T> for C
-where
-    T: FloatT,
-    C: SymmetricCone<T>,
-{
-    // compute shift in the combined step :
-    //     λ ∘ (WΔz + W^{-⊤}Δs) = - (affine_ds + shift)
-    // The affine term (computed in affine_ds!) is λ ∘ λ
-    // The shift term is W⁻¹Δs ∘ WΔz - σμe
-
-    fn _combined_ds_shift_symmetric(
-        &self,
-        shift: &mut [T],
-        step_z: &mut [T],
-        step_s: &mut [T],
-        σμ: T,
-    ) {
-        // The shift must be assembled carefully if we want to be economical with
-        // allocated memory.  Will modify the step.z and step.s in place since
-        // they are from the affine step and not needed anymore.
-        //
-        // We can't have aliasing vector arguments to gemv_W or gemv_Winv, so
-        // we need a temporary variable to assign #Δz <= WΔz and Δs <= W⁻¹Δs
-
-        // shift vector used as workspace for a few steps
-        let tmp = shift;
-
-        //PJG : order of arguments is now like Julia, but it fails because
-        //step_z and step_s must be taken as mutable so that I can modify them
-        //in place.
-
-        //Δz <- Wdz
-        tmp.copy_from(step_z);
-        self.mul_W(MatrixShape::N, step_z, tmp, T::one(), T::zero());
-
-        //Δs <- W⁻¹Δs
-        tmp.copy_from(step_s);
-        self.mul_Winv(MatrixShape::T, step_s, tmp, T::one(), T::zero());
-
-        //shift = W⁻¹Δs ∘ WΔz - σμe
-        let shift = tmp;
-        self.circ_op(shift, step_s, step_z);
-        self.add_scaled_e(shift, -σμ);
-    }
-
-    // compute the constant part of Δs when written as a function of Δz
-    // in the solution of a KKT system
-
-    fn _Δs_from_Δz_offset_symmetric(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
-        //tmp = λ \ ds
-        self.λ_inv_circ_op(work, ds);
-
-        //out = Wᵀ(λ \ ds) = Wᵀ(work)
-        self.mul_W(MatrixShape::T, out, work, T::one(), T::zero());
-    }
-}
-
-// --------------------------------------
-// Trait with blanket implementation for the 3 dimensional
-// Exp and Pow cones
-#[allow(clippy::too_many_arguments)]
-pub(super) trait Nonsymmetric3DConeUtils<T: FloatT> {
-    fn step_length_3d_cone(
-        &self,
-        wq: &mut [T],
-        dq: &[T],
-        q: &[T],
-        α_init: T,
-        α_min: T,
-        backtrack: T,
-        is_in_cone_fcn: impl Fn(&[T]) -> bool,
-    ) -> T;
-}
-
-impl<T, C> Nonsymmetric3DConeUtils<T> for C
-where
-    T: FloatT,
-    C: Nonsymmetric3DCone<T>,
-{
-    // find the maximum step length α≥0 so that
-    // q + α*dq stays in an exponential or power
-    // cone, or their respective dual cones.
-    //
-    // NB: Not for use as a general checking
-    // function because cone lengths are hardcoded
-    // to R^3 for faster execution.
-
-    fn step_length_3d_cone(
-        &self,
-        wq: &mut [T],
-        dq: &[T],
-        q: &[T],
-        α_init: T,
-        α_min: T,
-        backtrack: T,
-        is_in_cone_fcn: impl Fn(&[T]) -> bool,
-    ) -> T {
-        let mut α = α_init;
-
-        loop {
-            // wq = q + α*dq
-            for i in 0..3 {
-                wq[i] = q[i] + α * dq[i];
-            }
-
-            if is_in_cone_fcn(wq) {
-                break;
-            }
-            α *= backtrack;
-            if α < α_min {
-                α = T::zero();
-                break;
-            }
-        }
-        α
-    }
-}
-
-// ---------------------------------------------------
-// We define some machinery here for enumerating the
-// different cone types that can live in the composite cone
-// symbol
-// ---------------------------------------------------
-
-/// API type describing the type of a conic constraint.
-///  
-#[derive(Debug, Clone, Copy)]
-pub enum SupportedConeT<T> {
-    /// The zero cone (used for equality constraints).
-    ///
-    /// The parameter indicates the cones dimension.
-    ZeroConeT(usize),
-    /// The nonnegative orthant.  
-    ///
-    /// The parameter indicates the cones dimension.
-    NonnegativeConeT(usize),
-    /// The second order cone / Lorenz cone / ice-cream cone.
-    ///  
-    /// The parameter indicates the cones dimension.
-    SecondOrderConeT(usize),
-    /// The exponential cone in R^3.
-    ///
-    /// This cone takes no parameters
-    ExponentialConeT(),
-    /// The power cone in R^3.
-    ///
-    /// The parameter indicates the power.
-    PowerConeT(T),
-}
-
-impl<T> SupportedConeT<T> {
-    // this reports the number of slack variables that will be generated by
-    // this cone.  Equivalent to `numels` for the internal cone representation.
-    // Required for user data validation prior to building a problem.
-
-    pub(crate) fn nvars(&self) -> usize {
-        match self {
-            SupportedConeT::ZeroConeT(dim) => *dim,
-            SupportedConeT::NonnegativeConeT(dim) => *dim,
-            SupportedConeT::SecondOrderConeT(dim) => *dim,
-            SupportedConeT::ExponentialConeT() => 3,
-            SupportedConeT::PowerConeT(_) => 3,
-            // For PSDTriangleT, we will need
-            // (dim*(dim+1)) >> 1
-        }
-    }
-}
-
-impl<T> std::fmt::Display for SupportedConeT<T>
-where
-    T: FloatT,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", &self.as_tag().as_str())
-    }
-}
-
-// we will use the SupportedConeT as a user facing marker
-// for the constraint types, and then map them through
-// make_cone to get the internal cone representations.
-
-pub fn make_cone<T: FloatT>(cone: SupportedConeT<T>) -> SupportedCone<T> {
-    match cone {
-        SupportedConeT::NonnegativeConeT(dim) => NonnegativeCone::<T>::new(dim).into(),
-        SupportedConeT::ZeroConeT(dim) => ZeroCone::<T>::new(dim).into(),
-        SupportedConeT::SecondOrderConeT(dim) => SecondOrderCone::<T>::new(dim).into(),
-        SupportedConeT::ExponentialConeT() => ExponentialCone::<T>::new().into(),
-        SupportedConeT::PowerConeT(α) => PowerCone::<T>::new(α).into(),
-    }
-}
-
-// -------------------------------------
-// Here we make a corresponding internal SupportedCone type that
-// uses enum_dispatch to allow for static dispatching against
-// all of our internal cone types
-// -------------------------------------
-
-#[allow(clippy::enum_variant_names)]
-#[enum_dispatch(Cone<T>)]
-pub enum SupportedCone<T>
-where
-    T: FloatT,
-{
-    ZeroCone(ZeroCone<T>),
-    NonnegativeCone(NonnegativeCone<T>),
-    SecondOrderCone(SecondOrderCone<T>),
-    ExponentialCone(ExponentialCone<T>),
-    PowerCone(PowerCone<T>),
-}
-
-// -------------------------------------
-// Finally, we need a tagging enum with no data fields to act
-// as a bridge between the SupportedConeT API types and the
-// internal SupportedCone enum_dispatch wrapper.   This enum
-// has no data attached at all, so we can just convert to a u8.
-// This would not be necessary if I could assign matching
-// discriminants to both types, but that feature is not yet
-// stable.  See:
-// https://rust-lang.github.io/rfcs/2363-arbitrary-enum-discriminant.html
-// -------------------------------------
-
-#[allow(clippy::enum_variant_names)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(u8)]
-pub(crate) enum SupportedConeTag {
-    ZeroCone = 0,
-    NonnegativeCone,
-    SecondOrderCone,
-    ExponentialCone,
-    PowerCone,
-}
-
-pub(crate) trait SupportedConeAsTag {
-    fn as_tag(&self) -> SupportedConeTag;
-}
-
-// user facing API type.   Just gives dimensions / exponents
-impl<T> SupportedConeAsTag for SupportedConeT<T> {
-    fn as_tag(&self) -> SupportedConeTag {
-        match self {
-            SupportedConeT::NonnegativeConeT(_) => SupportedConeTag::NonnegativeCone,
-            SupportedConeT::ZeroConeT(_) => SupportedConeTag::ZeroCone,
-            SupportedConeT::SecondOrderConeT(_) => SupportedConeTag::SecondOrderCone,
-            SupportedConeT::ExponentialConeT() => SupportedConeTag::ExponentialCone,
-            SupportedConeT::PowerConeT(_) => SupportedConeTag::PowerCone,
-        }
-    }
-}
-
-// internal enum_dispatch container.   Each of the (_) contains the cone data objects
-impl<T: FloatT> SupportedConeAsTag for SupportedCone<T> {
-    fn as_tag(&self) -> SupportedConeTag {
-        match self {
-            SupportedCone::NonnegativeCone(_) => SupportedConeTag::NonnegativeCone,
-            SupportedCone::ZeroCone(_) => SupportedConeTag::ZeroCone,
-            SupportedCone::SecondOrderCone(_) => SupportedConeTag::SecondOrderCone,
-            SupportedCone::ExponentialCone(_) => SupportedConeTag::ExponentialCone,
-            SupportedCone::PowerCone(_) => SupportedConeTag::PowerCone,
-        }
-    }
-}
-
-/// Returns the name of the cone from its tag.  Used for printing progress.
-impl SupportedConeTag {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            SupportedConeTag::ZeroCone => "ZeroCone",
-            SupportedConeTag::NonnegativeCone => "NonnegativeCone",
-            SupportedConeTag::SecondOrderCone => "SecondOrderCone",
-            SupportedConeTag::ExponentialCone => "ExponentialCone",
-            SupportedConeTag::PowerCone => "PowerCone",
-        }
-    }
 }

@@ -169,14 +169,19 @@ where
     ) -> bool {
         self.ldlsolver.solve(&mut self.x, &self.b);
 
-        if settings.iterative_refinement_enable {
-            self.iterative_refinement(settings);
-        }
-        self.getlhs(lhsx, lhsz);
+        let is_success = {
+            if settings.iterative_refinement_enable {
+                self.iterative_refinement(settings)
+            } else {
+                self.x.is_finite()
+            }
+        };
 
-        //PJG:  Placeholder.   We check on solves (not factors)
-        //here, because all linear solvers pass through here
-        true
+        if is_success {
+            self.getlhs(lhsx, lhsz);
+        }
+
+        is_success
     }
 }
 
@@ -294,6 +299,7 @@ where
                 std::mem::swap(x, dx);
             }
         }
+        //NB: "success" means only we had a finite valued result
         true
     }
 }

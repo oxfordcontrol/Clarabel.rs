@@ -38,17 +38,11 @@ where
         let ncones = types.len();
         let mut cones: Vec<SupportedCone<T>> = Vec::with_capacity(ncones);
 
-        // Count for the number of each cone type, indexed by SupportedCone discriminant
+        // Count for the number of each cone type, indexed by SupportedConeTag
         // NB: ideally we could fix max capacity here,  but Enum::variant_count is not
         // yet a stable feature.  Capacity should be number of SupportedCone variants.
         // See: https://github.com/rust-lang/rust/issues/73662
         let mut type_counts = HashMap::new();
-
-        //PJG : commented dead code.   left temporarily for reference
-        // let mut type_counts = HashMap::new();
-        // for t in types.iter() {
-        //     *type_counts.entry(&(*t.variant_name())).or_insert(0) += 1;
-        // }
 
         // assumed symmetric to start
         let mut _is_symmetric = true;
@@ -322,10 +316,7 @@ where
         // if we have any nonsymmetric cones, then back off from full steps slightly
         // so that centrality checks and logarithms don't fail right at the boundaries
         // PJG: is this still necessary?
-        // NB: Initial alphamax is called alpha in Julia.  Problem here since it is a
-        // mutable parameter.   Change in Julia for consistency, and check all cones are the same
-        // This could also be implemented as a single loop with the symmetric flag as an
-        // outer iterator
+
         if !self.is_symmetric() {
             let ceil: T = (0.99_f64).as_T();
             α = T::min(ceil, α);

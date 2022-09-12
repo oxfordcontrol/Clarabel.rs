@@ -38,15 +38,15 @@ where
 #[derive(Debug)]
 pub struct QDLDLFactorisation<T = f64> {
     // permutation vector
-    perm: Vec<usize>,
+    pub perm: Vec<usize>,
     // inverse permutation
     #[allow(dead_code)] //Unused because we call ipermute in solve instead.  Keep anyway.
     iperm: Vec<usize>,
     // lower triangular factor
-    L: CscMatrix<T>,
+    pub L: CscMatrix<T>,
     // D and is inverse for A = LDL^T
-    D: Vec<T>,
-    Dinv: Vec<T>,
+    pub D: Vec<T>,
+    pub Dinv: Vec<T>,
     // workspace data
     workspace: QDLDLWorkspace<T>,
     // is it logical factorisation only?

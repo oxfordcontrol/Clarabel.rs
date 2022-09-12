@@ -64,8 +64,7 @@ where
         //so we ignore the KKT matrix provided by the caller
         self.factors.refactor();
 
-        //PJG : placeholder.  Need to make a check
-        true
+        self.factors.Dinv.is_finite()
     }
 
     fn required_matrix_shape() -> MatrixTriangle {

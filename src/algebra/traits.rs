@@ -96,7 +96,11 @@ pub trait VectorMath<T> {
     /// Mean value in vector
     fn mean(&self) -> T;
 
+    /// Checks if all elements are finite, i.e. no Infs or NaNs
+    fn is_finite(&self) -> bool;
+
     //blas-like vector ops
+    //--------------------
 
     /// BLAS-like shift and scale in place.  Produces `self = a*x+b*self`
     fn axpby(&mut self, a: T, x: &Self, b: T);

@@ -146,8 +146,8 @@ where
         // final backtracked position
         let mut wq = [T::zero(); 3];
 
-        let _is_prim_feasible_fcn = |s: &[T]| -> bool { _is_primal_feasible_powcone(s, self.α) };
-        let _is_dual_feasible_fcn = |s: &[T]| -> bool { _is_dual_feasible_powcone(s, self.α) };
+        let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
+        let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
         let αz = self.step_length_3d_cone(&mut wq, dz, z, αmax, αmin, step, _is_dual_feasible_fcn);
         let αs = self.step_length_3d_cone(&mut wq, ds, s, αmax, αmin, step, _is_prim_feasible_fcn);
@@ -168,163 +168,114 @@ where
     }
 }
 
-// implement this marker trait to get access to
-// functions common to exp and pow cones
-impl<T> Nonsymmetric3DCone<T> for PowerCone<T> where T: FloatT {}
+//-------------------------------------
+// primal-dual scaling
+//-------------------------------------
 
-// ----------------------------------------------
-//  internal operations for power cones
-//
-// Primal Power cone: s1^{α}s2^{1-α} ≥ s3, s1,s2 ≥ 0
-// Dual Power cone: (z1/α)^{α} * (z2/(1-α))^{1-α} ≥ z3, z1,z2 ≥ 0
-
-// Returns true if s is primal feasible
-fn _is_primal_feasible_powcone<T>(s: &[T], α: T) -> bool
+impl<T> Nonsymmetric3DCone<T> for PowerCone<T>
 where
     T: FloatT,
 {
-    let two: T = (2f64).as_T();
-    if s[0] > T::zero() && s[1] > T::zero() {
-        let res =
-            T::exp(two * α * s[0].logsafe() + two * (T::one() - α) * s[1].logsafe()) - s[2] * s[2];
-        if res > T::zero() {
-            return true;
+    // Returns true if s is primal feasible
+    fn is_primal_feasible(&self, s: &[T]) -> bool
+    where
+        T: FloatT,
+    {
+        let α = self.α;
+        let two: T = (2f64).as_T();
+        if s[0] > T::zero() && s[1] > T::zero() {
+            let res = T::exp(two * α * s[0].logsafe() + two * (T::one() - α) * s[1].logsafe())
+                - s[2] * s[2];
+            if res > T::zero() {
+                return true;
+            }
         }
-    }
-    false
-}
-
-// Returns true if z is dual feasible
-fn _is_dual_feasible_powcone<T>(z: &[T], α: T) -> bool
-where
-    T: FloatT,
-{
-    let two: T = (2.).as_T();
-
-    if z[0] > T::zero() && z[1] > T::zero() {
-        let res = T::exp(
-            (α * two) * (z[0] / α).logsafe()
-                + (T::one() - α) * (z[1] / (T::one() - α)).logsafe() * two,
-        ) - z[2] * z[2];
-        if res > T::zero() {
-            return true;
-        }
-    }
-    false
-}
-
-// Compute the primal gradient of f(s) at s
-fn _gradient_primal<T>(s: &[T], α: T) -> [T; 3]
-where
-    T: FloatT,
-{
-    let mut g = [T::zero(); 3];
-    let two: T = (2.).as_T();
-
-    // unscaled ϕ
-    let phi = (s[0]).powf(two * α) * (s[1]).powf(two - α * two);
-
-    // obtain last element of g from the Newton-Raphson method
-    let abs_s = s[2].abs();
-    if abs_s > T::epsilon() {
-        g[2] = _newton_raphson_powcone(abs_s, phi, α);
-        if s[2] < T::zero() {
-            g[2] = -g[2];
-        }
-        g[0] = -(α * g[2] * s[2] + T::one() + α) / s[0];
-        g[1] = -((T::one() - α) * g[2] * s[2] + two - α) / s[1];
-    } else {
-        g[2] = T::zero();
-        g[0] = -(T::one() + α) / s[0];
-        g[1] = -(two - α) / s[1];
-    }
-    g
-}
-
-// Newton-Raphson method:
-// solve a one-dimensional equation f(x) = 0
-// x(k+1) = x(k) - f(x(k))/f'(x(k))
-// When we initialize x0 such that 0 < x0 < x*,
-// the Newton-Raphson method converges quadratically
-
-fn _newton_raphson_powcone<T>(s3: T, phi: T, α: T) -> T
-where
-    T: FloatT,
-{
-    let two: T = (2.).as_T();
-    let three: T = (3.).as_T();
-    let four: T = (4.).as_T();
-
-    // init point x0: since our dual barrier has an additional
-    // shift -2α*log(α) - 2(1-α)*log(1-α) > 0 in f(x),
-    // the previous selection is still feasible, i.e. f(x0) > 0
-    let x0 = -s3.recip()
-        + (s3 + ((phi * four) * phi / s3 / s3 + three * phi).sqrt()) * two / (phi * four - s3 * s3);
-
-    // additional shift due to the choice of dual barrier
-    let t0 = -two * α * (α.logsafe()) - two * (T::one() - α) * (T::one() - α).logsafe();
-
-    // function for f(x) = 0
-    let f0 = {
-        |x: T| -> T {
-            let two = (2.).as_T();
-            let t1 = x * x;
-            let t2 = (x * two) / s3;
-            two * α * (two * α * t1 + (T::one() + α) * t2).logsafe()
-                + two * (T::one() - α) * (two * (T::one() - α) * t1 + (two - α) * t2).logsafe()
-                - phi.logsafe()
-                - (t1 + t2).logsafe()
-                - two * t2.logsafe()
-                + t0
-        }
-    };
-
-    // first derivative
-    let f1 = {
-        |x: T| -> T {
-            let two = (2.).as_T();
-            let t1 = x * x;
-            let t2 = (two * x) / s3;
-            (α * α * two) / (α * x + (T::one() + α) / s3)
-                + ((T::one() - α) * two) * (T::one() - α) / ((T::one() - α) * x + (two - α) / s3)
-                - ((x + s3.recip()) * two) / (t1 + t2)
-        }
-    };
-    _newton_raphson_onesided(x0, f0, f1)
-}
-
-fn _newton_raphson_onesided<T>(x0: T, f0: impl Fn(T) -> T, f1: impl Fn(T) -> T) -> T
-where
-    T: FloatT,
-{
-    // implements NR method from a starting point assumed to be to the
-    // left of the true value.   Once a negative step is encountered
-    // this function will halt regardless of the calculated correction.
-
-    let mut x = x0;
-    let mut iter = 0;
-
-    while iter < 100 {
-        iter += 1;
-        let dfdx = f1(x);
-        let dx = -f0(x) / dfdx;
-
-        if (dx < T::epsilon())
-            || (T::abs(dx / x) < T::sqrt(T::epsilon()))
-            || (T::abs(dfdx) < T::epsilon())
-        {
-            break;
-        }
-        x += dx;
+        false
     }
 
-    x
-}
+    // Returns true if z is dual feasible
+    fn is_dual_feasible(&self, z: &[T]) -> bool
+    where
+        T: FloatT,
+    {
+        let α = self.α;
+        let two: T = (2.).as_T();
 
-impl<T> PowerCone<T>
-where
-    T: FloatT,
-{
+        if z[0] > T::zero() && z[1] > T::zero() {
+            let res = T::exp(
+                (α * two) * (z[0] / α).logsafe()
+                    + (T::one() - α) * (z[1] / (T::one() - α)).logsafe() * two,
+            ) - z[2] * z[2];
+            if res > T::zero() {
+                return true;
+            }
+        }
+        false
+    }
+
+    // Compute the primal gradient of f(s) at s
+    fn gradient_primal(&self, s: &[T]) -> [T; 3]
+    where
+        T: FloatT,
+    {
+        let α = self.α;
+        let mut g = [T::zero(); 3];
+        let two: T = (2.).as_T();
+
+        // unscaled ϕ
+        let phi = (s[0]).powf(two * α) * (s[1]).powf(two - α * two);
+
+        // obtain last element of g from the Newton-Raphson method
+        let abs_s = s[2].abs();
+        if abs_s > T::epsilon() {
+            g[2] = _newton_raphson_powcone(abs_s, phi, α);
+            if s[2] < T::zero() {
+                g[2] = -g[2];
+            }
+            g[0] = -(α * g[2] * s[2] + T::one() + α) / s[0];
+            g[1] = -((T::one() - α) * g[2] * s[2] + two - α) / s[1];
+        } else {
+            g[2] = T::zero();
+            g[0] = -(T::one() + α) / s[0];
+            g[1] = -(two - α) / s[1];
+        }
+        g
+    }
+
+    fn update_dual_grad_H(&mut self, z: &[T]) {
+        let H = &mut self.H_dual;
+        let α = self.α;
+        let two: T = (2.).as_T();
+        let four: T = (4.).as_T();
+
+        let phi = (z[0] / α).powf(two * α) * (z[1] / (T::one() - α)).powf(two - two * α);
+        let ψ = phi - z[2] * z[2];
+
+        // use K.grad as a temporary workspace
+        let gψ = &mut self.grad;
+        gψ[0] = two * α * phi / (z[0] * ψ);
+        gψ[1] = two * (T::one() - α) * phi / (z[1] * ψ);
+        gψ[2] = -two * z[2] / ψ;
+
+        // compute_Hessian(K,z,H).   Type is symmetric, so
+        // only need to assign upper triangle.
+        H[(0, 0)] = gψ[0] * gψ[0] - two * α * (two * α - T::one()) * phi / (z[0] * z[0] * ψ)
+            + (T::one() - α) / (z[0] * z[0]);
+        H[(0, 1)] = gψ[0] * gψ[1] - four * α * (T::one() - α) * phi / (z[0] * z[1] * ψ);
+        H[(1, 1)] = gψ[1] * gψ[1]
+            - two * (T::one() - α) * (T::one() - two * α) * phi / (z[1] * z[1] * ψ)
+            + α / (z[1] * z[1]);
+        H[(0, 2)] = gψ[0] * gψ[2];
+        H[(1, 2)] = gψ[1] * gψ[2];
+        H[(2, 2)] = gψ[2] * gψ[2] + two / ψ;
+
+        // compute the gradient at z
+        let grad = &mut self.grad;
+        grad[0] = -two * α * phi / (z[0] * ψ) - (T::one() - α) / z[0];
+        grad[1] = -two * (T::one() - α) * phi / (z[1] * ψ) - α / z[1];
+        grad[2] = two * z[2] / ψ;
+    }
+
     fn barrier_dual(&self, z: &[T]) -> T
     where
         T: FloatT,
@@ -350,7 +301,7 @@ where
         let two: T = (2.).as_T();
         let three: T = (3.).as_T();
 
-        let g = _gradient_primal(s, α);
+        let g = self.gradient_primal(s);
 
         let mut out = T::zero();
 
@@ -361,6 +312,17 @@ where
         out += α * (-g[1]).logsafe() - three;
         out
     }
+
+    // 3rd-order correction at the point z.  Output is η.
+    //
+    // 3rd order correction:
+    // η = -0.5*[(dot(u,Hψ,v)*ψ - 2*dotψu*dotψv)/(ψ*ψ*ψ)*gψ +
+    //            dotψu/(ψ*ψ)*Hψv + dotψv/(ψ*ψ)*Hψu -
+    //            dotψuv/ψ + dothuv]
+    // where:
+    // Hψ = [  2*α*(2*α-1)*ϕ/(z1*z1)     4*α*(1-α)*ϕ/(z1*z2)       0;
+    //         4*α*(1-α)*ϕ/(z1*z2)     2*(1-α)*(1-2*α)*ϕ/(z2*z2)   0;
+    //         0                       0                          -2;]
 
     fn higher_correction(&mut self, η: &mut [T; 3], ds: &[T], v: &[T])
     where
@@ -441,143 +403,102 @@ where
         η[..].axpby(dotψv * inv_ψ2, Hψu, T::one());
         η[..].scale((0.5).as_T());
     }
+
+    //getters
+    fn split_borrow_mut(
+        &mut self,
+    ) -> (
+        &mut DenseMatrixSym3<T>,
+        &mut DenseMatrixSym3<T>,
+        &mut [T; 3],
+        &mut [T; 3],
+    ) {
+        (&mut self.H_dual, &mut self.Hs, &mut self.grad, &mut self.z)
+    }
 }
-//-------------------------------------
-// primal-dual scaling
-//-------------------------------------
 
-// Implementation sketch
-// 1) only need to replace μH by W^TW, where
-//    W^TW is the primal-dual scaling matrix
-//    generated by BFGS, i.e. W^T W*[z,\tilde z] = [s,\tile s]
-//   \tilde z = -f'(s), \tilde s = - f*'(z)
+// ----------------------------------------------
+//  internal operations for power cones
+//
+// Primal Power cone: s1^{α}s2^{1-α} ≥ s3, s1,s2 ≥ 0
+// Dual Power cone: (z1/α)^{α} * (z2/(1-α))^{1-α} ≥ z3, z1,z2 ≥ 0
 
-impl<T> PowerCone<T>
+// Newton-Raphson method:
+// solve a one-dimensional equation f(x) = 0
+// x(k+1) = x(k) - f(x(k))/f'(x(k))
+// When we initialize x0 such that 0 < x0 < x*,
+// the Newton-Raphson method converges quadratically
+
+fn _newton_raphson_powcone<T>(s3: T, phi: T, α: T) -> T
 where
     T: FloatT,
 {
-    fn update_Hs(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy) {
-        // Choose the scaling strategy
-        if scaling_strategy == ScalingStrategy::Dual {
-            // Dual scaling: Hs = μ*H
-            self.use_dual_scaling(μ);
-        } else {
-            self.use_primal_dual_scaling(s, z);
+    let two: T = (2.).as_T();
+    let three: T = (3.).as_T();
+    let four: T = (4.).as_T();
+
+    // init point x0: since our dual barrier has an additional
+    // shift -2α*log(α) - 2(1-α)*log(1-α) > 0 in f(x),
+    // the previous selection is still feasible, i.e. f(x0) > 0
+    let x0 = -s3.recip()
+        + (s3 + ((phi * four) * phi / s3 / s3 + three * phi).sqrt()) * two / (phi * four - s3 * s3);
+
+    // additional shift due to the choice of dual barrier
+    let t0 = -two * α * (α.logsafe()) - two * (T::one() - α) * (T::one() - α).logsafe();
+
+    // function for f(x) = 0
+    let f0 = {
+        |x: T| -> T {
+            let two = (2.).as_T();
+            let t1 = x * x;
+            let t2 = (x * two) / s3;
+            two * α * (two * α * t1 + (T::one() + α) * t2).logsafe()
+                + two * (T::one() - α) * (two * (T::one() - α) * t1 + (two - α) * t2).logsafe()
+                - phi.logsafe()
+                - (t1 + t2).logsafe()
+                - two * t2.logsafe()
+                + t0
         }
-    }
+    };
 
-    fn update_dual_grad_H(&mut self, z: &[T]) {
-        let H = &mut self.H_dual;
-        let α = self.α;
-        let two: T = (2.).as_T();
-        let four: T = (4.).as_T();
-
-        let phi = (z[0] / α).powf(two * α) * (z[1] / (T::one() - α)).powf(two - two * α);
-        let ψ = phi - z[2] * z[2];
-
-        // use K.grad as a temporary workspace
-        let gψ = &mut self.grad;
-        gψ[0] = two * α * phi / (z[0] * ψ);
-        gψ[1] = two * (T::one() - α) * phi / (z[1] * ψ);
-        gψ[2] = -two * z[2] / ψ;
-
-        // compute_Hessian(K,z,H).   Type is symmetric, so
-        // only need to assign upper triangle.
-        H[(0, 0)] = gψ[0] * gψ[0] - two * α * (two * α - T::one()) * phi / (z[0] * z[0] * ψ)
-            + (T::one() - α) / (z[0] * z[0]);
-        H[(0, 1)] = gψ[0] * gψ[1] - four * α * (T::one() - α) * phi / (z[0] * z[1] * ψ);
-        H[(1, 1)] = gψ[1] * gψ[1]
-            - two * (T::one() - α) * (T::one() - two * α) * phi / (z[1] * z[1] * ψ)
-            + α / (z[1] * z[1]);
-        H[(0, 2)] = gψ[0] * gψ[2];
-        H[(1, 2)] = gψ[1] * gψ[2];
-        H[(2, 2)] = gψ[2] * gψ[2] + two / ψ;
-
-        // compute the gradient at z
-        let grad = &mut self.grad;
-        grad[0] = -two * α * phi / (z[0] * ψ) - (T::one() - α) / z[0];
-        grad[1] = -two * (T::one() - α) * phi / (z[1] * ψ) - α / z[1];
-        grad[2] = two * z[2] / ψ;
-    }
-
-    // implements dual only scaling
-    fn use_dual_scaling(&mut self, μ: T) {
-        self.Hs.scaled_from(μ, &self.H_dual);
-    }
-
-    //implements primal dual scaling
-    fn use_primal_dual_scaling(&mut self, s: &[T], z: &[T]) {
-        let three: T = (3.).as_T();
-
-        let Hs = &mut self.Hs;
-        let H_dual = &self.H_dual;
-
-        let st = &mut self.grad;
-        let mut δs = [T::zero(); 3];
-        let mut tmp = [T::zero(); 3];
-
-        // compute zt,st,μt locally
-        // NB: zt,st have different sign convention wrt Mosek paper
-        let zt = _gradient_primal(s, self.α);
-        let dot_sz = s.dot(z);
-        let μ = dot_sz / three;
-        let μt = st[..].dot(&zt[..]) / three;
-
-        // δs = s + μ*st
-        // δz = z + μ*zt
-        let mut δz = tmp;
-        for i in 0..3 {
-            δs[i] = s[i] + μ * st[i];
-            δz[i] = z[i] + μ * zt[i];
+    // first derivative
+    let f1 = {
+        |x: T| -> T {
+            let two = (2.).as_T();
+            let t1 = x * x;
+            let t2 = (two * x) / s3;
+            (α * α * two) / (α * x + (T::one() + α) / s3)
+                + ((T::one() - α) * two) * (T::one() - α) / ((T::one() - α) * x + (two - α) / s3)
+                - ((x + s3.recip()) * two) / (t1 + t2)
         }
-        let dot_δsz = δs[..].dot(&δz[..]);
+    };
+    _newton_raphson_onesided(x0, f0, f1)
+}
 
-        let de1 = μ * μt - T::one();
-        let de2 = H_dual.quad_form(&zt, &zt) - three * μt * μt;
+fn _newton_raphson_onesided<T>(x0: T, f0: impl Fn(T) -> T, f1: impl Fn(T) -> T) -> T
+where
+    T: FloatT,
+{
+    // implements NR method from a starting point assumed to be to the
+    // left of the true value.   Once a negative step is encountered
+    // this function will halt regardless of the calculated correction.
 
-        // use the primal-dual scaling
-        if T::abs(de1) > T::sqrt(T::epsilon()) &&      // too close to central path
-           T::abs(de2) > T::epsilon()          &&      // others for numerical stability
-           dot_sz > T::zero()                  &&
-           dot_δsz > T::zero()
+    let mut x = x0;
+    let mut iter = 0;
+
+    while iter < 100 {
+        iter += 1;
+        let dfdx = f1(x);
+        let dx = -f0(x) / dfdx;
+
+        if (dx < T::epsilon())
+            || (T::abs(dx / x) < T::sqrt(T::epsilon()))
+            || (T::abs(dfdx) < T::epsilon())
         {
-            // compute t
-            // tmp = μt*st - H*zt
-            H_dual.mul(&mut tmp, &zt);
-            for i in 0..3 {
-                tmp[i] = μt * st[i] - tmp[i]
-            }
-
-            // Hs as a workspace (only need to write the upper triangle)
-            Hs.copy_from(H_dual);
-            for i in 0..3 {
-                for j in i..3 {
-                    Hs[(i, j)] -= st[i] * st[j] / three + tmp[i] * tmp[j] / de2;
-                }
-            }
-            let t = μ * Hs.norm_fro(); //Frobenius norm
-
-            // generate the remaining axis
-            // axis_z = cross(z,zt)
-            let mut axis_z = tmp;
-            axis_z[0] = z[1] * zt[2] - z[2] * zt[1];
-            axis_z[1] = z[2] * zt[0] - z[0] * zt[2];
-            axis_z[2] = z[0] * zt[1] - z[1] * zt[0];
-            axis_z.normalize();
-
-            // Hs = s*s'/⟨s,z⟩ + δs*δs'/⟨δs,δz⟩ + t*axis_z*axis_z'
-            // (only need to write the upper triangle)
-            for i in 0..3 {
-                for j in i..3 {
-                    Hs[(i, j)] =
-                        s[i] * s[j] / dot_sz + δs[i] * δs[j] / dot_δsz + t * axis_z[i] * axis_z[j];
-                }
-            }
-
-        // use the dual scaling
-        } else {
-            // Hs = μH when s,z are on the central path
-            self.use_dual_scaling(μ);
+            break;
         }
+        x += dx;
     }
+
+    x
 }

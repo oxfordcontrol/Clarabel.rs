@@ -164,6 +164,10 @@ impl<T: FloatT> VectorMath<T> for [T] {
         mean
     }
 
+    fn is_finite(&self) -> bool {
+        self.iter().all(|&x| T::is_finite(x))
+    }
+
     fn axpby(&mut self, a: T, x: &[T], b: T) {
         assert_eq!(self.len(), x.len());
 

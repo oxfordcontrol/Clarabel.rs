@@ -39,17 +39,17 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "(1e-8).as_T()")]
     pub tol_infeas_rel: T,
 
-    #[builder(default = "(1e-7).as_T()")]
+    #[builder(default = "(2e-7).as_T()")]
     pub tol_ktratio: T,
 
     // Reduced accuracy settings
-    #[builder(default = "(1e-6).as_T()")]
+    #[builder(default = "(5e-5).as_T()")]
     pub reduced_tol_gap_abs: T,
 
-    #[builder(default = "(1e-6).as_T()")]
+    #[builder(default = "(5e-5).as_T()")]
     pub reduced_tol_gap_rel: T,
 
-    #[builder(default = "(1e-5).as_T()")]
+    #[builder(default = "(1e-4).as_T()")]
     pub reduced_tol_feas: T,
 
     #[builder(default = "(5e-5).as_T()")]
@@ -112,10 +112,10 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub iterative_refinement_enable: bool,
 
-    #[builder(default = "(1e-13).as_T()")]
+    #[builder(default = "(1e-12).as_T()")]
     pub iterative_refinement_reltol: T,
 
-    #[builder(default = "(1e-14).as_T()")]
+    #[builder(default = "(1e-12).as_T()")]
     pub iterative_refinement_abstol: T,
 
     #[builder(default = "10")]
