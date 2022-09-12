@@ -10,10 +10,7 @@ use std::ops::Range;
 pub struct CompositeCone<T: FloatT = f64> {
     cones: Vec<SupportedCone<T>>,
 
-    //Type tags and count of each cone
-    // PJG: maybe the types and type counts aren't needed
-    //now that we have this nice enum_dispatch wrapper?
-    //pub types: Vec<SupportedConeT<T>>,
+    //Type count for each cone type
     pub(crate) type_counts: HashMap<SupportedConeTag, usize>,
 
     //overall size of the composite cone

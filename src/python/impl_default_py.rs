@@ -102,7 +102,6 @@ pub enum PySolverStatus {
     InsufficientProgress,
 }
 
-//PJG: aadd missing fields
 impl PySolverStatus {
     pub(crate) fn new_from_internal(status: &SolverStatus) -> Self {
         match status {

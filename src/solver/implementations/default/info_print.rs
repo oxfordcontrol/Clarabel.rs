@@ -210,8 +210,8 @@ fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetag: Support
     let name = conetag.as_str();
     let count = cones.type_counts[&conetag];
 
-    //let name  = rpad(string(type)[1:end-5],11)  #drops "ConeT part"
-    let name = &name[0..name.len() - 5];
+    // drops trailing "Cone" part of name
+    let name = &name[0..name.len() - 4];
     let name = format!("{:>11}", name);
 
     let mut nvars = Vec::with_capacity(count);

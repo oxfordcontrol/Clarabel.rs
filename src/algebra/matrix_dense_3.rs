@@ -11,7 +11,7 @@ use std::ops::{Index, IndexMut};
 // is compatible (interchangeably) with nalgebra /
 // ndarray / some other blas like interface
 //
-// Data us stored as an array of 6 values belonging
+// Data is stored as an array of 6 values belonging
 // the upper triangle of a 3x3 matrix.   Lower triangle
 // is assumed symmetric.  Any read/write to the lower
 // triangle is handled by reversing the indices
