@@ -40,6 +40,16 @@ path = "examples/rust/example_expcone.rs"
 name = "box"
 path = "examples/rust/example_box.rs"
 
+
+
+# -------------------------------
+# custom build profiles 
+# -------------------------------
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+
+
 # ------------------------------
 # Optional julia and python interface 
 # ------------------------------
