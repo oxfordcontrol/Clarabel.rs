@@ -13,19 +13,19 @@ pub struct CompositeCone<T: FloatT = f64> {
     //Type tags and count of each cone
     // PJG: maybe the types and type counts aren't needed
     //now that we have this nice enum_dispatch wrapper?
-    pub types: Vec<SupportedConeT<T>>,
-    pub type_counts: HashMap<&'static str, usize>,
+    //pub types: Vec<SupportedConeT<T>>,
+    pub(crate) type_counts: HashMap<SupportedConeTag, usize>,
 
     //overall size of the composite cone
-    numel: usize,
-    degree: usize,
+    pub(crate) numel: usize,
+    pub(crate) degree: usize,
 
     //ranges for the indices of the constituent cones
-    pub rng_cones: Vec<Range<usize>>,
+    pub(crate) rng_cones: Vec<Range<usize>>,
 
     //ranges for the indices of the constituent Hs blocks
     //associated with each cone
-    pub rng_blocks: Vec<Range<usize>>,
+    pub(crate) rng_blocks: Vec<Range<usize>>,
 
     // the flag for symmetric cone check
     _is_symmetric: bool,
@@ -41,27 +41,33 @@ where
         let ncones = types.len();
         let mut cones: Vec<SupportedCone<T>> = Vec::with_capacity(ncones);
 
-        // Count the number of each cone type.
+        // Count for the number of each cone type, indexed by SupportedCone discriminant
         // NB: ideally we could fix max capacity here,  but Enum::variant_count is not
         // yet a stable feature.  Capacity should be number of SupportedCone variants.
         // See: https://github.com/rust-lang/rust/issues/73662
-
         let mut type_counts = HashMap::new();
-        for t in types.iter() {
-            *type_counts.entry(&(*t.variant_name())).or_insert(0) += 1;
-        }
+
+        //PJG : commented dead code.   left temporarily for reference
+        // let mut type_counts = HashMap::new();
+        // for t in types.iter() {
+        //     *type_counts.entry(&(*t.variant_name())).or_insert(0) += 1;
+        // }
 
         // assumed symmetric to start
         let mut _is_symmetric = true;
 
         // create cones with the given dims
         for t in types.iter() {
-            _is_symmetric &= !matches!(
-                t,
-                SupportedConeT::ExponentialConeT() | SupportedConeT::PowerConeT(_)
-            );
+            //make a new cone
+            let cone = make_cone(*t);
 
-            cones.push(make_cone(*t));
+            //update global problem symmetry
+            _is_symmetric = _is_symmetric && cone.is_symmetric();
+
+            //increment type counts
+            *type_counts.entry(cone.as_tag()).or_insert(0) += 1;
+
+            cones.push(cone);
         }
 
         // count up elements and degree
@@ -77,7 +83,7 @@ where
 
         Self {
             cones,
-            types,
+            //types,
             type_counts,
             numel,
             degree,
@@ -158,9 +164,9 @@ where
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, SupportedCone<T>> {
         self.cones.iter_mut()
     }
-    pub fn type_count(&self, cone_str: &'static str) -> usize {
-        if self.type_counts.contains_key(cone_str) {
-            self.type_counts[cone_str]
+    pub(crate) fn type_count(&self, tag: SupportedConeTag) -> usize {
+        if self.type_counts.contains_key(&tag) {
+            self.type_counts[&tag]
         } else {
             0
         }

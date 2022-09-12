@@ -63,7 +63,7 @@ where
     ) -> Self {
         // solving in sparse format.  Need this many
         // extra variables for SOCs
-        let p = 2 * cones.type_count("SecondOrderConeT");
+        let p = 2 * cones.type_count(SupportedConeTag::SecondOrderCone);
 
         // LHS/RHS/work for iterative refinement
         let x = vec![T::zero(); n + m + p];
@@ -129,27 +129,24 @@ where
 
         for cone in cones.iter() {
             // `cone` here will be of our SupportedCone enum wrapper, so
-            //  we match on it and see if can extract an SecondOrderCone `K`
-            match cone {
-                SupportedCone::SecondOrderCone(K) => {
-                    let η2 = T::powi(K.η, 2);
+            //  we can extract a SecondOrderCone `soc`
+            if let SupportedCone::SecondOrderCone(soc) = cone {
+                let η2 = T::powi(soc.η, 2);
 
-                    //off diagonal columns (or rows)s
-                    let KKT = &mut self.KKT;
-                    let ldlsolver = &mut self.ldlsolver;
+                //off diagonal columns (or rows)s
+                let KKT = &mut self.KKT;
+                let ldlsolver = &mut self.ldlsolver;
 
-                    _update_values(ldlsolver, KKT, &map.SOC_u[cidx], &K.u);
-                    _update_values(ldlsolver, KKT, &map.SOC_v[cidx], &K.v);
-                    _scale_values(ldlsolver, KKT, &map.SOC_u[cidx], -η2);
-                    _scale_values(ldlsolver, KKT, &map.SOC_v[cidx], -η2);
+                _update_values(ldlsolver, KKT, &map.SOC_u[cidx], &soc.u);
+                _update_values(ldlsolver, KKT, &map.SOC_v[cidx], &soc.v);
+                _scale_values(ldlsolver, KKT, &map.SOC_u[cidx], -η2);
+                _scale_values(ldlsolver, KKT, &map.SOC_v[cidx], -η2);
 
-                    //add η^2*(-1/1) to diagonal in the extended rows/cols
-                    _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2]], &[-η2; 1]);
-                    _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
+                //add η^2*(-1/1) to diagonal in the extended rows/cols
+                _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2]], &[-η2; 1]);
+                _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
 
-                    cidx += 1;
-                }
-                _ => {}
+                cidx += 1;
             } //end match
         } //end for
 
