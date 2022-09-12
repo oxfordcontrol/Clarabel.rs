@@ -362,10 +362,10 @@ fn _csc_symv_unsafe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: 
         for (col, &xcol) in x.iter().enumerate() {
             let first = *A.colptr.get_unchecked(col);
             let last = *A.colptr.get_unchecked(col + 1);
-            let rows = A.rowval.get_unchecked(first..last);
-            let nzvals = A.nzval.get_unchecked(first..last);
 
-            for (&row, &Aij) in rows.iter().zip(nzvals.iter()) {
+            for j in first..last {
+                let row = *A.rowval.get_unchecked(j);
+                let Aij = *A.nzval.get_unchecked(j);
                 *y.get_unchecked_mut(row) += a * Aij * xcol;
 
                 if row != col {
