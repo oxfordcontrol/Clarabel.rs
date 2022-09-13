@@ -1,0 +1,93 @@
+use crate::algebra::{FloatT, MatrixShape, VectorMath};
+
+// --------------------------------------
+// Traits and blanket implementations for Exponential and PowerCones
+// -------------------------------------
+
+// Operations supported on symmetric cones only
+pub trait SymmetricCone<T: FloatT>: JordanAlgebra<T> {
+    // Add the scaled identity element e
+    fn add_scaled_e(&self, x: &mut [T], α: T);
+
+    // Multiplication by the scaling point
+    fn mul_W(&self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T);
+    fn mul_Winv(&self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T);
+
+    // x = λ \ z
+    // Included as a special case since q \ z for general q is difficult
+    // to implement for general q i PSD cone and never actually needed.
+    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]);
+}
+
+pub trait JordanAlgebra<T: FloatT> {
+    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]);
+    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]);
+}
+
+// --------------------------------------
+// Trait with blanket implementation for all symmetric cones
+// Provides functions that are identical across types
+
+pub(super) trait SymmetricConeUtils<T: FloatT> {
+    fn _combined_ds_shift_symmetric(
+        &self,
+        shift: &mut [T],
+        step_z: &mut [T],
+        step_s: &mut [T],
+        σμ: T,
+    );
+    fn _Δs_from_Δz_offset_symmetric(&self, out: &mut [T], ds: &[T], work: &mut [T]);
+}
+
+impl<T, C> SymmetricConeUtils<T> for C
+where
+    T: FloatT,
+    C: SymmetricCone<T>,
+{
+    // compute shift in the combined step :
+    //     λ ∘ (WΔz + W^{-⊤}Δs) = - (affine_ds + shift)
+    // The affine term (computed in affine_ds!) is λ ∘ λ
+    // The shift term is W⁻¹Δs ∘ WΔz - σμe
+
+    fn _combined_ds_shift_symmetric(
+        &self,
+        shift: &mut [T],
+        step_z: &mut [T],
+        step_s: &mut [T],
+        σμ: T,
+    ) {
+        // The shift must be assembled carefully if we want to be economical with
+        // allocated memory.  Will modify the step.z and step.s in place since
+        // they are from the affine step and not needed anymore.
+        //
+        // We can't have aliasing vector arguments to gemv_W or gemv_Winv, so
+        // we need a temporary variable to assign #Δz <= WΔz and Δs <= W⁻¹Δs
+
+        // shift vector used as workspace for a few steps
+        let tmp = shift;
+
+        //Δz <- Wdz
+        tmp.copy_from(step_z);
+        self.mul_W(MatrixShape::N, step_z, tmp, T::one(), T::zero());
+
+        //Δs <- W⁻¹Δs
+        tmp.copy_from(step_s);
+        self.mul_Winv(MatrixShape::T, step_s, tmp, T::one(), T::zero());
+
+        //shift = W⁻¹Δs ∘ WΔz - σμe
+        let shift = tmp;
+        self.circ_op(shift, step_s, step_z);
+        self.add_scaled_e(shift, -σμ);
+    }
+
+    // compute the constant part of Δs when written as a function of Δz
+    // in the solution of a KKT system
+
+    fn _Δs_from_Δz_offset_symmetric(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
+        //tmp = λ \ ds
+        self.λ_inv_circ_op(work, ds);
+
+        //out = Wᵀ(λ \ ds) = Wᵀ(work)
+        self.mul_W(MatrixShape::T, out, work, T::one(), T::zero());
+    }
+}
