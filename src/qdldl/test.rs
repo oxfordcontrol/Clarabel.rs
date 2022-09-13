@@ -84,12 +84,20 @@ fn test_solve_from_factors() {
 
     //(I+L)x = b.  Back solve on b in place.
     let mut b = vec![-3., -1., -3., 15.];
-    _lsolve(&Lp, &Li, &Lx, &mut b);
+    _lsolve_unsafe(&Lp, &Li, &Lx, &mut b);
+    assert_eq!(b, x);
+
+    let mut b = vec![-3., -1., -3., 15.];
+    _lsolve_safe(&Lp, &Li, &Lx, &mut b);
     assert_eq!(b, x);
 
     //(I+L')x = b.  Back solve on b in place.
     let mut b = vec![1., 31., -11., 4.];
-    _ltsolve(&Lp, &Li, &Lx, &mut b);
+    _ltsolve_unsafe(&Lp, &Li, &Lx, &mut b);
+    assert_eq!(b, x);
+
+    let mut b = vec![1., 31., -11., 4.];
+    _ltsolve_safe(&Lp, &Li, &Lx, &mut b);
     assert_eq!(b, x);
 
     //(I+L)*D*(I+L)*x = b.  Back solve on b in place;

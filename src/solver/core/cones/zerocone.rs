@@ -1,5 +1,8 @@
 use super::Cone;
-use crate::algebra::*;
+use crate::{
+    algebra::*,
+    solver::{core::ScalingStrategy, CoreSettings},
+};
 use core::marker::PhantomData;
 
 // -------------------------------------
@@ -39,64 +42,72 @@ where
         self.dim()
     }
 
-    fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
-        δ.copy_from(e);
-        false
-    }
-
-    fn WtW_is_diagonal(&self) -> bool {
+    fn is_symmetric(&self) -> bool {
         true
     }
 
-    fn update_scaling(&mut self, _s: &[T], _z: &[T]) {
-        //nothing to do
-    }
-
-    fn set_identity_scaling(&mut self) {
-        //nothing to do
-    }
-
-    fn λ_circ_λ(&self, x: &mut [T]) {
-        x.fill(T::zero());
-    }
-
-    fn circ_op(&self, x: &mut [T], _y: &[T], _z: &[T]) {
-        x.fill(T::zero());
-    }
-
-    fn λ_inv_circ_op(&self, x: &mut [T], _z: &[T]) {
-        x.fill(T::zero());
-    }
-
-    fn inv_circ_op(&self, x: &mut [T], _y: &[T], _z: &[T]) {
-        x.fill(T::zero());
+    fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
+        δ.copy_from(e);
+        false
     }
 
     fn shift_to_cone(&self, z: &mut [T]) {
         z.fill(T::zero());
     }
 
-    fn get_WtW_block(&self, WtWblock: &mut [T]) {
-        WtWblock.fill(T::zero());
+    fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
+        s.fill(T::zero());
+        z.fill(T::zero());
     }
 
-    fn gemv_W(&self, _is_transpose: MatrixShape, _x: &[T], y: &mut [T], _α: T, β: T) {
-        //treat W like zero
-        y.scale(β);
+    fn set_identity_scaling(&mut self) {
+        //nothing to do
     }
 
-    fn gemv_Winv(&self, _is_transpose: MatrixShape, _x: &[T], y: &mut [T], _α: T, β: T) {
-        //treat Winv like zero
-        y.scale(β);
+    fn update_scaling(&mut self, _s: &[T], _z: &[T], _μ: T, _scaling_strategy: ScalingStrategy) {
+        //nothing to do
     }
 
-    fn add_scaled_e(&self, _x: &mut [T], _α: T) {
-        //e = 0, do nothing
+    fn Hs_is_diagonal(&self) -> bool {
+        true
     }
 
-    fn step_length(&self, _dz: &[T], _ds: &[T], _z: &[T], _s: &[T]) -> (T, T) {
+    fn get_Hs(&self, Hsblock: &mut [T]) {
+        Hsblock.fill(T::zero());
+    }
+
+    fn mul_Hs(&self, y: &mut [T], _x: &[T], _work: &mut [T]) {
+        y.fill(T::zero());
+    }
+
+    fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
+        ds.fill(T::zero());
+    }
+
+    fn combined_ds_shift(
+        &mut self, shift: &mut [T], _step_z: &mut [T], _step_s: &mut [T], _σμ: T
+    ) {
+        shift.fill(T::zero());
+    }
+
+    fn Δs_from_Δz_offset(&self, out: &mut [T], _ds: &[T], _work: &mut [T]) {
+        out.fill(T::zero());
+    }
+
+    fn step_length(
+        &self,
+        _dz: &[T],
+        _ds: &[T],
+        _z: &[T],
+        _s: &[T],
+        _settings: &CoreSettings<T>,
+        αmax: T,
+    ) -> (T, T) {
         //equality constraints allow arbitrary step length
-        let huge = T::max_value();
-        (huge, huge)
+        (αmax, αmax)
+    }
+
+    fn compute_barrier(&self, _z: &[T], _s: &[T], _dz: &[T], _ds: &[T], _α: T) -> T {
+        T::zero()
     }
 }

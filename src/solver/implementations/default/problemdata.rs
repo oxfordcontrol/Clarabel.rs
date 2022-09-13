@@ -21,6 +21,9 @@ pub struct DefaultProblemData<T> {
     pub n: usize,
     pub m: usize,
     pub equilibration: DefaultEquilibrationData<T>,
+
+    pub normq: T,
+    pub normb: T,
 }
 
 impl<T> DefaultProblemData<T>
@@ -38,6 +41,9 @@ where
         let b = b.to_vec();
         let equilibration = DefaultEquilibrationData::<T>::new(n, m);
 
+        let normq = q.norm_inf();
+        let normb = b.norm_inf();
+
         Self {
             P,
             q,
@@ -46,6 +52,8 @@ where
             n,
             m,
             equilibration,
+            normq,
+            normb,
         }
     }
 }
@@ -151,7 +159,7 @@ fn limit_scaling<T>(s: T, minval: T, maxval: T) -> T
 where
     T: FloatT + ScalarMath<T>,
 {
-    T::clip(s, minval, maxval, T::one(), maxval)
+    s.clip(minval, maxval, T::one(), maxval)
 }
 
 fn scale_data<T: FloatT>(

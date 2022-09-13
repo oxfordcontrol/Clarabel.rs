@@ -11,6 +11,8 @@ use crate::solver::{
     },
     implementations::default::*,
 };
+use num_derive::ToPrimitive;
+use num_traits::ToPrimitive;
 use pyo3::prelude::*;
 use std::fmt::Write;
 
@@ -40,9 +42,17 @@ pub struct PyDefaultSolution {
     #[pyo3(get)]
     pub z: Vec<f64>,
     #[pyo3(get)]
+    pub status: PySolverStatus,
+    #[pyo3(get)]
     pub obj_val: f64,
     #[pyo3(get)]
-    pub status: PySolverStatus,
+    pub solve_time: f64,
+    #[pyo3(get)]
+    pub iterations: u32,
+    #[pyo3(get)]
+    pub r_prim: f64,
+    #[pyo3(get)]
+    pub r_dual: f64,
 }
 
 impl PyDefaultSolution {
@@ -50,14 +60,17 @@ impl PyDefaultSolution {
         let x = result.x.clone();
         let s = result.s.clone();
         let z = result.z.clone();
-        let obj_val = result.obj_val;
         let status = PySolverStatus::new_from_internal(&result.status);
         Self {
             x,
             s,
             z,
-            obj_val,
+            obj_val: result.obj_val,
             status,
+            solve_time: result.solve_time,
+            iterations: result.iterations,
+            r_prim: result.r_prim,
+            r_dual: result.r_dual,
         }
     }
 }
@@ -73,15 +86,20 @@ impl PyDefaultSolution {
 // Solver Status
 // ----------------------------------
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, ToPrimitive)]
 #[pyclass(name = "SolverStatus")]
 pub enum PySolverStatus {
-    Unsolved,
+    Unsolved = 0,
     Solved,
     PrimalInfeasible,
     DualInfeasible,
+    AlmostSolved,
+    AlmostPrimalInfeasible,
+    AlmostDualInfeasible,
     MaxIterations,
     MaxTime,
+    NumericalError,
+    InsufficientProgress,
 }
 
 impl PySolverStatus {
@@ -91,8 +109,13 @@ impl PySolverStatus {
             SolverStatus::Solved => PySolverStatus::Solved,
             SolverStatus::PrimalInfeasible => PySolverStatus::PrimalInfeasible,
             SolverStatus::DualInfeasible => PySolverStatus::DualInfeasible,
+            SolverStatus::AlmostSolved => PySolverStatus::AlmostSolved,
+            SolverStatus::AlmostPrimalInfeasible => PySolverStatus::AlmostPrimalInfeasible,
+            SolverStatus::AlmostDualInfeasible => PySolverStatus::AlmostDualInfeasible,
             SolverStatus::MaxIterations => PySolverStatus::MaxIterations,
             SolverStatus::MaxTime => PySolverStatus::MaxTime,
+            SolverStatus::NumericalError => PySolverStatus::NumericalError,
+            SolverStatus::InsufficientProgress => PySolverStatus::InsufficientProgress,
         }
     }
 }
@@ -105,10 +128,20 @@ impl PySolverStatus {
             PySolverStatus::Solved => "Solved",
             PySolverStatus::PrimalInfeasible => "PrimalInfeasible",
             PySolverStatus::DualInfeasible => "DualInfeasible",
+            PySolverStatus::AlmostSolved => "AlmostSolved",
+            PySolverStatus::AlmostPrimalInfeasible => "AlmostPrimalInfeasible",
+            PySolverStatus::AlmostDualInfeasible => "AlmostDualInfeasible",
             PySolverStatus::MaxIterations => "MaxIterations",
             PySolverStatus::MaxTime => "MaxTime",
+            PySolverStatus::NumericalError => "NumericalError",
+            PySolverStatus::InsufficientProgress => "InsufficientProgress",
         }
         .to_string()
+    }
+
+    // mapping of solver status to CVXPY keys is done via a hash
+    pub fn __hash__(&self) -> u32 {
+        self.to_u32().unwrap()
     }
 }
 
@@ -126,6 +159,10 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub verbose: bool,
     #[pyo3(get, set)]
+    pub max_step_fraction: f64,
+
+    //full accuracy solution tolerances
+    #[pyo3(get, set)]
     pub tol_gap_abs: f64,
     #[pyo3(get, set)]
     pub tol_gap_rel: f64,
@@ -136,7 +173,21 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub tol_infeas_rel: f64,
     #[pyo3(get, set)]
-    pub max_step_fraction: f64,
+    pub tol_ktratio: f64,
+
+    //reduced accuracy solution tolerances
+    #[pyo3(get, set)]
+    pub reduced_tol_gap_abs: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_gap_rel: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_feas: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_infeas_abs: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_infeas_rel: f64,
+    #[pyo3(get, set)]
+    pub reduced_tol_ktratio: f64,
 
     // data equilibration
     #[pyo3(get, set)]
@@ -148,6 +199,14 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub equilibrate_max_scaling: f64,
 
+    //step size settings
+    #[pyo3(get, set)]
+    pub linesearch_backtrack_step: f64,
+    #[pyo3(get, set)]
+    pub min_switch_step_length: f64,
+    #[pyo3(get, set)]
+    pub min_terminate_step_length: f64,
+
     // KKT settings incomplete
     #[pyo3(get, set)]
     pub direct_kkt_solver: bool,
@@ -158,7 +217,9 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub static_regularization_enable: bool,
     #[pyo3(get, set)]
-    pub static_regularization_eps: f64,
+    pub static_regularization_constant: f64,
+    #[pyo3(get, set)]
+    pub static_regularization_proportional: f64,
 
     // dynamic regularization parameters
     #[pyo3(get, set)]
@@ -210,33 +271,35 @@ impl Default for PyDefaultSettings {
 
 impl PyDefaultSettings {
     pub(crate) fn new_from_internal(set: &DefaultSettings<f64>) -> Self {
-        // convert rust settings -> python
-        let time_limit = {
-            if set.time_limit >= std::time::Duration::MAX {
-                std::f64::INFINITY
-            } else {
-                set.time_limit.as_secs_f64()
-            }
-        };
-
-        let out = PyDefaultSettings {
+        PyDefaultSettings {
             max_iter: set.max_iter,
-            time_limit,
+            time_limit: set.time_limit,
             verbose: set.verbose,
             tol_gap_abs: set.tol_gap_abs,
             tol_gap_rel: set.tol_gap_rel,
             tol_feas: set.tol_feas,
             tol_infeas_abs: set.tol_infeas_abs,
             tol_infeas_rel: set.tol_infeas_rel,
+            tol_ktratio: set.tol_ktratio,
+            reduced_tol_gap_abs: set.reduced_tol_gap_abs,
+            reduced_tol_gap_rel: set.reduced_tol_gap_rel,
+            reduced_tol_feas: set.reduced_tol_feas,
+            reduced_tol_infeas_abs: set.reduced_tol_infeas_abs,
+            reduced_tol_infeas_rel: set.reduced_tol_infeas_rel,
+            reduced_tol_ktratio: set.reduced_tol_ktratio,
             max_step_fraction: set.max_step_fraction,
             equilibrate_enable: set.equilibrate_enable,
             equilibrate_max_iter: set.equilibrate_max_iter,
             equilibrate_min_scaling: set.equilibrate_min_scaling,
             equilibrate_max_scaling: set.equilibrate_max_scaling,
+            linesearch_backtrack_step: set.linesearch_backtrack_step,
+            min_switch_step_length: set.min_switch_step_length,
+            min_terminate_step_length: set.min_terminate_step_length,
             direct_kkt_solver: set.direct_kkt_solver,
             direct_solve_method: set.direct_solve_method.clone(),
             static_regularization_enable: set.static_regularization_enable,
-            static_regularization_eps: set.static_regularization_eps,
+            static_regularization_constant: set.static_regularization_constant,
+            static_regularization_proportional: set.static_regularization_proportional,
             dynamic_regularization_enable: set.dynamic_regularization_enable,
             dynamic_regularization_eps: set.dynamic_regularization_eps,
             dynamic_regularization_delta: set.dynamic_regularization_delta,
@@ -245,46 +308,41 @@ impl PyDefaultSettings {
             iterative_refinement_abstol: set.iterative_refinement_abstol,
             iterative_refinement_max_iter: set.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
-        };
-
-        println!("Done with new_from_internal");
-        out
+        }
     }
 
     pub(crate) fn to_internal(&self) -> DefaultSettings<f64> {
         // convert python settings -> Rust
 
-        // some caution is required when converting to / from
-        // extremely large or inf values, otherwise we get a panic
-        let time_limit = {
-            if self.time_limit.is_infinite()
-                || self.time_limit.is_nan()
-                || self.time_limit >= std::time::Duration::MAX.as_secs_f64() - 1.
-            {
-                std::time::Duration::MAX
-            } else {
-                std::time::Duration::from_secs_f64(self.time_limit)
-            }
-        };
-
         DefaultSettings::<f64> {
             max_iter: self.max_iter,
-            time_limit,
+            time_limit: self.time_limit,
             verbose: self.verbose,
             tol_gap_abs: self.tol_gap_abs,
             tol_gap_rel: self.tol_gap_rel,
             tol_feas: self.tol_feas,
             tol_infeas_abs: self.tol_infeas_abs,
             tol_infeas_rel: self.tol_infeas_rel,
+            tol_ktratio: self.tol_ktratio,
+            reduced_tol_gap_abs: self.reduced_tol_gap_abs,
+            reduced_tol_gap_rel: self.reduced_tol_gap_rel,
+            reduced_tol_feas: self.reduced_tol_feas,
+            reduced_tol_infeas_abs: self.reduced_tol_infeas_abs,
+            reduced_tol_infeas_rel: self.reduced_tol_infeas_rel,
+            reduced_tol_ktratio: self.reduced_tol_ktratio,
             max_step_fraction: self.max_step_fraction,
             equilibrate_enable: self.equilibrate_enable,
             equilibrate_max_iter: self.equilibrate_max_iter,
             equilibrate_min_scaling: self.equilibrate_min_scaling,
             equilibrate_max_scaling: self.equilibrate_max_scaling,
+            linesearch_backtrack_step: self.linesearch_backtrack_step,
+            min_switch_step_length: self.min_switch_step_length,
+            min_terminate_step_length: self.min_terminate_step_length,
             direct_kkt_solver: self.direct_kkt_solver,
             direct_solve_method: self.direct_solve_method.clone(),
             static_regularization_enable: self.static_regularization_enable,
-            static_regularization_eps: self.static_regularization_eps,
+            static_regularization_constant: self.static_regularization_constant,
+            static_regularization_proportional: self.static_regularization_proportional,
             dynamic_regularization_enable: self.dynamic_regularization_enable,
             dynamic_regularization_eps: self.dynamic_regularization_eps,
             dynamic_regularization_delta: self.dynamic_regularization_delta,
@@ -314,7 +372,7 @@ impl PyDefaultSolver {
         q: Vec<f64>,
         A: PyCscMatrix,
         b: Vec<f64>,
-        cones: Vec<PySupportedCones>,
+        cones: Vec<PySupportedCone>,
         settings: PyDefaultSettings,
     ) -> Self {
         let cones = _py_to_native_cones(cones);

@@ -1,6 +1,6 @@
 [package]
 name = "clarabel"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -13,7 +13,8 @@ categories = ["mathematics"]
 [dependencies]
 num-traits = "0.2"
 derive_builder = "0.11"
-amd = "0.2.1"
+enum_dispatch = "0.3.8"
+amd = "0.2.2"
 
 [[example]]
 name = "lp"
@@ -28,16 +29,56 @@ name = "socp"
 path = "examples/rust/example_socp.rs"
 
 [[example]]
+name = "powcone"
+path = "examples/rust/example_powcone.rs"
+
+[[example]]
+name = "expcone"
+path = "examples/rust/example_expcone.rs"
+
+[[example]]
 name = "box"
 path = "examples/rust/example_box.rs"
 
+
+
+# -------------------------------
+# custom build profiles 
+# -------------------------------
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+
+
 # ------------------------------
-# Optional python interface 
+# Optional julia and python interface 
 # ------------------------------
 
 [features]
-# enables python interface build via pyo3
-python = ["dep:pyo3"]
+
+# enables julia interface 
+julia = ["dep:libc","dep:num-derive","dep:serde", "dep:serde_json"] 
+ 
+# enables python interface via pyo3.
+# should only be used with maturin builds.
+python = ["dep:pyo3","dep:num-derive"]
+
+[dependencies.num-derive]
+optional = true 
+version = "0.2"
+
+[dependencies.serde]
+optional = true 
+version = "1"
+features = ["derive"]
+
+[dependencies.serde_json]
+optional = true 
+version = "1"
+
+[dependencies.libc]
+optional = true 
+version = "0.2"
 
 [dependencies.pyo3]
 optional = true
@@ -48,9 +89,10 @@ features = ["extension-module", "abi3-py37"]
 
 [lib]
 name = "clarabel"
-# "cdylib" is necessary to produce a shared library that Python can import.
+# "cdylib" is necessary to produce a shared libraries for Python/Julia
 # "lib" is necessary to allow the ./examples to build
-crate-type = ["cdylib","lib"]
+crate-type = ["lib","cdylib"] 
+
 
 # ------------------------------
 # enable latex in docs 
@@ -58,4 +100,4 @@ crate-type = ["cdylib","lib"]
 # ------------------------------
 
 [package.metadata.docs.rs]
-rustdoc-args = [ "--html-in-header", "./html/docs-header.html" ]
+rustdoc-args = [ "--html-in-header", "./html/rustdocs-header.html" ]

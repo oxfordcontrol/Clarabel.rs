@@ -10,7 +10,8 @@
 //!  which collectively implement support for the problem format described in the top
 //! level crate documentation.
 
-use super::{cones::Cone, CoreSettings};
+use super::SolverStatus;
+use super::{cones::Cone, CoreSettings, ScalingStrategy};
 use crate::algebra::*;
 use crate::timers::*;
 
@@ -31,6 +32,7 @@ pub trait Variables<T: FloatT> {
     type D: ProblemData<T>;
     type R: Residuals<T>;
     type C: Cone<T>;
+    type SE: Settings<T>;
 
     /// Compute the scaled duality gap.
 
@@ -38,16 +40,16 @@ pub trait Variables<T: FloatT> {
 
     /// Compute the KKT RHS for a pure Newton step.
 
-    fn calc_affine_step_rhs(&mut self, residuals: &Self::R, variables: &Self, cones: &Self::C);
+    fn affine_step_rhs(&mut self, residuals: &Self::R, variables: &Self, cones: &Self::C);
 
     /// Compute the KKT RHS for an interior point centering step.
 
     #[allow(clippy::too_many_arguments)]
-    fn calc_combined_step_rhs(
+    fn combined_step_rhs(
         &mut self,
         residuals: &Self::R,
         variables: &Self,
-        cones: &Self::C,
+        cones: &mut Self::C,
         step: &mut Self, //mut allows step to double as working space
         σ: T,
         μ: T,
@@ -56,19 +58,33 @@ pub trait Variables<T: FloatT> {
     /// Compute the maximum step length possible in the given
     /// step direction without violating a cone boundary.
 
-    fn calc_step_length(&mut self, step_lhs: &Self, cones: &Self::C) -> T;
+    fn calc_step_length(
+        &self,
+        step_lhs: &Self,
+        cones: &Self::C,
+        settings: &Self::SE,
+        steptype: &'static str,
+    ) -> T;
 
     /// Update the variables in the given step direction, scaled by `α`.
-
     fn add_step(&mut self, step_lhs: &Self, α: T);
 
     /// Bring the variables into the interior of the cone constraints.
-    ///
-    fn shift_to_cone(&mut self, cones: &Self::C);
+    fn symmetric_initialization(&mut self, cones: &Self::C);
+
+    /// Initialize all conic variables to unit values.
+    fn unit_initialization(&mut self, cones: &Self::C);
+
+    /// Overwrite values with those from another object
+    fn copy_from(&mut self, src: &Self);
 
     /// Apply NT scaling to the a collection of cones.
-    ///
-    fn scale_cones(&self, cones: &mut Self::C);
+
+    fn scale_cones(&self, cones: &mut Self::C, μ: T, scaling_strategy: ScalingStrategy);
+
+    /// Compute the barrier function
+
+    fn barrier(&self, step: &Self, α: T, cones: &Self::C) -> T;
 }
 
 /// Residuals for a conic optimization problem.
@@ -93,7 +109,7 @@ pub trait KKTSystem<T: FloatT> {
     /// Update the KKT system.   In particular, update KKT
     /// matrix entries with new variable and refactor.
 
-    fn update(&mut self, data: &Self::D, cones: &Self::C, settings: &Self::SE);
+    fn update(&mut self, data: &Self::D, cones: &Self::C, settings: &Self::SE) -> bool;
 
     /// Solve the KKT system for the given RHS.
 
@@ -107,7 +123,7 @@ pub trait KKTSystem<T: FloatT> {
         cones: &Self::C,
         steptype: &'static str,
         settings: &Self::SE,
-    );
+    ) -> bool;
 
     /// Find an IP starting condition
 
@@ -152,18 +168,26 @@ where
     fn reset(&mut self, timers: &mut Timers);
 
     /// Compute final values before solver termination
-    fn finalize(&mut self, timers: &mut Timers);
+    fn finalize(&mut self, residuals: &Self::R, settings: &Self::SE, timers: &mut Timers);
 
     /// Update solver progress information
     fn update(&mut self, data: &Self::D, variables: &Self::V, residuals: &Self::R, timers: &Timers);
 
     /// Return `true` if termination conditions have been reached.
-    fn check_termination(&mut self, residuals: &Self::R, settings: &Self::SE) -> bool;
+    fn check_termination(&mut self, residuals: &Self::R, settings: &Self::SE, iter: u32) -> bool;
+
+    // save and recover prior iterates
+    fn save_prev_iterate(&mut self, variables: &Self::V, prev_variables: &mut Self::V);
+    fn reset_to_prev_iterate(&mut self, variables: &mut Self::V, prev_variables: &Self::V);
 
     /// Record some of the top level solver's choice of various
     /// scalars. `μ = ` normalized gap.  `α = ` computed step length.
     /// `σ = ` multiplier for the updated centering parameter.
     fn save_scalars(&mut self, μ: T, α: T, σ: T, iter: u32);
+
+    /// Report or update termination status
+    fn get_status(&self) -> SolverStatus;
+    fn set_status(&mut self, status: SolverStatus);
 }
 
 /// Solution for a conic optimization problem.

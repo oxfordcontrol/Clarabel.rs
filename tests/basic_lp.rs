@@ -9,7 +9,7 @@ fn basic_lp_data() -> (
     Vec<f64>,
     CscMatrix<f64>,
     Vec<f64>,
-    Vec<SupportedCones<f64>>,
+    Vec<SupportedConeT<f64>>,
 ) {
     let P = CscMatrix::<f64>::spalloc(3, 3, 0);
 

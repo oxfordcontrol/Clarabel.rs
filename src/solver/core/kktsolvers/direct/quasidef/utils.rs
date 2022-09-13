@@ -2,16 +2,17 @@
 
 use super::datamap::*;
 use crate::algebra::*;
-use crate::solver::core::cones::{CompositeCone, SupportedCones};
+use crate::solver::core::cones::CompositeCone;
+use crate::solver::core::cones::*;
 use num_traits::Zero;
 
-pub(crate) fn allocate_kkt_WtW_blocks<T, Z>(cones: &CompositeCone<T>) -> Vec<Z>
+pub(crate) fn allocate_kkt_Hsblocks<T, Z>(cones: &CompositeCone<T>) -> Vec<Z>
 where
     T: FloatT,
     Z: Zero + Clone,
 {
     let mut nnz = 0;
-    if let Some(rng_last) = cones.rng_cones.last() {
+    if let Some(rng_last) = cones.rng_blocks.last() {
         nnz = (*rng_last).end;
     }
     vec![Z::zero(); nnz]
@@ -24,7 +25,7 @@ pub fn assemble_kkt_matrix<T: FloatT>(
     shape: MatrixTriangle,
 ) -> (CscMatrix<T>, LDLDataMap) {
     let (m, n) = (A.nrows(), P.nrows());
-    let n_socs = cones.type_count("SecondOrderConeT");
+    let n_socs = cones.type_count(SupportedConeTag::SecondOrderCone);
     let p = 2 * n_socs;
 
     let mut maps = LDLDataMap::new(P, A, cones);
@@ -32,8 +33,8 @@ pub fn assemble_kkt_matrix<T: FloatT>(
     // entries actually on the diagonal of P
     let nnz_diagP = P.count_diagonal_entries();
 
-    // total entries in the WtW blocks
-    let nnz_WtW_blocks = maps.WtWblocks.len();
+    // total entries in the Hs blocks
+    let nnz_Hsblocks = maps.Hsblocks.len();
 
     // entries in the dense columns u/v of the
     // sparse SOC expansion terms.  2 is for
@@ -47,7 +48,7 @@ pub fn assemble_kkt_matrix<T: FloatT>(
     n -                      // Number of elements in diagonal top left block
     nnz_diagP +              // remove double count on the diagonal if P has entries
     A.nnz() +                 // Number of nonzeros in A
-    nnz_WtW_blocks +         // Number of elements in diagonal below A'
+    nnz_Hsblocks +         // Number of elements in diagonal below A'
     nnz_SOC_vecs +           // Number of elements in sparse SOC off diagonal columns
     nnz_SOC_ext; // Number of elements in diagonal of SOC extension
 
@@ -86,11 +87,11 @@ fn _kkt_assemble_colcounts<T: FloatT>(
         }
     }
 
-    // add the the WtW blocks in the lower right
+    // add the Hs blocks in the lower right
     for (i, cone) in cones.iter().enumerate() {
         let firstcol = cones.rng_cones[i].start + n;
         let blockdim = cone.numel();
-        if cone.WtW_is_diagonal() {
+        if cone.Hs_is_diagonal() {
             K.colcount_diag(firstcol, blockdim);
         } else {
             K.colcount_dense_triangle(firstcol, blockdim, shape);
@@ -101,9 +102,9 @@ fn _kkt_assemble_colcounts<T: FloatT>(
     let mut socidx = 0; // which SOC are we working on?
 
     for (i, cone) in cones.iter().enumerate() {
-        if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
+        if let SupportedCone::SecondOrderCone(SOC) = cone {
             // we will add the u and v columns for this cone
-            let nvars = cone.numel();
+            let nvars = SOC.numel();
             let headidx = cones.rng_cones[i].start;
 
             // which column does u go into?
@@ -157,12 +158,12 @@ fn _kkt_assemble_fill<T: FloatT>(
         }
     }
 
-    // add the the WtW blocks in the lower right
+    // add the the Hs blocks in the lower right
     for (i, (cone, rng_cone)) in cones.iter().zip(cones.rng_cones.iter()).enumerate() {
         let firstcol = rng_cone.start + n;
         let blockdim = cone.numel();
-        let block = &mut maps.WtWblocks[cones.rng_blocks[i].clone()];
-        if cone.WtW_is_diagonal() {
+        let block = &mut maps.Hsblocks[cones.rng_blocks[i].clone()];
+        if cone.Hs_is_diagonal() {
             K.fill_diag(block, firstcol, blockdim);
         } else {
             K.fill_dense_triangle(block, firstcol, blockdim, shape);
@@ -172,9 +173,9 @@ fn _kkt_assemble_fill<T: FloatT>(
     // fill in dense columns for each SOC
     let mut socidx = 0; //which SOC are we working on?
 
-    for (i, rng) in cones.rng_cones.iter().enumerate() {
-        if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
-            let headidx = rng.start;
+    for (i, cone) in cones.iter().enumerate() {
+        if let SupportedCone::SecondOrderCone(_) = cone {
+            let headidx = cones.rng_cones[i].start;
 
             // which column does u go into (if triu)?
             let col = m + n + 2 * socidx;

@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use super::*;
 use crate::{
     algebra::*,
@@ -14,7 +12,7 @@ pub struct DefaultSolution<T> {
     pub s: Vec<T>,
     pub status: SolverStatus,
     pub obj_val: T,
-    pub solve_time: std::time::Duration,
+    pub solve_time: f64,
     pub iterations: u32,
     pub r_prim: T,
     pub r_dual: T,
@@ -35,7 +33,7 @@ where
             s,
             status: SolverStatus::Unsolved,
             obj_val: T::nan(),
-            solve_time: Duration::ZERO,
+            solve_time: 0f64,
             iterations: 0,
             r_prim: T::nan(),
             r_dual: T::nan(),
@@ -57,7 +55,7 @@ where
         variables: &DefaultVariables<T>,
         info: &DefaultInfo<T>,
     ) {
-        self.status = info.status.clone();
+        self.status = info.status;
         self.obj_val = info.cost_primal;
 
         //copy internal variables and undo homogenization
@@ -69,9 +67,7 @@ where
         // using κ to get an infeasibility certificate.
         // Otherwise use τ to get a solution.
         let scaleinv;
-        if info.status == SolverStatus::PrimalInfeasible
-            || info.status == SolverStatus::DualInfeasible
-        {
+        if info.status.is_infeasible() {
             scaleinv = T::recip(variables.κ);
             self.obj_val = T::nan();
         } else {

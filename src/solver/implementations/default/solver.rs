@@ -1,6 +1,6 @@
 use super::*;
 use crate::solver::core::{
-    cones::{CompositeCone, SupportedCones},
+    cones::{CompositeCone, SupportedConeT},
     traits::ProblemData,
     Solver,
 };
@@ -30,7 +30,7 @@ where
         q: &[T],
         A: &CscMatrix<T>,
         b: &[T],
-        cone_types: &[SupportedCones<T>],
+        cone_types: &[SupportedConeT<T>],
         settings: DefaultSettings<T>,
     ) -> Self {
         //sanity check problem dimensions
@@ -62,12 +62,13 @@ where
         // work variables for assembling step direction LHS/RHS
         let step_rhs  = DefaultVariables::<T>::new(data.n,data.m);
         let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
+        let prev_vars = DefaultVariables::<T>::new(data.n,data.m);
 
         // user facing results go here.
         let solution = DefaultSolution::<T>::new(data.m,data.n);
 
         output = Self{data,variables,residuals,kktsystem,step_lhs,
-             step_rhs,info,solution,cones,settings,timers: None};
+             step_rhs,prev_vars,info,solution,cones,settings,timers: None};
 
         }} //end "setup" timer.
 
@@ -84,7 +85,7 @@ fn _check_dimensions<T: FloatT>(
     q: &[T],
     A: &CscMatrix<T>,
     b: &[T],
-    cone_types: &[SupportedCones<T>],
+    cone_types: &[SupportedConeT<T>],
 ) {
     let m = b.len();
     let n = q.len();

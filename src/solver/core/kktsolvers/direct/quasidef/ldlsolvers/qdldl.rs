@@ -58,11 +58,13 @@ where
         self.factors.solve(x);
     }
 
-    fn refactor(&mut self, _kkt: &CscMatrix<T>) {
+    fn refactor(&mut self, _kkt: &CscMatrix<T>) -> bool {
         //QDLDL has maintained its own version of the permuted
         //KKT matrix through custom update/scale/offset methods,
         //so we ignore the KKT matrix provided by the caller
         self.factors.refactor();
+
+        self.factors.Dinv.is_finite()
     }
 
     fn required_matrix_shape() -> MatrixTriangle {

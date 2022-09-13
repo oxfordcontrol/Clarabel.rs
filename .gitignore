@@ -4,5 +4,4 @@ Cargo.lock
 .vscode
 .env*
 notes*.txt
-julia   
 /dist

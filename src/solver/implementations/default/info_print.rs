@@ -1,11 +1,14 @@
-use crate::algebra::*;
-use std::time::Duration;
+use crate::{
+    algebra::*,
+    solver::core::cones::{SupportedConeAsTag, SupportedConeTag},
+};
 
 use super::*;
 use crate::solver::core::{
-    cones::{CompositeCone, SupportedCones},
+    cones::{CompositeCone, Cone},
     traits::InfoPrint,
 };
+use std::time::Duration;
 
 macro_rules! expformat {
     ($fmt:expr,$val:expr) => {
@@ -43,10 +46,12 @@ where
         println!("  cones (total) = {}", cones.len());
 
         //All dims here are dummies since we just care about the cone type
-        _print_conedims_by_type(cones, SupportedCones::ZeroConeT(0));
-        _print_conedims_by_type(cones, SupportedCones::NonnegativeConeT(0));
-        _print_conedims_by_type(cones, SupportedCones::SecondOrderConeT(0));
-        //_print_conedims_by_type(&cones, SupportedCones::PSDTriangleConeT(0));
+        _print_conedims_by_type(cones, SupportedConeTag::ZeroCone);
+        _print_conedims_by_type(cones, SupportedConeTag::NonnegativeCone);
+        _print_conedims_by_type(cones, SupportedConeTag::SecondOrderCone);
+        _print_conedims_by_type(cones, SupportedConeTag::ExponentialCone);
+        _print_conedims_by_type(cones, SupportedConeTag::PowerCone);
+        //_print_conedims_by_type(&cones, SupportedCone::PSDTriangleConeT(0));
 
         println!();
         _print_settings(settings);
@@ -62,6 +67,7 @@ where
         print!("iter    ");
         print!("pcost        ");
         print!("dcost       ");
+        print!("gap       ");
         print!("pres      ");
         print!("dres      ");
         print!("k/t       ");
@@ -69,7 +75,7 @@ where
         print!("step      ");
         println!();
         println!(
-            "-----------------------------------------------------------------------------------"
+            "---------------------------------------------------------------------------------------------"
         );
     }
 
@@ -81,6 +87,8 @@ where
         print!("{:>3}  ", self.iterations);
         print!("{}  ", expformat!("{:+8.4e}", self.cost_primal));
         print!("{}  ", expformat!("{:+8.4e}", self.cost_dual));
+        let gapprint = T::min(self.gap_abs, self.gap_rel);
+        print!("{}  ", expformat!("{:6.2e}", gapprint));
         print!("{}  ", expformat!("{:6.2e}", self.res_primal));
         print!("{}  ", expformat!("{:6.2e}", self.res_dual));
         print!("{}  ", expformat!("{:6.2e}", self.ktratio));
@@ -101,12 +109,15 @@ where
         }
 
         println!(
-            "-----------------------------------------------------------------------------------"
+            "---------------------------------------------------------------------------------------------"
         );
 
         println!("Terminated with status = {}", self.status);
 
-        println!("solve time = {:?}", self.solve_time);
+        println!(
+            "solve time = {:?}",
+            Duration::from_secs_f64(self.solve_time)
+        );
     }
 }
 
@@ -131,7 +142,7 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
     }
 
     let time_lim_str = {
-        if set.time_limit == Duration::MAX {
+        if set.time_limit.is_infinite() {
             "Inf".to_string()
         } else {
             format!("{:?}", set.time_limit)
@@ -148,9 +159,10 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
     );
 
     println!(
-        "  static reg : {}, ϵ = {:.1e}",
+        "  static reg : {}, ϵ1 = {:.1e}, ϵ2 = {:.1e}",
         _bool_on_off(set.static_regularization_enable),
-        set.static_regularization_eps
+        set.static_regularization_constant,
+        set.static_regularization_proportional,
     );
 
     println!(
@@ -186,25 +198,25 @@ fn _get_precision_string<T: FloatT>() -> String {
     (::std::mem::size_of::<T>() * 8).to_string()
 }
 
-fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetype: SupportedCones<T>) {
+fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetag: SupportedConeTag) {
     let maxlistlen = 5;
 
     //skip if there are none of this type
-    if !cones.type_counts.contains_key(&conetype.variant_name()) {
+    if !cones.type_counts.contains_key(&conetag) {
         return;
     }
 
     // how many of this type of cone?
-    let name = conetype.variant_name();
-    let count = cones.type_counts[name];
+    let name = conetag.as_str();
+    let count = cones.type_counts[&conetag];
 
-    //let name  = rpad(string(type)[1:end-5],11)  #drops "ConeT part"
-    let name = &name[0..name.len() - 5];
+    // drops trailing "Cone" part of name
+    let name = &name[0..name.len() - 4];
     let name = format!("{:>11}", name);
 
     let mut nvars = Vec::with_capacity(count);
-    for (i, cone) in cones.iter().enumerate() {
-        if cones.types[i] == conetype {
+    for cone in cones.iter() {
+        if cone.as_tag() == conetag {
             nvars.push(cone.numel());
         }
     }

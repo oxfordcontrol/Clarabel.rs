@@ -25,8 +25,9 @@ pub struct DirectLDLKKTSolver<T> {
     b: Vec<T>,
 
     // internal workspace for IR scheme
-    work_e: Vec<T>,
-    work_dx: Vec<T>,
+    // and static offsetting of KKT
+    work1: Vec<T>,
+    work2: Vec<T>,
 
     // KKT mapping from problem data to KKT
     map: LDLDataMap,
@@ -34,15 +35,18 @@ pub struct DirectLDLKKTSolver<T> {
     // the expected signs of D in KKT = LDL^T
     dsigns: Vec<i8>,
 
-    // a vector for storing the entries of WtW blocks
+    // a vector for storing the entries of Hs blocks
     // on the KKT matrix block diagonal
-    WtWblocks: Vec<T>,
+    Hsblocks: Vec<T>,
 
     //unpermuted KKT matrix
     KKT: CscMatrix<T>,
 
     // the direct linear LDL solver
     ldlsolver: BoxedDirectLDLSolver<T>,
+
+    // the diagonal regularizer currently applied
+    diagonal_regularizer: T,
 }
 
 impl<T> DirectLDLKKTSolver<T>
@@ -59,13 +63,13 @@ where
     ) -> Self {
         // solving in sparse format.  Need this many
         // extra variables for SOCs
-        let p = 2 * cones.type_count("SecondOrderConeT");
+        let p = 2 * cones.type_count(SupportedConeTag::SecondOrderCone);
 
         // LHS/RHS/work for iterative refinement
         let x = vec![T::zero(); n + m + p];
         let b = vec![T::zero(); n + m + p];
-        let work_e = vec![T::zero(); n + m + p];
-        let work_dx = vec![T::zero(); n + m + p];
+        let work1 = vec![T::zero(); n + m + p];
+        let work2 = vec![T::zero(); n + m + p];
 
         // the expected signs of D in LDL
         let mut dsigns = vec![1_i8; n + m + p];
@@ -73,19 +77,16 @@ where
 
         // updates to the diagonal of KKT will be
         // assigned here before updating matrix entries
-        let WtWblocks = allocate_kkt_WtW_blocks::<T, T>(cones);
+        let Hsblocks = allocate_kkt_Hsblocks::<T, T>(cones);
 
         // get a constructor for the LDL solver we should use,
         // and also the matrix shape it requires
         let (kktshape, ldl_ctor) = _get_ldlsolver_config(settings);
 
         //construct a KKT matrix of the right shape
-        let (mut KKT, map) = assemble_kkt_matrix(P, A, cones, kktshape);
+        let (KKT, map) = assemble_kkt_matrix(P, A, cones, kktshape);
 
-        if settings.static_regularization_enable {
-            let eps = settings.static_regularization_eps;
-            _offset_values_KKT(&mut KKT, &map.diag_full[0..n], eps, &dsigns[0..n]);
-        }
+        let diagonal_regularizer = T::zero();
 
         // now make the LDL linear solver engine
         let ldlsolver = ldl_ctor(&KKT, &dsigns, settings);
@@ -96,16 +97,98 @@ where
             p,
             x,
             b,
-            work_e,
-            work_dx,
+            work1,
+            work2,
             map,
             dsigns,
-            WtWblocks,
+            Hsblocks,
             KKT,
             ldlsolver,
+            diagonal_regularizer,
         }
     }
+}
 
+impl<T> KKTSolver<T> for DirectLDLKKTSolver<T>
+where
+    T: FloatT,
+{
+    fn update(&mut self, cones: &CompositeCone<T>, settings: &CoreSettings<T>) -> bool {
+        let map = &self.map;
+
+        // Set the elements the W^tW blocks in the KKT matrix.
+        cones.get_Hs(&mut self.Hsblocks);
+
+        let (values, index) = (&mut self.Hsblocks, &map.Hsblocks);
+        // change signs to get -W^TW
+        values.negate();
+        _update_values(&mut self.ldlsolver, &mut self.KKT, index, values);
+
+        // update the scaled u and v columns.
+        let mut cidx = 0; // which of the SOCs are we working on?
+
+        for cone in cones.iter() {
+            // `cone` here will be of our SupportedCone enum wrapper, so
+            //  we can extract a SecondOrderCone `soc`
+            if let SupportedCone::SecondOrderCone(soc) = cone {
+                let η2 = T::powi(soc.η, 2);
+
+                //off diagonal columns (or rows)s
+                let KKT = &mut self.KKT;
+                let ldlsolver = &mut self.ldlsolver;
+
+                _update_values(ldlsolver, KKT, &map.SOC_u[cidx], &soc.u);
+                _update_values(ldlsolver, KKT, &map.SOC_v[cidx], &soc.v);
+                _scale_values(ldlsolver, KKT, &map.SOC_u[cidx], -η2);
+                _scale_values(ldlsolver, KKT, &map.SOC_v[cidx], -η2);
+
+                //add η^2*(-1/1) to diagonal in the extended rows/cols
+                _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2]], &[-η2; 1]);
+                _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
+
+                cidx += 1;
+            } //end match
+        } //end for
+
+        self.regularize_and_refactor(settings)
+    } //end fn
+
+    fn setrhs(&mut self, rhsx: &[T], rhsz: &[T]) {
+        let (m, n, p) = (self.m, self.n, self.p);
+
+        self.b[0..n].copy_from(rhsx);
+        self.b[n..(n + m)].copy_from(rhsz);
+        self.b[n + m..(n + m + p)].fill(T::zero());
+    }
+
+    fn solve(
+        &mut self,
+        lhsx: Option<&mut [T]>,
+        lhsz: Option<&mut [T]>,
+        settings: &CoreSettings<T>,
+    ) -> bool {
+        self.ldlsolver.solve(&mut self.x, &self.b);
+
+        let is_success = {
+            if settings.iterative_refinement_enable {
+                self.iterative_refinement(settings)
+            } else {
+                self.x.is_finite()
+            }
+        };
+
+        if is_success {
+            self.getlhs(lhsx, lhsz);
+        }
+
+        is_success
+    }
+}
+
+impl<T> DirectLDLKKTSolver<T>
+where
+    T: FloatT,
+{
     // extra helper functions, not required for KKTSolver trait
     fn getlhs(&self, lhsx: Option<&mut [T]>, lhsz: Option<&mut [T]>) {
         let x = &self.x;
@@ -118,6 +201,127 @@ where
             v.copy_from(&x[n..(n + m)]);
         }
     }
+
+    fn regularize_and_refactor(&mut self, settings: &CoreSettings<T>) -> bool {
+        let map = &self.map;
+        let KKT = &mut self.KKT;
+        let dsigns = &self.dsigns;
+        let diag_kkt = &mut self.work1;
+        let diag_shifted = &mut self.work2;
+
+        if settings.static_regularization_enable {
+            // hold a copy of the true KKT diagonal
+            // diag_kkt .= KKT.nzval[map.diag_full];
+            for (d, idx) in diag_kkt.iter_mut().zip(map.diag_full.iter()) {
+                *d = KKT.nzval[*idx]
+            }
+
+            let eps = _compute_regularizer(diag_kkt, settings);
+
+            // compute an offset version, accounting for signs
+            diag_shifted.copy_from(diag_kkt);
+
+            diag_shifted
+                .iter_mut()
+                .zip(dsigns.iter())
+                .for_each(|(shift, &sign)| {
+                    if sign == 1 {
+                        *shift += eps;
+                    } else {
+                        *shift -= eps;
+                    }
+                });
+
+            // overwrite the diagonal of KKT and within the ldlsolver
+            _update_values(&mut self.ldlsolver, KKT, &map.diag_full, diag_shifted);
+
+            // remember the value we used.  Not needed,
+            // but possibly useful for debugging
+            self.diagonal_regularizer = eps;
+        }
+
+        //refactor with new data
+        let is_success = self.ldlsolver.refactor(KKT);
+
+        if settings.static_regularization_enable {
+            // put our internal copy of the KKT matrix back the way
+            // it was. Not necessary to fix the ldlsolver copy because
+            // this is only needed for our post-factorization IR scheme
+
+            _update_values_KKT(KKT, &map.diag_full, diag_kkt);
+        }
+
+        is_success
+    }
+
+    fn iterative_refinement(&mut self, settings: &CoreSettings<T>) -> bool {
+        let (x, b) = (&mut self.x, &self.b);
+        let (e, dx) = (&mut self.work1, &mut self.work2);
+
+        // iterative refinement params
+        let reltol = settings.iterative_refinement_reltol;
+        let abstol = settings.iterative_refinement_abstol;
+        let maxiter = settings.iterative_refinement_max_iter;
+        let stopratio = settings.iterative_refinement_stop_ratio;
+
+        let K = &self.KKT;
+        let normb = b.norm_inf();
+
+        //compute the initial error
+        let mut norme = _get_refine_error(e, b, K, x);
+
+        for _ in 0..maxiter {
+            // bail on numerical error
+            if !norme.is_finite() {
+                return false;
+            }
+
+            if norme <= (abstol + reltol * normb) {
+                //within tolerance.  Exit
+                break;
+            }
+
+            let lastnorme = norme;
+
+            //make a refinement
+            self.ldlsolver.solve(dx, e);
+
+            //prospective solution is x + dx.  Use dx space to
+            // hold it for a check before applying to x
+            dx.axpby(T::one(), x, T::one()); //now dx is really x + dx
+            norme = _get_refine_error(e, b, K, dx);
+
+            if lastnorme / norme < stopratio {
+                //insufficient improvement.  Exit
+                break;
+            } else {
+                //just swap instead of copying to x
+                std::mem::swap(x, dx);
+            }
+        }
+        //NB: "success" means only we had a finite valued result
+        true
+    }
+}
+
+fn _compute_regularizer<T: FloatT>(diag_kkt: &[T], settings: &CoreSettings<T>) -> T {
+    let maxdiag = diag_kkt.norm_inf();
+
+    // Compute a new regularizer
+    settings.static_regularization_constant + settings.static_regularization_proportional * maxdiag
+}
+
+//  computes e = b - Kξ, overwriting the first argument
+//  and returning its norm
+
+fn _get_refine_error<T: FloatT>(e: &mut [T], b: &[T], K: &CscMatrix<T>, ξ: &mut [T]) -> T {
+    // Note that K is only triu data, so need to
+    // be careful when computing the residual here
+
+    e.copy_from(b);
+    K.symv(e, MatrixTriangle::Triu, ξ, -T::one(), T::one()); //#  e = b - Kξ
+
+    e.norm_inf()
 }
 
 type LDLConstructor<T> = fn(&CscMatrix<T>, &[i8], &CoreSettings<T>) -> BoxedDirectLDLSolver<T>;
@@ -198,33 +402,6 @@ fn _scale_values_KKT<T: FloatT>(KKT: &mut CscMatrix<T>, index: &[usize], scale: 
     }
 }
 
-// offset diagonal entries of the KKT matrix over the Range
-// of inices passed.  Length of signs and index must agree
-fn _offset_values<T: FloatT>(
-    ldlsolver: &mut BoxedDirectLDLSolver<T>,
-    KKT: &mut CscMatrix<T>,
-    index: &[usize],
-    offset: T,
-    signs: &[i8],
-) {
-    assert_eq!(index.len(), signs.len());
-
-    //Update values in the KKT matrix K.
-    _offset_values_KKT(KKT, index, offset, signs);
-
-    // ...and in the LDL subsolver if needed
-    ldlsolver.offset_values(index, offset, signs);
-}
-
-fn _offset_values_KKT<T: FloatT>(KKT: &mut CscMatrix<T>, index: &[usize], offset: T, signs: &[i8]) {
-    assert_eq!(index.len(), signs.len());
-
-    for (&idx, &sign) in index.iter().zip(signs.iter()) {
-        let sign = T::from_i8(sign).unwrap();
-        KKT.nzval[idx] += sign * offset;
-    }
-}
-
 fn _fill_signs(signs: &mut [i8], m: usize, n: usize, p: usize) {
     signs.fill(1);
 
@@ -237,177 +414,4 @@ fn _fill_signs(signs: &mut [i8], m: usize, n: usize, p: usize) {
         .iter_mut()
         .step_by(2)
         .for_each(|x| *x = -*x);
-}
-
-impl<T> KKTSolver<T> for DirectLDLKKTSolver<T>
-where
-    T: FloatT,
-{
-    fn update(&mut self, cones: &CompositeCone<T>, settings: &CoreSettings<T>) {
-        let map = &self.map;
-
-        // Set the elements the W^tW blocks in the KKT matrix.
-        cones.get_WtW_block(&mut self.WtWblocks);
-
-        let (values, index) = (&mut self.WtWblocks, &map.WtWblocks);
-        // change signs to get -W^TW
-        values.negate();
-        _update_values(&mut self.ldlsolver, &mut self.KKT, index, values);
-
-        // update the scaled u and v columns.
-        let mut cidx = 0; // which of the SOCs are we working on?
-
-        for (i, cone) in cones.iter().enumerate() {
-            if matches!(cones.types[i], SupportedCones::SecondOrderConeT(_)) {
-                //here we need to recover the inner SOC value for
-                //this cone so we can access its fields
-
-                let K = cone.as_any().downcast_ref::<SecondOrderCone<T>>();
-
-                match K {
-                    None => {
-                        panic!("cone type list is corrupt.");
-                    }
-                    Some(K) => {
-                        let η2 = T::powi(K.η, 2);
-
-                        //off diagonal columns (or rows)s
-                        let KKT = &mut self.KKT;
-                        let ldlsolver = &mut self.ldlsolver;
-
-                        _update_values(ldlsolver, KKT, &map.SOC_u[cidx], &K.u);
-                        _update_values(ldlsolver, KKT, &map.SOC_v[cidx], &K.v);
-                        _scale_values(ldlsolver, KKT, &map.SOC_u[cidx], -η2);
-                        _scale_values(ldlsolver, KKT, &map.SOC_v[cidx], -η2);
-
-                        //add η^2*(-1/1) to diagonal in the extended rows/cols
-                        _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2]], &[-η2; 1]);
-                        _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
-
-                        cidx += 1;
-                    }
-                } //end match
-            } //end if SOC
-        } //end for
-
-        // Perturb the diagonal terms WtW that we have just overwritten
-        // with static regularizers.  Note that we don't want to shift
-        // elements in the ULHS (corresponding to P) since we already
-        // shifted them at initialization and haven't overwritten them
-        if settings.static_regularization_enable {
-            let eps = settings.static_regularization_eps;
-            let (m, n, p) = (self.m, self.n, self.p);
-            _offset_values(
-                &mut self.ldlsolver,
-                &mut self.KKT,
-                &map.diag_full[n..(n + m + p)],
-                eps,
-                &self.dsigns[n..(n + m + p)],
-            );
-        }
-
-        //refactor with new data
-        self.ldlsolver.refactor(&self.KKT);
-    } //end fn
-
-    fn setrhs(&mut self, rhsx: &[T], rhsz: &[T]) {
-        let (m, n, p) = (self.m, self.n, self.p);
-
-        self.b[0..n].copy_from(rhsx);
-        self.b[n..(n + m)].copy_from(rhsz);
-        self.b[n + m..(n + m + p)].fill(T::zero());
-    }
-
-    fn solve(
-        &mut self,
-        lhsx: Option<&mut [T]>,
-        lhsz: Option<&mut [T]>,
-        settings: &CoreSettings<T>,
-    ) {
-        self.ldlsolver.solve(&mut self.x, &self.b);
-
-        if settings.iterative_refinement_enable {
-            self.iterative_refinement(settings);
-        }
-        self.getlhs(lhsx, lhsz);
-    }
-}
-
-impl<T> DirectLDLKKTSolver<T>
-where
-    T: FloatT,
-{
-    fn iterative_refinement(&mut self, settings: &CoreSettings<T>) {
-        let (x, b) = (&mut self.x, &self.b);
-        let (e, dx) = (&mut self.work_e, &mut self.work_dx);
-
-        // iterative refinement params
-        let reltol = settings.iterative_refinement_reltol;
-        let abstol = settings.iterative_refinement_abstol;
-        let maxiter = settings.iterative_refinement_max_iter;
-        let stopratio = settings.iterative_refinement_stop_ratio;
-
-        let eps = {
-            if settings.static_regularization_enable {
-                settings.static_regularization_eps
-            } else {
-                T::zero()
-            }
-        };
-
-        // Note that K is only triu data, so need to
-        // be careful when computing the residual here
-        let K = &self.KKT;
-        let normb = b.norm_inf();
-
-        //compute the initial error
-        let mut norme = _get_refine_error(e, b, K, &self.dsigns, eps, x);
-
-        for _ in 0..maxiter {
-            if norme <= (abstol + reltol * normb) {
-                //within tolerance.  Exit
-                return;
-            }
-
-            let lastnorme = norme;
-
-            //make a refinement
-            self.ldlsolver.solve(dx, e);
-
-            //prospective solution is x + dx.  Use dx space to
-            // hold it for a check before applying to x
-            dx.axpby(T::one(), x, T::one()); //now dx is really x + dx
-            norme = _get_refine_error(e, b, K, &self.dsigns, eps, dx);
-
-            if lastnorme / norme < stopratio {
-                //insufficient improvement.  Exit
-                return;
-            } else {
-                //just swap instead of copying to x
-                std::mem::swap(x, dx);
-            }
-        }
-    }
-}
-
-fn _get_refine_error<T: FloatT>(
-    e: &mut [T],
-    b: &[T],
-    K: &CscMatrix<T>,
-    dsigns: &[i8],
-    eps: T,
-    ξ: &mut [T],
-) -> T {
-    e.copy_from(b);
-    K.symv(e, MatrixTriangle::Triu, ξ, -T::one(), T::one()); //#  e = b - Kξ
-
-    if !T::is_zero(&eps) {
-        //@. e += ϵ * D * ξ
-        for (i, eval) in e.iter_mut().enumerate() {
-            let s = T::from_i8(dsigns[i]).unwrap();
-            *eval += eps * s * ξ[i];
-        }
-    }
-
-    e.norm_inf()
 }

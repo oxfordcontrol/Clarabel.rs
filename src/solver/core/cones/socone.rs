@@ -1,5 +1,8 @@
-use super::Cone;
-use crate::algebra::*;
+use super::{Cone, JordanAlgebra, SymmetricCone, SymmetricConeUtils};
+use crate::{
+    algebra::*,
+    solver::{core::ScalingStrategy, CoreSettings},
+};
 
 // -------------------------------------
 // Second order Cone
@@ -54,6 +57,10 @@ where
         self.dim()
     }
 
+    fn is_symmetric(&self) -> bool {
+        true
+    }
+
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
         δ.copy_from(e);
         δ.reciprocal();
@@ -62,16 +69,37 @@ where
         true // scalar equilibration
     }
 
-    fn WtW_is_diagonal(&self) -> bool {
-        true
+    fn shift_to_cone(&self, z: &mut [T]) {
+        z[0] = T::max(z[0], T::zero());
+
+        let α = _soc_residual(z);
+
+        if α < T::sqrt(T::epsilon()) {
+            //done in two stages since otherwise (1.-α) = -α for
+            //large α, which makes z exactly 0.0 (or worse, -0.0 )
+            z[0] -= α;
+            z[0] += T::one();
+        }
     }
 
-    fn update_scaling(&mut self, s: &[T], z: &[T]) {
-        let (z1, z2) = (z[0], &z[1..]);
-        let (s1, s2) = (s[0], &s[1..]);
+    fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
+        z.fill(T::zero());
+        z.fill(T::zero());
+        self.add_scaled_e(z, T::one());
+        self.add_scaled_e(s, T::one());
+    }
 
-        let zscale = T::sqrt(z1 * z1 - z2.sumsq());
-        let sscale = T::sqrt(s1 * s1 - s2.sumsq());
+    fn set_identity_scaling(&mut self) {
+        self.d = T::one();
+        self.u.fill(T::zero());
+        self.v.fill(T::zero());
+        self.η = T::one();
+        self.w.fill(T::zero());
+    }
+
+    fn update_scaling(&mut self, s: &[T], z: &[T], _μ: T, _scaling_strategy: ScalingStrategy) {
+        let zscale = T::sqrt(_soc_residual(z));
+        let sscale = T::sqrt(_soc_residual(s));
 
         let two = (2.0).as_T();
         let half = (0.5).as_T();
@@ -111,33 +139,109 @@ where
 
         //λ = Wz.  Use inner function here because can't
         //borrow self and self.λ at the same time
-        _soc_gemv_W_inner(&self.w, self.η, z, &mut self.λ, T::one(), T::zero());
+        _soc_mul_W_inner(&mut self.λ, z, T::one(), T::zero(), &self.w, self.η);
     }
 
-    fn set_identity_scaling(&mut self) {
-        self.d = T::one();
-        self.u.fill(T::zero());
-        self.v.fill(T::zero());
-        self.η = T::one();
-        self.w.fill(T::zero());
+    fn Hs_is_diagonal(&self) -> bool {
+        true
     }
 
-    fn λ_circ_λ(&self, x: &mut [T]) {
-        self.circ_op(x, &self.λ, &self.λ);
+    fn get_Hs(&self, Hsblock: &mut [T]) {
+        //NB: we are returning here the diagonal D block from the
+        //sparse representation of W^TW, but not the
+        //extra two entries at the bottom right of the block.
+        Hsblock.fill(self.η * self.η);
+        Hsblock[0] *= self.d;
     }
 
+    fn mul_Hs(&self, y: &mut [T], x: &[T], work: &mut [T]) {
+        self.mul_W(MatrixShape::N, work, x, T::one(), T::zero()); // work = Wx
+        self.mul_W(MatrixShape::T, y, work, T::one(), T::zero()); // y = c Wᵀwork = W^TWx
+    }
+
+    fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
+        self.circ_op(ds, &self.λ, &self.λ);
+    }
+
+    fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T) {
+        self._combined_ds_shift_symmetric(shift, step_z, step_s, σμ);
+    }
+
+    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
+        self._Δs_from_Δz_offset_symmetric(out, ds, work);
+    }
+
+    fn step_length(
+        &self,
+        dz: &[T],
+        ds: &[T],
+        z: &[T],
+        s: &[T],
+        _settings: &CoreSettings<T>,
+        αmax: T,
+    ) -> (T, T) {
+        let αz = _step_length_soc_component(z, dz, αmax);
+        let αs = _step_length_soc_component(s, ds, αmax);
+
+        (αz, αs)
+    }
+
+    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+        let res_s = _soc_residual_shifted(s, ds, α);
+        let res_z = _soc_residual_shifted(z, dz, α);
+
+        // avoid numerical issue if res_s <= 0 or res_z <= 0
+        if res_s > T::zero() && res_z > T::zero() {
+            -(res_s * res_z).logsafe() * (0.5).as_T()
+        } else {
+            T::infinity()
+        }
+    }
+}
+
+// ---------------------------------------------
+// operations supported by symmetric cones only
+// ---------------------------------------------
+
+impl<T> SymmetricCone<T> for SecondOrderCone<T>
+where
+    T: FloatT,
+{
+    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
+        self.inv_circ_op(x, &self.λ, z);
+    }
+
+    fn add_scaled_e(&self, x: &mut [T], α: T) {
+        //e is (1,0.0..0)
+        x[0] += α;
+    }
+
+    fn mul_W(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+        // symmetric, so ignore transpose
+        _soc_mul_W_inner(y, x, α, β, &self.w, self.η);
+    }
+
+    fn mul_Winv(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+        _soc_mul_Winv_inner(y, x, α, β, &self.w, self.η);
+    }
+}
+
+// ---------------------------------------------
+// Jordan algebra operations for symmetric cones
+// ---------------------------------------------
+
+impl<T> JordanAlgebra<T> for SecondOrderCone<T>
+where
+    T: FloatT,
+{
     fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
         x[0] = y.dot(z);
         let (y0, z0) = (y[0], z[0]);
         x[1..].waxpby(y0, &z[1..], z0, &y[1..]);
     }
 
-    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
-        self.inv_circ_op(x, &self.λ, z);
-    }
-
     fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        let p = y[0] * y[0] - y[1..].sumsq();
+        let p = _soc_residual(y);
         let pinv = T::recip(p);
         let v = y[1..].dot(&z[1..]);
 
@@ -147,100 +251,108 @@ where
         let c2 = T::recip(y[0]);
         x[1..].waxpby(c1, &y[1..], c2, &z[1..]);
     }
-
-    fn shift_to_cone(&self, z: &mut [T]) {
-        z[0] = T::max(z[0], T::zero());
-
-        let α = z[0] * z[0] - z[1..].sumsq();
-
-        if α < T::epsilon() {
-            //done in two stages since otherwise (1.-α) = -α for
-            //large α, which makes z exactly 0.0 (or worse, -0.0 )
-            z[0] -= α;
-            z[0] += T::one();
-        }
-    }
-
-    fn get_WtW_block(&self, WtWblock: &mut [T]) {
-        //NB: we are returning here the diagonal D block from the
-        //sparse representation of W^TW, but not the
-        //extra two entries at the bottom right of the block.
-        WtWblock.fill(self.η * self.η);
-        WtWblock[0] *= self.d;
-    }
-
-    fn gemv_W(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
-        // symmetric, so ignore transpose
-        _soc_gemv_W_inner(&self.w, self.η, x, y, α, β);
-    }
-
-    fn gemv_Winv(&self, _is_transpose: MatrixShape, x: &[T], y: &mut [T], α: T, β: T) {
-        // symmetric, so ignore transpose
-        _soc_gemv_Winv_inner(&self.w, self.η, x, y, α, β);
-    }
-
-    fn add_scaled_e(&self, x: &mut [T], α: T) {
-        //e is (1,0.0..0)
-        x[0] += α;
-    }
-
-    fn step_length(&self, dz: &[T], ds: &[T], z: &[T], s: &[T]) -> (T, T) {
-        let αz = _step_length_soc_component(dz, z);
-        let αs = _step_length_soc_component(ds, s);
-
-        (αz, αs)
-    }
 }
 
-fn _step_length_soc_component<T>(y: &[T], x: &[T]) -> T
+// ---------------------------------------------
+// internal operations for second order cones
+// ---------------------------------------------
+
+fn _soc_residual<T>(z: &[T]) -> T
 where
     T: FloatT,
 {
-    // assume that x is in the SOC, and
-    // find the minimum positive root of
-    // the quadratic equation:
-    // ||x₁+αy₁||^2 = (x₀ + αy₀)^2
+    let (z1, z2) = (z[0], &z[1..]);
+    z1 * z1 - z2.sumsq()
+}
+
+// compute the residual at z + \alpha dz
+// without storing the intermediate vector
+fn _soc_residual_shifted<T>(z: &[T], dz: &[T], α: T) -> T
+where
+    T: FloatT,
+{
+    let sc = z[0] + α * dz[0];
+    let vpart = <[T] as VectorMath<T>>::dot_shifted(&z[1..], &z[1..], &dz[1..], &dz[1..], α);
+
+    sc * sc - vpart
+}
+
+// find the maximum step length α≥0 so that
+// x + αy stays in the SOC
+fn _step_length_soc_component<T>(x: &[T], y: &[T], αmax: T) -> T
+where
+    T: FloatT,
+{
+    // assume that x is in the SOC, and find the minimum positive root
+    // of the quadratic equation:  ||x₁+αy₁||^2 = (x₀ + αy₀)^2
 
     let two: T = (2.).as_T();
     let four: T = (4.).as_T();
 
-    let a = y[0] * y[0] - y[1..].sumsq();
+    let a = _soc_residual(y);
     let b = two * (x[0] * y[0] - x[1..].dot(&y[1..]));
-    let c = x[0] * x[0] - x[1..].sumsq(); //should be ≥0
+    let c = _soc_residual(x); //should be ≥0
     let d = b * b - four * a * c;
 
     if c < T::zero() {
         panic!("starting point of line search not in SOC");
     }
 
-    let out;
-    if (a > T::zero() && b > T::zero()) || (d < T::zero()) {
-        // all negative roots / complex root pair
-        // -> infinite step length
-        out = T::max_value();
-    } else {
-        let sqrtd = T::sqrt(d);
-        let mut r1 = (-b + sqrtd) / (two * a);
-        let mut r2 = (-b - sqrtd) / (two * a);
-        // return the minimum positive root
-        if r1 < T::zero() {
-            r1 = T::max_value();
-        }
-        if r2 < T::zero() {
-            r2 = T::max_value();
-        }
-        out = T::min(r1, r2);
+    #[allow(clippy::if_same_then_else)] // allows explanation of separate cases
+    if (a > T::zero() && b > T::zero()) || d < T::zero() {
+        //all negative roots / complex root pair
+        //-> infinite step length
+        return αmax;
+    } else if a == T::zero() {
+        // edge case with only one root.  This corresponds to
+        // the case where the search direction is exactly on the
+        // cone boundary.   The root should be -c/b, but b can't
+        // be negative since both (x,y) are in the cone and it is
+        // self dual, so <x,y> \ge 0 necessarily.
+        return αmax;
+    } else if c == T::zero() {
+        // Edge case with one of the roots at 0.   This corresponds
+        // to the case where the initial point is exactly on the
+        // cone boundary.  The other root is -b/a.   If the search
+        // direction is in the cone, then a >= 0 and b can't be
+        // negative due to self-duality.  If a < 0, then the
+        // direction is outside the cone and b can't be positive.
+        // Either way, step length is determined by whether or not
+        // the search direction is in the cone.
+        return if a >= T::zero() { αmax } else { T::zero() };
     }
-    out
+
+    // if we got this far then we need to calculate a pair
+    // of real roots and choose the smallest positive one.
+    // We need to be cautious about cancellations though.
+    // See §1.4: Goldberg, ACM Computing Surveys, 1991
+    // https://dl.acm.org/doi/pdf/10.1145/103162.103163
+
+    let t = {
+        if b >= T::zero() {
+            -b - T::sqrt(d)
+        } else {
+            -b + T::sqrt(d)
+        }
+    };
+
+    let r1: T = (two * c) / t;
+    let r2: T = t / (two * a);
+
+    // return the minimum positive root, up to αmax
+    let r1 = if r1 < T::zero() { T::infinity() } else { r1 };
+    let r2 = if r2 < T::zero() { T::infinity() } else { r2 };
+
+    T::min(αmax, T::min(r1, r2))
 }
 
-// We move the actual implementations of gemv_{W,Winv} outside
-// here.  The operation λ = Wz produces a borrow conflict
+// Must move the actual implementations of W*x to an outside
+// fcn.  The operation λ = Wz produces a borrow conflict
 // otherwise because λ is part of the cone's internal data
 // and we can't borrow self and &mut λ at the same time.
 
 #[allow(non_snake_case)]
-fn _soc_gemv_W_inner<T>(w: &[T], η: T, x: &[T], y: &mut [T], α: T, β: T)
+fn _soc_mul_W_inner<T>(y: &mut [T], x: &[T], α: T, β: T, w: &[T], η: T)
 where
     T: FloatT,
 {
@@ -254,7 +366,7 @@ where
     y[1..].axpby(α * η, &x[1..], T::one());
 }
 
-fn _soc_gemv_Winv_inner<T>(w: &[T], η: T, x: &[T], y: &mut [T], α: T, β: T)
+fn _soc_mul_Winv_inner<T>(y: &mut [T], x: &[T], α: T, β: T, w: &[T], η: T)
 where
     T: FloatT,
 {
