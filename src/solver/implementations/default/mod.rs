@@ -1,4 +1,4 @@
-//! Implementation of core type for the standard problem format
+//! Implementation of core types for the standard problem format
 //! described in the documentation [main page](crate).
 
 #![allow(non_snake_case)]
