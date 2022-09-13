@@ -21,4 +21,8 @@ cones = [clarabel.ZeroConeT(1), clarabel.NonnegativeConeT(4)]
 settings = clarabel.DefaultSettings();
 
 solver = clarabel.DefaultSolver(P,q,A,b,cones,settings);
-solver.solve()
+solution = solver.solve()
+print(
+    f"Solver terminated with status: {solution.status}, objective {solution.obj_val},\n"
+    f"and solution: {dict(s=solution.s, x=solution.x, z=solution.z)}"
+)
