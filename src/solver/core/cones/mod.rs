@@ -80,7 +80,7 @@ where
     //
     // # To recover Δs from Δz, we can write
     //     Δs = - (ds + μHΔz)
-    // The "offset" in Δs_from_Δz_offset! is then just ds
+    // The "offset" in Δs_from_Δz_offset is then just ds
     //
     // For symmetric cones:
     // --------------------
@@ -97,9 +97,9 @@ where
     //
     // To recover Δs from Δz, we can write
     //     Δs = - ( Wᵀ(λ \ ds) + WᵀW Δz)
-    // The "offset" in Δs_from_Δz_offset! is then Wᵀ(λ \ ds)
+    // The "offset" in Δs_from_Δz_offset is then Wᵀ(λ \ ds)
     //
-    // Note that the Δs_from_Δz_offset! function is only needed in the
+    // Note that the Δs_from_Δz_offset function is only needed in the
     // general combined step direction.   In the affine step direction,
     // we have the identity Wᵀ(λ \ (λ ∘ λ )) = s.  The symmetric and
     // nonsymmetric cases coincide and offset is taken directly as s.
