@@ -516,7 +516,7 @@ mod internal {
                 && α < self.settings.core().min_switch_step_length
             {
                 output = StrategyCheckpoint::Update(ScalingStrategy::Dual);
-            } else if α <= T::min(T::zero(), self.settings.core().min_terminate_step_length) {
+            } else if α <= T::max(T::zero(), self.settings.core().min_terminate_step_length) {
                 self.info.set_status(SolverStatus::InsufficientProgress);
                 output = StrategyCheckpoint::Fail;
             } else {
