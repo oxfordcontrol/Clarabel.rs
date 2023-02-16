@@ -33,6 +33,13 @@ pub use zerocone::*;
 
 use crate::solver::{core::ScalingStrategy, CoreSettings};
 
+// marker for primal / dual distinctions
+#[derive(PartialEq, Clone, Debug, Copy)]
+pub enum PrimalOrDualCone {
+    PrimalCone,
+    DualCone,
+}
+
 #[enum_dispatch]
 pub trait Cone<T>
 where
@@ -50,12 +57,15 @@ where
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool;
 
     // functions relating to unit vectors and cone initialization
-    fn shift_to_cone(&self, z: &mut [T]);
+    fn unit_margin(&self, z: &mut [T], pd: PrimalOrDualCone) -> T;
+    fn scaled_unit_shift(&self, z: &mut [T], α: T, pd: PrimalOrDualCone);
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]);
 
     // Compute scaling points
     fn set_identity_scaling(&mut self);
-    fn update_scaling(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy);
+    fn update_scaling(
+        &mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy
+    ) -> bool;
 
     // operations on the Hessian of the centrality condition
     // : W^TW for symmmetric cones
@@ -111,7 +121,7 @@ where
     // ---------------------------------------------------------
     fn affine_ds(&self, ds: &mut [T], s: &[T]);
     fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T);
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]);
+    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T], z: &[T]);
 
     // Find the maximum step length in some search direction
     fn step_length(

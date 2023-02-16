@@ -193,6 +193,8 @@ where
 
         loop {
 
+            self.variables.rescale();
+
             //update the residuals
             //--------------
             self.residuals.update(&self.variables, &self.data);
@@ -226,14 +228,20 @@ where
                     }
             }  // allows continuation if new strategy provided
 
+
+            // update the scalings
+            // --------------
+            let is_scaling_success = self.variables.scale_cones(&mut self.cones,μ,scaling);
+            // check whether variables are interior points
+            match self.strategy_checkpoint_is_scaling_success(is_scaling_success,scaling){
+                StrategyCheckpoint::Fail => {break}
+                StrategyCheckpoint::NoUpdate => {} // we only expect NoUpdate or Fail here
+                StrategyCheckpoint::Update(_) => {unreachable!()}
+            }
+
             //increment counter here because we only count
             //iterations that produce a KKT update
             iter += 1;
-
-            //
-            // update the scalings
-            // --------------
-            self.variables.scale_cones(&mut self.cones,μ,scaling);
 
             // Update the KKT system and the constant parts of its solution.
             // Keep track of the success of each step that calls KKT
@@ -270,6 +278,14 @@ where
                 // --------------
                 α = self.get_step_length("affine",scaling);
                 σ = self.centering_parameter(α);
+
+                // PJG: this is implemented in Julia but doesn't
+                // work with the trait based implementation.  Commented
+                // out for now.
+                // if iter <= 2 {
+                //     self.step_lhs.κ = T::zero();
+                //     self.step_rhs.τ = T::zero();
+                // }
 
                 // calculate the combined step and length
                 // --------------
@@ -386,6 +402,12 @@ mod internal {
             α: T,
             scaling: ScalingStrategy,
         ) -> StrategyCheckpoint;
+
+        fn strategy_checkpoint_is_scaling_success(
+            &mut self,
+            is_scaling_success: bool,
+            scaling: ScalingStrategy,
+        ) -> StrategyCheckpoint;
     }
 
     impl<T, D, V, R, K, C, I, SO, SE> IPSolverInternals<T, D, V, R, K, C, I, SO, SE>
@@ -412,7 +434,8 @@ mod internal {
                 self.kktsystem
                     .solve_initial_point(&mut self.variables, &self.data, &self.settings);
                 // fix up (z,s) so that they are in the cone
-                self.variables.symmetric_initialization(&self.cones);
+                self.variables
+                    .symmetric_initialization(&self.cones, &self.settings);
             } else {
                 // Assigns unit (z,s) and zeros the primal variables
                 self.variables.unit_initialization(&self.cones);
@@ -524,6 +547,19 @@ mod internal {
             }
 
             output
+        }
+
+        fn strategy_checkpoint_is_scaling_success(
+            &mut self,
+            is_scaling_success: bool,
+            _scaling: ScalingStrategy,
+        ) -> StrategyCheckpoint {
+            if is_scaling_success {
+                StrategyCheckpoint::Update(ScalingStrategy::Dual)
+            } else {
+                self.info.set_status(SolverStatus::NumericalError);
+                StrategyCheckpoint::Fail
+            }
         }
     } // end trait impl
 } //end internals module

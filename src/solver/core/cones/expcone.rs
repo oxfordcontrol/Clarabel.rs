@@ -1,4 +1,4 @@
-use super::{Cone, Nonsymmetric3DCone, Nonsymmetric3DConeUtils};
+use super::*;
 use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
@@ -64,10 +64,16 @@ where
         true // scalar equilibration
     }
 
-    fn shift_to_cone(&self, _z: &mut [T]) {
+    fn unit_margin(&self, _z: &mut [T], _pd: PrimalOrDualCone) -> T {
         // We should never end up shifting to this cone, since
         // asymmetric problems should always use unit_initialization
-        unimplemented!("This function should never be reached.");
+        unreachable!();
+    }
+
+    fn scaled_unit_shift(&self, _z: &mut [T], _α: T, _pd: PrimalOrDualCone) {
+        // We should never end up shifting to this cone, since
+        // asymmetric problems should always use unit_initialization
+        unreachable!();
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
@@ -81,10 +87,16 @@ where
     fn set_identity_scaling(&mut self) {
         // We should never use identity scaling because
         // we never want to allow symmetric initialization
-        unimplemented!("This function should never be reached.");
+        unreachable!();
     }
 
-    fn update_scaling(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy) {
+    fn update_scaling(
+        &mut self,
+        s: &[T],
+        z: &[T],
+        μ: T,
+        scaling_strategy: ScalingStrategy,
+    ) -> bool {
         // update both gradient and Hessian for function f*(z) at the point z
         self.update_dual_grad_H(z);
 
@@ -93,6 +105,8 @@ where
 
         // K.z .= z
         self.z.copy_from(z);
+
+        true
     }
 
     fn Hs_is_diagonal(&self) -> bool {
@@ -123,7 +137,7 @@ where
         }
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], _work: &mut [T]) {
+    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], _work: &mut [T], _z: &[T]) {
         out.copy_from(ds);
     }
 

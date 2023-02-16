@@ -198,9 +198,17 @@ where
         any_changed
     }
 
-    fn shift_to_cone(&self, z: &mut [T]) {
+    fn unit_margin(&self, z: &mut [T], pd: PrimalOrDualCone) -> T {
+        let mut α = T::max_value();
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            cone.shift_to_cone(&mut z[rng.clone()]);
+            α = T::max(α, cone.unit_margin(&mut z[rng.clone()], pd));
+        }
+        α
+    }
+
+    fn scaled_unit_shift(&self, z: &mut [T], α: T, pd: PrimalOrDualCone) {
+        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+            cone.scaled_unit_shift(&mut z[rng.clone()], α, pd);
         }
     }
 
@@ -216,15 +224,26 @@ where
         }
     }
 
-    fn update_scaling(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy) {
+    fn update_scaling(
+        &mut self,
+        s: &[T],
+        z: &[T],
+        μ: T,
+        scaling_strategy: ScalingStrategy,
+    ) -> bool {
         let cones = &mut self.cones;
         let rngs = &self.rng_cones;
 
+        let mut is_scaling_success;
         for (cone, rng) in cones.iter_mut().zip(rngs.iter()) {
             let si = &s[rng.clone()];
             let zi = &z[rng.clone()];
-            cone.update_scaling(si, zi, μ, scaling_strategy);
+            is_scaling_success = cone.update_scaling(si, zi, μ, scaling_strategy);
+            if !is_scaling_success {
+                return false;
+            }
         }
+        true
     }
 
     fn Hs_is_diagonal(&self) -> bool {
@@ -282,12 +301,13 @@ where
         }
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
+    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T], z: &[T]) {
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             let outi = &mut out[rng.clone()];
             let dsi = &ds[rng.clone()];
             let worki = &mut work[rng.clone()];
-            cone.Δs_from_Δz_offset(outi, dsi, worki);
+            let zi = &z[rng.clone()];
+            cone.Δs_from_Δz_offset(outi, dsi, worki, zi);
         }
     }
 
@@ -301,6 +321,9 @@ where
         αmax: T,
     ) -> (T, T) {
         let mut α = αmax;
+
+        //PJG: It is not clear to me if this implementation
+        //is in sync with the v0.4.0 Julia oine
 
         // Force symmetric cones first.
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {

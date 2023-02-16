@@ -9,8 +9,3 @@ classifiers = [
     "Programming Language :: Rust",
 ]
 
-dependencies = [
-    'cffi',
-    'numpy', 
-    'scipy'
-]

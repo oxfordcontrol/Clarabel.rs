@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Builder, Debug, Clone)]
 #[cfg_attr(feature = "julia", derive(Serialize, Deserialize))]
 pub struct DefaultSettings<T: FloatT> {
-    #[builder(default = "50")]
+    #[builder(default = "200")]
     // Main algorithm settings
     pub max_iter: u32,
 
@@ -39,7 +39,7 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "(1e-8).as_T()")]
     pub tol_infeas_rel: T,
 
-    #[builder(default = "(2e-7).as_T()")]
+    #[builder(default = "(1e-6).as_T()")]
     pub tol_ktratio: T,
 
     // Reduced accuracy settings
@@ -93,7 +93,7 @@ pub struct DefaultSettings<T: FloatT> {
     // static regularization parameters
     #[builder(default = "true")]
     pub static_regularization_enable: bool,
-    #[builder(default = "(1e-7).as_T()")]
+    #[builder(default = "(1e-8).as_T()")]
     pub static_regularization_constant: T,
     #[builder(default = "T::epsilon()*T::epsilon()")]
     pub static_regularization_proportional: T,
@@ -112,7 +112,7 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub iterative_refinement_enable: bool,
 
-    #[builder(default = "(1e-12).as_T()")]
+    #[builder(default = "(1e-13).as_T()")]
     pub iterative_refinement_reltol: T,
 
     #[builder(default = "(1e-12).as_T()")]

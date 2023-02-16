@@ -810,7 +810,19 @@ fn _permute_symmetric_inner<T: FloatT>(
 }
 
 fn _get_amd_ordering<T: FloatT>(A: &CscMatrix<T>) -> (Vec<usize>, Vec<usize>) {
-    let control = amd::Control::default();
+    // occasionally we find that the default parameters
+    // give a bad ordering, particularly for some big
+    // matrices.  In particular, KKT conditions for QPs
+    // are sometimes worse than their SOC counterparts.
+    // for very large problems.   This is because the SOC form
+    // is artificially "big", with extra rows, so the dense row
+    // threshold is effectively a different value.   We make
+    // an arbitrary increase in AMD_DENSE here.
+    // PJG: this ad hoc method can surely be improved
+
+    //computes a permutation for A using AMD default parameters
+    let mut control = amd::Control::default();
+    control.dense *= 1.5; //increase the default value
     let (perm, iperm, _info) = amd::order(A.nrows(), &A.colptr, &A.rowval, &control).unwrap();
     (perm, iperm)
 }

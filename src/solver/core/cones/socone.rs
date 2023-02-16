@@ -1,4 +1,4 @@
-use super::{Cone, JordanAlgebra, SymmetricCone, SymmetricConeUtils};
+use super::*;
 use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
@@ -69,24 +69,20 @@ where
         true // scalar equilibration
     }
 
-    fn shift_to_cone(&self, z: &mut [T]) {
-        z[0] = T::max(z[0], T::zero());
+    // functions relating to unit vectors and cone initialization
+    fn unit_margin(&self, z: &mut [T], _pd: PrimalOrDualCone) -> T {
+        z[0] - z[1..].norm()
+    }
 
-        let α = _soc_residual(z);
-
-        if α < T::sqrt(T::epsilon()) {
-            //done in two stages since otherwise (1.-α) = -α for
-            //large α, which makes z exactly 0.0 (or worse, -0.0 )
-            z[0] -= α;
-            z[0] += T::one();
-        }
+    fn scaled_unit_shift(&self, z: &mut [T], α: T, _pd: PrimalOrDualCone) {
+        z[0] += α;
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
+        s.fill(T::zero());
         z.fill(T::zero());
-        z.fill(T::zero());
-        self.add_scaled_e(z, T::one());
-        self.add_scaled_e(s, T::one());
+        self.scaled_unit_shift(s, T::one(), PrimalOrDualCone::PrimalCone);
+        self.scaled_unit_shift(z, T::one(), PrimalOrDualCone::DualCone);
     }
 
     fn set_identity_scaling(&mut self) {
@@ -97,41 +93,56 @@ where
         self.w.fill(T::zero());
     }
 
-    fn update_scaling(&mut self, s: &[T], z: &[T], _μ: T, _scaling_strategy: ScalingStrategy) {
-        let zscale = T::sqrt(_soc_residual(z));
-        let sscale = T::sqrt(_soc_residual(s));
+    fn update_scaling(
+        &mut self,
+        s: &[T],
+        z: &[T],
+        _μ: T,
+        _scaling_strategy: ScalingStrategy,
+    ) -> bool {
+        let two: T = (2.0).as_T();
+        let half: T = (0.5).as_T();
 
-        let two = (2.0).as_T();
-        let half = (0.5).as_T();
+        //first calculate the scaled vector w
+        let zscale = _sqrt_soc_residual(z);
+        let sscale = _sqrt_soc_residual(s);
 
-        let gamma = T::sqrt((T::one() + s.dot(z) / (zscale * sscale)) * half);
+        //Fail if either s or z is not an interior point
+        if zscale.is_zero() || sscale.is_zero() {
+            return false;
+        }
 
+        // construct w and normalize
         let w = &mut self.w;
-        w.copy_from(s);
-        w.scale(T::recip(two * sscale * gamma));
-        w[0] += z[0] / (two * zscale * gamma);
-        w[1..].axpby(-T::recip(two * zscale * gamma), &z[1..], T::one());
+        w.scale(sscale.recip());
+        w[0] += z[0] / zscale;
+        w[1..].axpby(-zscale.recip(), &z[1..], T::one());
+        let wscale = _sqrt_soc_residual(w);
 
-        //intermediate calcs for u,v,d,η
-        let w0p1 = w[0] + T::one();
-        let w1sq = w[1..].sumsq();
-        let w0sq = w[0] * w[0];
-        let α = w0p1 + w1sq / w0p1;
-        let β = T::one() + two / w0p1 + w1sq / (w0p1 * w0p1);
+        // Fail if w is not an interior poiint
+        if wscale.is_zero() {
+            return false;
+        }
+
+        //various intermediate calcs for u,v,d,η
+        let α = two * w[1];
+        let _β = two;
 
         //Scalar d is the upper LH corner of the diagonal
         //term in the rank-2 update form of W^TW
-        self.d = w0sq / two + w1sq / two * (T::one() - (α * α) / (T::one() + w1sq * β));
+        let wsq = w.sumsq();
+        self.d = half * (wsq).recip();
 
         //the leading scalar term for W^TW
         self.η = T::sqrt(sscale / zscale);
 
         //the vectors for the rank two update
         //representation of W^TW
-        let u0 = T::sqrt(w0sq + w1sq - self.d);
+        let u0 = T::sqrt(wsq - self.d);
         let u1 = α / u0;
         let v0 = T::zero();
-        let v1 = T::sqrt(u1 * u1 - β);
+        let v1 = T::sqrt(two + two * self.d) / u0;
+
         self.u[0] = u0;
         self.u[1..].axpby(u1, &self.w[1..], T::zero());
         self.v[0] = v0;
@@ -140,6 +151,8 @@ where
         //λ = Wz.  Use inner function here because can't
         //borrow self and self.λ at the same time
         _soc_mul_W_inner(&mut self.λ, z, T::one(), T::zero(), &self.w, self.η);
+
+        true
     }
 
     fn Hs_is_diagonal(&self) -> bool {
@@ -167,8 +180,12 @@ where
         self._combined_ds_shift_symmetric(shift, step_z, step_s, σμ);
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
+    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T], _z: &[T]) {
         self._Δs_from_Δz_offset_symmetric(out, ds, work);
+        //PJG : Still not clear which implementation
+        //is to be used in Julia.   Need to determine
+        //whether to use the above or the "experimental alternative"
+        //currently in the Julia code
     }
 
     fn step_length(
@@ -209,11 +226,6 @@ where
 {
     fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
         self.inv_circ_op(x, &self.λ, z);
-    }
-
-    fn add_scaled_e(&self, x: &mut [T], α: T) {
-        //e is (1,0.0..0)
-        x[0] += α;
     }
 
     fn mul_W(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
@@ -261,8 +273,22 @@ fn _soc_residual<T>(z: &[T]) -> T
 where
     T: FloatT,
 {
+    // PJG: Need to benchmark this against the (a-b)(b+a) method
+    // implementation is in Julia (commented out)
     let (z1, z2) = (z[0], &z[1..]);
     z1 * z1 - z2.sumsq()
+}
+
+fn _sqrt_soc_residual<T>(z: &[T]) -> T
+where
+    T: FloatT,
+{
+    let res = _soc_residual(z);
+    if res > T::zero() {
+        T::sqrt(res)
+    } else {
+        T::zero()
+    }
 }
 
 // compute the residual at z + \alpha dz
@@ -271,10 +297,13 @@ fn _soc_residual_shifted<T>(z: &[T], dz: &[T], α: T) -> T
 where
     T: FloatT,
 {
-    let sc = z[0] + α * dz[0];
-    let vpart = <[T] as VectorMath<T>>::dot_shifted(&z[1..], &z[1..], &dz[1..], &dz[1..], α);
+    let x0 = z[0] + α * dz[0];
+    let x1_sq = <[T] as VectorMath<T>>::dot_shifted(&z[1..], &z[1..], &dz[1..], &dz[1..], α);
 
-    sc * sc - vpart
+    // PJG: Need to benchmark this against the (a-b)(b+a) method
+    // implementation is in Julia (commented out)
+
+    x0 * x0 - x1_sq
 }
 
 // find the maximum step length α≥0 so that
@@ -289,12 +318,13 @@ where
     let two: T = (2.).as_T();
     let four: T = (4.).as_T();
 
-    let a = _soc_residual(y);
+    let a = _soc_residual(y); //NB: could be negative
     let b = two * (x[0] * y[0] - x[1..].dot(&y[1..]));
-    let c = _soc_residual(x); //should be ≥0
+    let c = T::max(T::zero(), _soc_residual(x)); //should be ≥0
     let d = b * b - four * a * c;
 
     if c < T::zero() {
+        // This should never be reachable since c ≥ 0 above
         panic!("starting point of line search not in SOC");
     }
 

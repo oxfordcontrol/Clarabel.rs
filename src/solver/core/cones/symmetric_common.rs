@@ -1,14 +1,13 @@
 use crate::algebra::{FloatT, MatrixShape, VectorMath};
 
+use super::*;
+
 // --------------------------------------
 // Traits and blanket implementations for Exponential and PowerCones
 // -------------------------------------
 
 // Operations supported on symmetric cones only
 pub trait SymmetricCone<T: FloatT>: JordanAlgebra<T> {
-    // Add the scaled identity element e
-    fn add_scaled_e(&self, x: &mut [T], α: T);
-
     // Multiplication by the scaling point
     fn mul_W(&self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T);
     fn mul_Winv(&self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T);
@@ -42,7 +41,7 @@ pub(super) trait SymmetricConeUtils<T: FloatT> {
 impl<T, C> SymmetricConeUtils<T> for C
 where
     T: FloatT,
-    C: SymmetricCone<T>,
+    C: SymmetricCone<T> + Cone<T>,
 {
     // compute shift in the combined step :
     //     λ ∘ (WΔz + W^{-⊤}Δs) = - (affine_ds + shift)
@@ -66,7 +65,7 @@ where
         // shift vector used as workspace for a few steps
         let tmp = shift;
 
-        //Δz <- Wdz
+        //Δz <- WΔz
         tmp.copy_from(step_z);
         self.mul_W(MatrixShape::N, step_z, tmp, T::one(), T::zero());
 
@@ -77,7 +76,9 @@ where
         //shift = W⁻¹Δs ∘ WΔz - σμe
         let shift = tmp;
         self.circ_op(shift, step_s, step_z);
-        self.add_scaled_e(shift, -σμ);
+
+        //cone will be self dual, so Primal/Dual not important
+        self.scaled_unit_shift(shift, -σμ, PrimalOrDualCone::PrimalCone);
     }
 
     // compute the constant part of Δs when written as a function of Δz
