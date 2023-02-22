@@ -70,7 +70,7 @@ pub trait Variables<T: FloatT> {
     fn add_step(&mut self, step_lhs: &Self, α: T);
 
     /// Bring the variables into the interior of the cone constraints.
-    fn symmetric_initialization(&mut self, cones: &Self::C, settings: &Self::SE);
+    fn symmetric_initialization(&mut self, cones: &Self::C);
 
     /// Initialize all conic variables to unit values.
     fn unit_initialization(&mut self, cones: &Self::C);

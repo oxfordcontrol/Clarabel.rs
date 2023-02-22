@@ -1,5 +1,5 @@
 use super::*;
-use crate::{algebra::AsFloatT, solver::CoreSettings};
+use crate::solver::CoreSettings;
 use std::collections::HashMap;
 use std::ops::Range;
 
@@ -198,12 +198,15 @@ where
         any_changed
     }
 
-    fn unit_margin(&self, z: &mut [T], pd: PrimalOrDualCone) -> T {
+    fn margins(&self, z: &mut [T], pd: PrimalOrDualCone) -> (T, T) {
         let mut α = T::max_value();
+        let mut β = T::zero();
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
-            α = T::max(α, cone.unit_margin(&mut z[rng.clone()], pd));
+            let (αi, βi) = cone.margins(&mut z[rng.clone()], pd);
+            α = T::min(α, αi);
+            β += βi;
         }
-        α
+        (α, β)
     }
 
     fn scaled_unit_shift(&self, z: &mut [T], α: T, pd: PrimalOrDualCone) {
@@ -341,8 +344,7 @@ where
         // PJG: is this still necessary?
 
         if !self.is_symmetric() {
-            let ceil: T = (0.99_f64).as_T();
-            α = T::min(ceil, α);
+            α = T::min(settings.max_step_fraction, α);
         }
         // Force asymmetric cones last.
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {

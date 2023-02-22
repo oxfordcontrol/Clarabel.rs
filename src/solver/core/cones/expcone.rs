@@ -64,7 +64,7 @@ where
         true // scalar equilibration
     }
 
-    fn unit_margin(&self, _z: &mut [T], _pd: PrimalOrDualCone) -> T {
+    fn margins(&self, _z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         // We should never end up shifting to this cone, since
         // asymmetric problems should always use unit_initialization
         unreachable!();

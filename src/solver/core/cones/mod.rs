@@ -56,8 +56,18 @@ where
     // a scaling that preserves cone memership
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool;
 
+    // returns (α,β) such that:
+    // z - α⋅e is just on the cone boundary, with value
+    // α >=0 indicates z \in cone, i.e. negative margin ===
+    // outside of the cone.
+    //
+    // β is the sum of the margins that are positive.   For most
+    // cones this will just be β = max(0.,α), but for cones that
+    // are composites (e.g. the R_n^+), it is the sum of all of
+    // the positive margin terms.
+    fn margins(&self, z: &mut [T], pd: PrimalOrDualCone) -> (T, T);
+
     // functions relating to unit vectors and cone initialization
-    fn unit_margin(&self, z: &mut [T], pd: PrimalOrDualCone) -> T;
     fn scaled_unit_shift(&self, z: &mut [T], α: T, pd: PrimalOrDualCone);
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]);
 

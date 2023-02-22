@@ -154,7 +154,7 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
     );
 
     println!(
-        "  tol_feas = {:.1e}, tol_abs = {:.1e}, tol_rel = {:.1e},",
+        "  tol_feas = {:.1e}, tol_gap_abs = {:.1e}, tol_gap_rel = {:.1e},",
         set.tol_feas, set.tol_gap_abs, set.tol_gap_rel
     );
 

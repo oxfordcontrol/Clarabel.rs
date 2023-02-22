@@ -193,8 +193,6 @@ where
 
         loop {
 
-            self.variables.rescale();
-
             //update the residuals
             //--------------
             self.residuals.update(&self.variables, &self.data);
@@ -434,8 +432,7 @@ mod internal {
                 self.kktsystem
                     .solve_initial_point(&mut self.variables, &self.data, &self.settings);
                 // fix up (z,s) so that they are in the cone
-                self.variables
-                    .symmetric_initialization(&self.cones, &self.settings);
+                self.variables.symmetric_initialization(&self.cones);
             } else {
                 // Assigns unit (z,s) and zeros the primal variables
                 self.variables.unit_initialization(&self.cones);

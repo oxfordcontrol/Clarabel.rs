@@ -52,9 +52,12 @@ where
         false
     }
 
-    fn unit_margin(&self, z: &mut [T], _pd: PrimalOrDualCone) -> T {
-        z.minimum()
+    fn margins(&self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+        let α = z.minimum();
+        let β = z.iter().fold(T::zero(), |β, &zi| β + T::min(zi, T::zero()));
+        (α, β)
     }
+
     fn scaled_unit_shift(&self, z: &mut [T], α: T, _pd: PrimalOrDualCone) {
         z.translate(α)
     }

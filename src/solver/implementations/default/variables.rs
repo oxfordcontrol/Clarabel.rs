@@ -141,15 +141,9 @@ where
         self.κ += α * step.κ;
     }
 
-    fn symmetric_initialization(
-        &mut self,
-        cones: &CompositeCone<T>,
-        settings: &DefaultSettings<T>,
-    ) {
-        let min_margin = T::one() - settings.max_step_fraction;
-
-        _shift_to_cone_interior(&mut self.s, cones, min_margin, PrimalOrDualCone::PrimalCone);
-        _shift_to_cone_interior(&mut self.z, cones, min_margin, PrimalOrDualCone::DualCone);
+    fn symmetric_initialization(&mut self, cones: &CompositeCone<T>) {
+        _shift_to_cone_interior(&mut self.s, cones, PrimalOrDualCone::PrimalCone);
+        _shift_to_cone_interior(&mut self.z, cones, PrimalOrDualCone::DualCone);
 
         self.τ = T::one();
         self.κ = T::one();
@@ -214,40 +208,25 @@ where
     }
 }
 
-fn _sum_pos<T>(z: &[T]) -> T
+fn _shift_to_cone_interior<T>(z: &mut [T], cones: &CompositeCone<T>, pd: PrimalOrDualCone)
 where
     T: FloatT,
 {
-    let mut out = T::zero();
-    for &zi in z.iter() {
-        out += match zi > T::zero() {
-            true => zi,
-            false => T::one(),
-        };
-    }
-    out
-}
+    let (min_margin, pos_margin) = cones.margins(z, pd);
+    let target = T::max(
+        T::one(),
+        (pos_margin * (0.1).as_T()) / cones.degree().as_T(),
+    );
 
-fn _shift_to_cone_interior<T>(
-    z: &mut [T],
-    cones: &CompositeCone<T>,
-    min_margin: T,
-    pd: PrimalOrDualCone,
-) where
-    T: FloatT,
-{
-    let margin = cones.unit_margin(z, pd);
-    let nhood = _sum_pos(z) / (z.len()).as_T();
-    let nhood = T::max(T::one(), nhood) * (0.1).as_T();
-
-    if margin <= T::zero() {
-        //done in two stages since otherwise (1-α) = -α for
-        //large α, which makes z exactly 0. (or worse, -0.0 )
-        cones.scaled_unit_shift(z, -margin, pd);
-        cones.scaled_unit_shift(z, T::max(T::one(), nhood), pd);
-    } else if margin < min_margin {
+    if min_margin <= T::zero() {
+        // at least some component is outside its cone
+        // done in two stages since otherwise (1-α) = -α for
+        // large α, which makes z exactly 0. (or worse, -0.0 )
+        cones.scaled_unit_shift(z, -min_margin, pd);
+        cones.scaled_unit_shift(z, target, pd);
+    } else if min_margin < target {
         // margin is positive but small.
-        cones.scaled_unit_shift(z, nhood, pd);
+        cones.scaled_unit_shift(z, target - min_margin, pd);
     } else {
         // good margin, but still shift explicitly by
         // zero to catch any elements in the zero cone

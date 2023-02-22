@@ -51,12 +51,13 @@ where
         false
     }
 
-    fn unit_margin(&self, _z: &mut [T], _pd: PrimalOrDualCone) -> T {
-        // for either case we specify infinite margin
+    fn margins(&self, _z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+        // for either primal or dual case we specify infinite
+        // minimum margin and zero total margin.
         // if we later shift a vector into the zero cone
         // using scaled_unit_shift!, we just zero it
         // out regardless of the applied shift anway
-        T::max_value()
+        (T::max_value(), T::zero())
     }
     fn scaled_unit_shift(&self, z: &mut [T], _α: T, pd: PrimalOrDualCone) {
         if pd == PrimalOrDualCone::PrimalCone {

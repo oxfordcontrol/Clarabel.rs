@@ -70,8 +70,10 @@ where
     }
 
     // functions relating to unit vectors and cone initialization
-    fn unit_margin(&self, z: &mut [T], _pd: PrimalOrDualCone) -> T {
-        z[0] - z[1..].norm()
+    fn margins(&self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+        let α = z[0] - z[1..].norm();
+        let β = T::max(T::zero(), α);
+        (α, β)
     }
 
     fn scaled_unit_shift(&self, z: &mut [T], α: T, _pd: PrimalOrDualCone) {
@@ -119,19 +121,23 @@ where
         w[1..].axpby(-zscale.recip(), &z[1..], T::one());
         let wscale = _sqrt_soc_residual(w);
 
-        // Fail if w is not an interior poiint
+        // Fail if w is not an interior point
         if wscale.is_zero() {
             return false;
         }
 
+        // try to force badly scaled w to come out normalized
+        let w1sq = w[1..].sumsq();
+        w[0] = T::sqrt(T::one() + w1sq);
+        let wsq = w[0] * w[0] + w1sq;
+
         //various intermediate calcs for u,v,d,η
         let α = two * w[1];
-        let _β = two;
 
         //Scalar d is the upper LH corner of the diagonal
         //term in the rank-2 update form of W^TW
-        let wsq = w.sumsq();
-        self.d = half * (wsq).recip();
+        let wsqinv = wsq.recip();
+        self.d = half * wsqinv;
 
         //the leading scalar term for W^TW
         self.η = T::sqrt(sscale / zscale);
@@ -141,7 +147,7 @@ where
         let u0 = T::sqrt(wsq - self.d);
         let u1 = α / u0;
         let v0 = T::zero();
-        let v1 = T::sqrt(two + two * self.d) / u0;
+        let v1 = T::sqrt(two * (two + wsqinv) / (two * wsq - wsqinv));
 
         self.u[0] = u0;
         self.u[1..].axpby(u1, &self.w[1..], T::zero());
@@ -182,10 +188,6 @@ where
 
     fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T], _z: &[T]) {
         self._Δs_from_Δz_offset_symmetric(out, ds, work);
-        //PJG : Still not clear which implementation
-        //is to be used in Julia.   Need to determine
-        //whether to use the above or the "experimental alternative"
-        //currently in the Julia code
     }
 
     fn step_length(
@@ -273,10 +275,7 @@ fn _soc_residual<T>(z: &[T]) -> T
 where
     T: FloatT,
 {
-    // PJG: Need to benchmark this against the (a-b)(b+a) method
-    // implementation is in Julia (commented out)
-    let (z1, z2) = (z[0], &z[1..]);
-    z1 * z1 - z2.sumsq()
+    z[0] * z[0] - z[1..].sumsq()
 }
 
 fn _sqrt_soc_residual<T>(z: &[T]) -> T
@@ -299,9 +298,6 @@ where
 {
     let x0 = z[0] + α * dz[0];
     let x1_sq = <[T] as VectorMath<T>>::dot_shifted(&z[1..], &z[1..], &dz[1..], &dz[1..], α);
-
-    // PJG: Need to benchmark this against the (a-b)(b+a) method
-    // implementation is in Julia (commented out)
 
     x0 * x0 - x1_sq
 }
