@@ -21,11 +21,11 @@ where
 {
     pub(crate) fn to_slice(&self) -> &[T] {
         assert!(!self.p.is_null());
-        unsafe { slice::from_raw_parts(self.p, self.len as usize) }
+        unsafe { slice::from_raw_parts(self.p, self.len) }
     }
 
     pub(crate) fn len(&self) -> usize {
-        self.len as usize
+        self.len
     }
 }
 
