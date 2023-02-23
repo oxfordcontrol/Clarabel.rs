@@ -74,8 +74,8 @@ function test_MOI_standard()
         exclude = String[
             #these two tests fail intermittently depending on platform 
             #and MOI version.  They both converge to reasonable accuracy.
-            "test_conic_GeometricMeanCone_VectorAffineFunction",
-            "test_constraint_qcp_duplicate_diagonal",
+            #"test_conic_GeometricMeanCone_VectorAffineFunction",
+            #"test_constraint_qcp_duplicate_diagonal",
         ],
         # This argument is useful to prevent tests from failing on future
         # releases of MOI that add new tests.
