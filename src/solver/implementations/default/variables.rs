@@ -12,7 +12,6 @@ use crate::solver::core::{
 // ---------------
 
 /// Standard-form solver type implementing the [Variables](crate::solver::core::traits::Variables) trait
-#[derive(Debug)]
 pub struct DefaultVariables<T> {
     /// scaled primal variables
     pub x: Vec<T>,
@@ -24,6 +23,16 @@ pub struct DefaultVariables<T> {
     pub τ: T,
     /// homogenization scalar κ
     pub κ: T,
+}
+
+impl<T: std::fmt::Display + std::fmt::Debug> std::fmt::Debug for DefaultVariables<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "x: {:?}\ns: {:?}\nz: {:?}\nτ: {:?}\nκ: {:?}\n",
+            self.x, self.s, self.z, self.τ, self.κ
+        )
+    }
 }
 
 impl<T> DefaultVariables<T>
@@ -76,15 +85,26 @@ where
         step: &mut Self,
         σ: T,
         μ: T,
+        m: T,
     ) {
         let dotσμ = σ * μ;
+
         self.x.axpby(T::one() - σ, &residuals.rx, T::zero()); //self.x  = (1 - σ)*rx
         self.τ = (T::one() - σ) * residuals.rτ;
-        self.κ = -dotσμ + step.τ * step.κ + variables.τ * variables.κ;
+        self.κ = -dotσμ + m * step.τ * step.κ + variables.τ * variables.κ;
 
         // ds is different for symmetric and asymmetric cones:
         // Symmetric cones: d.s = λ ◦ λ + W⁻¹Δs ∘ WΔz − σμe
         // Asymmetric cones: d.s = s + σμ*g(z)
+
+        // we want to scale the Mehotra correction in the symmetric
+        // case by M, so just scale step_z by M.  This is an unnecessary
+        // vector operation (since it amounts to M*z'*s), but it
+        // doesn't happen very often
+        if m != T::one() {
+            self.z.scale(m);
+        }
+
         cones.combined_ds_shift(&mut self.z, &mut step.z, &mut step.s, dotσμ);
 
         //We are relying on d.s = affine_ds already here

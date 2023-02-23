@@ -116,6 +116,7 @@ where
 
         // construct w and normalize
         let w = &mut self.w;
+        w.copy_from(s);
         w.scale(sscale.recip());
         w[0] += z[0] / zscale;
         w[1..].axpby(-zscale.recip(), &z[1..], T::one());
@@ -125,6 +126,7 @@ where
         if wscale.is_zero() {
             return false;
         }
+        w.scale(wscale.recip());
 
         // try to force badly scaled w to come out normalized
         let w1sq = w[1..].sumsq();
@@ -132,7 +134,7 @@ where
         let wsq = w[0] * w[0] + w1sq;
 
         //various intermediate calcs for u,v,d,η
-        let α = two * w[1];
+        let α = two * w[0];
 
         //Scalar d is the upper LH corner of the diagonal
         //term in the rank-2 update form of W^TW

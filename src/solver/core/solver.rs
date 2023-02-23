@@ -277,13 +277,9 @@ where
                 α = self.get_step_length("affine",scaling);
                 σ = self.centering_parameter(α);
 
-                // PJG: this is implemented in Julia but doesn't
-                // work with the trait based implementation.  Commented
-                // out for now.
-                // if iter <= 2 {
-                //     self.step_lhs.κ = T::zero();
-                //     self.step_rhs.τ = T::zero();
-                // }
+                // make a reduced Mehrotra correction in the first iteration
+                // to accommodate badly centred starting points
+                let m = if iter > 1 {T::one()} else {α};
 
                 // calculate the combined step and length
                 // --------------
@@ -294,6 +290,7 @@ where
                     &mut self.step_lhs,
                     σ,
                     μ,
+                    m
                 );
 
                 timeit!{timers => "kkt solve" ; {
@@ -552,7 +549,7 @@ mod internal {
             _scaling: ScalingStrategy,
         ) -> StrategyCheckpoint {
             if is_scaling_success {
-                StrategyCheckpoint::Update(ScalingStrategy::Dual)
+                StrategyCheckpoint::NoUpdate
             } else {
                 self.info.set_status(SolverStatus::NumericalError);
                 StrategyCheckpoint::Fail

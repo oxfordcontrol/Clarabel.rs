@@ -53,6 +53,7 @@ pub trait Variables<T: FloatT> {
         step: &mut Self, //mut allows step to double as working space
         σ: T,
         μ: T,
+        m: T,
     );
 
     /// Compute the maximum step length possible in the given

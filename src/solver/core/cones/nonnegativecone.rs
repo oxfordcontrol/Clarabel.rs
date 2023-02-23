@@ -54,7 +54,7 @@ where
 
     fn margins(&self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         let α = z.minimum();
-        let β = z.iter().fold(T::zero(), |β, &zi| β + T::min(zi, T::zero()));
+        let β = z.iter().fold(T::zero(), |β, &zi| β + T::max(zi, T::zero()));
         (α, β)
     }
 
