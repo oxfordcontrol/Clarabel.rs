@@ -5,6 +5,7 @@ build-backend = "maturin"
 [project]
 name = "clarabel"
 requires-python = ">=3.7"
+requires = [numpy >= 1.7, scipy >= 0.13]
 classifiers = [
     "Programming Language :: Rust",
 ]
