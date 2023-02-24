@@ -9,7 +9,7 @@ dependencies = [
     "numpy",
     "scipy"
 ] 
-]classifiers = [
+classifiers = [
     "Programming Language :: Rust",
 ]
 
