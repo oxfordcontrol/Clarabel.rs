@@ -3,5 +3,6 @@ Cargo.lock
 .DS_Store
 .vscode
 .env*
+/env
 notes*.txt
 /dist

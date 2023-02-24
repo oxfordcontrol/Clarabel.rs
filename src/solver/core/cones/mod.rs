@@ -33,6 +33,13 @@ pub use zerocone::*;
 
 use crate::solver::{core::ScalingStrategy, CoreSettings};
 
+// marker for primal / dual distinctions
+#[derive(PartialEq, Clone, Debug, Copy)]
+pub enum PrimalOrDualCone {
+    PrimalCone,
+    DualCone,
+}
+
 #[enum_dispatch]
 pub trait Cone<T>
 where
@@ -49,13 +56,26 @@ where
     // a scaling that preserves cone memership
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool;
 
+    // returns (α,β) such that:
+    // z - α⋅e is just on the cone boundary, with value
+    // α >=0 indicates z \in cone, i.e. negative margin ===
+    // outside of the cone.
+    //
+    // β is the sum of the margins that are positive.   For most
+    // cones this will just be β = max(0.,α), but for cones that
+    // are composites (e.g. the R_n^+), it is the sum of all of
+    // the positive margin terms.
+    fn margins(&self, z: &mut [T], pd: PrimalOrDualCone) -> (T, T);
+
     // functions relating to unit vectors and cone initialization
-    fn shift_to_cone(&self, z: &mut [T]);
+    fn scaled_unit_shift(&self, z: &mut [T], α: T, pd: PrimalOrDualCone);
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]);
 
     // Compute scaling points
     fn set_identity_scaling(&mut self);
-    fn update_scaling(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy);
+    fn update_scaling(
+        &mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy
+    ) -> bool;
 
     // operations on the Hessian of the centrality condition
     // : W^TW for symmmetric cones
@@ -80,7 +100,7 @@ where
     //
     // # To recover Δs from Δz, we can write
     //     Δs = - (ds + μHΔz)
-    // The "offset" in Δs_from_Δz_offset! is then just ds
+    // The "offset" in Δs_from_Δz_offset is then just ds
     //
     // For symmetric cones:
     // --------------------
@@ -97,9 +117,9 @@ where
     //
     // To recover Δs from Δz, we can write
     //     Δs = - ( Wᵀ(λ \ ds) + WᵀW Δz)
-    // The "offset" in Δs_from_Δz_offset! is then Wᵀ(λ \ ds)
+    // The "offset" in Δs_from_Δz_offset is then Wᵀ(λ \ ds)
     //
-    // Note that the Δs_from_Δz_offset! function is only needed in the
+    // Note that the Δs_from_Δz_offset function is only needed in the
     // general combined step direction.   In the affine step direction,
     // we have the identity Wᵀ(λ \ (λ ∘ λ )) = s.  The symmetric and
     // nonsymmetric cases coincide and offset is taken directly as s.
@@ -111,7 +131,7 @@ where
     // ---------------------------------------------------------
     fn affine_ds(&self, ds: &mut [T], s: &[T]);
     fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T);
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]);
+    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T], z: &[T]);
 
     // Find the maximum step length in some search direction
     fn step_length(

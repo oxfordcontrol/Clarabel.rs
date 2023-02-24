@@ -291,15 +291,20 @@ where
             dx.axpby(T::one(), x, T::one()); //now dx is really x + dx
             norme = _get_refine_error(e, b, K, dx);
 
-            if lastnorme / norme < stopratio {
+            let improved_ratio = lastnorme / norme;
+            if improved_ratio < stopratio {
                 //insufficient improvement.  Exit
+                if improved_ratio > T::one() {
+                    //swap instead of copying to x
+                    std::mem::swap(x, dx);
+                }
                 break;
             } else {
-                //just swap instead of copying to x
+                //swap instead of copying to x
                 std::mem::swap(x, dx);
             }
         }
-        //NB: "success" means only we had a finite valued result
+        //NB: "success" means only that we had a finite valued result
         true
     }
 }

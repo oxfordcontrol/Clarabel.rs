@@ -141,7 +141,7 @@ where
                 Δs_const_term.copy_from(&variables.s);
             }
             "combined" => {
-                cones.Δs_from_Δz_offset(Δs_const_term, &rhs.s, &mut lhs.z);
+                cones.Δs_from_Δz_offset(Δs_const_term, &rhs.s, &mut lhs.z, &variables.z);
             }
             _ => {
                 panic!("Bad step direction specified");
@@ -205,26 +205,47 @@ where
         variables: &mut DefaultVariables<T>,
         data: &DefaultProblemData<T>,
         settings: &DefaultSettings<T>,
-    ) {
-        // solve with [0;b] as a RHS to get (x,s) initializers
-        // zero out any sparse cone variables at end
-        self.workx.fill(T::zero());
-        self.workz.copy_from(&data.b);
-        self.kktsolver.setrhs(&self.workx, &self.workz);
-        self.kktsolver.solve(
-            Some(&mut variables.x),
-            Some(&mut variables.s),
-            settings.core(),
-        );
+    ) -> bool {
+        let is_success;
 
-        // solve with [-c;0] as a RHS to get z initializer
-        // zero out any sparse cone variables at end
-        self.workx.axpby(-T::one(), &data.q, T::zero());
-        self.workz.fill(T::zero());
+        if data.P.nnz() == 0 {
+            // LP initialization
 
-        self.kktsolver.setrhs(&self.workx, &self.workz);
-        self.kktsolver
-            .solve(None, Some(&mut variables.z), settings.core());
+            // solve with [0;b] as a RHS to get (x,s) initializers
+            // zero out any sparse cone variables at end
+            self.workx.fill(T::zero());
+            self.workz.copy_from(&data.b);
+            self.kktsolver.setrhs(&self.workx, &self.workz);
+            self.kktsolver.solve(
+                Some(&mut variables.x),
+                Some(&mut variables.s),
+                settings.core(),
+            );
+
+            // solve with [-c;0] as a RHS to get z initializer
+            // zero out any sparse cone variables at end
+            self.workx.axpby(-T::one(), &data.q, T::zero());
+            self.workz.fill(T::zero());
+
+            self.kktsolver.setrhs(&self.workx, &self.workz);
+            is_success = self
+                .kktsolver
+                .solve(None, Some(&mut variables.z), settings.core());
+        } else {
+            //QP initialization
+            self.workx.copy_from(&data.q);
+            self.workx.negate();
+            self.workz.copy_from(&data.b);
+            self.kktsolver.setrhs(&self.workx, &self.workz);
+            is_success = self.kktsolver.solve(
+                Some(&mut variables.x),
+                Some(&mut variables.z),
+                settings.core(),
+            );
+            variables.s.copy_from(&variables.z);
+            variables.s.negate();
+        }
+        is_success
     }
 }
 

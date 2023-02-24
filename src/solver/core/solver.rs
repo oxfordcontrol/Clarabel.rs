@@ -226,14 +226,20 @@ where
                     }
             }  // allows continuation if new strategy provided
 
+
+            // update the scalings
+            // --------------
+            let is_scaling_success = self.variables.scale_cones(&mut self.cones,μ,scaling);
+            // check whether variables are interior points
+            match self.strategy_checkpoint_is_scaling_success(is_scaling_success,scaling){
+                StrategyCheckpoint::Fail => {break}
+                StrategyCheckpoint::NoUpdate => {} // we only expect NoUpdate or Fail here
+                StrategyCheckpoint::Update(_) => {unreachable!()}
+            }
+
             //increment counter here because we only count
             //iterations that produce a KKT update
             iter += 1;
-
-            //
-            // update the scalings
-            // --------------
-            self.variables.scale_cones(&mut self.cones,μ,scaling);
 
             // Update the KKT system and the constant parts of its solution.
             // Keep track of the success of each step that calls KKT
@@ -271,6 +277,10 @@ where
                 α = self.get_step_length("affine",scaling);
                 σ = self.centering_parameter(α);
 
+                // make a reduced Mehrotra correction in the first iteration
+                // to accommodate badly centred starting points
+                let m = if iter > 1 {T::one()} else {α};
+
                 // calculate the combined step and length
                 // --------------
                 self.step_rhs.combined_step_rhs(
@@ -280,6 +290,7 @@ where
                     &mut self.step_lhs,
                     σ,
                     μ,
+                    m
                 );
 
                 timeit!{timers => "kkt solve" ; {
@@ -384,6 +395,12 @@ mod internal {
         fn strategy_checkpoint_small_step(
             &mut self,
             α: T,
+            scaling: ScalingStrategy,
+        ) -> StrategyCheckpoint;
+
+        fn strategy_checkpoint_is_scaling_success(
+            &mut self,
+            is_scaling_success: bool,
             scaling: ScalingStrategy,
         ) -> StrategyCheckpoint;
     }
@@ -516,7 +533,7 @@ mod internal {
                 && α < self.settings.core().min_switch_step_length
             {
                 output = StrategyCheckpoint::Update(ScalingStrategy::Dual);
-            } else if α <= T::min(T::zero(), self.settings.core().min_terminate_step_length) {
+            } else if α <= T::max(T::zero(), self.settings.core().min_terminate_step_length) {
                 self.info.set_status(SolverStatus::InsufficientProgress);
                 output = StrategyCheckpoint::Fail;
             } else {
@@ -524,6 +541,19 @@ mod internal {
             }
 
             output
+        }
+
+        fn strategy_checkpoint_is_scaling_success(
+            &mut self,
+            is_scaling_success: bool,
+            _scaling: ScalingStrategy,
+        ) -> StrategyCheckpoint {
+            if is_scaling_success {
+                StrategyCheckpoint::NoUpdate
+            } else {
+                self.info.set_status(SolverStatus::NumericalError);
+                StrategyCheckpoint::Fail
+            }
         }
     } // end trait impl
 } //end internals module
