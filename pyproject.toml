@@ -1,12 +1,15 @@
 [build-system]
-requires = ["maturin>=0.13,<0.14"]
+requires = ["maturin>=0.13,<0.15"]
 build-backend = "maturin"
 
 [project]
 name = "clarabel"
 requires-python = ">=3.7"
-requires = [numpy >= 1.7, scipy >= 0.13]
-classifiers = [
+dependencies = [
+    "numpy",
+    "scipy"
+] 
+]classifiers = [
     "Programming Language :: Rust",
 ]
 
