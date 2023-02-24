@@ -18,13 +18,22 @@ where
 
         assert!(dim == KKT.ncols(), "KKT matrix is not square");
 
-        //construct the LDL solver settings
+        // occasionally we find that the default AMD parameters give a bad ordering, particularly
+        // for some big matrices.  In particular, KKT conditions for QPs are sometimes worse
+        // than their SOC counterparts for very large problems.   This is because the SOC form
+        // is artificially "big", with extra rows, so the dense row threshold is effectively a
+        // different value.   We fix a bit more generous AMD_DENSE here, which should perhaps
+        // be user-settable.
+
+        //make a logical factorization to fix memory allocations
+
         let opts = QDLDLSettingsBuilder::default()
             .logical(true) //allocate memory only on init
             .Dsigns(Dsigns.to_vec())
             .regularize_enable(true)
             .regularize_eps(settings.dynamic_regularization_eps)
             .regularize_delta(settings.dynamic_regularization_delta)
+            .amd_dense_scale(1.5)
             .build()
             .unwrap();
 

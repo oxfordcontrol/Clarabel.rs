@@ -10,6 +10,8 @@ pub struct QDLDLSettings<T>
 where
     T: FloatT,
 {
+    #[builder(default = "1.0")]
+    amd_dense_scale: f64,
     #[builder(default = "None", setter(strip_option))]
     perm: Option<Vec<usize>>,
     #[builder(default = "false")]
@@ -159,7 +161,7 @@ fn _qdldl_new<T: FloatT>(
         iperm = _invperm(&_perm);
         perm = _perm;
     } else {
-        (perm, iperm) = _get_amd_ordering(Ain);
+        (perm, iperm) = _get_amd_ordering(Ain, opts.amd_dense_scale);
     }
 
     //permute to (another) upper triangular matrix and store the
@@ -809,20 +811,16 @@ fn _permute_symmetric_inner<T: FloatT>(
     }
 }
 
-fn _get_amd_ordering<T: FloatT>(A: &CscMatrix<T>) -> (Vec<usize>, Vec<usize>) {
-    // occasionally we find that the default parameters
-    // give a bad ordering, particularly for some big
-    // matrices.  In particular, KKT conditions for QPs
-    // are sometimes worse than their SOC counterparts.
-    // for very large problems.   This is because the SOC form
-    // is artificially "big", with extra rows, so the dense row
-    // threshold is effectively a different value.   We make
-    // an arbitrary increase in AMD_DENSE here.
-    // PJG: this ad hoc method can surely be improved
+fn _get_amd_ordering<T: FloatT>(
+    A: &CscMatrix<T>,
+    amd_dense_scale: f64,
+) -> (Vec<usize>, Vec<usize>) {
+    // PJG: For interested readers - setting amd_dense_scale to 1.5 seems to work better
+    // for KKT systems in QP problems, but this ad hoc method can surely be improved
 
-    //computes a permutation for A using AMD default parameters
+    // computes a permutation for A using AMD default parameters
     let mut control = amd::Control::default();
-    control.dense *= 1.5; //increase the default value
+    control.dense *= amd_dense_scale; //increase the default value
     let (perm, iperm, _info) = amd::order(A.nrows(), &A.colptr, &A.rowval, &control).unwrap();
     (perm, iperm)
 }

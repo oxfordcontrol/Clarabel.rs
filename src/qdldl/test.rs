@@ -130,7 +130,7 @@ fn test_etree() {
 #[test]
 fn test_amd() {
     let A = test_matrix_4x4();
-    let (perm, iperm) = _get_amd_ordering(&A);
+    let (perm, iperm) = _get_amd_ordering(&A, 1.0);
     assert_eq!(perm, [3, 0, 1, 2]);
     assert_eq!(iperm, [1, 2, 3, 0]);
 }
