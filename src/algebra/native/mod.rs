@@ -38,6 +38,8 @@ impl<T: FloatT> VectorMath<T> for [T] {
     }
 
     fn translate(&mut self, c: T) {
+        //NB: translate is a scalar shift of all variables and is only
+        //used only in the NN cone to force vectors into R^n_+
         self.scalarop(|x| x + c);
     }
 
@@ -171,22 +173,8 @@ impl<T: FloatT> VectorMath<T> for [T] {
     fn axpby(&mut self, a: T, x: &[T], b: T) {
         assert_eq!(self.len(), x.len());
 
-        //PJG could be faster when a = 1, b = 1, i.e. just a vector
-        //addition.  This is needed in particular in ds_affine + ds_shift
-        //NB: translate is a scalar shift of all variables and is only
-        //used in the NN cone function to place into the cone
-
-        //handle b = 1 / 0 / -1 separately
         let yx = self.iter_mut().zip(x);
-        if b == T::zero() {
-            yx.for_each(|(y, x)| *y = a * (*x));
-        } else if b == T::one() {
-            yx.for_each(|(y, x)| *y = a * (*x) + (*y));
-        } else if b == -T::one() {
-            yx.for_each(|(y, x)| *y = a * (*x) - (*y));
-        } else {
-            yx.for_each(|(y, x)| *y = a * (*x) + b * (*y));
-        }
+        yx.for_each(|(y, x)| *y = a * (*x) + b * (*y));
     }
 
     fn waxpby(&mut self, a: T, x: &[T], b: T, y: &[T]) {
