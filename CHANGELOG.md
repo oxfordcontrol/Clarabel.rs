@@ -2,7 +2,7 @@
 
 Changes for the Julia version of Clarabel are documented in this file.   For the Rust version, see [here](https://github.com/oxfordcontrol/clarabel.rs/CHANGELOG.md).
 
-The formmat is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Version numbering in this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).  We aim to keep the core solver functionality and minor releases in sync between the Rust/Python and Julia implementations.   Small fixes that affect one implementation only may result in the patch release versions differing.
 
