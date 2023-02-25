@@ -13,7 +13,7 @@ where
 {
     let mut nnz = 0;
     if let Some(rng_last) = cones.rng_blocks.last() {
-        nnz = (*rng_last).end;
+        nnz = rng_last.end;
     }
     vec![Z::zero(); nnz]
 }

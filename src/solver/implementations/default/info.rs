@@ -153,7 +153,7 @@ where
         //  poor progress
         // ----------------------
         if self.status == SolverStatus::Unsolved
-            && iter > 0u32
+            && iter > 1u32
             && (self.res_dual > self.prev_res_dual || self.res_primal > self.prev_res_primal)
         {
             // Poor progress at high tolerance.
@@ -310,7 +310,8 @@ where
     ) {
         if self.ktratio < tol_ktratio && self.is_solved(tol_gap_abs, tol_gap_rel, tol_feas) {
             self.status = solved_status
-        } else if self.ktratio > tol_ktratio.recip() {
+        //PJG hardcoded factor 1000 here should be fixed
+        } else if self.ktratio > tol_ktratio.recip() * (1000.0).as_T() {
             if self.is_primal_infeasible(residuals, tol_infeas_abs, tol_infeas_rel) {
                 self.status = pinf_status
             } else if self.is_dual_infeasible(residuals, tol_infeas_abs, tol_infeas_rel) {

@@ -1,4 +1,4 @@
-use super::{Cone, JordanAlgebra, SymmetricCone, SymmetricConeUtils};
+use super::*;
 use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
@@ -52,11 +52,14 @@ where
         false
     }
 
-    fn shift_to_cone(&self, z: &mut [T]) {
-        // do this elementwise, otherwise splitting a nonnegative cone
-        // into multiple small cones will give us a different solution
-        let thresh = T::sqrt(T::epsilon());
-        z.scalarop(|zi| if zi < thresh { T::one() } else { zi });
+    fn margins(&self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+        let α = z.minimum();
+        let β = z.iter().fold(T::zero(), |β, &zi| β + T::max(zi, T::zero()));
+        (α, β)
+    }
+
+    fn scaled_unit_shift(&self, z: &mut [T], α: T, _pd: PrimalOrDualCone) {
+        z.translate(α)
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
@@ -68,7 +71,13 @@ where
         self.w.fill(T::one());
     }
 
-    fn update_scaling(&mut self, s: &[T], z: &[T], _μ: T, _scaling_strategy: ScalingStrategy) {
+    fn update_scaling(
+        &mut self,
+        s: &[T],
+        z: &[T],
+        _μ: T,
+        _scaling_strategy: ScalingStrategy,
+    ) -> bool {
         let λw = self.λ.iter_mut().zip(self.w.iter_mut());
         let sz = s.iter().zip(z.iter());
 
@@ -76,6 +85,8 @@ where
             *λ = T::sqrt((*s) * (*z));
             *w = T::sqrt((*s) / (*z));
         }
+
+        true
     }
 
     fn Hs_is_diagonal(&self) -> bool {
@@ -108,9 +119,10 @@ where
         self._combined_ds_shift_symmetric(dz, step_z, step_s, σμ);
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T]) {
-        //PJG: could be done faster for nonnegatives?
-        self._Δs_from_Δz_offset_symmetric(out, ds, work);
+    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], _work: &mut [T], z: &[T]) {
+        for (outi, (&dsi, &zi)) in out.iter_mut().zip(ds.iter().zip(z)) {
+            *outi = dsi / zi;
+        }
     }
 
     fn step_length(
@@ -166,10 +178,6 @@ where
 {
     fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
         self.inv_circ_op(x, &self.λ, z)
-    }
-
-    fn add_scaled_e(&self, x: &mut [T], α: T) {
-        x.translate(α);
     }
 
     fn mul_W(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {

@@ -1,5 +1,6 @@
 use super::*;
 use crate::algebra::*;
+use crate::solver::core::cones::PrimalOrDualCone;
 use crate::solver::core::{
     cones::{CompositeCone, Cone},
     traits::{Settings, Variables},
@@ -11,7 +12,6 @@ use crate::solver::core::{
 // ---------------
 
 /// Standard-form solver type implementing the [Variables](crate::solver::core::traits::Variables) trait
-#[derive(Debug)]
 pub struct DefaultVariables<T> {
     /// scaled primal variables
     pub x: Vec<T>,
@@ -23,6 +23,16 @@ pub struct DefaultVariables<T> {
     pub τ: T,
     /// homogenization scalar κ
     pub κ: T,
+}
+
+impl<T: std::fmt::Display + std::fmt::Debug> std::fmt::Debug for DefaultVariables<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "x: {:?}\ns: {:?}\nz: {:?}\nτ: {:?}\nκ: {:?}\n",
+            self.x, self.s, self.z, self.τ, self.κ
+        )
+    }
 }
 
 impl<T> DefaultVariables<T>
@@ -75,15 +85,26 @@ where
         step: &mut Self,
         σ: T,
         μ: T,
+        m: T,
     ) {
         let dotσμ = σ * μ;
+
         self.x.axpby(T::one() - σ, &residuals.rx, T::zero()); //self.x  = (1 - σ)*rx
         self.τ = (T::one() - σ) * residuals.rτ;
-        self.κ = -dotσμ + step.τ * step.κ + variables.τ * variables.κ;
+        self.κ = -dotσμ + m * step.τ * step.κ + variables.τ * variables.κ;
 
         // ds is different for symmetric and asymmetric cones:
         // Symmetric cones: d.s = λ ◦ λ + W⁻¹Δs ∘ WΔz − σμe
         // Asymmetric cones: d.s = s + σμ*g(z)
+
+        // we want to scale the Mehotra correction in the symmetric
+        // case by M, so just scale step_z by M.  This is an unnecessary
+        // vector operation (since it amounts to M*z'*s), but it
+        // doesn't happen very often
+        if m != T::one() {
+            self.z.scale(m);
+        }
+
         cones.combined_ds_shift(&mut self.z, &mut step.z, &mut step.s, dotσμ);
 
         //We are relying on d.s = affine_ds already here
@@ -141,8 +162,8 @@ where
     }
 
     fn symmetric_initialization(&mut self, cones: &CompositeCone<T>) {
-        cones.shift_to_cone(&mut self.s);
-        cones.shift_to_cone(&mut self.z);
+        _shift_to_cone_interior(&mut self.s, cones, PrimalOrDualCone::PrimalCone);
+        _shift_to_cone_interior(&mut self.z, cones, PrimalOrDualCone::DualCone);
 
         self.τ = T::one();
         self.κ = T::one();
@@ -164,8 +185,13 @@ where
         self.κ = src.κ;
     }
 
-    fn scale_cones(&self, cones: &mut CompositeCone<T>, μ: T, scaling_strategy: ScalingStrategy) {
-        cones.update_scaling(&self.s, &self.z, μ, scaling_strategy);
+    fn scale_cones(
+        &self,
+        cones: &mut CompositeCone<T>,
+        μ: T,
+        scaling_strategy: ScalingStrategy,
+    ) -> bool {
+        cones.update_scaling(&self.s, &self.z, μ, scaling_strategy)
     }
 
     fn barrier(&self, step: &Self, α: T, cones: &CompositeCone<T>) -> T {
@@ -188,5 +214,43 @@ where
         barrier += cones.compute_barrier(z, s, dz, ds, α);
 
         barrier
+    }
+
+    fn rescale(&mut self) {
+        let scale = T::max(self.τ, self.κ);
+        let invscale = scale.recip();
+
+        self.x.scale(invscale);
+        self.z.scale(invscale);
+        self.s.scale(invscale);
+        self.τ *= invscale;
+        self.κ *= invscale;
+    }
+}
+
+fn _shift_to_cone_interior<T>(z: &mut [T], cones: &CompositeCone<T>, pd: PrimalOrDualCone)
+where
+    T: FloatT,
+{
+    let (min_margin, pos_margin) = cones.margins(z, pd);
+    let target = T::max(
+        T::one(),
+        (pos_margin * (0.1).as_T()) / cones.degree().as_T(),
+    );
+
+    if min_margin <= T::zero() {
+        // at least some component is outside its cone
+        // done in two stages since otherwise (1-α) = -α for
+        // large α, which makes z exactly 0. (or worse, -0.0 )
+        cones.scaled_unit_shift(z, -min_margin, pd);
+        cones.scaled_unit_shift(z, target, pd);
+    } else if min_margin < target {
+        // margin is positive but small.
+        cones.scaled_unit_shift(z, target - min_margin, pd);
+    } else {
+        // good margin, but still shift explicitly by
+        // zero to catch any elements in the zero cone
+        // that need to be forced to zero
+        cones.scaled_unit_shift(z, T::zero(), pd);
     }
 }

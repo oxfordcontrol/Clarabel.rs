@@ -53,6 +53,7 @@ pub trait Variables<T: FloatT> {
         step: &mut Self, //mut allows step to double as working space
         σ: T,
         μ: T,
+        m: T,
     );
 
     /// Compute the maximum step length possible in the given
@@ -80,11 +81,16 @@ pub trait Variables<T: FloatT> {
 
     /// Apply NT scaling to the a collection of cones.
 
-    fn scale_cones(&self, cones: &mut Self::C, μ: T, scaling_strategy: ScalingStrategy);
+    fn scale_cones(&self, cones: &mut Self::C, μ: T, scaling_strategy: ScalingStrategy) -> bool;
 
     /// Compute the barrier function
 
     fn barrier(&self, step: &Self, α: T, cones: &Self::C) -> T;
+
+    /// Rescale variables, e.g. to renormalize iterates
+    /// in a homogeneous embedding
+
+    fn rescale(&mut self);
 }
 
 /// Residuals for a conic optimization problem.
@@ -127,7 +133,12 @@ pub trait KKTSystem<T: FloatT> {
 
     /// Find an IP starting condition
 
-    fn solve_initial_point(&mut self, variables: &mut Self::V, data: &Self::D, settings: &Self::SE);
+    fn solve_initial_point(
+        &mut self,
+        variables: &mut Self::V,
+        data: &Self::D,
+        settings: &Self::SE,
+    ) -> bool;
 }
 
 /// Printing functions for the solver's Info

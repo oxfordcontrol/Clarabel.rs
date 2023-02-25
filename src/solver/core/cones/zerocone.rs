@@ -1,4 +1,4 @@
-use super::Cone;
+use super::*;
 use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
@@ -51,8 +51,20 @@ where
         false
     }
 
-    fn shift_to_cone(&self, z: &mut [T]) {
-        z.fill(T::zero());
+    fn margins(&self, _z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+        // for either primal or dual case we specify infinite
+        // minimum margin and zero total margin.
+        // if we later shift a vector into the zero cone
+        // using scaled_unit_shift!, we just zero it
+        // out regardless of the applied shift anway
+        (T::max_value(), T::zero())
+    }
+    fn scaled_unit_shift(&self, z: &mut [T], _α: T, pd: PrimalOrDualCone) {
+        if pd == PrimalOrDualCone::PrimalCone {
+            z.fill(T::zero());
+        } else {
+            // do nothing
+        }
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
@@ -64,8 +76,14 @@ where
         //nothing to do
     }
 
-    fn update_scaling(&mut self, _s: &[T], _z: &[T], _μ: T, _scaling_strategy: ScalingStrategy) {
-        //nothing to do
+    fn update_scaling(
+        &mut self,
+        _s: &[T],
+        _z: &[T],
+        _μ: T,
+        _scaling_strategy: ScalingStrategy,
+    ) -> bool {
+        true
     }
 
     fn Hs_is_diagonal(&self) -> bool {
@@ -90,7 +108,7 @@ where
         shift.fill(T::zero());
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], _ds: &[T], _work: &mut [T]) {
+    fn Δs_from_Δz_offset(&self, out: &mut [T], _ds: &[T], _work: &mut [T], _z: &[T]) {
         out.fill(T::zero());
     }
 

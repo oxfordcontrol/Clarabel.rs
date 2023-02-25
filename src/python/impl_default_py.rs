@@ -86,7 +86,7 @@ impl PyDefaultSolution {
 // Solver Status
 // ----------------------------------
 
-#[derive(Debug, Clone, ToPrimitive)]
+#[derive(PartialEq, Debug, Clone, ToPrimitive)]
 #[pyclass(name = "SolverStatus")]
 pub enum PySolverStatus {
     Unsolved = 0,
