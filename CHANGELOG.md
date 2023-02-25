@@ -18,9 +18,9 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 
 - Modification of the internal calls to the Rust qdldl to allow for direct assignment of parameters in AMD ordering.   
 
-- Added release of binaries for arm64 Linux #9.   Thanks to @nrontsis.
+- Added release of binaries for arm64 Linux [#9](https://github.com/oxfordcontrol/Clarabel.rs/issues/9).   Thanks to @nrontsis.
 
-- Fixed a bug using `==` for SolverStatus objects in Python.  Fixes #10.
+- Fixed a bug using `==` for SolverStatus objects in Python.  Fixes [#10](https://github.com/oxfordcontrol/Clarabel.rs/issues/10).
 
 - Python now reports the Clarabel version using `__version__` instead of `__version__()`.
 
