@@ -1,11 +1,11 @@
 name: ci
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main", "dev" ]
-  workflow_dispatch
 
 env:
   CARGO_TERM_COLOR: always
