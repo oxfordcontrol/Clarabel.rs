@@ -24,6 +24,9 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 
 - Python now reports the Clarabel version using `__version__` instead of `__version__()`.
 
+- Added additional unit tests for Rust implementation.   NB: Rust implementation is also tested
+offline against the Julia-based benchmark problem suite, but this will not appear in coverage reporting.  
+
 
 ## [0.3.0] - 2022-09-13
 
