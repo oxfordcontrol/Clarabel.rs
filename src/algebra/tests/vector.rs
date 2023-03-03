@@ -44,9 +44,9 @@ fn test_scale() {
 }
 
 #[test]
-fn test_reciprocal() {
+fn test_recip() {
     let mut x = vec![3., 10., 2., 1.];
-    x.reciprocal();
+    x.recip();
     assert!(inf_norm_diff(&x, &[1. / 3., 1. / 10., 1. / 2., 1.]) < 1e-8);
 }
 
