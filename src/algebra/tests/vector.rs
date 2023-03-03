@@ -92,6 +92,14 @@ fn test_clip() {
 }
 
 #[test]
+fn test_op_chaining() {
+    let x = vec![5., 1., 3., 7.];
+    let mut y = vec![1.; 4];
+    y.axpby(1., &x, 3.).recip().hadamard(&[1., 2., 3., 4.]);
+    assert_eq!(y, vec![0.125, 0.5, 0.5, 0.4]);
+}
+
+#[test]
 fn test_dot() {
     let x = vec![3., 0., 2., 1.];
     let y = vec![-1., -2., 3., 4.];
