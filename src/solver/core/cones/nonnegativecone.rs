@@ -59,7 +59,7 @@ where
     }
 
     fn scaled_unit_shift(&self, z: &mut [T], α: T, _pd: PrimalOrDualCone) {
-        z.translate(α)
+        z.translate(α);
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {

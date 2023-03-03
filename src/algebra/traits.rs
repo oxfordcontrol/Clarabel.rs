@@ -24,44 +24,44 @@ pub trait ScalarMath<T> {
 
 pub trait VectorMath<T> {
     /// Copy values from `src` to `self`
-    fn copy_from(&mut self, src: &Self);
+    fn copy_from(&mut self, src: &Self) -> &mut Self;
 
     /// Apply an elementwise operation on a vector.
-    fn scalarop(&mut self, op: impl Fn(T) -> T);
+    fn scalarop(&mut self, op: impl Fn(T) -> T) -> &mut Self;
 
     /// Apply an elementwise operation to `v` and assign the
     /// results to `self`.
-    fn scalarop_from(&mut self, op: impl Fn(T) -> T, v: &Self);
+    fn scalarop_from(&mut self, op: impl Fn(T) -> T, v: &Self) -> &mut Self;
 
     /// Elementwise translation.
-    fn translate(&mut self, c: T);
+    fn translate(&mut self, c: T) -> &mut Self;
 
     /// set all elements to the same value
-    fn set(&mut self, c: T);
+    fn set(&mut self, c: T) -> &mut Self;
 
     /// Elementwise scaling.
-    fn scale(&mut self, c: T);
+    fn scale(&mut self, c: T) -> &mut Self;
+
+    /// Elementwise reciprocal.
+    fn recip(&mut self) -> &mut Self;
+
+    /// Elementwise square root.
+    fn sqrt(&mut self) -> &mut Self;
+
+    /// Elementwise inverse square root.
+    fn rsqrt(&mut self) -> &mut Self;
+
+    /// Elementwise negation of entries.
+    fn negate(&mut self) -> &mut Self;
+
+    /// Elementwise scaling by another vector. Produces `self[i] = self[i] * y[i]`
+    fn hadamard(&mut self, y: &Self) -> &mut Self;
+
+    /// Vector version of [clip](crate::algebra::ScalarMath::clip)
+    fn clip(&mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> &mut Self;
 
     /// Normalize, returning the norm.  Do nothing if norm == 0.  
     fn normalize(&mut self) -> T;
-
-    /// Elementwise reciprocal.
-    fn reciprocal(&mut self);
-
-    /// Elementwise square root.
-    fn sqrt(&mut self);
-
-    /// Elementwise inverse square root.
-    fn rsqrt(&mut self);
-
-    /// Elementwise negation of entries.
-    fn negate(&mut self);
-
-    /// Elementwise scaling by another vector. Produces `self[i] = self[i] * y[i]`
-    fn hadamard(&mut self, y: &Self);
-
-    /// Vector version of [clip](crate::algebra::ScalarMath::clip)
-    fn clip(&mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T);
 
     /// Dot product
     fn dot(&self, y: &Self) -> T;
@@ -103,10 +103,10 @@ pub trait VectorMath<T> {
     //--------------------
 
     /// BLAS-like shift and scale in place.  Produces `self = a*x+b*self`
-    fn axpby(&mut self, a: T, x: &Self, b: T);
+    fn axpby(&mut self, a: T, x: &Self, b: T) -> &mut Self;
 
     /// BLAS-like shift and scale, non in-place version.  Produces `self = a*x+b*y`
-    fn waxpby(&mut self, a: T, x: &Self, b: T, y: &Self);
+    fn waxpby(&mut self, a: T, x: &Self, b: T, y: &Self) -> &mut Self;
 }
 
 /// Matrix operations for matrices of [FloatT](crate::algebra::FloatT)

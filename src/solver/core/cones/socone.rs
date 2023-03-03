@@ -62,9 +62,7 @@ where
     }
 
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
-        δ.copy_from(e);
-        δ.reciprocal();
-        δ.scale(e.mean());
+        δ.copy_from(e).recip().scale(e.mean());
 
         true // scalar equilibration
     }

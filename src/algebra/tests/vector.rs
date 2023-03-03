@@ -44,9 +44,9 @@ fn test_scale() {
 }
 
 #[test]
-fn test_reciprocal() {
+fn test_recip() {
     let mut x = vec![3., 10., 2., 1.];
-    x.reciprocal();
+    x.recip();
     assert!(inf_norm_diff(&x, &[1. / 3., 1. / 10., 1. / 2., 1.]) < 1e-8);
 }
 
@@ -89,6 +89,14 @@ fn test_clip() {
     x.clip(min_thresh, max_thresh, min_new, max_new);
 
     assert_eq!(x, vec![0.5, 0.1, 1., 10., 5.]);
+}
+
+#[test]
+fn test_op_chaining() {
+    let x = vec![5., 1., 3., 7.];
+    let mut y = vec![1.; 4];
+    y.axpby(1., &x, 3.).recip().hadamard(&[1., 2., 3., 4.]);
+    assert_eq!(y, vec![0.125, 0.5, 0.5, 0.4]);
 }
 
 #[test]
