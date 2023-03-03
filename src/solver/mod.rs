@@ -13,13 +13,17 @@
 //! [traits](crate::solver::core::traits) for
 //! objects in Clarabel's core solver.
 
+const _INFINITY_DEFAULT: f64 = 1e20;
 // internal module structure
 pub(crate) mod core;
 pub mod implementations;
+pub(crate) mod utils;
 
 //Here we expose only part of the solver internals
 //and rearrange public modules a bit to give a more
 //user friendly API
+
+pub use crate::solver::utils::infbounds::*;
 
 //allows declaration of cone constraints
 pub use crate::solver::core::cones::{SupportedConeT, SupportedConeT::*};

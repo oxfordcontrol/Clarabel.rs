@@ -194,3 +194,38 @@ fn test_matrix_hcat_and_vcat() {
     assert_eq!(Ah.rowval, vec![0, 1, 2, 0, 1, 2]);
     assert_eq!(Ah.nzval, vec![1., 1., 1., -1., -1., -1.]);
 }
+
+#[test]
+fn test_matrix_select_rows() {
+    let A = test_matrix_4x4();
+
+    // reduce by one row
+    let rowidx = vec![true, true, false, true];
+    let Ared = A.select_rows(&rowidx);
+
+    assert_eq!(Ared.ncols(), 4);
+    assert_eq!(Ared.nrows(), 3);
+    assert_eq!(Ared.colptr, vec![0, 1, 4, 6, 7]);
+    assert_eq!(Ared.rowval, vec![0, 0, 1, 2, 0, 1, 2]);
+    assert_eq!(Ared.nzval, vec![4.0, -3.0, 8.0, -1.0, 7.0, -1.0, 1.0]);
+
+    // reduce by three rows
+    let rowidx = vec![false, false, false, true];
+    let Ared = A.select_rows(&rowidx);
+
+    assert_eq!(Ared.ncols(), 4);
+    assert_eq!(Ared.nrows(), 1);
+    assert_eq!(Ared.colptr, vec![0, 0, 1, 1, 2]);
+    assert_eq!(Ared.rowval, vec![0, 0]);
+    assert_eq!(Ared.nzval, vec![-1.0, 1.0]);
+
+    // reduce all rows
+    let rowidx = vec![false; 4];
+    let Ared = A.select_rows(&rowidx);
+
+    assert_eq!(Ared.ncols(), 4);
+    assert_eq!(Ared.nrows(), 0);
+    assert_eq!(Ared.colptr, vec![0, 0, 0, 0, 0]);
+    assert_eq!(Ared.rowval, Vec::<usize>::new());
+    assert_eq!(Ared.nzval, Vec::<f64>::new());
+}
