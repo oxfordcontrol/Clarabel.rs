@@ -21,34 +21,71 @@ impl<T: FloatT> ScalarMath<T> for T {
 }
 
 impl<T: FloatT> VectorMath<T> for [T] {
-    fn copy_from(&mut self, src: &[T]) {
+    fn copy_from(&mut self, src: &[T]) -> &mut Self {
         self.copy_from_slice(src);
+        self
     }
 
-    fn scalarop(&mut self, op: impl Fn(T) -> T) {
-        for x in self {
-            *x = op(*x)
+    fn select(&self, index: &[bool]) -> Vec<T> {
+        assert_eq!(self.len(), index.len());
+        self.iter()
+            .zip(index)
+            .filter(|(_x, &b)| b)
+            .map(|(&x, _b)| x)
+            .collect()
+    }
+
+    fn scalarop(&mut self, op: impl Fn(T) -> T) -> &mut Self {
+        for x in &mut *self {
+            *x = op(*x);
         }
+        self
     }
 
-    fn scalarop_from(&mut self, op: impl Fn(T) -> T, v: &[T]) {
+    fn scalarop_from(&mut self, op: impl Fn(T) -> T, v: &[T]) -> &mut Self {
         for (x, v) in self.iter_mut().zip(v) {
             *x = op(*v)
         }
+        self
     }
 
-    fn translate(&mut self, c: T) {
+    fn translate(&mut self, c: T) -> &mut Self {
         //NB: translate is a scalar shift of all variables and is only
         //used only in the NN cone to force vectors into R^n_+
-        self.scalarop(|x| x + c);
+        self.scalarop(|x| x + c)
     }
 
-    fn set(&mut self, c: T) {
-        self.scalarop(|_x| c);
+    fn set(&mut self, c: T) -> &mut Self {
+        self.scalarop(|_x| c)
     }
 
-    fn scale(&mut self, c: T) {
-        self.scalarop(|x| x * c);
+    fn scale(&mut self, c: T) -> &mut Self {
+        self.scalarop(|x| x * c)
+    }
+
+    fn recip(&mut self) -> &mut Self {
+        self.scalarop(T::recip)
+    }
+
+    fn sqrt(&mut self) -> &mut Self {
+        self.scalarop(T::sqrt)
+    }
+
+    fn rsqrt(&mut self) -> &mut Self {
+        self.scalarop(|x| T::recip(T::sqrt(x)))
+    }
+
+    fn negate(&mut self) -> &mut Self {
+        self.scalarop(|x| -x)
+    }
+
+    fn hadamard(&mut self, y: &[T]) -> &mut Self {
+        self.iter_mut().zip(y).for_each(|(x, y)| *x *= *y);
+        self
+    }
+
+    fn clip(&mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> &mut Self {
+        self.scalarop(|x| x.clip(min_thresh, max_thresh, min_new, max_new))
     }
 
     fn normalize(&mut self) -> T {
@@ -58,30 +95,6 @@ impl<T: FloatT> VectorMath<T> for [T] {
         }
         self.scale(norm.recip());
         norm
-    }
-
-    fn reciprocal(&mut self) {
-        self.scalarop(T::recip);
-    }
-
-    fn sqrt(&mut self) {
-        self.scalarop(T::sqrt);
-    }
-
-    fn rsqrt(&mut self) {
-        self.scalarop(|x| T::recip(T::sqrt(x)));
-    }
-
-    fn negate(&mut self) {
-        self.scalarop(|x| -x);
-    }
-
-    fn hadamard(&mut self, y: &[T]) {
-        self.iter_mut().zip(y).for_each(|(x, y)| *x *= *y);
-    }
-
-    fn clip(&mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) {
-        self.scalarop(|x| x.clip(min_thresh, max_thresh, min_new, max_new));
     }
 
     fn dot(&self, y: &[T]) -> T {
@@ -170,14 +183,15 @@ impl<T: FloatT> VectorMath<T> for [T] {
         self.iter().all(|&x| T::is_finite(x))
     }
 
-    fn axpby(&mut self, a: T, x: &[T], b: T) {
+    fn axpby(&mut self, a: T, x: &[T], b: T) -> &mut Self {
         assert_eq!(self.len(), x.len());
 
         let yx = self.iter_mut().zip(x);
         yx.for_each(|(y, x)| *y = a * (*x) + b * (*y));
+        self
     }
 
-    fn waxpby(&mut self, a: T, x: &[T], b: T, y: &[T]) {
+    fn waxpby(&mut self, a: T, x: &[T], b: T, y: &[T]) -> &mut Self {
         assert_eq!(self.len(), x.len());
         assert_eq!(self.len(), y.len());
 
@@ -186,6 +200,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
         for (w, (x, y)) in self.iter_mut().zip(xy) {
             *w = a * (*x) + b * (*y);
         }
+        self
     }
 }
 
@@ -422,9 +437,9 @@ fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
         y.fill(T::zero())
     } else if b == T::one() {
     } else if b == -T::one() {
-        y.negate()
+        y.negate();
     } else {
-        y.scale(b)
+        y.scale(b);
     }
 
     // if a is zero, we're done
@@ -465,9 +480,9 @@ fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
         y.fill(T::zero())
     } else if b == T::one() {
     } else if b == -T::one() {
-        y.negate()
+        y.negate();
     } else {
-        y.scale(b)
+        y.scale(b);
     }
 
     // if a is zero, we're done

@@ -123,6 +123,10 @@ pub struct DefaultSettings<T: FloatT> {
 
     #[builder(default = "(5.0).as_T()")]
     pub iterative_refinement_stop_ratio: T,
+
+    // preprocessing
+    #[builder(default = "true")]
+    pub presolve_enable: bool,
 }
 
 impl<T> Default for DefaultSettings<T>

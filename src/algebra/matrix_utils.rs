@@ -37,6 +37,10 @@ where
     pub fn ncols(&self) -> usize {
         self.n
     }
+    /// matrix size as (nrows,ncols) pair
+    pub fn size(&self) -> (usize, usize) {
+        (self.m, self.n)
+    }
     /// number of nonzeros
     pub fn nnz(&self) -> usize {
         self.colptr[self.n]
@@ -143,6 +147,50 @@ where
         C.fill_block(B, &mut bmap, A.m, 0, MatrixShape::N);
         C.backshift_colptrs();
         C
+    }
+
+    /// Select a subset of the rows of a sparse matrix
+    ///
+    /// # Panics
+    /// Panics if row dimensions are incompatible
+
+    pub fn select_rows(&self, rowidx: &Vec<bool>) -> Self {
+        //first check for compatible row dimensions
+        assert_eq!(rowidx.len(), self.m);
+
+        //count the number of rows in the reduced matrix and build an
+        //index from the logical rowidx to the reduced row number
+        let mut rridx = vec![0; self.m];
+        let mut mred = 0;
+        for (r, is_used) in rridx.iter_mut().zip(rowidx) {
+            if *is_used {
+                *r = mred;
+                mred += 1;
+            }
+        }
+
+        // count the nonzeros in Ared
+        let nzred = self.rowval.iter().filter(|&r| rowidx[*r]).count();
+
+        // Allocate a reduced size A
+        let mut Ared = CscMatrix::spalloc(mred, self.n, nzred);
+
+        //populate new matrix
+        let mut ptrred = 0;
+        for col in 0..self.n {
+            Ared.colptr[col] = ptrred;
+            for ptr in self.colptr[col]..self.colptr[col + 1] {
+                let thisrow = self.rowval[ptr];
+                if rowidx[thisrow] {
+                    Ared.rowval[ptrred] = rridx[thisrow];
+                    Ared.nzval[ptrred] = self.nzval[ptr];
+                    ptrred += 1;
+                }
+            }
+            Ared.colptr[Ared.n] = ptrred;
+        }
+
+        Ared
     }
 
     /// Allocates a new matrix containing only entries from the upper triangular part
