@@ -38,6 +38,13 @@ where
             return;
         }
 
+        if data.presolver.is_reduced() {
+            println!(
+                "\npresolve: removed {} constraints",
+                data.presolver.count_reduced()
+            );
+        }
+
         println!("\nproblem:");
         println!("  variables     = {}", data.n);
         println!("  constraints   = {}", data.m);

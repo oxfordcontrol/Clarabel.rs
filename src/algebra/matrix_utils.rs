@@ -37,6 +37,10 @@ where
     pub fn ncols(&self) -> usize {
         self.n
     }
+    /// matrix size as (nrows,ncols) pair
+    pub fn size(&self) -> (usize, usize) {
+        (self.m, self.n)
+    }
     /// number of nonzeros
     pub fn nnz(&self) -> usize {
         self.colptr[self.n]

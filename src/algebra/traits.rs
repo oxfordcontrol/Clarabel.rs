@@ -26,6 +26,9 @@ pub trait VectorMath<T> {
     /// Copy values from `src` to `self`
     fn copy_from(&mut self, src: &Self) -> &mut Self;
 
+    /// Make a new vector from a subset of elements
+    fn select(&self, index: &[bool]) -> Vec<T>;
+
     /// Apply an elementwise operation on a vector.
     fn scalarop(&mut self, op: impl Fn(T) -> T) -> &mut Self;
 

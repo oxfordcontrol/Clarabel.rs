@@ -26,6 +26,15 @@ impl<T: FloatT> VectorMath<T> for [T] {
         self
     }
 
+    fn select(&self, index: &[bool]) -> Vec<T> {
+        assert_eq!(self.len(), index.len());
+        self.iter()
+            .zip(index)
+            .filter(|(_x, &b)| b)
+            .map(|(&x, _b)| x)
+            .collect()
+    }
+
     fn scalarop(&mut self, op: impl Fn(T) -> T) -> &mut Self {
         for x in &mut *self {
             *x = op(*x);

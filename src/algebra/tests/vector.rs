@@ -15,6 +15,14 @@ fn test_copy_from() {
 }
 
 #[test]
+fn test_select() {
+    let x = vec![1., 2., 3., 4., 5.];
+    let idx = vec![true, false, true, true, false];
+    let y = x.select(&idx);
+    assert_eq!(y, vec![1., 3., 4.]);
+}
+
+#[test]
 fn test_scalarop() {
     let mut x = vec![3., 0., 2., 1.];
     x.scalarop(|x| -2. * x);
