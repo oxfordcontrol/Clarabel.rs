@@ -13,7 +13,7 @@
 //! [traits](crate::solver::core::traits) for
 //! objects in Clarabel's core solver.
 
-const _INFINITY_DEFAULT: f64 = 1e20;
+pub(crate) const _INFINITY_DEFAULT: f64 = 1e20;
 // internal module structure
 pub(crate) mod core;
 pub mod implementations;
