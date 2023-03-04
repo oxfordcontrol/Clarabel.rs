@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 use clarabel::{algebra::*, solver::*};
-use serial_test::serial;
 
 #[allow(clippy::type_complexity)]
 fn presolve_test_data() -> (
@@ -85,7 +84,6 @@ fn test_presolve_every_constraint_redundant() {
 }
 
 #[test]
-#[serial]
 fn test_presolve_settable_bound() {
     println!("settable bound test, bound = {:?}", get_infinity());
     default_infinity();
