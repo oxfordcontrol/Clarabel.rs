@@ -325,9 +325,6 @@ where
     ) -> (T, T) {
         let mut α = αmax;
 
-        //PJG: It is not clear to me if this implementation
-        //is in sync with the v0.4.0 Julia oine
-
         // Force symmetric cones first.
         for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
             if !cone.is_symmetric() {
@@ -341,7 +338,6 @@ where
 
         // if we have any nonsymmetric cones, then back off from full steps slightly
         // so that centrality checks and logarithms don't fail right at the boundaries
-        // PJG: is this still necessary?
 
         if !self.is_symmetric() {
             α = T::min(settings.max_step_fraction, α);
