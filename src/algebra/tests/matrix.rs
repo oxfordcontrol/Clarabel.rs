@@ -27,6 +27,35 @@ fn test_matrix_4x4() -> CscMatrix<f64> {
     CscMatrix::new(4, 4, Ap, Ai, Ax)
 }
 
+fn test_matrix_4x4_triu_2() -> CscMatrix<f64> {
+    // A =
+    //[ 4.0  -3.0   7.0    ⋅ ]
+    //[  ⋅     ⋅   -1.0    ⋅ ]
+    //[  ⋅     ⋅    2.0  -3.0]
+    //[  ⋅     ⋅     ⋅    1.0]
+
+    // NB: same as 4x4_triu, but with missing diagonal entry
+
+    let Ap = vec![0, 1, 2, 5, 7];
+    let Ai = vec![0, 0, 0, 1, 2, 2, 3];
+    let Ax = vec![4., -3., 7., -1., 2., -3., 1.];
+    CscMatrix::new(4, 4, Ap, Ai, Ax)
+}
+
+fn test_matrix_4x4_2() -> CscMatrix<f64> {
+    // A =
+    //[ 4.0  -3.0   7.0    ⋅ ]
+    //[  ⋅    8.0  -1.0    ⋅ ]
+    //[ 1.0    ⋅    2.0  -3.0]
+    //[  ⋅   -1.0    ⋅    1.0]
+
+    //NB: same as above, but with tril entries
+    let Ap = vec![0, 2, 4, 7, 9];
+    let Ai = vec![0, 2, 0, 3, 0, 1, 2, 2, 3];
+    let Ax = vec![4., 1., -3., -1., 7., -1., 2., -3., 1.];
+    CscMatrix::new(4, 4, Ap, Ai, Ax)
+}
+
 fn test_matrix_3x4() -> CscMatrix<f64> {
     // A =
     //[-1.0  -17.0  6.0  10.0]
@@ -169,8 +198,37 @@ fn test_matrix_to_triu() {
     let Atriu = test_matrix_4x4_triu();
 
     let B = Afull.to_triu();
-
     assert_eq!(B, Atriu);
+}
+
+#[test]
+fn test_matrix_to_triu_missing_diag() {
+    let Afull = test_matrix_4x4_2();
+    let Atriu = test_matrix_4x4_triu_2();
+    let B = Afull.to_triu();
+    assert_eq!(B, Atriu);
+}
+
+#[test]
+fn test_matrix_to_triu_identity() {
+    let A = CscMatrix::<f64>::identity(4);
+    let B = A.to_triu();
+    assert_eq!(B, A);
+}
+
+#[test]
+fn test_matrix_to_triu_empty() {
+    let A = CscMatrix::<f64>::spalloc(5, 5, 0);
+    let B = A.to_triu();
+    assert_eq!(B, A);
+}
+
+#[test]
+#[should_panic]
+fn test_matrix_to_triu_notsquare() {
+    let A = CscMatrix::<f64>::spalloc(5, 4, 0);
+    let B = A.to_triu();
+    assert_eq!(B, A);
 }
 
 #[test]
