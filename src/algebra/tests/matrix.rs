@@ -82,6 +82,63 @@ fn test_nrows_ncols_nnz_is_square() {
 }
 
 #[test]
+fn test_check_format() {
+    assert!(test_matrix_3x4().check_format().is_ok());
+    assert!(test_matrix_4x4().check_format().is_ok());
+    assert!(test_matrix_4x4_triu().check_format().is_ok());
+    assert!(test_matrix_4x4_2().check_format().is_ok());
+    assert!(test_matrix_4x4_triu_2().check_format().is_ok());
+
+    //bad col dimension
+    let mut A = test_matrix_4x4();
+    A.n = 10;
+    assert!(A.check_format().is_err());
+
+    //rowval / numeric value length mismatch (rowval too short)
+    let mut A = test_matrix_4x4();
+    A.rowval.pop();
+    assert!(A.check_format().is_err());
+
+    //rowval / numeric value length mismatch (nzval too short)
+    let mut A = test_matrix_4x4();
+    A.nzval.pop();
+    assert!(A.check_format().is_err());
+
+    //bad col ptr (end value wrong)
+    let mut A = test_matrix_4x4();
+    *A.colptr.last_mut().unwrap() = 100;
+    assert!(A.check_format().is_err());
+
+    //bad col ptr (first value wrong)
+    let mut A = test_matrix_4x4();
+    A.colptr[0] = 100;
+    assert!(A.check_format().is_err());
+
+    //bad col ptr (empty)
+    let mut A = test_matrix_4x4();
+    A.colptr = vec![];
+    assert!(A.check_format().is_err());
+
+    //badly ordered rows
+    let mut A = test_matrix_4x4();
+    //was Ai = vec![0, 2, 0, 1, 3, 0, 1, 2, 2, 3]
+    A.rowval = vec![0, 2, 0, 3, 1, 0, 1, 2, 2, 3];
+    assert!(A.check_format().is_err());
+
+    //repeated matrix entry
+    let mut A = test_matrix_4x4();
+    //was Ai = vec![0, 2, 0, 1, 3, 0, 1, 2, 2, 3]
+    A.rowval = vec![0, 2, 0, 1, 1, 0, 1, 2, 2, 3];
+    assert!(A.check_format().is_err());
+
+    //row index out of bounds
+    let mut A = test_matrix_4x4();
+    //was Ai = vec![0, 2, 0, 1, 3, 0, 1, 2, 2, 3]
+    A.rowval = vec![0, 2, 0, 1, 4, 0, 1, 2, 2, 3];
+    assert!(A.check_format().is_err());
+}
+
+#[test]
 fn test_col_norms() {
     let A = test_matrix_3x4();
     let mut v = vec![0., -30., 12., 4.]; //big values should be ignored

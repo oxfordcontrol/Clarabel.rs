@@ -1,5 +1,19 @@
 #![allow(non_snake_case)]
 use super::{CscMatrix, FloatT, MatrixShape, MatrixTriangle};
+use thiserror::Error;
+
+/// Error type returned by the [`check_format`](crate::algebra::CscMatrix::check_format) utility.
+#[derive(Error, Debug)]
+pub enum SparseFormatError {
+    #[error("Matrix dimension fields and/or array lengths are incompatible")]
+    IncompatibleDimension,
+    #[error("Data is not sorted by row index within each column")]
+    BadRowOrdering,
+    #[error("Row value exceeds the matrix row dimension")]
+    BadRowval,
+    #[error("Bad column pointer values")]
+    BadColptr,
+}
 
 impl<T> CscMatrix<T>
 where
@@ -48,6 +62,39 @@ where
     /// true if `self.nrows() == self.ncols()`
     pub fn is_square(&self) -> bool {
         self.m == self.n
+    }
+
+    /// Check that matrix data is correctly formatted.
+    pub fn check_format(&self) -> Result<(), SparseFormatError> {
+        if self.rowval.len() != self.nzval.len() {
+            return Err(SparseFormatError::IncompatibleDimension);
+        }
+
+        if self.colptr.is_empty()
+            || (self.colptr.len() - 1) != self.n
+            || self.colptr[self.n] != self.rowval.len()
+        {
+            return Err(SparseFormatError::IncompatibleDimension);
+        }
+
+        //check for colptr monotonicity
+        if self.colptr.windows(2).any(|c| c[0] > c[1]) {
+            return Err(SparseFormatError::BadColptr);
+        }
+
+        //check for rowval monotonicity within each column
+        for col in 0..self.n {
+            let rng = self.colptr[col]..self.colptr[col + 1];
+            if self.rowval[rng].windows(2).any(|c| c[0] >= c[1]) {
+                return Err(SparseFormatError::BadRowval);
+            }
+        }
+        //check for row values out of bounds
+        if !self.rowval.iter().all(|r| r < &self.m) {
+            return Err(SparseFormatError::BadRowval);
+        }
+
+        Ok(())
     }
 
     /// allocate space for a sparse matrix with `nnz` elements
