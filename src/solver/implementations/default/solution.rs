@@ -76,10 +76,6 @@ where
 
         self.x.copy_from(&variables.x).hadamard(d).scale(scaleinv);
 
-        //PJG DEBUG.   These values should disappear
-        self.z.set((1234.).as_T());
-        self.s.set((1234.).as_T());
-
         if !data.presolver.is_reduced() {
             self.z
                 .copy_from(&variables.z)
