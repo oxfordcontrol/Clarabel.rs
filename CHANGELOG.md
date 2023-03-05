@@ -14,6 +14,9 @@ Added optional feature to remove inequality constraints with very large upper bo
 ### Rust/Python specific changes
 
 Rust algebra module modified to allow chaining of elementwise vector operations.
+
+Added Rust matrix format checking utility in CscMatrix::check_format.  NB: CscMatrix 
+integrity is assumed by the solver and is not checked internall.
 ## [0.4.0] - 2023-25-02
 
 ### Changed 
