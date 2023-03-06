@@ -6,10 +6,7 @@ use derive_builder::Builder;
 /// Required settings for [QDLDLFactorisation](QDLDLFactorisation)
 
 #[derive(Builder, Debug)]
-pub struct QDLDLSettings<T>
-where
-    T: FloatT,
-{
+pub struct QDLDLSettings<T: FloatT> {
     #[builder(default = "1.0")]
     amd_dense_scale: f64,
     #[builder(default = "None", setter(strip_option))]

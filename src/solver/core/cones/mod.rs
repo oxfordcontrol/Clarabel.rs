@@ -34,7 +34,7 @@ pub use zerocone::*;
 use crate::solver::{core::ScalingStrategy, CoreSettings};
 
 // marker for primal / dual distinctions
-#[derive(PartialEq, Clone, Debug, Copy)]
+#[derive(Eq, PartialEq, Clone, Debug, Copy)]
 pub enum PrimalOrDualCone {
     PrimalCone,
     DualCone,

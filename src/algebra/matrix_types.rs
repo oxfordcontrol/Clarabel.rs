@@ -28,7 +28,7 @@
 /// ```
 ///
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CscMatrix<T = f64> {
     /// number of rows
     pub m: usize,
