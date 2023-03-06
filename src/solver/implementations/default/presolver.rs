@@ -8,17 +8,25 @@ use crate::solver::SupportedConeT;
 // ---------------
 
 #[derive(Debug)]
+pub struct PresolverRowReductionIndex {
+    // vector of length = original RHS.   Entries are false
+    // for those rows that should be eliminated before solve
+    pub keep_logical: Vec<bool>,
+
+    // vector of length = reduced RHS, taking values
+    // that map reduced b back to their original index
+    // This is just findall(keep_logical) and is held for
+    // efficient solution repopulation
+    pub keep_index: Vec<usize>,
+}
+
+#[derive(Debug)]
 pub struct Presolver<T> {
     // possibly reduced internal copy of user cone specification
     pub cone_specs: Vec<SupportedConeT<T>>,
 
-    // vector of length = original RHS.   Entries are false
-    // for those rows that should be eliminated before solve
-    pub reduce_idx: Option<Vec<bool>>,
-
-    // vector of length = reduced RHS, taking values
-    // that map reduced b back to their original index
-    pub lift_map: Option<Vec<usize>>,
+    //record of reduced constraints for NN cones with inf bounds
+    pub reduce_map: Option<PresolverRowReductionIndex>,
 
     // size of original and reduced RHS, respectively
     pub mfull: usize,
@@ -47,25 +55,17 @@ where
         let mut cone_specs = cone_specs.to_vec();
         let mfull = b.len();
 
-        let (reduce_idx, lift_map, mreduced) = {
-            if !settings.presolve_enable {
-                (None, None, mfull)
+        let (reduce_map, mreduced) = {
+            if settings.presolve_enable {
+                reduce_cones(&mut cone_specs, b, infbound.as_T())
             } else {
-                let (reduce_idx, lift_map) = reduce_cones(&mut cone_specs, b, infbound.as_T());
-                match lift_map {
-                    None => (None, None, mfull),
-                    Some(lm) => {
-                        let mreduced = lm.len();
-                        (reduce_idx, Some(lm), mreduced)
-                    }
-                }
+                (None, mfull)
             }
         };
 
         Self {
             cone_specs,
-            reduce_idx,
-            lift_map,
+            reduce_map,
             mfull,
             mreduced,
             infbound,
@@ -73,7 +73,7 @@ where
     }
 
     pub fn is_reduced(&self) -> bool {
-        self.mfull != self.mreduced
+        self.reduce_map.is_some()
     }
     pub fn count_reduced(&self) -> usize {
         self.mfull - self.mreduced
@@ -84,15 +84,16 @@ fn reduce_cones<T>(
     cone_specs: &mut [SupportedConeT<T>],
     b: &[T],
     infbound: T,
-) -> (Option<Vec<bool>>, Option<Vec<usize>>)
+) -> (Option<PresolverRowReductionIndex>, usize)
 where
     T: FloatT,
 {
-    let mut reduce_idx = vec![true; b.len()];
+    //assume we keep everything initially
+    let mut keep_logical = vec![true; b.len()];
+    let mut mreduced = b.len();
 
-    // we loop through the finite_idx and shrink any nonnegative
-    // cones that are marked as having infinite right hand sides.
-    // Mark the corresponding entries as zero in the reduction index
+    // we loop through b and remove any entries that are both infinite
+    // and in a nonnegative cone
 
     let mut is_reduced = false;
     let mut bptr = 0; // index into the b vector
@@ -110,7 +111,8 @@ where
                 if b[i] < infbound {
                     num_finite += 1;
                 } else {
-                    reduce_idx[i] = false;
+                    keep_logical[i] = false;
+                    mreduced -= 1;
                 }
             }
             if num_finite < numel_cone {
@@ -123,19 +125,23 @@ where
         bptr += numel_cone;
     }
 
-    // if we reduced anything then return the reduce_idx and a
-    // make of the entries to keep back into the original vector
+    let outoption = {
+        if is_reduced {
+            let keep_index = findall(&keep_logical);
+            Some(PresolverRowReductionIndex {
+                keep_logical,
+                keep_index,
+            })
+        } else {
+            None
+        }
+    };
 
-    if is_reduced {
-        let lift_map = findall(&reduce_idx);
-        (Some(reduce_idx), Some(lift_map))
-    } else {
-        (None, None)
-    }
+    (outoption, mreduced)
 }
 
-fn findall(reduce_idx: &[bool]) -> Vec<usize> {
-    let map = reduce_idx
+fn findall(keep_logical: &[bool]) -> Vec<usize> {
+    let map = keep_logical
         .iter()
         .enumerate()
         .filter(|(_, &r)| r)

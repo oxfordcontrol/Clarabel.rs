@@ -76,7 +76,34 @@ where
 
         self.x.copy_from(&variables.x).hadamard(d).scale(scaleinv);
 
-        if !data.presolver.is_reduced() {
+        if let Some(map) = data.presolver.reduce_map.as_ref() {
+            //PJG : temporary alloc makes implementation much easier
+            //here. could also use something like e or einv as scratch
+            let mut tmp = vec![T::zero(); variables.s.len()];
+
+            tmp.copy_from(&variables.z)
+                .hadamard(e)
+                .scale(scaleinv / cscale);
+            for (vi, mapi) in tmp.iter().zip(&map.keep_index) {
+                self.z[*mapi] = *vi;
+            }
+
+            tmp.copy_from(&variables.s).hadamard(einv).scale(scaleinv);
+            for (vi, mapi) in tmp.iter().zip(&map.keep_index) {
+                self.s[*mapi] = *vi;
+            }
+
+            // eliminated constraints get huge slacks
+            // and are assumed to be nonbinding
+            let infbound = data.presolver.infbound.as_T();
+            let sz = self.s.iter_mut().zip(self.z.iter_mut());
+            sz.zip(&map.keep_logical).for_each(|((si, zi), b)| {
+                if !b {
+                    *si = infbound;
+                    *zi = T::zero();
+                }
+            });
+        } else {
             self.z
                 .copy_from(&variables.z)
                 .hadamard(e)
@@ -85,40 +112,6 @@ where
                 .copy_from(&variables.s)
                 .hadamard(einv)
                 .scale(scaleinv);
-        } else {
-            //PJG : temporary alloc makes implementation much easier
-            //here. could also use something like e or einv as scratch
-            let mut tmp = vec![T::zero(); variables.s.len()];
-
-            let map = data.presolver.lift_map.as_ref().unwrap();
-            let reduce_idx = data.presolver.reduce_idx.as_ref().unwrap();
-
-            tmp.copy_from(&variables.z)
-                .hadamard(e)
-                .scale(scaleinv / cscale);
-            for (vi, mapi) in tmp.iter().zip(map) {
-                self.z[*mapi] = *vi;
-            }
-
-            tmp.copy_from(&variables.s).hadamard(einv).scale(scaleinv);
-            for (vi, mapi) in tmp.iter().zip(map) {
-                self.s[*mapi] = *vi;
-            }
-
-            // eliminated constraints get huge slacks
-            // and are assumed to be nonbinding
-
-            let infbound = data.presolver.infbound.as_T();
-            self.s.iter_mut().zip(reduce_idx).for_each(|(x, b)| {
-                if !b {
-                    *x = infbound;
-                }
-            });
-            self.z.iter_mut().zip(reduce_idx).for_each(|(x, b)| {
-                if !b {
-                    *x = T::zero();
-                }
-            });
         }
 
         self.iterations = info.iterations;

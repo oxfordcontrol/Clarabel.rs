@@ -46,11 +46,13 @@ where
         let q = q.to_vec();
 
         let (A, mut b) = {
-            if !presolver.is_reduced() {
-                (A.clone(), b.to_vec())
+            if let Some(map) = presolver.reduce_map.as_ref() {
+                (
+                    A.select_rows(&map.keep_logical),
+                    b.select(&map.keep_logical),
+                )
             } else {
-                let reduce_idx = presolver.reduce_idx.as_ref().unwrap();
-                (A.select_rows(reduce_idx), b.select(reduce_idx))
+                (A.clone(), b.to_vec())
             }
         };
 
