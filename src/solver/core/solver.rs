@@ -469,7 +469,7 @@ mod internal {
                 if barrier < T::one() {
                     return α;
                 } else {
-                    α = backtrack * α // backtrack line search
+                    α = backtrack * α; // backtrack line search
                 }
             }
             α

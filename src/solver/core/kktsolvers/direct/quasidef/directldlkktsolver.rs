@@ -213,7 +213,7 @@ where
             // hold a copy of the true KKT diagonal
             // diag_kkt .= KKT.nzval[map.diag_full];
             for (d, idx) in diag_kkt.iter_mut().zip(map.diag_full.iter()) {
-                *d = KKT.nzval[*idx]
+                *d = KKT.nzval[*idx];
             }
 
             let eps = _compute_regularizer(diag_kkt, settings);

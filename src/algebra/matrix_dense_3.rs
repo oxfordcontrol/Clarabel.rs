@@ -57,7 +57,7 @@ where
 
     pub fn scaled_from(&mut self, c: T, B: &Self) {
         for i in 0..6 {
-            self.data[i] = c * B.data[i]
+            self.data[i] = c * B.data[i];
         }
     }
 

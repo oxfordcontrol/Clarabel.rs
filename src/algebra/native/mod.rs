@@ -44,7 +44,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
 
     fn scalarop_from(&mut self, op: impl Fn(T) -> T, v: &[T]) -> &mut Self {
         for (x, v) in self.iter_mut().zip(v) {
-            *x = op(*v)
+            *x = op(*v);
         }
         self
     }
@@ -424,7 +424,7 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T {
                 panic!("Input matrix should be triu form.");
             }
         }
-        out += tmp1 * y[col] + tmp2 * x[col]
+        out += tmp1 * y[col] + tmp2 * x[col];
     }
     out
 }
@@ -434,7 +434,7 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T {
 fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     //first do the b*y part
     if b == T::zero() {
-        y.fill(T::zero())
+        y.fill(T::zero());
     } else if b == T::one() {
     } else if b == -T::one() {
         y.negate();
@@ -477,7 +477,7 @@ fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
 fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     //first do the b*y part
     if b == T::zero() {
-        y.fill(T::zero())
+        y.fill(T::zero());
     } else if b == T::one() {
     } else if b == -T::one() {
         y.negate();

@@ -108,15 +108,15 @@ where
             let mut num_finite = 0;
             for i in bptr..(bptr + numel_cone) {
                 if b[i] < infbound {
-                    num_finite += 1
+                    num_finite += 1;
                 } else {
-                    reduce_idx[i] = false
+                    reduce_idx[i] = false;
                 }
             }
             if num_finite < numel_cone {
                 // contract the cone to a smaller size
                 *cone = SupportedConeT::NonnegativeConeT(num_finite);
-                is_reduced = true
+                is_reduced = true;
             }
         }
 

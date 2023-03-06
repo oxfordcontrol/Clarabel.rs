@@ -18,7 +18,7 @@ impl AtomicF64 {
     }
     pub fn store(&self, value: f64, ordering: Ordering) {
         let as_u64 = value.to_bits();
-        self.storage.store(as_u64, ordering)
+        self.storage.store(as_u64, ordering);
     }
     pub fn load(&self, ordering: Ordering) -> f64 {
         let as_u64 = self.storage.load(ordering);

@@ -103,7 +103,7 @@ where
     fn mul_Hs(&self, y: &mut [T], x: &[T], _work: &mut [T]) {
         //NB : seemingly sensitive to order of multiplication
         for (yi, (&wi, &xi)) in y.iter_mut().zip(self.w.iter().zip(x)) {
-            *yi = wi * (wi * xi)
+            *yi = wi * (wi * xi);
         }
     }
 
@@ -177,7 +177,7 @@ where
     T: FloatT,
 {
     fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
-        self.inv_circ_op(x, &self.λ, z)
+        self.inv_circ_op(x, &self.λ, z);
     }
 
     fn mul_W(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {

@@ -147,7 +147,7 @@ where
         let mut α = T::min(αz, αs);
 
         if steptype == "combined" {
-            α *= settings.core().max_step_fraction
+            α *= settings.core().max_step_fraction;
         }
 
         α
