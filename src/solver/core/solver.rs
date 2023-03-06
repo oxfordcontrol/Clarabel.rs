@@ -93,7 +93,7 @@ impl Default for SolverStatus {
 // The top-level solver.
 
 // This trait is defined with a collection of mutually interacting associated types.
-// See the [DefaultSolver](crate::solver::implementations::default) for an example.
+// See the [`DefaultSolver`](crate::solver::implementations::default) for an example.
 
 pub struct Solver<D, V, R, K, C, I, SO, SE> {
     pub data: D,

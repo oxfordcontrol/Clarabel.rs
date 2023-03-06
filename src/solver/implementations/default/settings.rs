@@ -5,7 +5,7 @@ use derive_builder::Builder;
 #[cfg(feature = "julia")]
 use serde::{Deserialize, Serialize};
 
-/// Standard-form solver type implementing the [Settings](crate::solver::core::traits::Settings) trait
+/// Standard-form solver type implementing the [`Settings`](crate::solver::core::traits::Settings) trait
 
 #[derive(Builder, Debug, Clone)]
 #[cfg_attr(feature = "julia", derive(Serialize, Deserialize))]

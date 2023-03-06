@@ -1,14 +1,14 @@
 use num_traits::{Float, FloatConst, FromPrimitive, NumAssign};
 
-/// Trait for floating point types used in the Clarabel solver
+/// Trait for floating point types used in the Clarabel solver.
 ///
 /// All floating point calculations in Clarabel are represented internally on values
 /// implementing the `FloatT` trait, with implementations provided for f32 and f64
 /// native types. It should be possible to compile Clarabel to support any any other
 /// floating point type provided that it satisfies the trait bounds of
-/// [`FloatT`](crate::algebra::FloatT).
+/// `FloatT`.
 ///
-/// `FloatT` relies on [num_traits](num_traits) for most of its constituent trait bounds.
+/// `FloatT` relies on [`num_traits`](num_traits) for most of its constituent trait bounds.
 
 pub trait FloatT:
     'static
@@ -34,7 +34,7 @@ impl FloatT for f64 {}
 /// [user settings](crate::solver::implementations::default::DefaultSettings)
 /// for converting defaults of primitive type to [`FloatT`](crate::algebra::FloatT).
 
-// NB: AsFloatT is a convenience trait for f32/64 and u32/64
+// NB: `AsFloatT` is a convenience trait for f32/64 and u32/64
 // so that we can do things like (2.0).as_T() everywhere on
 // constants, rather than the awful T::from_f32(2.0).unwrap()
 

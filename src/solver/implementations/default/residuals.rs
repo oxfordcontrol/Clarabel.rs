@@ -7,7 +7,7 @@ use crate::solver::core::traits::Residuals;
 // Residuals type for default problem format
 // ---------------
 
-/// Standard-form solver type implementing the [Residuals](crate::solver::core::traits::Residuals) trait
+/// Standard-form solver type implementing the [`Residuals`](crate::solver::core::traits::Residuals) trait
 
 pub struct DefaultResiduals<T> {
     // the main KKT residuals
