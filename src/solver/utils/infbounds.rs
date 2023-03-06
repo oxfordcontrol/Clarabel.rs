@@ -3,10 +3,10 @@ use lazy_static::lazy_static;
 
 /// Constant indicating that an inequality bound is to be treated as infinite.
 ///   
-/// If the setting [presolve_enable](crate::solver::DefaultSettings::presolve_enable)
+/// If the setting [`presolve_enable`](crate::solver::DefaultSettings::presolve_enable)
 /// is `true`, any such constraints are removed.   Bounds for all other cones with
 /// values greather than this are capped at this value.
-/// A custom constant for this bound can be specified using [set_infinity].  
+/// A custom constant for this bound can be specified using [`set_infinity`].  
 ///
 /// Setting the infinity bound to a custom constant applies at module level.
 ///

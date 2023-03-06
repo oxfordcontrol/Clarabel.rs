@@ -4,7 +4,7 @@ use crate::solver::core::{traits::Info, SolverStatus};
 use crate::solver::traits::Variables;
 use crate::timers::*;
 
-/// Standard-form solver type implementing the [Info](crate::solver::core::traits::Info) and [InfoPrint](crate::solver::core::traits::InfoPrint) traits
+/// Standard-form solver type implementing the [Info](crate::solver::core::traits::Info) and [`InfoPrint`](crate::solver::core::traits::InfoPrint) traits
 
 #[repr(C)]
 #[derive(Default, Debug, Clone)]

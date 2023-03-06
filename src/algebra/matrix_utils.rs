@@ -2,7 +2,7 @@
 use super::{CscMatrix, FloatT, MatrixShape, MatrixTriangle};
 use thiserror::Error;
 
-/// Error type returned by the [check_format](crate::algebra::CscMatrix::check_format) utility.
+/// Error type returned by the [`check_format`](crate::algebra::CscMatrix::check_format) utility.
 #[derive(Error, Debug)]
 pub enum SparseFormatError {
     #[error("Matrix dimension fields and/or array lengths are incompatible")]
@@ -19,7 +19,7 @@ impl<T> CscMatrix<T>
 where
     T: FloatT,
 {
-    /// CscMatrix constructor.
+    /// `CscMatrix` constructor.
     ///
     /// # Panics
     /// Makes rudimentary dimensional compatibility checks and panics on

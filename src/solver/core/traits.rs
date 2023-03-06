@@ -216,7 +216,7 @@ pub trait Solution<T: FloatT> {
 ///
 /// Implementors of this trait can define any internal or problem
 /// specific settings they wish.   They must, however, also maintain
-/// a settings object of type [CoreSettings](crate::solver::core::CoreSettings)
+/// a settings object of type [`CoreSettings`](crate::solver::core::CoreSettings)
 /// and return this to the solver internally.   
 
 pub trait Settings<T: FloatT> {
