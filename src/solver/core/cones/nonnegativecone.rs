@@ -47,8 +47,8 @@ where
         true
     }
 
-    fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
-        δ.copy_from(e);
+    fn rectify_equilibration(&self, δ: &mut [T], _e: &[T]) -> bool {
+        δ.set(T::one());
         false
     }
 

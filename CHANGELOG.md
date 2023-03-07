@@ -11,6 +11,8 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 ### Changed 
 
 Added optional feature to remove inequality constraints with very large upper bounds.   This feature is enabled by default but can be turned off using the `presolve_enable` setting.  
+
+Bug fix in equilibration for NN and zero cones.
 ### Rust/Python specific changes
 
 Rust algebra module modified to allow chaining of elementwise vector operations.
