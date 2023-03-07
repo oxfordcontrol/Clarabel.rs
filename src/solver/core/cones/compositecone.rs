@@ -1,6 +1,7 @@
 use super::*;
 use crate::solver::CoreSettings;
 use std::collections::HashMap;
+use std::iter::zip;
 use std::ops::Range;
 
 // -------------------------------------
@@ -190,7 +191,7 @@ where
         // we will update e <- δ .* e using return values
         // from this function.  default is to do nothing at all
         δ.fill(T::one());
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             let δi = &mut δ[rng.clone()];
             let ei = &e[rng.clone()];
             any_changed |= cone.rectify_equilibration(δi, ei);
@@ -201,7 +202,7 @@ where
     fn margins(&self, z: &mut [T], pd: PrimalOrDualCone) -> (T, T) {
         let mut α = T::max_value();
         let mut β = T::zero();
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             let (αi, βi) = cone.margins(&mut z[rng.clone()], pd);
             α = T::min(α, αi);
             β += βi;
@@ -210,13 +211,13 @@ where
     }
 
     fn scaled_unit_shift(&self, z: &mut [T], α: T, pd: PrimalOrDualCone) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             cone.scaled_unit_shift(&mut z[rng.clone()], α, pd);
         }
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             cone.unit_initialization(&mut z[rng.clone()], &mut s[rng.clone()]);
         }
     }
@@ -234,11 +235,8 @@ where
         μ: T,
         scaling_strategy: ScalingStrategy,
     ) -> bool {
-        let cones = &mut self.cones;
-        let rngs = &self.rng_cones;
-
         let mut is_scaling_success;
-        for (cone, rng) in cones.iter_mut().zip(rngs.iter()) {
+        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             let si = &s[rng.clone()];
             let zi = &z[rng.clone()];
             is_scaling_success = cone.update_scaling(si, zi, μ, scaling_strategy);
@@ -265,19 +263,19 @@ where
 
     #[allow(non_snake_case)]
     fn get_Hs(&self, Hsblock: &mut [T]) {
-        for (cone, rng) in self.iter().zip(self.rng_blocks.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_blocks) {
             cone.get_Hs(&mut Hsblock[rng.clone()]);
         }
     }
 
     fn mul_Hs(&self, y: &mut [T], x: &[T], work: &mut [T]) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             cone.mul_Hs(&mut y[rng.clone()], &x[rng.clone()], &mut work[rng.clone()]);
         }
     }
 
     fn affine_ds(&self, ds: &mut [T], s: &[T]) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             let dsi = &mut ds[rng.clone()];
             let si = &s[rng.clone()];
             cone.affine_ds(dsi, si);
@@ -293,10 +291,7 @@ where
         // nonsymmetric cones modify their internal state when
         // computing the ds_shift
 
-        let cones = &mut self.cones;
-        let rngs = &self.rng_cones;
-
-        for (cone, rng) in cones.iter_mut().zip(rngs) {
+        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             let shifti = &mut shift[rng.clone()];
             let step_zi = &mut step_z[rng.clone()];
             let step_si = &mut step_s[rng.clone()];
@@ -305,7 +300,7 @@ where
     }
 
     fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T], z: &[T]) {
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             let outi = &mut out[rng.clone()];
             let dsi = &ds[rng.clone()];
             let worki = &mut work[rng.clone()];
@@ -326,7 +321,7 @@ where
         let mut α = αmax;
 
         // Force symmetric cones first.
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             if !cone.is_symmetric() {
                 continue;
             }
@@ -343,7 +338,7 @@ where
             α = T::min(settings.max_step_fraction, α);
         }
         // Force asymmetric cones last.
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             if cone.is_symmetric() {
                 continue;
             }
@@ -358,7 +353,7 @@ where
 
     fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
-        for (cone, rng) in self.iter().zip(self.rng_cones.iter()) {
+        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
             let zi = &z[rng.clone()];
             let si = &s[rng.clone()];
             let dzi = &dz[rng.clone()];

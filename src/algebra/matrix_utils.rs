@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use super::{CscMatrix, FloatT, MatrixShape, MatrixTriangle};
+use std::iter::zip;
 use thiserror::Error;
 
 /// Error type returned by the [`check_format`](crate::algebra::CscMatrix::check_format) utility.
@@ -209,7 +210,7 @@ where
         //index from the logical rowidx to the reduced row number
         let mut rridx = vec![0; self.m];
         let mut mred = 0;
-        for (r, is_used) in rridx.iter_mut().zip(rowidx) {
+        for (r, is_used) in zip(&mut rridx, rowidx) {
             if *is_used {
                 *r = mred;
                 mred += 1;
@@ -316,11 +317,11 @@ where
         let counts = 1..(blockcols + 1);
         match shape {
             MatrixTriangle::Triu => {
-                cols.zip(counts).for_each(|(x, c)| *x += c);
+                zip(cols, counts).for_each(|(x, c)| *x += c);
             }
 
             MatrixTriangle::Tril => {
-                cols.zip(counts.rev()).for_each(|(x, c)| *x += c);
+                zip(cols, counts.rev()).for_each(|(x, c)| *x += c);
             }
         }
     }
@@ -422,7 +423,7 @@ where
         shape: MatrixShape,
     ) {
         for i in 0..M.n {
-            let z = M.rowval.iter().zip(M.nzval.iter());
+            let z = zip(&M.rowval, &M.nzval);
             let start = M.colptr[i];
             let stop = M.colptr[i + 1];
 
