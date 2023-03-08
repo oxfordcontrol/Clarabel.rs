@@ -85,7 +85,6 @@ fn test_presolve_every_constraint_redundant() {
 
 #[test]
 fn test_presolve_settable_bound() {
-    println!("settable bound test, bound = {:?}", get_infinity());
     default_infinity();
     let default_bound = get_infinity();
     set_infinity(1e21_f64);
