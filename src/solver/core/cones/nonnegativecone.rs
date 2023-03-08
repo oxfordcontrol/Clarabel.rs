@@ -47,8 +47,8 @@ where
         true
     }
 
-    fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
-        δ.copy_from(e);
+    fn rectify_equilibration(&self, δ: &mut [T], _e: &[T]) -> bool {
+        δ.set(T::one());
         false
     }
 
@@ -59,7 +59,7 @@ where
     }
 
     fn scaled_unit_shift(&self, z: &mut [T], α: T, _pd: PrimalOrDualCone) {
-        z.translate(α)
+        z.translate(α);
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
@@ -103,7 +103,7 @@ where
     fn mul_Hs(&self, y: &mut [T], x: &[T], _work: &mut [T]) {
         //NB : seemingly sensitive to order of multiplication
         for (yi, (&wi, &xi)) in y.iter_mut().zip(self.w.iter().zip(x)) {
-            *yi = wi * (wi * xi)
+            *yi = wi * (wi * xi);
         }
     }
 
@@ -177,7 +177,7 @@ where
     T: FloatT,
 {
     fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
-        self.inv_circ_op(x, &self.λ, z)
+        self.inv_circ_op(x, &self.λ, z);
     }
 
     fn mul_W(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {

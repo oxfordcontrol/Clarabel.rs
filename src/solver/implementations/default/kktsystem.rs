@@ -12,7 +12,7 @@ use crate::algebra::*;
 
 type BoxedKKTSolver<T> = Box<dyn KKTSolver<T> + Send>;
 
-/// Standard-form solver type implementing the [KKTSystem](crate::solver::core::traits::KKTSystem) trait
+/// Standard-form solver type implementing the [`KKTSystem`](crate::solver::core::traits::KKTSystem) trait
 
 pub struct DefaultKKTSystem<T> {
     kktsolver: BoxedKKTSolver<T>,

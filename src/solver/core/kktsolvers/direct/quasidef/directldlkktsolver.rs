@@ -213,7 +213,7 @@ where
             // hold a copy of the true KKT diagonal
             // diag_kkt .= KKT.nzval[map.diag_full];
             for (d, idx) in diag_kkt.iter_mut().zip(map.diag_full.iter()) {
-                *d = KKT.nzval[*idx]
+                *d = KKT.nzval[*idx];
             }
 
             let eps = _compute_regularizer(diag_kkt, settings);
@@ -331,9 +331,7 @@ fn _get_refine_error<T: FloatT>(e: &mut [T], b: &[T], K: &CscMatrix<T>, ξ: &mut
 
 type LDLConstructor<T> = fn(&CscMatrix<T>, &[i8], &CoreSettings<T>) -> BoxedDirectLDLSolver<T>;
 
-fn _get_ldlsolver_config<T: FloatT>(
-    settings: &CoreSettings<T>,
-) -> (MatrixTriangle, LDLConstructor<T>)
+fn _get_ldlsolver_config<T>(settings: &CoreSettings<T>) -> (MatrixTriangle, LDLConstructor<T>)
 where
     T: FloatT,
 {

@@ -1,6 +1,6 @@
 [package]
 name = "clarabel"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -11,10 +11,12 @@ keywords = ["convex", "optimization", "QP", "LP", "SOCP"]
 categories = ["mathematics"]
 
 [dependencies]
+lazy_static = "1.4"
 num-traits = "0.2"
 derive_builder = "0.11"
 enum_dispatch = "0.3.8"
 amd = "0.2.2"
+thiserror = "1"
 
 [[example]]
 name = "lp"

@@ -6,10 +6,7 @@ use derive_builder::Builder;
 /// Required settings for [QDLDLFactorisation](QDLDLFactorisation)
 
 #[derive(Builder, Debug)]
-pub struct QDLDLSettings<T>
-where
-    T: FloatT,
-{
+pub struct QDLDLSettings<T: FloatT> {
     #[builder(default = "1.0")]
     amd_dense_scale: f64,
     #[builder(default = "None", setter(strip_option))]
@@ -147,7 +144,7 @@ fn _qdldl_new<T: FloatT>(
     Ain: &CscMatrix<T>,
     opts: Option<QDLDLSettings<T>>,
 ) -> QDLDLFactorisation<T> {
-    assert_eq!(Ain.nrows(), Ain.ncols());
+    assert!(Ain.is_square());
     let n = Ain.nrows();
 
     //get default values if no options passed at all
@@ -709,7 +706,7 @@ fn _ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
 // inverse permutation vector `iperm`."
 fn _permute_symmetric<T: FloatT>(A: &CscMatrix<T>, iperm: &[usize]) -> (CscMatrix<T>, Vec<usize>) {
     // perform a number of argument checks
-    let (m, n) = (A.nrows(), A.ncols());
+    let (m, n) = A.size();
     if m != n {
         panic!("Matrix A must be sparse and square")
     };

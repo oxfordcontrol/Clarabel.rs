@@ -124,7 +124,7 @@ where
             // tmp = μt*st - H*zt
             H_dual.mul(&mut tmp, &zt);
             for i in 0..3 {
-                tmp[i] = μt * st[i] - tmp[i]
+                tmp[i] = μt * st[i] - tmp[i];
             }
 
             // Hs as a workspace (only need to write the upper triangle)

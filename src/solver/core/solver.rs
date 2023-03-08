@@ -11,7 +11,7 @@ use crate::timers::*;
 /// Status of solver at termination
 
 #[repr(u32)]
-#[derive(PartialEq, Clone, Debug, Copy)]
+#[derive(PartialEq, Eq, Clone, Debug, Copy)]
 pub enum SolverStatus {
     /// Problem is not solved (solver hasn't run).
     Unsolved,
@@ -59,7 +59,7 @@ impl SolverStatus {
 /// Scaling strategy used by the solver when
 /// linearizing centrality conditions.  
 #[repr(u32)]
-#[derive(PartialEq, Clone, Debug, Copy)]
+#[derive(PartialEq, Eq, Clone, Debug, Copy)]
 pub enum ScalingStrategy {
     PrimalDual,
     Dual,
@@ -67,7 +67,7 @@ pub enum ScalingStrategy {
 
 /// An enum for reporting strategy checkpointing
 #[repr(u32)]
-#[derive(PartialEq, Clone, Debug, Copy)]
+#[derive(PartialEq, Eq, Clone, Debug, Copy)]
 enum StrategyCheckpoint {
     Update(ScalingStrategy), // Checkpoint is suggesting a new ScalingStrategy
     NoUpdate,                // Checkpoint recommends no change to ScalingStrategy
@@ -93,7 +93,7 @@ impl Default for SolverStatus {
 // The top-level solver.
 
 // This trait is defined with a collection of mutually interacting associated types.
-// See the [DefaultSolver](crate::solver::implementations::default) for an example.
+// See the [`DefaultSolver`](crate::solver::implementations::default) for an example.
 
 pub struct Solver<D, V, R, K, C, I, SO, SE> {
     pub data: D,
@@ -469,7 +469,7 @@ mod internal {
                 if barrier < T::one() {
                     return α;
                 } else {
-                    α = backtrack * α // backtrack line search
+                    α = backtrack * α; // backtrack line search
                 }
             }
             α

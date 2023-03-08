@@ -4,7 +4,7 @@ use crate::solver::core::{traits::Info, SolverStatus};
 use crate::solver::traits::Variables;
 use crate::timers::*;
 
-/// Standard-form solver type implementing the [Info](crate::solver::core::traits::Info) and [InfoPrint](crate::solver::core::traits::InfoPrint) traits
+/// Standard-form solver type implementing the [`Info`](crate::solver::core::traits::Info) and [`InfoPrint`](crate::solver::core::traits::InfoPrint) traits
 
 #[repr(C)]
 #[derive(Default, Debug, Clone)]
@@ -309,13 +309,13 @@ where
         dinf_status: SolverStatus,
     ) {
         if self.ktratio < tol_ktratio && self.is_solved(tol_gap_abs, tol_gap_rel, tol_feas) {
-            self.status = solved_status
+            self.status = solved_status;
         //PJG hardcoded factor 1000 here should be fixed
         } else if self.ktratio > tol_ktratio.recip() * (1000.0).as_T() {
             if self.is_primal_infeasible(residuals, tol_infeas_abs, tol_infeas_rel) {
-                self.status = pinf_status
+                self.status = pinf_status;
             } else if self.is_dual_infeasible(residuals, tol_infeas_abs, tol_infeas_rel) {
-                self.status = dinf_status
+                self.status = dinf_status;
             }
         }
     }

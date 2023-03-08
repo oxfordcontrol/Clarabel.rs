@@ -75,6 +75,25 @@ fn basic_qp_data_dual_inf() -> (
 }
 
 #[test]
+fn test_qp_univariate() {
+    let P = CscMatrix::identity(1);
+    let c = [0.];
+    let A = CscMatrix::identity(1);
+    let b = [1.];
+    let cones = [NonnegativeConeT(1)];
+
+    let settings = DefaultSettings::default();
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+
+    solver.solve();
+
+    assert_eq!(solver.solution.status, SolverStatus::Solved);
+
+    assert!(f64::abs(solver.solution.x[0]) <= 1e-6);
+    assert!(f64::abs(solver.solution.obj_val) <= 1e-6);
+}
+
+#[test]
 fn test_qp_feasible() {
     let (P, c, A, b, cones) = basic_qp_data();
 

@@ -10,7 +10,7 @@ use crate::solver::core::{
 // Data type for default problem format
 // ---------------
 
-/// Standard-form solver type implementing the [ProblemData](crate::solver::core::traits::ProblemData) trait
+/// Standard-form solver type implementing the [`ProblemData`](crate::solver::core::traits::ProblemData) trait
 
 pub struct DefaultProblemData<T> {
     // the main KKT residuals
@@ -24,21 +24,45 @@ pub struct DefaultProblemData<T> {
 
     pub normq: T,
     pub normb: T,
+
+    pub presolver: Presolver<T>,
 }
 
 impl<T> DefaultProblemData<T>
 where
     T: FloatT,
 {
-    pub fn new(P: &CscMatrix<T>, q: &[T], A: &CscMatrix<T>, b: &[T]) -> Self {
+    pub fn new(
+        P: &CscMatrix<T>,
+        q: &[T],
+        A: &CscMatrix<T>,
+        b: &[T],
+        presolver: Presolver<T>,
+    ) -> Self {
         // dimension checks will have already been
         // performed during problem setup, so skip here
-        let (m, n) = (A.nrows(), A.ncols());
 
         let P = P.to_triu();
         let q = q.to_vec();
-        let A = A.clone();
-        let b = b.to_vec();
+
+        let (A, mut b) = {
+            if let Some(map) = presolver.reduce_map.as_ref() {
+                (
+                    A.select_rows(&map.keep_logical),
+                    b.select(&map.keep_logical),
+                )
+            } else {
+                (A.clone(), b.to_vec())
+            }
+        };
+
+        // cap entries in b at INFINITY.  This is important
+        // for inf values that were not in a reduced cone
+        let infbound = presolver.infbound.as_T();
+        b.scalarop(|x| T::min(x, infbound));
+
+        let (m, n) = A.size();
+
         let equilibration = DefaultEquilibrationData::<T>::new(n, m);
 
         let normq = q.norm_inf();
@@ -54,6 +78,7 @@ where
             equilibration,
             normq,
             normb,
+            presolver,
         }
     }
 }

@@ -240,6 +240,10 @@ pub struct PyDefaultSettings {
     pub iterative_refinement_max_iter: u32,
     #[pyo3(get, set)]
     pub iterative_refinement_stop_ratio: f64,
+
+    // preprocessing
+    #[pyo3(get, set)]
+    pub presolve_enable: bool,
 }
 
 #[pymethods]
@@ -308,6 +312,7 @@ impl PyDefaultSettings {
             iterative_refinement_abstol: set.iterative_refinement_abstol,
             iterative_refinement_max_iter: set.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
+            presolve_enable: set.presolve_enable,
         }
     }
 
@@ -351,6 +356,7 @@ impl PyDefaultSettings {
             iterative_refinement_abstol: self.iterative_refinement_abstol,
             iterative_refinement_max_iter: self.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: self.iterative_refinement_stop_ratio,
+            presolve_enable: self.presolve_enable,
         }
     }
 }

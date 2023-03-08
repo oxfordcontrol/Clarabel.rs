@@ -11,7 +11,7 @@ use crate::solver::core::{
 // Variables type for default problem format
 // ---------------
 
-/// Standard-form solver type implementing the [Variables](crate::solver::core::traits::Variables) trait
+/// Standard-form solver type implementing the [`Variables`](crate::solver::core::traits::Variables) trait
 pub struct DefaultVariables<T> {
     /// scaled primal variables
     pub x: Vec<T>,
@@ -147,7 +147,7 @@ where
         let mut α = T::min(αz, αs);
 
         if steptype == "combined" {
-            α *= settings.core().max_step_fraction
+            α *= settings.core().max_step_fraction;
         }
 
         α

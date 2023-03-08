@@ -58,9 +58,7 @@ where
     }
 
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
-        δ.copy_from(e);
-        δ.reciprocal();
-        δ.scale(e.mean());
+        δ.copy_from(e).recip().scale(e.mean());
         true // scalar equilibration
     }
 
@@ -77,9 +75,9 @@ where
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
-        s[0] = (-1.051383945322714).as_T();
-        s[1] = (0.556409619469370).as_T();
-        s[2] = (1.258967884768947).as_T();
+        s[0] = (-1.051_383_945_322_714).as_T();
+        s[1] = (0.556_409_619_469_370).as_T();
+        s[2] = (1.258_967_884_768_947).as_T();
 
         (z[0], z[1], z[2]) = (s[0], s[1], s[2]);
     }
