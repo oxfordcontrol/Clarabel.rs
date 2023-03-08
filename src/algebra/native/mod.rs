@@ -1,4 +1,5 @@
 use super::*;
+use std::iter::zip;
 
 impl<T: FloatT> ScalarMath<T> for T {
     fn clip(&self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T {
@@ -28,8 +29,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
 
     fn select(&self, index: &[bool]) -> Vec<T> {
         assert_eq!(self.len(), index.len());
-        self.iter()
-            .zip(index)
+        zip(self, index)
             .filter(|(_x, &b)| b)
             .map(|(&x, _b)| x)
             .collect()
@@ -43,7 +43,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
     }
 
     fn scalarop_from(&mut self, op: impl Fn(T) -> T, v: &[T]) -> &mut Self {
-        for (x, v) in self.iter_mut().zip(v) {
+        for (x, v) in zip(&mut *self, v) {
             *x = op(*v);
         }
         self
@@ -80,7 +80,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
     }
 
     fn hadamard(&mut self, y: &[T]) -> &mut Self {
-        self.iter_mut().zip(y).for_each(|(x, y)| *x *= *y);
+        zip(&mut *self, y).for_each(|(x, y)| *x *= *y);
         self
     }
 
@@ -98,9 +98,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
     }
 
     fn dot(&self, y: &[T]) -> T {
-        self.iter()
-            .zip(y)
-            .fold(T::zero(), |acc, (&x, &y)| acc + x * y)
+        zip(self, y).fold(T::zero(), |acc, (&x, &y)| acc + x * y)
     }
 
     fn dot_shifted(z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
@@ -108,10 +106,8 @@ impl<T: FloatT> VectorMath<T> for [T] {
         assert_eq!(z.len(), dz.len());
         assert_eq!(s.len(), ds.len());
 
-        let s_ds = s.iter().zip(ds.iter());
-        let z_dz = z.iter().zip(dz.iter());
         let mut out = T::zero();
-        for ((&s, &ds), (&z, &dz)) in s_ds.zip(z_dz) {
+        for ((&s, &ds), (&z, &dz)) in zip(zip(s, ds), zip(z, dz)) {
             let si = s + α * ds;
             let zi = z + α * dz;
             out += si * zi;
@@ -120,10 +116,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
     }
 
     fn dist(&self, y: &Self) -> T {
-        let dist2 = self
-            .iter()
-            .zip(y)
-            .fold(T::zero(), |acc, (&x, &y)| acc + T::powi(x - y, 2));
+        let dist2 = zip(self, y).fold(T::zero(), |acc, (&x, &y)| acc + T::powi(x - y, 2));
         T::sqrt(dist2)
     }
 
@@ -139,7 +132,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
     //scaled norm of elementwise produce self.*v
     fn norm_scaled(&self, v: &[T]) -> T {
         assert_eq!(self.len(), v.len());
-        let total = self.iter().zip(v).fold(T::zero(), |acc, (&x, &y)| {
+        let total = zip(self, v).fold(T::zero(), |acc, (&x, &y)| {
             let prod = x * y;
             acc + prod * prod
         });
@@ -186,8 +179,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
     fn axpby(&mut self, a: T, x: &[T], b: T) -> &mut Self {
         assert_eq!(self.len(), x.len());
 
-        let yx = self.iter_mut().zip(x);
-        yx.for_each(|(y, x)| *y = a * (*x) + b * (*y));
+        zip(&mut *self, x).for_each(|(y, x)| *y = a * (*x) + b * (*y));
         self
     }
 
@@ -195,9 +187,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
         assert_eq!(self.len(), x.len());
         assert_eq!(self.len(), y.len());
 
-        let xy = x.iter().zip(y);
-
-        for (w, (x, y)) in self.iter_mut().zip(xy) {
+        for (w, (x, y)) in zip(&mut *self, zip(x, y)) {
             *w = a * (*x) + b * (*y);
         }
         self
@@ -264,16 +254,13 @@ impl<T: FloatT> MatrixMath<T, [T]> for CscMatrix<T> {
     fn row_norms_no_reset(&self, norms: &mut [T]) {
         assert_eq!(self.rowval.len(), *self.colptr.last().unwrap());
 
-        for (row, val) in self.rowval.iter().zip(self.nzval.iter()) {
+        for (row, val) in zip(&self.rowval, &self.nzval) {
             norms[*row] = T::max(norms[*row], T::abs(*val));
         }
     }
 
     fn lscale(&mut self, l: &[T]) {
-        let rows = &self.rowval;
-        let vals = &mut self.nzval;
-
-        for (val, row) in vals.iter_mut().zip(rows) {
+        for (val, row) in zip(&mut self.nzval, &self.rowval) {
             *val *= l[*row];
         }
     }
@@ -296,7 +283,7 @@ impl<T: FloatT> MatrixMath<T, [T]> for CscMatrix<T> {
             let vals = &mut self.nzval[first..last];
             let rows = &self.rowval[first..last];
 
-            for (val, row) in vals.iter_mut().zip(rows) {
+            for (val, row) in zip(vals, rows) {
                 *val *= l[*row] * ri;
             }
         }
@@ -339,7 +326,7 @@ fn _csc_symv_safe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T)
         let rows = &A.rowval[first..last];
         let nzvals = &A.nzval[first..last];
 
-        for (&row, &Aij) in rows.iter().zip(nzvals.iter()) {
+        for (&row, &Aij) in zip(rows, nzvals) {
             y[row] += a * Aij * xcol;
 
             if row != col {
@@ -411,9 +398,8 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T {
 
         let values = &M.nzval[first..last];
         let rows = &M.rowval[first..last];
-        let iter = values.iter().zip(rows.iter());
 
-        for (&Mv, &row) in iter {
+        for (&Mv, &row) in zip(values, rows) {
             if row < col {
                 //triu terms only
                 tmp1 += Mv * x[row];

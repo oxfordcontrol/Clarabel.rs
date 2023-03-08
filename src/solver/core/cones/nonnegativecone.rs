@@ -3,6 +3,7 @@ use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
 };
+use std::iter::zip;
 
 // -------------------------------------
 // Nonnegative Cone
@@ -78,10 +79,7 @@ where
         _μ: T,
         _scaling_strategy: ScalingStrategy,
     ) -> bool {
-        let λw = self.λ.iter_mut().zip(self.w.iter_mut());
-        let sz = s.iter().zip(z.iter());
-
-        for ((λ, w), (s, z)) in λw.zip(sz) {
+        for ((λ, w), (s, z)) in zip(zip(&mut self.λ, &mut self.w), zip(s, z)) {
             *λ = T::sqrt((*s) * (*z));
             *w = T::sqrt((*s) / (*z));
         }
@@ -95,7 +93,7 @@ where
 
     fn get_Hs(&self, Hsblock: &mut [T]) {
         assert_eq!(self.w.len(), Hsblock.len());
-        for (blki, &wi) in Hsblock.iter_mut().zip(self.w.iter()) {
+        for (blki, &wi) in zip(Hsblock, &self.w) {
             *blki = wi * wi;
         }
     }
@@ -103,13 +101,13 @@ where
     fn mul_Hs(&self, y: &mut [T], x: &[T], _work: &mut [T]) {
         //NB : seemingly sensitive to order of multiplication
         for (yi, (&wi, &xi)) in y.iter_mut().zip(self.w.iter().zip(x)) {
-            *yi = wi * (wi * xi);
+            *yi = wi * (wi * xi)
         }
     }
 
     fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
         assert_eq!(self.λ.len(), ds.len());
-        for (dsi, &λi) in ds.iter_mut().zip(self.λ.iter()) {
+        for (dsi, &λi) in zip(ds, &self.λ) {
             *dsi = λi * λi;
         }
     }
@@ -120,7 +118,7 @@ where
     }
 
     fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], _work: &mut [T], z: &[T]) {
-        for (outi, (&dsi, &zi)) in out.iter_mut().zip(ds.iter().zip(z)) {
+        for (outi, (&dsi, &zi)) in zip(out, zip(ds, z)) {
             *outi = dsi / zi;
         }
     }
@@ -157,9 +155,7 @@ where
         assert_eq!(dz.len(), z.len());
         assert_eq!(ds.len(), s.len());
         let mut barrier = T::zero();
-        let s_ds = s.iter().zip(ds.iter());
-        let z_dz = z.iter().zip(dz.iter());
-        for ((&s, &ds), (&z, &dz)) in s_ds.zip(z_dz) {
+        for ((&s, &ds), (&z, &dz)) in zip(zip(s, ds), zip(z, dz)) {
             let si = s + α * ds;
             let zi = z + α * dz;
             barrier += (si * zi).logsafe();
@@ -206,17 +202,13 @@ where
     T: FloatT,
 {
     fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        let yz = y.iter().zip(z.iter());
-
-        for (x, (y, z)) in x.iter_mut().zip(yz) {
+        for (x, (y, z)) in zip(x, zip(y, z)) {
             *x = (*y) * (*z);
         }
     }
 
     fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        let yz = y.iter().zip(z.iter());
-
-        for (x, (y, z)) in x.iter_mut().zip(yz) {
+        for (x, (y, z)) in zip(x, zip(y, z)) {
             *x = (*z) / (*y);
         }
     }

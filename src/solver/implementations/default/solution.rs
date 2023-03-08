@@ -3,6 +3,7 @@ use crate::{
     algebra::*,
     solver::core::{traits::Solution, SolverStatus},
 };
+use std::iter::zip;
 
 /// Standard-form solver type implementing the [`Solution`](crate::solver::core::traits::Solution) trait
 
@@ -84,20 +85,20 @@ where
             tmp.copy_from(&variables.z)
                 .hadamard(e)
                 .scale(scaleinv / cscale);
-            for (vi, mapi) in tmp.iter().zip(&map.keep_index) {
+            for (vi, mapi) in zip(&tmp, &map.keep_index) {
                 self.z[*mapi] = *vi;
             }
 
             tmp.copy_from(&variables.s).hadamard(einv).scale(scaleinv);
-            for (vi, mapi) in tmp.iter().zip(&map.keep_index) {
+            for (vi, mapi) in zip(&tmp, &map.keep_index) {
                 self.s[*mapi] = *vi;
             }
 
             // eliminated constraints get huge slacks
             // and are assumed to be nonbinding
             let infbound = data.presolver.infbound.as_T();
-            let sz = self.s.iter_mut().zip(self.z.iter_mut());
-            sz.zip(&map.keep_logical).for_each(|((si, zi), b)| {
+            let sz = zip(&mut self.s, &mut self.z);
+            zip(sz, &map.keep_logical).for_each(|((si, zi), b)| {
                 if !b {
                     *si = infbound;
                     *zi = T::zero();

@@ -190,7 +190,7 @@ fn test_3x3_matrix_index() {
     let data = [1., 2., 3., 4., 5., 6.];
 
     assert!(
-        H.data.iter().zip(data.iter()).all(|(a, b)| a == b),
+        std::iter::zip(H.data, data).all(|(a, b)| a == b),
         "Arrays are not equal"
     );
 

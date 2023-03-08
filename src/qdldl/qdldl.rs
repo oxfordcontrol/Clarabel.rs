@@ -2,6 +2,7 @@
 use crate::algebra::*;
 use core::cmp::{max, min};
 use derive_builder::Builder;
+use std::iter::zip;
 
 /// Required settings for [QDLDLFactorisation](QDLDLFactorisation)
 
@@ -119,7 +120,7 @@ where
         let nzval = &mut self.workspace.triuA.nzval; // post perm internal data
         let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
 
-        for (&idx, &sign) in indices.iter().zip(signs.iter()) {
+        for (&idx, &sign) in zip(indices, signs) {
             let sign: T = T::from_i8(sign).unwrap();
             nzval[AtoPAPt[idx]] += offset * sign;
         }
@@ -360,11 +361,7 @@ fn _etree(
     etree.fill(QDLDL_UNKNOWN);
 
     //Abort if A doesn't have at least one entry in every column
-    if Ap
-        .iter()
-        .zip(Ap.iter().skip(1))
-        .any(|(&current, &next)| current == next)
-    {
+    if !Ap.windows(2).all(|c| c[0] < c[1]) {
         return Err(-1);
     }
 
@@ -429,7 +426,7 @@ fn _factor_inner<T: FloatT>(
     //set Lp to cumsum(Lnz), starting from zero
     Lp[0] = 0;
     let mut acc = 0;
-    for (Lp, Lnz) in Lp[1..].iter_mut().zip(Lnz) {
+    for (Lp, Lnz) in zip(&mut Lp[1..], Lnz) {
         *Lp = acc + Lnz;
         acc = *Lp;
     }
@@ -603,7 +600,7 @@ fn _lsolve_safe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
         let (f, l) = (Lp[i], Lp[i + 1]);
         let Lx = &Lx[f..l];
         let Li = &Li[f..l];
-        for (&Lij, &Lxj) in Li.iter().zip(Lx.iter()) {
+        for (&Lij, &Lxj) in zip(Li, Lx) {
             x[Lij] -= Lxj * xi;
         }
     }
@@ -616,7 +613,7 @@ fn _ltsolve_safe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
         let (f, l) = (Lp[i], Lp[i + 1]);
         let Lx = &Lx[f..l];
         let Li = &Li[f..l];
-        for (&Lij, &Lxj) in Li.iter().zip(Lx.iter()) {
+        for (&Lij, &Lxj) in zip(Li, Lx) {
             s += Lxj * x[Lij];
         }
         x[i] -= s;
@@ -672,7 +669,7 @@ fn _solve<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], Dinv: &[T], b: &mut [
     // compatible dimensions.   For super safety or debugging purposes, there
     // are also `safe` versions implemented above.
     _lsolve_unsafe(Lp, Li, Lx, b);
-    b.iter_mut().zip(Dinv).for_each(|(b, d)| *b *= *d);
+    zip(b.iter_mut(), Dinv).for_each(|(b, d)| *b *= *d);
     _ltsolve_unsafe(Lp, Li, Lx, b);
 }
 
@@ -694,11 +691,11 @@ fn _invperm(p: &[usize]) -> Vec<usize> {
 // functions that require no memory allocations
 
 fn _permute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
-    p.iter().zip(x.iter_mut()).for_each(|(p, x)| *x = b[*p]);
+    zip(p, x).for_each(|(p, x)| *x = b[*p]);
 }
 
 fn _ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
-    p.iter().zip(b.iter()).for_each(|(p, b)| x[*p] = *b);
+    zip(p, b).for_each(|(p, b)| x[*p] = *b);
 }
 
 // Given a sparse symmetric matrix `A` (with only upper triangular entries), return
@@ -769,7 +766,7 @@ fn _permute_symmetric_inner<T: FloatT>(
     // Pc is one longer than num_entries here.
     Pc[0] = 0;
     let mut acc = 0;
-    for (Pckp1, ne) in Pc[1..].iter_mut().zip(&num_entries) {
+    for (Pckp1, ne) in zip(&mut Pc[1..], &num_entries) {
         *Pckp1 = acc + ne;
         acc = *Pckp1;
     }
