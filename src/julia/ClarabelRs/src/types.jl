@@ -79,7 +79,7 @@ end
 end
 
 
-mutable struct Solver <: Clarabel.AbstractSolver{Float64}
+mutable struct Solver{T <: Float64} <: Clarabel.AbstractSolver{Float64}
     ptr:: Ptr{Cvoid}
 
     function Solver(ptr)
