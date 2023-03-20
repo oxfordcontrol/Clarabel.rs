@@ -49,7 +49,7 @@ where
     pub fn mul(&self, y: &mut [T], x: &[T]) {
         let H = self;
 
-        //matrix is packed 3x3, so unroll it here
+        //matrix is packed triu of a 3x3, so unroll it here
         y[0] = (H.data[0] * x[0]) + (H.data[1] * x[1]) + (H.data[3] * x[2]);
         y[1] = (H.data[1] * x[0]) + (H.data[2] * x[1]) + (H.data[4] * x[2]);
         y[2] = (H.data[3] * x[0]) + (H.data[4] * x[1]) + (H.data[5] * x[2]);

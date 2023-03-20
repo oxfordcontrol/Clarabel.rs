@@ -297,7 +297,7 @@ where
     T: FloatT,
 {
     let x0 = z[0] + α * dz[0];
-    let x1_sq = <[T] as VectorMath<T>>::dot_shifted(&z[1..], &z[1..], &dz[1..], &dz[1..], α);
+    let x1_sq = <[T] as VectorMath>::dot_shifted(&z[1..], &z[1..], &dz[1..], &dz[1..], α);
 
     x0 * x0 - x1_sq
 }

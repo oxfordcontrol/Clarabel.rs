@@ -201,7 +201,7 @@ where
         let cur_κ = self.κ + α * step.κ;
 
         // compute current μ
-        let sz = <[T] as VectorMath<T>>::dot_shifted(&self.z, &self.s, &step.z, &step.s, α);
+        let sz = <[T] as VectorMath>::dot_shifted(&self.z, &self.s, &step.z, &step.s, α);
         let μ = (sz + cur_τ * cur_κ) / central_coef;
 
         // barrier terms from gap and scalars

@@ -21,6 +21,7 @@ pub trait FloatT:
     + std::fmt::Display
     + std::fmt::LowerExp
     + std::fmt::Debug
+    + Sized
 {
 }
 impl FloatT for f32 {}

@@ -1,4 +1,4 @@
-use super::{MatrixShape, MatrixTriangle};
+use super::{FloatT, MatrixShape, MatrixTriangle};
 
 // All internal math for all solver implementations should go
 // through these core traits, which are implemented generically
@@ -6,44 +6,53 @@ use super::{MatrixShape, MatrixTriangle};
 
 /// Scalar operations on [`FloatT`](crate::algebra::FloatT)
 
-pub trait ScalarMath<T> {
+pub trait ScalarMath {
+    type T: FloatT;
     /// Applies a threshold value.   
     ///
     /// If `s < min_thresh`, it is assigned the new value `min_new`.  
     ///
     /// If `s > max_thresh`, it assigned the new value `max_new`.
-    fn clip(&self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T;
+    fn clip(
+        &self,
+        min_thresh: Self::T,
+        max_thresh: Self::T,
+        min_new: Self::T,
+        max_new: Self::T,
+    ) -> Self::T;
 
     /// Safe calculation for log barriers.
     ///
     /// Returns log(s) if s > 0   -Infinity otherwise.
-    fn logsafe(&self) -> T;
+    fn logsafe(&self) -> Self::T;
 }
 
 /// Vector operations on slices of [`FloatT`](crate::algebra::FloatT)
 
-pub trait VectorMath<T> {
+pub trait VectorMath {
+    type T;
+
     /// Copy values from `src` to `self`
     fn copy_from(&mut self, src: &Self) -> &mut Self;
 
     /// Make a new vector from a subset of elements
-    fn select(&self, index: &[bool]) -> Vec<T>;
+    fn select(&self, index: &[bool]) -> Vec<Self::T>;
 
     /// Apply an elementwise operation on a vector.
-    fn scalarop(&mut self, op: impl Fn(T) -> T) -> &mut Self;
+    fn scalarop(&mut self, op: impl Fn(Self::T) -> Self::T) -> &mut Self;
 
     /// Apply an elementwise operation to `v` and assign the
     /// results to `self`.
-    fn scalarop_from(&mut self, op: impl Fn(T) -> T, v: &Self) -> &mut Self;
+    fn scalarop_from(&mut self, op: impl Fn(Self::T) -> Self::T, v: &Self) -> &mut Self;
 
     /// Elementwise translation.
-    fn translate(&mut self, c: T) -> &mut Self;
+    fn translate(&mut self, c: Self::T) -> &mut Self;
 
     /// set all elements to the same value
-    fn set(&mut self, c: T) -> &mut Self;
+    fn set(&mut self, c: Self::T) -> &mut Self;
 
     /// Elementwise scaling.
-    fn scale(&mut self, c: T) -> &mut Self;
+    fn scale(&mut self, c: Self::T) -> &mut Self;
 
     /// Elementwise reciprocal.
     fn recip(&mut self) -> &mut Self;
@@ -61,43 +70,55 @@ pub trait VectorMath<T> {
     fn hadamard(&mut self, y: &Self) -> &mut Self;
 
     /// Vector version of [clip](crate::algebra::ScalarMath::clip)
-    fn clip(&mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> &mut Self;
+    fn clip(
+        &mut self,
+        min_thresh: Self::T,
+        max_thresh: Self::T,
+        min_new: Self::T,
+        max_new: Self::T,
+    ) -> &mut Self;
 
     /// Normalize, returning the norm.  Do nothing if norm == 0.  
-    fn normalize(&mut self) -> T;
+    fn normalize(&mut self) -> Self::T;
 
     /// Dot product
-    fn dot(&self, y: &Self) -> T;
+    fn dot(&self, y: &Self) -> Self::T;
 
     // computes dot(z + αdz,s + αds) without intermediate allocation
-    fn dot_shifted(z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T;
+    fn dot_shifted(
+        z: &[Self::T],
+        s: &[Self::T],
+        dz: &[Self::T],
+        ds: &[Self::T],
+        α: Self::T,
+    ) -> Self::T;
 
     /// Standard Euclidian or 2-norm distance from `self` to `y`
-    fn dist(&self, y: &Self) -> T;
+    fn dist(&self, y: &Self) -> Self::T;
 
     /// Sum of elements squared.
-    fn sumsq(&self) -> T;
+    fn sumsq(&self) -> Self::T;
 
     /// 2-norm
-    fn norm(&self) -> T;
+    fn norm(&self) -> Self::T;
 
     /// 2-norm of an elementwise scaling of `self` by `v`
-    fn norm_scaled(&self, v: &Self) -> T;
+    fn norm_scaled(&self, v: &Self) -> Self::T;
 
     /// Infinity norm
-    fn norm_inf(&self) -> T;
+    fn norm_inf(&self) -> Self::T;
 
     /// One norm
-    fn norm_one(&self) -> T;
+    fn norm_one(&self) -> Self::T;
 
     /// Minimum value in vector
-    fn minimum(&self) -> T;
+    fn minimum(&self) -> Self::T;
 
     /// Maximum value in vector
-    fn maximum(&self) -> T;
+    fn maximum(&self) -> Self::T;
 
     /// Mean value in vector
-    fn mean(&self) -> T;
+    fn mean(&self) -> Self::T;
 
     /// Checks if all elements are finite, i.e. no Infs or NaNs
     fn is_finite(&self) -> bool;
@@ -106,69 +127,86 @@ pub trait VectorMath<T> {
     //--------------------
 
     /// BLAS-like shift and scale in place.  Produces `self = a*x+b*self`
-    fn axpby(&mut self, a: T, x: &Self, b: T) -> &mut Self;
+    fn axpby(&mut self, a: Self::T, x: &Self, b: Self::T) -> &mut Self;
 
     /// BLAS-like shift and scale, non in-place version.  Produces `self = a*x+b*y`
-    fn waxpby(&mut self, a: T, x: &Self, b: T, y: &Self) -> &mut Self;
+    fn waxpby(&mut self, a: Self::T, x: &Self, b: Self::T, y: &Self) -> &mut Self;
 }
 
 /// Matrix operations for matrices of [`FloatT`](crate::algebra::FloatT)
 
-pub trait MatrixMath<T, V: ?Sized> {
+pub trait MatrixMath {
+    type ElementT: FloatT;
+    type VectorT: ?Sized;
+
     /// Compute columnwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`
-    fn col_norms(&self, norms: &mut V);
+    fn col_norms(&self, norms: &mut Self::VectorT);
 
     /// Compute columnwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`.
     /// In the `no_reset` version of this function, if `norms[i]`
     /// is already larger the norm of the $i^{th}$ columns, then
     /// its value is not changed
-    fn col_norms_no_reset(&self, norms: &mut V);
+    fn col_norms_no_reset(&self, norms: &mut Self::VectorT);
 
     /// Compute columnwise infinity norm operations on
     /// a symmstric matrix
-    fn col_norms_sym(&self, norms: &mut V);
+    fn col_norms_sym(&self, norms: &mut Self::VectorT);
 
     /// Compute columnwise infinity norm operations on
     /// a symmetric matrix without reset
-    fn col_norms_sym_no_reset(&self, norms: &mut V);
+    fn col_norms_sym_no_reset(&self, norms: &mut Self::VectorT);
 
     /// Compute rowwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`
-    fn row_norms(&self, norms: &mut V);
+    fn row_norms(&self, norms: &mut Self::VectorT);
 
     /// Compute rowwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`
     /// without reset
-    fn row_norms_no_reset(&self, norms: &mut V);
+    fn row_norms_no_reset(&self, norms: &mut Self::VectorT);
 
     /// Elementwise scaling
-    fn scale(&mut self, c: T);
+    fn scale(&mut self, c: Self::ElementT);
 
     /// Elementwise negation
     fn negate(&mut self);
 
     /// Left multiply the matrix `self` by `Diagonal(l)`
-    fn lscale(&mut self, l: &V);
+    fn lscale(&mut self, l: &Self::VectorT);
 
     /// Right multiply the matrix self by `Diagonal(r)`
-    fn rscale(&mut self, r: &V);
+    fn rscale(&mut self, r: &Self::VectorT);
 
     /// Left and multiply the matrix self by diagonal matrices,
     /// producing `A = Diagonal(l)*A*Diagonal(r)`
-    fn lrscale(&mut self, l: &V, r: &V);
+    fn lrscale(&mut self, l: &Self::VectorT, r: &Self::VectorT);
 
     /// BLAS-like general matrix-vector multiply.  Produces `y = a*self*x + b*y`
-    fn gemv(&self, y: &mut V, trans: MatrixShape, x: &V, a: T, b: T);
+    fn gemv(
+        &self,
+        y: &mut Self::VectorT,
+        trans: MatrixShape,
+        x: &Self::VectorT,
+        a: Self::ElementT,
+        b: Self::ElementT,
+    );
 
     /// BLAS-like symmetric matrix-vector multiply.  Produces `y = a*self*x + b*y`.  
     /// The matrix should be in either triu or tril form, with the other
     /// half of the triangle assumed symmetric
-    fn symv(&self, y: &mut [T], tri: MatrixTriangle, x: &[T], a: T, b: T);
+    fn symv(
+        &self,
+        y: &mut Self::VectorT,
+        tri: MatrixTriangle,
+        x: &Self::VectorT,
+        a: Self::ElementT,
+        b: Self::ElementT,
+    );
 
     /// Quadratic form for a symmetric matrix.  Assumes that the
     /// matrix `M = self` is in upper triangular form, and produces
     /// `y^T*M*x`
-    fn quad_form(&self, y: &[T], x: &[T]) -> T;
+    fn quad_form(&self, y: &Self::VectorT, x: &Self::VectorT) -> Self::ElementT;
 }

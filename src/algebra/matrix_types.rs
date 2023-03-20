@@ -47,12 +47,27 @@ pub struct CscMatrix<T = f64> {
 }
 
 /// Matrix orientation marker
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MatrixShape {
     /// Normal matrix orientation
     N,
     /// Transposed matrix orientation
     T,
+}
+
+impl MatrixShape {
+    pub fn as_blas_char(&self) -> u8 {
+        match self {
+            MatrixShape::N => b'N',
+            MatrixShape::T => b'T',
+        }
+    }
+    pub fn transpose(&self) -> Self {
+        match self {
+            MatrixShape::N => MatrixShape::T,
+            MatrixShape::T => MatrixShape::N,
+        }
+    }
 }
 
 /// Matrix shape marker for triangular matrices
@@ -62,4 +77,19 @@ pub enum MatrixTriangle {
     Triu,
     /// Lower triangular matrix
     Tril,
+}
+
+impl MatrixTriangle {
+    pub fn as_blas_char(&self) -> u8 {
+        match self {
+            MatrixTriangle::Triu => b'U',
+            MatrixTriangle::Tril => b'L',
+        }
+    }
+    pub fn transpose(&self) -> Self {
+        match self {
+            MatrixTriangle::Triu => MatrixTriangle::Tril,
+            MatrixTriangle::Tril => MatrixTriangle::Triu,
+        }
+    }
 }

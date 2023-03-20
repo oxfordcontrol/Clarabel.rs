@@ -1,7 +1,8 @@
 use super::*;
 use std::iter::zip;
 
-impl<T: FloatT> ScalarMath<T> for T {
+impl<T: FloatT> ScalarMath for T {
+    type T = T;
     fn clip(&self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T {
         if *self < min_thresh {
             min_new
@@ -21,7 +22,8 @@ impl<T: FloatT> ScalarMath<T> for T {
     }
 }
 
-impl<T: FloatT> VectorMath<T> for [T] {
+impl<T: FloatT> VectorMath for [T] {
+    type T = T;
     fn copy_from(&mut self, src: &[T]) -> &mut Self {
         self.copy_from_slice(src);
         self
@@ -194,7 +196,10 @@ impl<T: FloatT> VectorMath<T> for [T] {
     }
 }
 
-impl<T: FloatT> MatrixMath<T, [T]> for CscMatrix<T> {
+impl<T: FloatT> MatrixMath for CscMatrix<T> {
+    type ElementT = T;
+    type VectorT = [T];
+
     //scalar mut operations
     fn scale(&mut self, c: T) {
         self.nzval.scale(c);
