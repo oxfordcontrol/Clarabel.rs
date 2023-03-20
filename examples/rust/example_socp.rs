@@ -11,24 +11,24 @@ fn main() {
     let P = CscMatrix::new(
         2,             // m
         2,             // n
-        vec![0, 1, 2], // colptr
-        vec![0, 1],    // rowval
-        vec![6., 4.],  // nzval
+        vec![0, 0, 1], // colptr
+        vec![1],       // rowval
+        vec![2.],      // nzval
     );
 
-    let q = vec![-1., -4.];
+    let q = vec![0., 0.];
 
     let A = CscMatrix::new(
-        5,                               // m
-        2,                               // n
-        vec![0, 3, 6],                   // colptr
-        vec![0, 1, 3, 0, 2, 4],          // rowval
-        vec![1., 1., -1., -2., 1., -1.], // nzval
+        3,              // m
+        2,              // n
+        vec![0, 1, 2],  // colptr
+        vec![1, 2],     // rowval
+        vec![-2., -1.], // nzval
     );
 
-    let b = vec![0., 1., 1., 1., 1.];
+    let b = vec![1., -2., -2.];
 
-    let cones = [ZeroConeT(1), NonnegativeConeT(4)];
+    let cones = [SecondOrderConeT(3)];
 
     let settings = DefaultSettings::default();
 
