@@ -215,13 +215,13 @@ fn test_gemv() {
     let a = 2.;
     let b = -3.;
 
-    A.gemv(&mut y, MatrixShape::N, &x, a, b);
+    A.gemv(&mut y, &x, a, b);
     assert_eq!(y, vec![7., 66., 35.]);
 
     let mut y = vec![1., -2., 3., -4.];
     let x = vec![5., -6., 7.];
 
-    A.gemv(&mut y, MatrixShape::T, &x, a, b);
+    A.t().gemv(&mut y, &x, a, b);
     assert_eq!(y, vec![-49., -220., -33., 42.]);
 }
 
@@ -233,7 +233,7 @@ fn test_symv() {
     let a = -2.;
     let b = 3.;
 
-    A.symv(&mut y, MatrixTriangle::Triu, &x, a, b);
+    A.symv(&mut y, &x, a, b);
 
     assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
 }

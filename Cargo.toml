@@ -7,7 +7,7 @@ license = "Apache-2.0"
 description = "Clarabel Conic Interior Point Solver for Rust / Python"
 readme = "README.md"
 repository = "https://github.com/oxfordcontrol/Clarabel.rs"
-keywords = ["convex", "optimization", "QP", "LP", "SOCP"]
+keywords = ["convex", "optimization", "QP", "LP", "SOCP", "SDP", "conic"]
 categories = ["mathematics"]
 
 [dependencies]
@@ -17,6 +17,12 @@ derive_builder = "0.11"
 enum_dispatch = "0.3.8"
 amd = "0.2.2"
 thiserror = "1"
+
+blas = "0.22.0"
+lapack = "0.19.0"
+lapack-src = { version = "0.8", features = ["openblas"] }
+blas-src = { version = "0.8", features = ["openblas"] }
+openblas-src = {features = ["system"] }
 
 [[example]]
 name = "lp"

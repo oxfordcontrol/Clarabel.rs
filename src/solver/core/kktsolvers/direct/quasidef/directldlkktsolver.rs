@@ -322,7 +322,7 @@ fn _get_refine_error<T: FloatT>(e: &mut [T], b: &[T], K: &CscMatrix<T>, ξ: &mut
     // be careful when computing the residual here
 
     e.copy_from(b);
-    K.symv(e, MatrixTriangle::Triu, ξ, -T::one(), T::one()); //#  e = b - Kξ
+    K.symv(e, ξ, -T::one(), T::one()); //#  e = b - Kξ
 
     e.norm_inf()
 }

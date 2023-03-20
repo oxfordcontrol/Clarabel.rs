@@ -1,4 +1,4 @@
-use super::{FloatT, MatrixShape, MatrixTriangle};
+use super::FloatT;
 
 // All internal math for all solver implementations should go
 // through these core traits, which are implemented generically
@@ -111,6 +111,8 @@ pub trait VectorMath {
     /// One norm
     fn norm_one(&self) -> Self::T;
 
+    fn norm_inf_diff(&self, b: &Self) -> Self::T;
+
     /// Minimum value in vector
     fn minimum(&self) -> Self::T;
 
@@ -135,10 +137,19 @@ pub trait VectorMath {
 
 /// Matrix operations for matrices of [`FloatT`](crate::algebra::FloatT)
 
-pub trait MatrixMath {
+pub trait MatrixVectorMultiply {
     type ElementT: FloatT;
     type VectorT: ?Sized;
 
+    /// BLAS-like general matrix-vector multiply.  Produces `y = a*self*x + b*y`
+    fn gemv(&self, y: &mut Self::VectorT, x: &Self::VectorT, a: Self::ElementT, b: Self::ElementT);
+
+    /// BLAS-like symmetric matrix-vector multiply.  Produces `y = a*self*x + b*y`.  
+    /// The matrix source data should be triu.
+    fn symv(&self, y: &mut Self::VectorT, x: &Self::VectorT, a: Self::ElementT, b: Self::ElementT);
+}
+
+pub trait MatrixMath: MatrixVectorMultiply {
     /// Compute columnwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`
     fn col_norms(&self, norms: &mut Self::VectorT);
@@ -182,28 +193,6 @@ pub trait MatrixMath {
     /// Left and multiply the matrix self by diagonal matrices,
     /// producing `A = Diagonal(l)*A*Diagonal(r)`
     fn lrscale(&mut self, l: &Self::VectorT, r: &Self::VectorT);
-
-    /// BLAS-like general matrix-vector multiply.  Produces `y = a*self*x + b*y`
-    fn gemv(
-        &self,
-        y: &mut Self::VectorT,
-        trans: MatrixShape,
-        x: &Self::VectorT,
-        a: Self::ElementT,
-        b: Self::ElementT,
-    );
-
-    /// BLAS-like symmetric matrix-vector multiply.  Produces `y = a*self*x + b*y`.  
-    /// The matrix should be in either triu or tril form, with the other
-    /// half of the triangle assumed symmetric
-    fn symv(
-        &self,
-        y: &mut Self::VectorT,
-        tri: MatrixTriangle,
-        x: &Self::VectorT,
-        a: Self::ElementT,
-        b: Self::ElementT,
-    );
 
     /// Quadratic form for a symmetric matrix.  Assumes that the
     /// matrix `M = self` is in upper triangular form, and produces

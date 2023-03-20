@@ -2,6 +2,85 @@
 // solver and math implementations are in standard
 // compressed sparse column format, as is the API.
 
+/// Matrix shape marker for triangular matrices
+#[derive(PartialEq, Eq, Copy, Clone)]
+pub enum MatrixTriangle {
+    /// Upper triangular matrix
+    Triu,
+    /// Lower triangular matrix
+    Tril,
+}
+
+/// Matrix triangular form marker
+impl MatrixTriangle {
+    /// convert to u8 character for BLAS calls
+    pub fn as_blas_char(&self) -> u8 {
+        match self {
+            MatrixTriangle::Triu => b'U',
+            MatrixTriangle::Tril => b'L',
+        }
+    }
+    /// transpose
+    pub fn t(&self) -> Self {
+        match self {
+            MatrixTriangle::Triu => MatrixTriangle::Tril,
+            MatrixTriangle::Tril => MatrixTriangle::Triu,
+        }
+    }
+}
+
+/// Matrix orientation marker
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum MatrixShape {
+    /// Normal matrix orientation
+    N,
+    /// Transposed matrix orientation
+    T,
+}
+
+impl MatrixShape {
+    /// convert to u8 character for BLAS calls
+    pub fn as_blas_char(&self) -> u8 {
+        match self {
+            MatrixShape::N => b'N',
+            MatrixShape::T => b'T',
+        }
+    }
+    /// transpose
+    pub fn t(&self) -> Self {
+        match self {
+            MatrixShape::N => MatrixShape::T,
+            MatrixShape::T => MatrixShape::N,
+        }
+    }
+}
+
+/// Dense matrix in column major format
+///
+/// __Example usage__ : To construct the 3 x 2 matrix
+/// ```text
+/// A = [1.  3.  5.]
+///     [2.  0.  6.]
+///     [0.  4.  7.]
+/// ```
+///
+/// ```
+/// # use clarabel::algebra::CscMatrix;
+///
+/// // PJG: Insert example here
+///
+/// ```
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Matrix<T = f64> {
+    /// number of rows
+    pub m: usize,
+    ///number of columns
+    pub n: usize,
+    /// vector of data in column major formmat
+    pub data: Vec<T>,
+}
+
 /// Sparse matrix in standard Compressed Sparse Column (CSC) format
 ///
 /// __Example usage__ : To construct the 3 x 2 matrix
@@ -46,50 +125,7 @@ pub struct CscMatrix<T = f64> {
     pub nzval: Vec<T>,
 }
 
-/// Matrix orientation marker
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum MatrixShape {
-    /// Normal matrix orientation
-    N,
-    /// Transposed matrix orientation
-    T,
-}
-
-impl MatrixShape {
-    pub fn as_blas_char(&self) -> u8 {
-        match self {
-            MatrixShape::N => b'N',
-            MatrixShape::T => b'T',
-        }
-    }
-    pub fn transpose(&self) -> Self {
-        match self {
-            MatrixShape::N => MatrixShape::T,
-            MatrixShape::T => MatrixShape::N,
-        }
-    }
-}
-
-/// Matrix shape marker for triangular matrices
-#[derive(PartialEq, Eq, Copy, Clone)]
-pub enum MatrixTriangle {
-    /// Upper triangular matrix
-    Triu,
-    /// Lower triangular matrix
-    Tril,
-}
-
-impl MatrixTriangle {
-    pub fn as_blas_char(&self) -> u8 {
-        match self {
-            MatrixTriangle::Triu => b'U',
-            MatrixTriangle::Tril => b'L',
-        }
-    }
-    pub fn transpose(&self) -> Self {
-        match self {
-            MatrixTriangle::Triu => MatrixTriangle::Tril,
-            MatrixTriangle::Tril => MatrixTriangle::Triu,
-        }
-    }
+#[derive(Debug, Clone, PartialEq)]
+pub struct Adjoint<'a, M> {
+    pub src: &'a M,
 }

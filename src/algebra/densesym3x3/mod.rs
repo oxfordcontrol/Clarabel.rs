@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
 
-use super::{FloatT, VectorMath};
+use super::FloatT;
 use crate::algebra::*;
 use std::ops::{Index, IndexMut};
 
@@ -64,7 +64,7 @@ where
     pub fn norm_fro(&self) -> T {
         let d = self.data;
         //Frobenius norm.   Need to be careful to count
-        //off diagonals twice
+        //the packed off diagonals twice
         let mut sumsq = T::zero();
 
         //diagonal terms
@@ -87,7 +87,7 @@ where
     }
 
     pub fn copy_from(&mut self, src: &Self) {
-        self.data.copy_from(&src.data);
+        self.data.copy_from_slice(&src.data);
     }
 
     //convert row col coordinate to triu index

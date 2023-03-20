@@ -11,22 +11,30 @@
 // first import and flatten the solver's collection
 // of core numeric types and matrix / vector traits.
 
+mod error_types;
 mod floats;
-mod matrix_dense_3;
+mod math_traits;
+mod matrix_traits;
 mod matrix_types;
-mod matrix_utils;
-mod traits;
+mod scalarmath;
+mod vecmath;
+pub use error_types::*;
 pub use floats::*;
-pub(crate) use matrix_dense_3::*;
+pub use math_traits::*;
+pub use matrix_traits::*;
 pub use matrix_types::*;
-pub use matrix_utils::*;
-pub use traits::*;
+pub use scalarmath::*;
+pub use vecmath::*;
 
-// here we select the particular numeric implementation of
-// the core traits.  For now, we only have the hand-written
-// one, so there is nothing to configure
-mod native;
-pub use native::*;
+// matrix implementations
+mod csc;
+mod dense;
+mod densesym3x3;
+pub use csc::*;
+pub use dense::*;
+pub(crate) use densesym3x3::*;
+
+//mod densesym3x3;
 
 //configure tests of internals
 #[cfg(test)]

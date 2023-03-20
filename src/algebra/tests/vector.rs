@@ -1,9 +1,4 @@
 use crate::algebra::*;
-use std::iter::zip;
-
-fn inf_norm_diff<T: FloatT>(a: &[T], b: &[T]) -> T {
-    zip(a, b).fold(T::zero(), |acc, (x, y)| T::max(acc, T::abs(*x - *y)))
-}
 
 #[test]
 fn test_copy_from() {
@@ -54,7 +49,7 @@ fn test_scale() {
 fn test_recip() {
     let mut x = vec![3., 10., 2., 1.];
     x.recip();
-    assert!(inf_norm_diff(&x, &[1. / 3., 1. / 10., 1. / 2., 1.]) < 1e-8);
+    assert!(x.norm_inf_diff(&[1. / 3., 1. / 10., 1. / 2., 1.]) < 1e-8);
 }
 
 #[test]
