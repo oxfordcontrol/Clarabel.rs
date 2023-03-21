@@ -1,4 +1,4 @@
-use crate::algebra::{Adjoint, CscMatrix, FloatT, MatrixMath, MatrixVectorMultiply, VectorMath};
+use crate::algebra::*;
 use std::iter::zip;
 
 impl<T: FloatT> MatrixVectorMultiply for CscMatrix<T> {
@@ -7,10 +7,6 @@ impl<T: FloatT> MatrixVectorMultiply for CscMatrix<T> {
 
     fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T) {
         _csc_axpby_N(self, y, x, a, b);
-    }
-
-    fn symv(&self, y: &mut [T], x: &[T], a: T, b: T) {
-        _csc_symv_unsafe(self, y, x, a, b);
     }
 }
 
@@ -21,6 +17,12 @@ impl<T: FloatT> MatrixVectorMultiply for Adjoint<'_, CscMatrix<T>> {
     fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T) {
         _csc_axpby_T(self.src, y, x, a, b);
     }
+}
+
+impl<T: FloatT> SymMatrixVectorMultiply for Symmetric<'_, CscMatrix<T>> {
+    type ElementT = T;
+    type VectorT = [T];
+
     fn symv(&self, y: &mut [T], x: &[T], a: T, b: T) {
         _csc_symv_unsafe(self.src, y, x, a, b);
     }

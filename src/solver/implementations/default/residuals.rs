@@ -73,7 +73,8 @@ where
         let sz = variables.s.dot(&variables.z);
 
         //Px = P*x, P treated as symmetric
-        data.P.symv(&mut self.Px, &variables.x, T::one(), T::zero());
+        let symP = data.P.sym();
+        symP.symv(&mut self.Px, &variables.x, T::one(), T::zero());
 
         let xPx = variables.x.dot(&self.Px);
 

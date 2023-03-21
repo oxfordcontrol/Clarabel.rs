@@ -233,7 +233,8 @@ fn test_symv() {
     let a = -2.;
     let b = 3.;
 
-    A.symv(&mut y, &x, a, b);
+    let Asym = A.sym();
+    Asym.symv(&mut y, &x, a, b);
 
     assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
 }

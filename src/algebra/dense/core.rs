@@ -1,4 +1,6 @@
-use crate::algebra::{Adjoint, DenseMatrix, FloatT, Matrix, MatrixShape, ShapedMatrix};
+use crate::algebra::{
+    Adjoint, DenseMatrix, FloatT, Matrix, MatrixShape, ShapedMatrix, Symmetric, VectorMath,
+};
 use std::ops::{Index, IndexMut};
 
 impl<T> DenseMatrix for Matrix<T>
@@ -35,8 +37,21 @@ where
     pub fn zeros(size: (usize, usize)) -> Self {
         let (m, n) = size;
         let data = vec![T::zero(); m * n];
-
         Self { m, n, data }
+    }
+
+    pub fn identity(n: usize) -> Self {
+        let mut mat = Matrix::zeros((n, n));
+        mat.set_identity();
+        mat
+    }
+
+    pub fn set_identity(&mut self) {
+        assert!(self.m == self.n);
+        self.data_mut().set(T::zero());
+        for i in 0..self.n {
+            self[(i, i)] = T::one();
+        }
     }
 
     pub fn new_from_slice(size: (usize, usize), src: &[T]) -> Self {
@@ -62,6 +77,11 @@ where
         Adjoint { src: self }
     }
 
+    pub fn sym(&self) -> Symmetric<'_, Self> {
+        debug_assert!(self.is_triu());
+        Symmetric { src: self }
+    }
+
     pub fn col_slice(&self, col: usize) -> &[T] {
         assert!(col < self.n);
         &self.data[(col * self.m)..(col + 1) * self.m]
@@ -70,6 +90,18 @@ where
     pub fn col_slice_mut(&mut self, col: usize) -> &mut [T] {
         assert!(col < self.n);
         &mut self.data[(col * self.m)..(col + 1) * self.m]
+    }
+
+    pub fn is_triu(&self) -> bool {
+        // check lower triangle for any nonzero entries
+        for r in 0..self.nrows() {
+            for c in (r + 1)..self.ncols() {
+                if self[(r, c)] != T::zero() {
+                    return false;
+                }
+            }
+        }
+        true
     }
 }
 
@@ -121,27 +153,6 @@ where
     }
     fn is_square(&self) -> bool {
         self.nrows() == self.ncols()
-    }
-}
-
-impl<'a, T> ShapedMatrix for Adjoint<'a, Matrix<T>>
-where
-    T: FloatT,
-{
-    fn nrows(&self) -> usize {
-        self.src.ncols()
-    }
-    fn ncols(&self) -> usize {
-        self.src.nrows()
-    }
-    fn size(&self) -> (usize, usize) {
-        (self.nrows(), self.ncols())
-    }
-    fn shape(&self) -> MatrixShape {
-        MatrixShape::T
-    }
-    fn is_square(&self) -> bool {
-        self.src.is_square()
     }
 }
 

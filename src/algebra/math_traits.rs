@@ -143,6 +143,11 @@ pub trait MatrixVectorMultiply {
 
     /// BLAS-like general matrix-vector multiply.  Produces `y = a*self*x + b*y`
     fn gemv(&self, y: &mut Self::VectorT, x: &Self::VectorT, a: Self::ElementT, b: Self::ElementT);
+}
+
+pub trait SymMatrixVectorMultiply {
+    type ElementT: FloatT;
+    type VectorT: ?Sized;
 
     /// BLAS-like symmetric matrix-vector multiply.  Produces `y = a*self*x + b*y`.  
     /// The matrix source data should be triu.

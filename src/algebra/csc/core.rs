@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{Adjoint, CscMatrix, FloatT, MatrixShape, ShapedMatrix, SparseFormatError};
+use crate::algebra::{
+    Adjoint, CscMatrix, FloatT, MatrixShape, ShapedMatrix, SparseFormatError, Symmetric,
+};
 use std::iter::zip;
 
 impl<T> ShapedMatrix for CscMatrix<T> {
@@ -85,6 +87,12 @@ where
     /// transpose
     pub fn t(&self) -> Adjoint<'_, Self> {
         Adjoint { src: self }
+    }
+
+    /// symmetric view
+    pub fn sym(&self) -> Symmetric<'_, Self> {
+        debug_assert!(self.is_triu());
+        Symmetric { src: self }
     }
 
     /// Check that matrix data is correctly formatted.
@@ -194,7 +202,7 @@ where
         let mut rowval = vec![0; nnz];
         let mut nzval = vec![T::zero(); nnz];
 
-        for col in 0..self.n {
+        for col in 0..n {
             let ntriu = colptr[col + 1];
 
             //start / stop indices for the destination
@@ -213,5 +221,23 @@ where
             colptr[col + 1] = ldest;
         }
         CscMatrix::new(m, n, colptr, rowval, nzval)
+    }
+
+    pub fn is_triu(&self) -> bool {
+        // check lower triangle for any structural entries, regardless
+        // of the values that may be assigned to them
+        for col in 0..self.ncols() {
+            //start / stop indices for the current column
+            let first = self.colptr[col];
+            let last = self.colptr[col + 1];
+            let rows = &self.rowval[first..last];
+
+            // number of entries on or above diagonal in this column,
+            // shifted by 1 (i.e. colptr keeps a 0 in the first column)
+            if rows.iter().any(|&row| row > col) {
+                return false;
+            }
+        }
+        true
     }
 }

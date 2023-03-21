@@ -125,7 +125,15 @@ pub struct CscMatrix<T = f64> {
     pub nzval: Vec<T>,
 }
 
+/// Adjoint of a matrix
 #[derive(Debug, Clone, PartialEq)]
 pub struct Adjoint<'a, M> {
+    pub src: &'a M,
+}
+
+/// Symmetric view of a matrix.   Only the upper
+/// triangle of the source matrix will be referenced.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Symmetric<'a, M> {
     pub src: &'a M,
 }
