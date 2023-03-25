@@ -100,7 +100,7 @@ where
         let half: T = (0.5_f64).as_T();
 
         for r in 0..self.m {
-            for c in 0..r - 1 {
+            for c in 0..r {
                 let val = half * (self[(r, c)] + self[(c, r)]);
                 self[(c, r)] = val;
                 self[(r, c)] = val;
@@ -192,12 +192,12 @@ where
 {
     pub(crate) fn pack_triu(&self, v: &mut [T]) {
         let n = self.ncols();
-        let numel = (n * (n + 1)) >> 1;
+        let numel = triangular_number(n);
         assert!(v.len() == numel);
 
         let mut k = 0;
         for col in 0..self.ncols() {
-            for row in 0..col {
+            for row in 0..=col {
                 v[k] = self.src[(row, col)];
                 k += 1;
             }

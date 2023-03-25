@@ -33,7 +33,7 @@ where
     T: FloatT,
 {
     pub fn new(n: usize) -> Self {
-        let Bm = ((n + 1) * n) >> 1;
+        let Bm = triangular_number(n);
 
         Self {
             cholS: CholeskyEngine::<T>::new(n),
@@ -46,14 +46,14 @@ where
             R: Matrix::zeros((n, n)),
             Rinv: Matrix::zeros((n, n)),
             kronRR: Matrix::zeros((n * n, n * n)),
-            B: Matrix::zeros((Bm, n ^ 2)),
+            B: Matrix::zeros((Bm, n * n)),
             Hs: Matrix::zeros((Bm, Bm)),
 
             //workspace for various internal uses
             workmat1: Matrix::zeros((n, n)),
             workmat2: Matrix::zeros((n, n)),
             workmat3: Matrix::zeros((n, n)),
-            workvec: vec![T::zero(); n],
+            workvec: vec![T::zero(); triangular_number(n)],
         }
     }
 }
@@ -72,7 +72,7 @@ where
         assert!(n >= 1);
         Self {
             n,
-            numel: (n * (n + 1)) >> 1,
+            numel: triangular_number(n),
             work: Box::new(PSDConeWork::<T>::new(n)),
         }
     }
@@ -107,10 +107,12 @@ where
     fn margins(&mut self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         let Z = &mut self.work.workmat1;
         _svec_to_mat(Z, z);
-        self.work.Eig.eigvals(Z).expect("BLAS error");
-        let λ = &self.work.Eig.λ;
-        let α = λ.minimum();
-        let β = λ.iter().fold(T::zero(), |s, x| s + T::max(*x, T::zero())); //= sum(e[e.>0])
+
+        self.work.Eig.eigvals(Z).expect("Eigval error");
+        let e = &self.work.Eig.λ;
+
+        let α = e.minimum();
+        let β = e.iter().fold(T::zero(), |s, x| s + T::max(*x, T::zero())); //= sum(e[e.>0])
         (α, β)
     }
 
@@ -118,7 +120,7 @@ where
         //adds αI to the vectorized triangle,
         //at elements [1,3,6....n(n+1)/2]
         for k in 0..self.n {
-            z[(k * (k + 1)) >> 1] += α
+            z[triangular_index(k)] += α
         }
     }
 
@@ -132,6 +134,7 @@ where
     fn set_identity_scaling(&mut self) {
         self.work.R.set_identity();
         self.work.Rinv.set_identity();
+        self.work.Hs.set_identity();
     }
 
     fn update_scaling(
@@ -147,15 +150,15 @@ where
         _svec_to_mat(Z, z);
 
         //compute Cholesky factors
-        f.cholS.cholesky(S).unwrap(); //PJG: could throw error here
-        f.cholZ.cholesky(Z).unwrap();
+        f.cholS.cholesky(S).expect("Cholesky error"); //PJG: could rethrow error here
+        f.cholZ.cholesky(Z).expect("Cholesky error");
         let (L1, L2) = (&f.cholS.L, &f.cholZ.L);
 
         // R is the same size as L2'*L1,
         // so use it as temporary workspace
         f.R.mul(&L2.t(), L1, T::one(), T::zero()); // R = L2'*L1
 
-        f.SVD.svd(&mut f.R).unwrap();
+        f.SVD.svd(&mut f.R).expect("SVD error");
 
         // assemble λ (diagonal), R and Rinv.
         f.λ.copy_from(&f.SVD.s);
@@ -206,7 +209,7 @@ where
     fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
         ds.set(T::zero());
         for k in 0..self.n {
-            ds[(k * (k + 1)) >> 1] = self.work.λ[k] * self.work.λ[k];
+            ds[triangular_index(k)] = self.work.λ[k] * self.work.λ[k];
         }
     }
 
@@ -416,7 +419,7 @@ where
 {
     _svec_to_mat(workΔ, d);
     workΔ.lrscale(Λisqrt, Λisqrt);
-    engine.eigvals(workΔ).unwrap();
+    engine.eigvals(workΔ).expect("Eigval error");
     let γ = engine.λ.minimum();
 
     if γ < T::zero() {
@@ -473,8 +476,8 @@ fn test_svec_conversions() {
 
     let mut Z = Matrix::zeros((3, 3));
 
-    let mut x = vec![0.; (n * (n + 1)) >> 1];
-    let mut y = vec![0.; (n * (n + 1)) >> 1];
+    let mut x = vec![0.; triangular_number(n)];
+    let mut y = vec![0.; triangular_number(n)];
 
     // check inner product identity
     _mat_to_svec(&mut x, &X);

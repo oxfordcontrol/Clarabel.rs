@@ -106,6 +106,22 @@ impl PyPowerConeT {
     }
 }
 
+#[pyclass(name = "PSDTriangleConeT")]
+pub struct PyPSDTriangleConeT {
+    #[pyo3(get)]
+    pub dim: usize,
+}
+#[pymethods]
+impl PyPSDTriangleConeT {
+    #[new]
+    pub fn new(dim: usize) -> Self {
+        Self { dim }
+    }
+    pub fn __repr__(&self) -> String {
+        __repr__cone("PyPSDTriangleConeT", self.dim)
+    }
+}
+
 // We can't implement the foreign trait FromPyObject directly on
 // SupportedCone<f64> since both are defined outside the crate, so
 // put a dummy wrapper around it here.
@@ -141,6 +157,10 @@ impl<'a> FromPyObject<'a> for PySupportedCone {
             "PowerConeT" => {
                 let α: f64 = obj.getattr("α")?.extract()?;
                 Ok(PySupportedCone(PowerConeT(α)))
+            }
+            "PSDTriangleConeT" => {
+                let dim: usize = obj.getattr("dim")?.extract()?;
+                Ok(PySupportedCone(PSDTriangleConeT(dim)))
             }
             _ => {
                 let mut errmsg = String::new();

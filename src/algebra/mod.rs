@@ -28,7 +28,7 @@ pub use math_traits::*;
 pub use matrix_traits::*;
 pub use matrix_types::*;
 pub use reshaped::*;
-pub use scalarmath::*;
+pub(crate) use scalarmath::*;
 pub use symmetric::*;
 pub use vecmath::*;
 

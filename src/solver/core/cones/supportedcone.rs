@@ -1,5 +1,5 @@
 use super::*;
-use crate::algebra::FloatT;
+use crate::algebra::{triangular_number, FloatT};
 
 // ---------------------------------------------------
 // We define some machinery here for enumerating the
@@ -49,7 +49,7 @@ impl<T> SupportedConeT<T> {
             SupportedConeT::SecondOrderConeT(dim) => *dim,
             SupportedConeT::ExponentialConeT() => 3,
             SupportedConeT::PowerConeT(_) => 3,
-            SupportedConeT::PSDTriangleConeT(dim) => (*dim) * (*dim + 1),
+            SupportedConeT::PSDTriangleConeT(dim) => triangular_number(*dim),
         }
     }
 }

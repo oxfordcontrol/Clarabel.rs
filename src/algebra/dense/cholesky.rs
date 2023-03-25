@@ -39,7 +39,6 @@ where
 
         T::xpotrf(uplo, An, a, lda, info);
 
-        println!("Chol info is {:?}", *info);
         if *info != 0 {
             return Err(DenseFactorizationError::Cholesky(*info));
         }

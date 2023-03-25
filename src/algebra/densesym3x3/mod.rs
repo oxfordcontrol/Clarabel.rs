@@ -95,9 +95,9 @@ where
     pub fn index_linear(idx: (usize, usize)) -> usize {
         let (r, c) = idx;
         if r < c {
-            r + ((c * (c + 1)) >> 1)
+            r + triangular_number(c)
         } else {
-            c + ((r * (r + 1)) >> 1)
+            c + triangular_number(r)
         }
     }
 

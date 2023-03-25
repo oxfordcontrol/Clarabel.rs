@@ -124,4 +124,5 @@ pub(crate) enum ConeEnumJLRS {
     SecondOrderConeT = 2,
     ExponentialConeT = 3,
     PowerConeT = 4,
+    PSDTriangleConeT = 5,
 }

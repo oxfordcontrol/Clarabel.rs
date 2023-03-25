@@ -1,4 +1,5 @@
 use super::*;
+use crate::algebra::triangular_number;
 use crate::solver::CoreSettings;
 use std::collections::HashMap;
 use std::iter::zip;
@@ -117,7 +118,7 @@ where
                 if cone.Hs_is_diagonal() {
                     nvars
                 } else {
-                    (nvars * (nvars + 1)) >> 1
+                    triangular_number(nvars)
                 }
             };
             rngs.push(start..stop);

@@ -48,6 +48,10 @@ path = "examples/rust/example_expcone.rs"
 name = "box"
 path = "examples/rust/example_box.rs"
 
+[[example]]
+name = "sdp"
+path = "examples/rust/example_sdp.rs"
+
 
 
 # -------------------------------
