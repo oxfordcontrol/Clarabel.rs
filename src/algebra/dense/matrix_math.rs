@@ -74,7 +74,10 @@ impl<T: FloatT> MatrixMath for Matrix<T> {
     }
 
     // PJG: this really wants a unit test because I don't
-    //understand why I have to fix Mv = 0. to start.
+    // understand why I have to fix Mv = 0. to start.
+    // Doesn't sparse impl assume an upper triangle?
+    // Maybe this should only be implemted as part of
+    // some SymmetricMatrixMath trait?
     fn quad_form(&self, y: &[T], x: &[T]) -> T {
         let mut out = T::zero();
         for col in 0..self.n {

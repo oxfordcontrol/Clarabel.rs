@@ -157,36 +157,19 @@ where
     }
 }
 
-///PJG following implementations are all the same...
-impl<T> Index<(usize, usize)> for Matrix<T>
-where
-    T: FloatT,
-{
-    type Output = T;
-    fn index(&self, idx: (usize, usize)) -> &Self::Output {
-        &self.data()[self.index_linear(idx)]
-    }
+macro_rules! impl_mat_index {
+    ($mat:ty) => {
+        impl<T: FloatT> Index<(usize, usize)> for $mat {
+            type Output = T;
+            fn index(&self, idx: (usize, usize)) -> &Self::Output {
+                &self.data()[self.index_linear(idx)]
+            }
+        }
+    };
 }
-
-impl<T> Index<(usize, usize)> for ReshapedMatrix<'_, T>
-where
-    T: FloatT,
-{
-    type Output = T;
-    fn index(&self, idx: (usize, usize)) -> &Self::Output {
-        &self.data()[self.index_linear(idx)]
-    }
-}
-
-impl<T> Index<(usize, usize)> for Adjoint<'_, Matrix<T>>
-where
-    T: FloatT,
-{
-    type Output = T;
-    fn index(&self, idx: (usize, usize)) -> &Self::Output {
-        &self.data()[self.index_linear(idx)]
-    }
-}
+impl_mat_index!(Matrix<T>);
+impl_mat_index!(ReshapedMatrix<'_, T>);
+impl_mat_index!(Adjoint<'_, Matrix<T>>);
 
 impl<T> ShapedMatrix for Matrix<T>
 where

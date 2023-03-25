@@ -404,44 +404,6 @@ where
 // internal operations for SDP cones
 // ----------------------------------------
 
-fn _svec_to_mat<T: FloatT>(M: &mut Matrix<T>, x: &[T]) {
-    let mut idx = 0;
-    for col in 0..M.ncols() {
-        for row in 0..col {
-            if row == col {
-                M[(row, col)] = x[idx];
-            } else {
-                M[(row, col)] = x[idx] * T::FRAC_1_SQRT_2();
-                M[(col, row)] = x[idx] * T::FRAC_1_SQRT_2();
-            }
-            idx += 1;
-        }
-    }
-}
-
-//PJG : double check these implementations to make sure
-//I got the order of the looping write.   cone K has been
-//removed entirely since it cause borrow conflicts.   Change
-//this in Julia to match.
-fn _mat_to_svec<MAT, T: FloatT>(x: &mut [T], M: &MAT)
-where
-    MAT: DenseMatrix<T = T, Output = T>,
-{
-    let mut idx = 0;
-    for row in 0..M.nrows() {
-        for col in 0..row {
-            x[idx] = {
-                if row == col {
-                    M[(row, col)]
-                } else {
-                    (M[(row, col)] + M[(col, row)]) * T::FRAC_1_SQRT_2()
-                }
-            };
-            idx += 1;
-        }
-    }
-}
-
 fn _step_length_psd_component<T>(
     workΔ: &mut Matrix<T>,
     engine: &mut EigEngine<T>,
@@ -462,4 +424,66 @@ where
     } else {
         αmax
     }
+}
+
+fn _svec_to_mat<T: FloatT>(M: &mut Matrix<T>, x: &[T]) {
+    let mut idx = 0;
+    for col in 0..M.ncols() {
+        for row in 0..=col {
+            if row == col {
+                M[(row, col)] = x[idx];
+            } else {
+                M[(row, col)] = x[idx] * T::FRAC_1_SQRT_2();
+                M[(col, row)] = x[idx] * T::FRAC_1_SQRT_2();
+            }
+            idx += 1;
+        }
+    }
+}
+
+//PJG : double check these implementations to make sure
+//I got the order of the looping right.
+fn _mat_to_svec<MAT, T: FloatT>(x: &mut [T], M: &MAT)
+where
+    MAT: DenseMatrix<T = T, Output = T>,
+{
+    let mut idx = 0;
+    for col in 0..M.ncols() {
+        for row in 0..=col {
+            x[idx] = {
+                if row == col {
+                    M[(row, col)]
+                } else {
+                    (M[(row, col)] + M[(col, row)]) * T::FRAC_1_SQRT_2()
+                }
+            };
+            idx += 1;
+        }
+    }
+}
+
+#[test]
+
+fn test_svec_conversions() {
+    let n = 3;
+
+    let X = Matrix::new_from_slice((n, n), &[1., 3., -2., 3., -4., 7., -2., 7., 5.]);
+
+    let Y = Matrix::new_from_slice((n, n), &[2., 5., -4., 5., 6., 2., -4., 2., -3.]);
+
+    let mut Z = Matrix::zeros((3, 3));
+
+    let mut x = vec![0.; (n * (n + 1)) >> 1];
+    let mut y = vec![0.; (n * (n + 1)) >> 1];
+
+    // check inner product identity
+    _mat_to_svec(&mut x, &X);
+    _mat_to_svec(&mut y, &Y);
+
+    assert!(f64::abs(x.dot(&y) - X.data().dot(Y.data())) < 1e-12);
+
+    // check round trip
+    _mat_to_svec(&mut x, &X);
+    _svec_to_mat(&mut Z, &x);
+    assert!(X.data().norm_inf_diff(Z.data()) < 1e-12);
 }

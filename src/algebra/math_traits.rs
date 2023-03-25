@@ -202,5 +202,7 @@ pub trait MatrixMath {
     /// Quadratic form for a symmetric matrix.  Assumes that the
     /// matrix `M = self` is in upper triangular form, and produces
     /// `y^T*M*x`
+    ///
+    /// PJG: Maybe this should be on symmetric only?
     fn quad_form(&self, y: &[Self::T], x: &[Self::T]) -> Self::T;
 }
