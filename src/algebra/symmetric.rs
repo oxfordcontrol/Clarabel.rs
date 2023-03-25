@@ -11,13 +11,7 @@ where
     fn ncols(&self) -> usize {
         self.src.ncols()
     }
-    fn size(&self) -> (usize, usize) {
-        (self.nrows(), self.ncols())
-    }
     fn shape(&self) -> MatrixShape {
         MatrixShape::N
-    }
-    fn is_square(&self) -> bool {
-        true
     }
 }

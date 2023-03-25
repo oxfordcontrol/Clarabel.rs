@@ -1,6 +1,4 @@
-use crate::algebra::{
-    Adjoint, DenseMatrix, FloatT, Matrix, MatrixShape, ShapedMatrix, Symmetric, VectorMath,
-};
+use crate::algebra::*;
 use std::ops::{Index, IndexMut};
 
 impl<T> DenseMatrix for Matrix<T>
@@ -13,6 +11,19 @@ where
     }
     fn data(&self) -> &[T] {
         &self.data
+    }
+}
+
+impl<'a, T> DenseMatrix for ReshapedMatrix<'a, T>
+where
+    T: FloatT,
+{
+    type T = T;
+    fn index_linear(&self, idx: (usize, usize)) -> usize {
+        idx.0 + self.m * idx.1
+    }
+    fn data(&self) -> &[T] {
+        self.data
     }
 }
 
@@ -77,9 +88,25 @@ where
         Adjoint { src: self }
     }
 
+    /// Returns a Symmetric view of a triu matrix
     pub fn sym(&self) -> Symmetric<'_, Self> {
         debug_assert!(self.is_triu());
         Symmetric { src: self }
+    }
+
+    /// Set A = (A + A') / 2.  Assumes A is real
+    pub fn symmetric_part(&mut self) -> &mut Self {
+        assert!(self.is_square());
+        let half: T = (0.5_f64).as_T();
+
+        for r in 0..self.m {
+            for c in 0..r - 1 {
+                let val = half * (self[(r, c)] + self[(c, r)]);
+                self[(c, r)] = val;
+                self[(r, c)] = val;
+            }
+        }
+        self
     }
 
     pub fn col_slice(&self, col: usize) -> &[T] {
@@ -93,15 +120,30 @@ where
     }
 
     pub fn is_triu(&self) -> bool {
-        // check lower triangle for any nonzero entries
-        for r in 0..self.nrows() {
-            for c in (r + 1)..self.ncols() {
+        for c in 0..self.ncols() {
+            for r in (c + 1)..self.nrows() {
                 if self[(r, c)] != T::zero() {
                     return false;
                 }
             }
         }
         true
+    }
+}
+
+impl<'a, T> ReshapedMatrix<'a, T>
+where
+    T: FloatT,
+{
+    pub fn from_slice(data: &'a [T], m: usize, n: usize) -> Self {
+        Self { data, m, n }
+    }
+
+    pub fn reshape(&mut self, size: (usize, usize)) -> &Self {
+        assert!(size.0 * size.1 == self.m * self.n);
+        self.m = size.0;
+        self.n = size.1;
+        self
     }
 }
 
@@ -115,7 +157,18 @@ where
     }
 }
 
+///PJG following implementations are all the same...
 impl<T> Index<(usize, usize)> for Matrix<T>
+where
+    T: FloatT,
+{
+    type Output = T;
+    fn index(&self, idx: (usize, usize)) -> &Self::Output {
+        &self.data()[self.index_linear(idx)]
+    }
+}
+
+impl<T> Index<(usize, usize)> for ReshapedMatrix<'_, T>
 where
     T: FloatT,
 {
@@ -145,14 +198,27 @@ where
     fn ncols(&self) -> usize {
         self.n
     }
-    fn size(&self) -> (usize, usize) {
-        (self.nrows(), self.ncols())
-    }
     fn shape(&self) -> MatrixShape {
         MatrixShape::N
     }
-    fn is_square(&self) -> bool {
-        self.nrows() == self.ncols()
+}
+
+impl<T> Symmetric<'_, Matrix<T>>
+where
+    T: FloatT,
+{
+    pub(crate) fn pack_triu(&self, v: &mut [T]) {
+        let n = self.ncols();
+        let numel = (n * (n + 1)) >> 1;
+        assert!(v.len() == numel);
+
+        let mut k = 0;
+        for col in 0..self.ncols() {
+            for row in 0..col {
+                v[k] = self.src[(row, col)];
+                k += 1;
+            }
+        }
     }
 }
 
@@ -160,13 +226,12 @@ impl<T> std::fmt::Display for Matrix<T>
 where
     T: FloatT,
 {
-    // This trait requires `fmt` with this exact signature.
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        display_matrix(self, f)
+        _display_matrix(self, f)
     }
 }
 
-fn display_matrix<M>(m: &M, f: &mut std::fmt::Formatter) -> std::fmt::Result
+fn _display_matrix<M>(m: &M, f: &mut std::fmt::Formatter) -> std::fmt::Result
 where
     M: DenseMatrix,
     M::Output: FloatT,
@@ -181,4 +246,13 @@ where
     }
     writeln!(f)?;
     Ok(())
+}
+
+#[test]
+fn test_matrix_istriu() {
+    use crate::algebra::Matrix;
+    let (m, n) = (3, 3);
+    let a = vec![1.0, 0.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 6.0];
+    let mat = Matrix::new_from_slice((m, n), &a);
+    assert!(mat.is_triu());
 }

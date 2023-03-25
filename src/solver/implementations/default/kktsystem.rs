@@ -120,7 +120,7 @@ where
         rhs: &DefaultVariables<T>,
         data: &DefaultProblemData<T>,
         variables: &DefaultVariables<T>,
-        cones: &CompositeCone<T>,
+        cones: &mut CompositeCone<T>,
         steptype: &'static str,
         settings: &DefaultSettings<T>,
     ) -> bool {

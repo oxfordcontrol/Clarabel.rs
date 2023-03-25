@@ -62,7 +62,7 @@ pub trait Variables<T: FloatT> {
     fn calc_step_length(
         &self,
         step_lhs: &Self,
-        cones: &Self::C,
+        cones: &mut Self::C,
         settings: &Self::SE,
         steptype: &'static str,
     ) -> T;
@@ -71,7 +71,7 @@ pub trait Variables<T: FloatT> {
     fn add_step(&mut self, step_lhs: &Self, α: T);
 
     /// Bring the variables into the interior of the cone constraints.
-    fn symmetric_initialization(&mut self, cones: &Self::C);
+    fn symmetric_initialization(&mut self, cones: &mut Self::C);
 
     /// Initialize all conic variables to unit values.
     fn unit_initialization(&mut self, cones: &Self::C);
@@ -126,7 +126,7 @@ pub trait KKTSystem<T: FloatT> {
         step_rhs: &Self::V,
         data: &Self::D,
         variables: &Self::V,
-        cones: &Self::C,
+        cones: &mut Self::C,
         steptype: &'static str,
         settings: &Self::SE,
     ) -> bool;

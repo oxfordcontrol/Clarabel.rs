@@ -138,69 +138,69 @@ pub trait VectorMath {
 /// Matrix operations for matrices of [`FloatT`](crate::algebra::FloatT)
 
 pub trait MatrixVectorMultiply {
-    type ElementT: FloatT;
-    type VectorT: ?Sized;
+    type T: FloatT;
 
     /// BLAS-like general matrix-vector multiply.  Produces `y = a*self*x + b*y`
-    fn gemv(&self, y: &mut Self::VectorT, x: &Self::VectorT, a: Self::ElementT, b: Self::ElementT);
+    fn gemv(&self, y: &mut [Self::T], x: &[Self::T], a: Self::T, b: Self::T);
 }
 
 pub trait SymMatrixVectorMultiply {
-    type ElementT: FloatT;
-    type VectorT: ?Sized;
+    type T: FloatT;
 
     /// BLAS-like symmetric matrix-vector multiply.  Produces `y = a*self*x + b*y`.  
     /// The matrix source data should be triu.
-    fn symv(&self, y: &mut Self::VectorT, x: &Self::VectorT, a: Self::ElementT, b: Self::ElementT);
+    fn symv(&self, y: &mut [Self::T], x: &[Self::T], a: Self::T, b: Self::T);
 }
 
-pub trait MatrixMath: MatrixVectorMultiply {
+pub trait MatrixMath {
+    type T: FloatT;
+
     /// Compute columnwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`
-    fn col_norms(&self, norms: &mut Self::VectorT);
+    fn col_norms(&self, norms: &mut [Self::T]);
 
     /// Compute columnwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`.
     /// In the `no_reset` version of this function, if `norms[i]`
     /// is already larger the norm of the $i^{th}$ columns, then
     /// its value is not changed
-    fn col_norms_no_reset(&self, norms: &mut Self::VectorT);
+    fn col_norms_no_reset(&self, norms: &mut [Self::T]);
 
     /// Compute columnwise infinity norm operations on
     /// a symmstric matrix
-    fn col_norms_sym(&self, norms: &mut Self::VectorT);
+    fn col_norms_sym(&self, norms: &mut [Self::T]);
 
     /// Compute columnwise infinity norm operations on
     /// a symmetric matrix without reset
-    fn col_norms_sym_no_reset(&self, norms: &mut Self::VectorT);
+    fn col_norms_sym_no_reset(&self, norms: &mut [Self::T]);
 
     /// Compute rowwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`
-    fn row_norms(&self, norms: &mut Self::VectorT);
+    fn row_norms(&self, norms: &mut [Self::T]);
 
     /// Compute rowwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`
     /// without reset
-    fn row_norms_no_reset(&self, norms: &mut Self::VectorT);
+    fn row_norms_no_reset(&self, norms: &mut [Self::T]);
 
     /// Elementwise scaling
-    fn scale(&mut self, c: Self::ElementT);
+    fn scale(&mut self, c: Self::T);
 
     /// Elementwise negation
     fn negate(&mut self);
 
     /// Left multiply the matrix `self` by `Diagonal(l)`
-    fn lscale(&mut self, l: &Self::VectorT);
+    fn lscale(&mut self, l: &[Self::T]);
 
     /// Right multiply the matrix self by `Diagonal(r)`
-    fn rscale(&mut self, r: &Self::VectorT);
+    fn rscale(&mut self, r: &[Self::T]);
 
     /// Left and multiply the matrix self by diagonal matrices,
     /// producing `A = Diagonal(l)*A*Diagonal(r)`
-    fn lrscale(&mut self, l: &Self::VectorT, r: &Self::VectorT);
+    fn lrscale(&mut self, l: &[Self::T], r: &[Self::T]);
 
     /// Quadratic form for a symmetric matrix.  Assumes that the
     /// matrix `M = self` is in upper triangular form, and produces
     /// `y^T*M*x`
-    fn quad_form(&self, y: &Self::VectorT, x: &Self::VectorT) -> Self::ElementT;
+    fn quad_form(&self, y: &[Self::T], x: &[Self::T]) -> Self::T;
 }

@@ -22,6 +22,7 @@ pub trait FloatT:
     + std::fmt::LowerExp
     + std::fmt::Debug
     + Sized
+    + crate::algebra::dense::BlasFloatT
 {
 }
 impl FloatT for f32 {}
@@ -44,7 +45,7 @@ pub trait AsFloatT<T>: 'static {
     fn as_T(&self) -> T;
 }
 
-macro_rules! impl_as_T {
+macro_rules! impl_as_FloatT {
     ($ty:ty, $ident:ident) => {
         impl<T> AsFloatT<T> for $ty
         where
@@ -57,8 +58,8 @@ macro_rules! impl_as_T {
         }
     };
 }
-impl_as_T!(u32, from_u32);
-impl_as_T!(u64, from_u64);
-impl_as_T!(usize, from_usize);
-impl_as_T!(f32, from_f32);
-impl_as_T!(f64, from_f64);
+impl_as_FloatT!(u32, from_u32);
+impl_as_FloatT!(u64, from_u64);
+impl_as_FloatT!(usize, from_usize);
+impl_as_FloatT!(f32, from_f32);
+impl_as_FloatT!(f64, from_f64);

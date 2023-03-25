@@ -7,6 +7,7 @@ use enum_dispatch::*;
 mod expcone;
 mod nonnegativecone;
 mod powcone;
+mod psdtrianglecone; //PJG: make cfg
 mod socone;
 mod zerocone;
 
@@ -26,6 +27,7 @@ pub use expcone::*;
 use exppow_common::*;
 pub use nonnegativecone::*;
 pub use powcone::*;
+pub use psdtrianglecone::*; //PJG: make cfg
 pub use socone::*;
 pub use supportedcone::*;
 pub use symmetric_common::*;
@@ -65,7 +67,7 @@ where
     // cones this will just be β = max(0.,α), but for cones that
     // are composites (e.g. the R_n^+), it is the sum of all of
     // the positive margin terms.
-    fn margins(&self, z: &mut [T], pd: PrimalOrDualCone) -> (T, T);
+    fn margins(&mut self, z: &mut [T], pd: PrimalOrDualCone) -> (T, T);
 
     // functions relating to unit vectors and cone initialization
     fn scaled_unit_shift(&self, z: &mut [T], α: T, pd: PrimalOrDualCone);
@@ -82,7 +84,7 @@ where
     // : μH(s) for nonsymmetric cones
     fn Hs_is_diagonal(&self) -> bool;
     fn get_Hs(&self, Hsblock: &mut [T]);
-    fn mul_Hs(&self, y: &mut [T], x: &[T], work: &mut [T]);
+    fn mul_Hs(&mut self, y: &mut [T], x: &[T], work: &mut [T]);
 
     // ---------------------------------------------------------
     // Linearized centrality condition functions
@@ -131,11 +133,11 @@ where
     // ---------------------------------------------------------
     fn affine_ds(&self, ds: &mut [T], s: &[T]);
     fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T);
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T], z: &[T]);
+    fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], work: &mut [T], z: &[T]);
 
     // Find the maximum step length in some search direction
     fn step_length(
-        &self,
+        &mut self,
         dz: &[T],
         ds: &[T],
         z: &[T],

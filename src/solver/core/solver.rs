@@ -263,7 +263,7 @@ where
                     &self.step_rhs,
                     &self.data,
                     &self.variables,
-                    &self.cones,
+                    &mut self.cones,
                     "affine",
                     &self.settings,
                 );
@@ -300,7 +300,7 @@ where
                         &self.step_rhs,
                         &self.data,
                         &self.variables,
-                        &self.cones,
+                        &mut self.cones,
                         "combined",
                         &self.settings,
                     );
@@ -375,7 +375,7 @@ mod internal {
         fn centering_parameter(&self, α: T) -> T;
 
         /// Compute the current step length
-        fn get_step_length(&self, steptype: &'static str, scaling: ScalingStrategy) -> T;
+        fn get_step_length(&mut self, steptype: &'static str, scaling: ScalingStrategy) -> T;
 
         /// backtrack a step direction to the barrier
         fn backtrack_step_to_barrier(&self, αinit: T) -> T;
@@ -429,7 +429,7 @@ mod internal {
                 self.kktsystem
                     .solve_initial_point(&mut self.variables, &self.data, &self.settings);
                 // fix up (z,s) so that they are in the cone
-                self.variables.symmetric_initialization(&self.cones);
+                self.variables.symmetric_initialization(&mut self.cones);
             } else {
                 // Assigns unit (z,s) and zeros the primal variables
                 self.variables.unit_initialization(&self.cones);
@@ -440,11 +440,11 @@ mod internal {
             T::powi(T::one() - α, 3)
         }
 
-        fn get_step_length(&self, steptype: &'static str, scaling: ScalingStrategy) -> T {
+        fn get_step_length(&mut self, steptype: &'static str, scaling: ScalingStrategy) -> T {
             //step length to stay within the cones
             let mut α = self.variables.calc_step_length(
                 &self.step_lhs,
-                &self.cones,
+                &mut self.cones,
                 &self.settings,
                 steptype,
             );

@@ -117,7 +117,7 @@ where
     fn calc_step_length(
         &self,
         step: &Self,
-        cones: &CompositeCone<T>,
+        cones: &mut CompositeCone<T>,
         settings: &DefaultSettings<T>,
         steptype: &'static str,
     ) -> T {
@@ -161,7 +161,7 @@ where
         self.κ += α * step.κ;
     }
 
-    fn symmetric_initialization(&mut self, cones: &CompositeCone<T>) {
+    fn symmetric_initialization(&mut self, cones: &mut CompositeCone<T>) {
         _shift_to_cone_interior(&mut self.s, cones, PrimalOrDualCone::PrimalCone);
         _shift_to_cone_interior(&mut self.z, cones, PrimalOrDualCone::DualCone);
 
@@ -228,7 +228,7 @@ where
     }
 }
 
-fn _shift_to_cone_interior<T>(z: &mut [T], cones: &CompositeCone<T>, pd: PrimalOrDualCone)
+fn _shift_to_cone_interior<T>(z: &mut [T], cones: &mut CompositeCone<T>, pd: PrimalOrDualCone)
 where
     T: FloatT,
 {

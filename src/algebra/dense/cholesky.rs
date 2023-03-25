@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
 
-extern crate openblas_src;
 use crate::algebra::{
     DenseFactorizationError, FactorCholesky, FloatT, Matrix, ShapedMatrix, VectorMath,
 };
-use lapack::{dpotrf, spotrf};
 
 pub struct CholeskyEngine<T> {
     /// lower triangular factor (stored as square dense)
@@ -21,51 +19,45 @@ where
     }
 }
 
-macro_rules! impl_blas_potrf {
-    ($T:ty, $POTRF:path) => {
-        impl FactorCholesky for CholeskyEngine<$T> {
-            type T = $T;
-            fn cholesky(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError> {
-                if A.size() != self.L.size() {
-                    return Err(DenseFactorizationError::IncompatibleDimension);
-                }
+impl<T> FactorCholesky for CholeskyEngine<T>
+where
+    T: FloatT,
+{
+    type T = T;
+    fn cholesky(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError> {
+        if A.size() != self.L.size() {
+            return Err(DenseFactorizationError::IncompatibleDimension);
+        }
 
-                // standard BLAS ?potrf arguments for computing
-                // cholesky decomposition
-                let uplo = b'U'; // only look at triu of A
-                let An = A.nrows().try_into().unwrap();
-                let a = A.data_mut();
-                let lda = An;
-                let info = &mut 0_i32; // output info
+        // standard BLAS ?potrf arguments for computing
+        // cholesky decomposition
+        let uplo = b'U'; // only look at triu of A
+        let An = A.nrows().try_into().unwrap();
+        let a = A.data_mut();
+        let lda = An;
+        let info = &mut 0_i32; // output info
 
-                unsafe {
-                    $POTRF(uplo, An, a, lda, info);
-                }
+        T::xpotrf(uplo, An, a, lda, info);
 
-                println!("Chol info is {:?}", *info);
-                if *info != 0 {
-                    return Err(DenseFactorizationError::Cholesky(*info));
-                }
+        println!("Chol info is {:?}", *info);
+        if *info != 0 {
+            return Err(DenseFactorizationError::Cholesky(*info));
+        }
 
-                // A will now have L^T in its upper triangle.
-                let At = A.t();
-                self.L.data_mut().set(0.0);
+        // A will now have L^T in its upper triangle.
+        let At = A.t();
+        self.L.data_mut().set(T::zero());
 
-                let n = self.L.nrows();
-                for j in 0..n {
-                    for i in j..n {
-                        self.L[(i, j)] = At[(i, j)];
-                    }
-                }
-
-                Ok(())
+        let n = self.L.nrows();
+        for j in 0..n {
+            for i in j..n {
+                self.L[(i, j)] = At[(i, j)];
             }
         }
-    };
-}
 
-impl_blas_potrf!(f32, spotrf);
-impl_blas_potrf!(f64, dpotrf);
+        Ok(())
+    }
+}
 
 #[test]
 fn test_cholesky() {

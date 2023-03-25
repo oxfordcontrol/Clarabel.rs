@@ -2,8 +2,7 @@ use crate::algebra::*;
 use std::iter::zip;
 
 impl<T: FloatT> MatrixVectorMultiply for CscMatrix<T> {
-    type ElementT = T;
-    type VectorT = [T];
+    type T = T;
 
     fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T) {
         _csc_axpby_N(self, y, x, a, b);
@@ -11,8 +10,7 @@ impl<T: FloatT> MatrixVectorMultiply for CscMatrix<T> {
 }
 
 impl<T: FloatT> MatrixVectorMultiply for Adjoint<'_, CscMatrix<T>> {
-    type ElementT = T;
-    type VectorT = [T];
+    type T = T;
 
     fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T) {
         _csc_axpby_T(self.src, y, x, a, b);
@@ -20,8 +18,7 @@ impl<T: FloatT> MatrixVectorMultiply for Adjoint<'_, CscMatrix<T>> {
 }
 
 impl<T: FloatT> SymMatrixVectorMultiply for Symmetric<'_, CscMatrix<T>> {
-    type ElementT = T;
-    type VectorT = [T];
+    type T = T;
 
     fn symv(&self, y: &mut [T], x: &[T], a: T, b: T) {
         _csc_symv_unsafe(self.src, y, x, a, b);
@@ -29,6 +26,8 @@ impl<T: FloatT> SymMatrixVectorMultiply for Symmetric<'_, CscMatrix<T>> {
 }
 
 impl<T: FloatT> MatrixMath for CscMatrix<T> {
+    type T = T;
+
     //scalar mut operations
     fn scale(&mut self, c: T) {
         self.nzval.scale(c);

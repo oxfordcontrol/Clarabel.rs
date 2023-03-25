@@ -7,8 +7,8 @@ where
 {
     pub fn kron<MATA, MATB>(&mut self, A: &MATA, B: &MATB) -> &Self
     where
-        MATB: DenseMatrix<Output = T>,
-        MATA: DenseMatrix<Output = T>,
+        MATB: DenseMatrix<T = T, Output = T>,
+        MATA: DenseMatrix<T = T, Output = T>,
     {
         let (pp, qq) = A.size();
         let (rr, ss) = B.size();

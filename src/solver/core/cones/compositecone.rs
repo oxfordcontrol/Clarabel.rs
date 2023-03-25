@@ -199,10 +199,10 @@ where
         any_changed
     }
 
-    fn margins(&self, z: &mut [T], pd: PrimalOrDualCone) -> (T, T) {
+    fn margins(&mut self, z: &mut [T], pd: PrimalOrDualCone) -> (T, T) {
         let mut α = T::max_value();
         let mut β = T::zero();
-        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
+        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             let (αi, βi) = cone.margins(&mut z[rng.clone()], pd);
             α = T::min(α, αi);
             β += βi;
@@ -268,8 +268,8 @@ where
         }
     }
 
-    fn mul_Hs(&self, y: &mut [T], x: &[T], work: &mut [T]) {
-        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
+    fn mul_Hs(&mut self, y: &mut [T], x: &[T], work: &mut [T]) {
+        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             cone.mul_Hs(&mut y[rng.clone()], &x[rng.clone()], &mut work[rng.clone()]);
         }
     }
@@ -299,8 +299,8 @@ where
         }
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T], z: &[T]) {
-        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
+    fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], work: &mut [T], z: &[T]) {
+        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             let outi = &mut out[rng.clone()];
             let dsi = &ds[rng.clone()];
             let worki = &mut work[rng.clone()];
@@ -310,7 +310,7 @@ where
     }
 
     fn step_length(
-        &self,
+        &mut self,
         dz: &[T],
         ds: &[T],
         z: &[T],
@@ -321,7 +321,7 @@ where
         let mut α = αmax;
 
         // Force symmetric cones first.
-        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
+        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             if !cone.is_symmetric() {
                 continue;
             }
@@ -338,7 +338,7 @@ where
             α = T::min(settings.max_step_fraction, α);
         }
         // Force asymmetric cones last.
-        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
+        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             if cone.is_symmetric() {
                 continue;
             }

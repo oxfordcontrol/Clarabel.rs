@@ -7,16 +7,19 @@ use crate::algebra::MatrixShape;
 pub trait ShapedMatrix {
     fn nrows(&self) -> usize;
     fn ncols(&self) -> usize;
-    fn size(&self) -> (usize, usize);
     fn shape(&self) -> MatrixShape;
-    fn is_square(&self) -> bool;
+    fn size(&self) -> (usize, usize) {
+        (self.nrows(), self.ncols())
+    }
+    fn is_square(&self) -> bool {
+        self.nrows() == self.ncols()
+    }
 }
 
 //NB: the concrete dense type is just called "Matrix".  The "DenseMatrix" trait
-//is implemented on both Matrix<T> and Adjoint<'a,Matrix<T>> to allow for direct
-//indexing of values in either format.   This follows the Julia naming convention
+//is implemented on Matrix, Adjoint and ReshapedMatrix to allow for indexing
+//of values in any of those format.   This follows the Julia naming convention
 //for similar types.
-
 pub trait DenseMatrix: ShapedMatrix + Index<(usize, usize)> {
     type T;
     fn index_linear(&self, idx: (usize, usize)) -> usize;

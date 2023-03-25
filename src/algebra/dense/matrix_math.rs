@@ -1,37 +1,8 @@
-use crate::algebra::{FloatT, Matrix, MatrixMath, MatrixShape, MatrixTriangle, VectorMath};
-use std::iter::zip;
-
-impl<T: FloatT> MatrixVectorMultiply for Matrix<T> {
-    type ElementT = T;
-    type VectorT = [T];
-
-    fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T) {
-        //PJG: CAUTION : x and y reverse places here!
-        gemv(self, y, x, a, b)
-    }
-    fn symv(&self, y: &mut [T], x: &[T], a: T, b: T) {
-        //PJG: CAUTION : x and y reverse places here!
-        symv(self, y, x, a, b)
-    }
-}
-
-impl<T: FloatT> MatrixVectorMultiply for Adjoint<'_, Matrix<T>> {
-    type ElementT = T;
-    type VectorT = [T];
-
-    fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T) {
-        //PJG: CAUTION : x and y reverse places here!
-        gemv(self.src, x, y, a, b)
-    }
-    fn symv(&self, y: &mut [T], x: &[T], a: T, b: T) {
-        //PJG: CAUTION : x and y reverse places here!
-        symv(self.src, x, y, a, b)
-    }
-}
+#![allow(non_snake_case)]
+use crate::algebra::{FloatT, Matrix, MatrixMath, VectorMath};
 
 impl<T: FloatT> MatrixMath for Matrix<T> {
-    type ElementT = T;
-    type VectorT = [T];
+    type T = T;
 
     //scalar mut operations
     fn scale(&mut self, c: T) {
@@ -48,9 +19,9 @@ impl<T: FloatT> MatrixMath for Matrix<T> {
     }
 
     fn col_norms_no_reset(&self, norms: &mut [T]) {
-        for col in 0..self.n {
-            let colnorm = self.slice(col).norm_inf();
-            norms[i] = max(norms[i], colnorm);
+        for (i, norm) in norms.iter_mut().enumerate() {
+            let colnorm = self.col_slice(i).norm_inf();
+            *norm = Self::T::max(*norm, colnorm);
         }
     }
 
@@ -61,10 +32,10 @@ impl<T: FloatT> MatrixMath for Matrix<T> {
 
     fn col_norms_sym_no_reset(&self, norms: &mut [T]) {
         for c in 0..self.n {
-            for r in 0..=self.c {
-                tmp = self[(r, c)];
-                norms[r] = T::max(norms[i], tmp);
-                norms[c] = T::max(norms[i], tmp);
+            for r in 0..=c {
+                let tmp = self[(r, c)];
+                norms[r] = T::max(norms[r], tmp);
+                norms[c] = T::max(norms[c], tmp);
             }
         }
     }
@@ -89,8 +60,8 @@ impl<T: FloatT> MatrixMath for Matrix<T> {
     }
 
     fn rscale(&mut self, r: &[T]) {
-        for col in 0..self.n {
-            self.col_slice_mut(col).scale(r[col]);
+        for (col, val) in r.iter().enumerate() {
+            self.col_slice_mut(col).scale(*val);
         }
     }
 
@@ -102,11 +73,14 @@ impl<T: FloatT> MatrixMath for Matrix<T> {
         }
     }
 
+    // PJG: this really wants a unit test because I don't
+    //understand why I have to fix Mv = 0. to start.
     fn quad_form(&self, y: &[T], x: &[T]) -> T {
-        let mut out = 0.0;
+        let mut out = T::zero();
         for col in 0..self.n {
             let mut tmp1 = T::zero();
             let mut tmp2 = T::zero();
+            let mut Mv = T::zero();
             for row in 0..col {
                 Mv = self[(row, col)];
                 tmp1 += Mv * x[row];
@@ -116,5 +90,6 @@ impl<T: FloatT> MatrixMath for Matrix<T> {
             //diagonal term
             out += Mv * x[col] * y[col];
         }
+        out
     }
 }

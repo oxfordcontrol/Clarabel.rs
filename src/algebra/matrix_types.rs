@@ -130,10 +130,20 @@ pub struct CscMatrix<T = f64> {
 pub struct Adjoint<'a, M> {
     pub src: &'a M,
 }
-
 /// Symmetric view of a matrix.   Only the upper
 /// triangle of the source matrix will be referenced.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Symmetric<'a, M> {
     pub src: &'a M,
+}
+
+/// Borrowed data slice reshaped into a matrix.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ReshapedMatrix<'a, T> {
+    /// number of rows
+    pub m: usize,
+    ///number of columns
+    pub n: usize,
+    ///borrowed data
+    pub data: &'a [T],
 }

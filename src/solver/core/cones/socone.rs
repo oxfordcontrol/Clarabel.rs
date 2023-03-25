@@ -68,7 +68,7 @@ where
     }
 
     // functions relating to unit vectors and cone initialization
-    fn margins(&self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+    fn margins(&mut self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         let α = z[0] - z[1..].norm();
         let β = T::max(T::zero(), α);
         (α, β)
@@ -173,25 +173,25 @@ where
         Hsblock[0] *= self.d;
     }
 
-    fn mul_Hs(&self, y: &mut [T], x: &[T], work: &mut [T]) {
+    fn mul_Hs(&mut self, y: &mut [T], x: &[T], work: &mut [T]) {
         self.mul_W(MatrixShape::N, work, x, T::one(), T::zero()); // work = Wx
         self.mul_W(MatrixShape::T, y, work, T::one(), T::zero()); // y = c Wᵀwork = W^TWx
     }
 
     fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
-        self.circ_op(ds, &self.λ, &self.λ);
+        _circ_op(ds, &self.λ, &self.λ);
     }
 
     fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T) {
         self._combined_ds_shift_symmetric(shift, step_z, step_s, σμ);
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], work: &mut [T], _z: &[T]) {
+    fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], work: &mut [T], _z: &[T]) {
         self._Δs_from_Δz_offset_symmetric(out, ds, work);
     }
 
     fn step_length(
-        &self,
+        &mut self,
         dz: &[T],
         ds: &[T],
         z: &[T],
@@ -226,16 +226,16 @@ impl<T> SymmetricCone<T> for SecondOrderCone<T>
 where
     T: FloatT,
 {
-    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
-        self.inv_circ_op(x, &self.λ, z);
+    fn λ_inv_circ_op(&mut self, x: &mut [T], z: &[T]) {
+        _inv_circ_op(x, &self.λ, z);
     }
 
-    fn mul_W(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+    fn mul_W(&mut self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
         // symmetric, so ignore transpose
         _soc_mul_W_inner(y, x, α, β, &self.w, self.η);
     }
 
-    fn mul_Winv(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+    fn mul_Winv(&mut self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
         _soc_mul_Winv_inner(y, x, α, β, &self.w, self.η);
     }
 }
@@ -248,23 +248,41 @@ impl<T> JordanAlgebra<T> for SecondOrderCone<T>
 where
     T: FloatT,
 {
-    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        x[0] = y.dot(z);
-        let (y0, z0) = (y[0], z[0]);
-        x[1..].waxpby(y0, &z[1..], z0, &y[1..]);
+    fn circ_op(&mut self, x: &mut [T], y: &[T], z: &[T]) {
+        _circ_op(x, y, z);
     }
 
-    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        let p = _soc_residual(y);
-        let pinv = T::recip(p);
-        let v = y[1..].dot(&z[1..]);
-
-        x[0] = (y[0] * z[0] - v) * pinv;
-
-        let c1 = pinv * (v / y[0] - z[0]);
-        let c2 = T::recip(y[0]);
-        x[1..].waxpby(c1, &y[1..], c2, &z[1..]);
+    fn inv_circ_op(&mut self, x: &mut [T], y: &[T], z: &[T]) {
+        _inv_circ_op(x, y, z);
     }
+}
+
+// circ ops don't use self for this cone, so put the actual
+// implementations outside so that they can be called by
+// other functions with entering borrow check hell
+
+fn _circ_op<T>(x: &mut [T], y: &[T], z: &[T])
+where
+    T: FloatT,
+{
+    x[0] = y.dot(z);
+    let (y0, z0) = (y[0], z[0]);
+    x[1..].waxpby(y0, &z[1..], z0, &y[1..]);
+}
+
+fn _inv_circ_op<T>(x: &mut [T], y: &[T], z: &[T])
+where
+    T: FloatT,
+{
+    let p = _soc_residual(y);
+    let pinv = T::recip(p);
+    let v = y[1..].dot(&z[1..]);
+
+    x[0] = (y[0] * z[0] - v) * pinv;
+
+    let c1 = pinv * (v / y[0] - z[0]);
+    let c2 = T::recip(y[0]);
+    x[1..].waxpby(c1, &y[1..], c2, &z[1..]);
 }
 
 // ---------------------------------------------

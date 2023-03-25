@@ -53,7 +53,7 @@ where
         false
     }
 
-    fn margins(&self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+    fn margins(&mut self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         let α = z.minimum();
         let β = z.iter().fold(T::zero(), |β, &zi| β + T::max(zi, T::zero()));
         (α, β)
@@ -98,7 +98,7 @@ where
         }
     }
 
-    fn mul_Hs(&self, y: &mut [T], x: &[T], _work: &mut [T]) {
+    fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
         //NB : seemingly sensitive to order of multiplication
         for (yi, (&wi, &xi)) in y.iter_mut().zip(self.w.iter().zip(x)) {
             *yi = wi * (wi * xi)
@@ -117,14 +117,14 @@ where
         self._combined_ds_shift_symmetric(dz, step_z, step_s, σμ);
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], _work: &mut [T], z: &[T]) {
+    fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], _work: &mut [T], z: &[T]) {
         for (outi, (&dsi, &zi)) in zip(out, zip(ds, z)) {
             *outi = dsi / zi;
         }
     }
 
     fn step_length(
-        &self,
+        &mut self,
         dz: &[T],
         ds: &[T],
         z: &[T],
@@ -172,11 +172,11 @@ impl<T> SymmetricCone<T> for NonnegativeCone<T>
 where
     T: FloatT,
 {
-    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
-        self.inv_circ_op(x, &self.λ, z);
+    fn λ_inv_circ_op(&mut self, x: &mut [T], z: &[T]) {
+        _inv_circ_op(x, &self.λ, z);
     }
 
-    fn mul_W(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+    fn mul_W(&mut self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
         assert_eq!(y.len(), x.len());
         assert_eq!(y.len(), self.w.len());
         for i in 0..y.len() {
@@ -184,7 +184,7 @@ where
         }
     }
 
-    fn mul_Winv(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+    fn mul_Winv(&mut self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
         assert_eq!(y.len(), x.len());
         assert_eq!(y.len(), self.w.len());
         for i in 0..y.len() {
@@ -201,15 +201,32 @@ impl<T> JordanAlgebra<T> for NonnegativeCone<T>
 where
     T: FloatT,
 {
-    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        for (x, (y, z)) in zip(x, zip(y, z)) {
-            *x = (*y) * (*z);
-        }
+    fn circ_op(&mut self, x: &mut [T], y: &[T], z: &[T]) {
+        _circ_op(x, y, z);
     }
 
-    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        for (x, (y, z)) in zip(x, zip(y, z)) {
-            *x = (*z) / (*y);
-        }
+    fn inv_circ_op(&mut self, x: &mut [T], y: &[T], z: &[T]) {
+        _inv_circ_op(x, y, z);
+    }
+}
+
+// circ ops don't use self for this cone, so put the actual
+// implementations outside so that they can be called by
+// other functions with entering borrow check hell
+fn _circ_op<T>(x: &mut [T], y: &[T], z: &[T])
+where
+    T: FloatT,
+{
+    for (x, (y, z)) in zip(x, zip(y, z)) {
+        *x = (*y) * (*z);
+    }
+}
+
+fn _inv_circ_op<T>(x: &mut [T], y: &[T], z: &[T])
+where
+    T: FloatT,
+{
+    for (x, (y, z)) in zip(x, zip(y, z)) {
+        *x = (*z) / (*y);
     }
 }
