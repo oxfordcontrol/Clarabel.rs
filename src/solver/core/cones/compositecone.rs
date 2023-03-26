@@ -170,10 +170,6 @@ impl<T> Cone<T> for CompositeCone<T>
 where
     T: FloatT,
 {
-    fn dim(&self) -> usize {
-        panic!("dim() not well defined for the CompositeCone");
-    }
-
     fn degree(&self) -> usize {
         self.degree
     }

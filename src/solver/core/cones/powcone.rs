@@ -43,16 +43,12 @@ impl<T> Cone<T> for PowerCone<T>
 where
     T: FloatT,
 {
-    fn dim(&self) -> usize {
+    fn degree(&self) -> usize {
         3
     }
 
-    fn degree(&self) -> usize {
-        self.dim()
-    }
-
     fn numel(&self) -> usize {
-        self.dim()
+        3
     }
 
     fn is_symmetric(&self) -> bool {

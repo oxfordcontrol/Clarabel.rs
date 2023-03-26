@@ -32,7 +32,7 @@ fn basic_sdp_data() -> (
 fn test_sdp_feasible() {
     let (P, c, A, b, cones) = basic_sdp_data();
 
-    let mut settings = DefaultSettings::default();
+    let settings = DefaultSettings::default();
 
     let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
 
@@ -57,9 +57,6 @@ fn test_sdp_feasible() {
 
 #[test]
 fn test_sdp_primal_infeasible() {
-    unreachable!();
-
-    /*
     let (P, c, A, mut b, mut cones) = basic_sdp_data();
 
     // this adds a negative definiteness constraint to x
@@ -76,6 +73,4 @@ fn test_sdp_primal_infeasible() {
     solver.solve();
 
     assert_eq!(solver.solution.status, SolverStatus::PrimalInfeasible);
-
-    */
 }

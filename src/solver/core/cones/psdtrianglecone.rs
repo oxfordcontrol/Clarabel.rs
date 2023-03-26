@@ -82,10 +82,6 @@ impl<T> Cone<T> for PSDTriangleCone<T>
 where
     T: FloatT,
 {
-    fn dim(&self) -> usize {
-        unreachable!(); //PJG:: WTF? Does this ever get used in Cone?
-    }
-
     fn degree(&self) -> usize {
         self.n
     }
@@ -156,6 +152,7 @@ where
 
         // R is the same size as L2'*L1,
         // so use it as temporary workspace
+        // PJG: use work3 here instead
         f.R.mul(&L2.t(), L1, T::one(), T::zero()); // R = L2'*L1
 
         f.SVD.svd(&mut f.R).expect("SVD error");

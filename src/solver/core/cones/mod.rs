@@ -48,7 +48,6 @@ where
     T: FloatT,
 {
     // functions relating to basic sizing
-    fn dim(&self) -> usize;
     fn degree(&self) -> usize;
     fn numel(&self) -> usize;
 

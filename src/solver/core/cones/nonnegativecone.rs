@@ -32,16 +32,12 @@ impl<T> Cone<T> for NonnegativeCone<T>
 where
     T: FloatT,
 {
-    fn dim(&self) -> usize {
+    fn degree(&self) -> usize {
         self.dim
     }
 
-    fn degree(&self) -> usize {
-        self.dim()
-    }
-
     fn numel(&self) -> usize {
-        self.dim()
+        self.dim
     }
 
     fn is_symmetric(&self) -> bool {
