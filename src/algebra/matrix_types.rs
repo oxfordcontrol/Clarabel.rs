@@ -57,7 +57,7 @@ impl MatrixShape {
 
 /// Dense matrix in column major format
 ///
-/// __Example usage__ : To construct the 3 x 2 matrix
+/// __Example usage__ : To construct the 3 x 3 matrix
 /// ```text
 /// A = [1.  3.  5.]
 ///     [2.  0.  6.]
@@ -65,9 +65,12 @@ impl MatrixShape {
 /// ```
 ///
 /// ```
-/// # use clarabel::algebra::CscMatrix;
+/// # use clarabel::algebra::Matrix;
 ///
-/// // PJG: Insert example here
+/// let A : Matrix<f64> = Matrix::new(
+///    (3, 3),  //size as tuple
+///    vec![1., 2., 0., 3., 0., 4., 5., 6., 7.]
+///  );
 ///
 /// ```
 
@@ -83,7 +86,7 @@ pub struct Matrix<T = f64> {
 
 /// Sparse matrix in standard Compressed Sparse Column (CSC) format
 ///
-/// __Example usage__ : To construct the 3 x 2 matrix
+/// __Example usage__ : To construct the 3 x 3 matrix
 /// ```text
 /// A = [1.  3.  5.]
 ///     [2.  0.  6.]

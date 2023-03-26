@@ -117,7 +117,7 @@ where
 fn test_svd() {
     use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
 
-    let mut A = Matrix::new_from_slice((2, 3), &[3., 2., 2., 3., 2., -2.]);
+    let mut A = Matrix::new((2, 3), vec![3., 2., 2., 3., 2., -2.]);
     let Acopy = A.clone(); //A is corrupted after factorization
 
     let mut eng = SVDEngine::<f64>::new((2, 3));

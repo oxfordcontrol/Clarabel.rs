@@ -41,7 +41,7 @@ where
 #[test]
 fn test_syrk() {
     let (m, n) = (2, 3);
-    let A = Matrix::new_from_slice((m, n), &[1.0, 4.0, 2.0, 5.0, 3.0, 6.0]);
+    let A = Matrix::new((m, n), vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0]);
 
     let mut AAt = Matrix::<f64>::zeros((m, m));
     AAt.syrk(&A, 1.0, 0.0);

@@ -30,7 +30,7 @@ fn test_gsymv() {
     use crate::algebra::Matrix;
     let (m, n) = (3, 3);
     let a = vec![1.0, 0.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 6.0];
-    let A = Matrix::new_from_slice((m, n), &a);
+    let A = Matrix::new((m, n), a);
 
     let x = vec![1., -2., 3.];
     let mut y = vec![-4., -1., 3.];

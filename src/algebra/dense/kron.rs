@@ -33,8 +33,8 @@ where
 
 #[test]
 fn test_kron() {
-    let A = Matrix::new_from_slice((2, 2), &[1.0, 4.0, 2.0, 5.0]);
-    let B = Matrix::new_from_slice((1, 2), &[1.0, 2.0]);
+    let A = Matrix::new((2, 2), vec![1.0, 4.0, 2.0, 5.0]);
+    let B = Matrix::new((1, 2), vec![1.0, 2.0]);
 
     let (k1, m1) = A.size();
     let (k2, m2) = B.size();

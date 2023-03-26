@@ -65,14 +65,14 @@ where
         }
     }
 
-    pub fn new_from_slice(size: (usize, usize), src: &[T]) -> Self {
+    pub fn new(size: (usize, usize), data: Vec<T>) -> Self {
         let (m, n) = size;
-        assert!(m * n == src.len());
-        Self {
-            m,
-            n,
-            data: src.to_vec(),
-        }
+        assert!(m * n == data.len());
+        Self { m, n, data }
+    }
+
+    pub fn new_from_slice(size: (usize, usize), src: &[T]) -> Self {
+        Self::new(size, src.to_vec())
     }
 
     pub fn copy_from_slice(&mut self, src: &[T]) -> &mut Self {
@@ -236,6 +236,6 @@ fn test_matrix_istriu() {
     use crate::algebra::Matrix;
     let (m, n) = (3, 3);
     let a = vec![1.0, 0.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 6.0];
-    let mat = Matrix::new_from_slice((m, n), &a);
+    let mat = Matrix::new((m, n), a);
     assert!(mat.is_triu());
 }

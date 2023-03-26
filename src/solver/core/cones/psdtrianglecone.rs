@@ -467,9 +467,9 @@ where
 fn test_svec_conversions() {
     let n = 3;
 
-    let X = Matrix::new_from_slice((n, n), &[1., 3., -2., 3., -4., 7., -2., 7., 5.]);
+    let X = Matrix::new((n, n), vec![1., 3., -2., 3., -4., 7., -2., 7., 5.]);
 
-    let Y = Matrix::new_from_slice((n, n), &[2., 5., -4., 5., 6., 2., -4., 2., -3.]);
+    let Y = Matrix::new((n, n), vec![2., 5., -4., 5., 6., 2., -4., 2., -3.]);
 
     let mut Z = Matrix::zeros((3, 3));
 

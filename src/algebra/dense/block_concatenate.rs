@@ -54,8 +54,8 @@ where
 
 #[test]
 fn test_dense_concatenate() {
-    let A = Matrix::new_from_slice((2, 2), &[1., 2., 3., 4.]);
-    let B = Matrix::new_from_slice((2, 2), &[5., 6., 7., 8.]);
+    let A = Matrix::new((2, 2), vec![1., 2., 3., 4.]);
+    let B = Matrix::new((2, 2), vec![5., 6., 7., 8.]);
 
     let C = Matrix::hcat(&A, &B);
     assert!(C.data == [1., 2., 3., 4., 5., 6., 7., 8.]);
