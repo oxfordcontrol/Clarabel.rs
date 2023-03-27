@@ -150,12 +150,10 @@ where
         f.cholZ.cholesky(Z).expect("Cholesky error");
         let (L1, L2) = (&f.cholS.L, &f.cholZ.L);
 
-        // R is the same size as L2'*L1,
-        // so use it as temporary workspace
-        // PJG: use work3 here instead
-        f.R.mul(&L2.t(), L1, T::one(), T::zero()); // R = L2'*L1
-
-        f.SVD.svd(&mut f.R).expect("SVD error");
+        // SVD of L2'*L1,
+        let tmp = &mut f.workmat1;
+        tmp.mul(&L2.t(), L1, T::one(), T::zero());
+        f.SVD.svd(tmp).expect("SVD error");
 
         // assemble λ (diagonal), R and Rinv.
         f.λ.copy_from(&f.SVD.s);

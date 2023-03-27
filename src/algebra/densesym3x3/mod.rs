@@ -4,12 +4,9 @@ use super::FloatT;
 use crate::algebra::*;
 use std::ops::{Index, IndexMut};
 
-// Dense matrix types are restricted to the crate
-// NB: Implements a basic symmetric 3x3 container
-// to support power and exponential cones.
-// For PSDs we will want something more general that
-// is compatible (interchangeably) with nalgebra /
-// ndarray / some other blas like interface
+// 3x3 Dense matrix types are restricted to the crate
+// NB: Implements a symmetric 3x3 type to support
+// power and exponential cones.
 //
 // Data is stored as an array of 6 values belonging
 // the upper triangle of a 3x3 matrix.   Lower triangle
