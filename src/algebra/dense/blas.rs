@@ -15,6 +15,7 @@ pub trait BlasFloatT:
     + XgemvScalar 
     + XsymvScalar 
     + XsyrkScalar
+    + Xsyr2kScalar
 {}
 impl BlasFloatT for f32 {}
 impl BlasFloatT for f64 {}
@@ -287,3 +288,36 @@ macro_rules! impl_blas_gsyrk {
 
 impl_blas_gsyrk!(f32, ssyrk);
 impl_blas_gsyrk!(f64, dsyrk);
+
+// --------------------------------------
+// ?syrk : symmetric rank 2k update
+// --------------------------------------
+
+pub trait Xsyr2kScalar: Sized {
+    fn xsyr2k(
+        uplo: u8, trans: u8, n: i32, k: i32, alpha: Self, a: &[Self], lda: i32, 
+        b: &[Self], ldb: i32, beta: Self, c: &mut [Self], ldc: i32
+    );
+}
+
+
+macro_rules! impl_blas_gsyr2k {
+    ($T:ty, $XSYR2K:path) => {
+        impl Xsyr2kScalar for $T {
+            fn xsyr2k(
+                uplo: u8, trans: u8, n: i32, k: i32, alpha: Self, a: &[Self], lda: i32, 
+                b: &[Self], ldb: i32, beta: Self, c: &mut [Self], ldc: i32
+            ) {
+                unsafe{
+                    $XSYR2K(
+                        uplo, trans, n, k, alpha, a, lda, 
+                        b, ldb, beta, c, ldc
+                    );
+                }
+            }
+        }
+    };
+}
+
+impl_blas_gsyr2k!(f32, ssyr2k);
+impl_blas_gsyr2k!(f64, dsyr2k);

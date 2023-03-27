@@ -32,6 +32,13 @@ pub trait MultiplySYRK {
         MATA: DenseMatrix<T = Self::T>;
 }
 
+pub trait MultiplySYR2K {
+    type T;
+    fn syr2k(
+        &mut self, A: &Matrix<Self::T>, B: &Matrix<Self::T>, α: Self::T, β: Self::T
+    ) -> &Self;
+}
+
 pub trait MultiplyGEMM {
     type T;
     fn mul<MATA, MATB>(&mut self, A: &MATA, B: &MATB, α: Self::T, β: Self::T) -> &Self

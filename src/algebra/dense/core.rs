@@ -41,6 +41,26 @@ where
     }
 }
 
+impl<'a, T> DenseMatrix for Symmetric<'a, Matrix<T>>
+where
+    T: FloatT,
+{
+    type T = T;
+    #[inline]
+    fn index_linear(&self, idx: (usize, usize)) -> usize {
+        if idx.0 <= idx.1 {
+            //triu part
+            self.src.index_linear((idx.0, idx.1))
+        } else {
+            //tril part uses triu entry
+            self.src.index_linear((idx.1, idx.0))
+        }
+    }
+    fn data(&self) -> &[T] {
+        &self.src.data
+    }
+}
+
 impl<T> Matrix<T>
 where
     T: FloatT,
@@ -170,6 +190,7 @@ macro_rules! impl_mat_index {
 impl_mat_index!(Matrix<T>);
 impl_mat_index!(ReshapedMatrix<'_, T>);
 impl_mat_index!(Adjoint<'_, Matrix<T>>);
+impl_mat_index!(Symmetric<'_, Matrix<T>>);
 
 impl<T> ShapedMatrix for Matrix<T>
 where

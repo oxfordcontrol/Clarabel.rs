@@ -20,6 +20,8 @@ mod symv;
 pub use symv::*;
 mod syrk;
 pub use syrk::*;
+mod syr2k;
+pub use syr2k::*;
 mod kron;
 pub use kron::*;
 mod blas;

@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{DenseMatrix, FloatT, Matrix, MatrixShape, MultiplySYRK, ShapedMatrix};
+use crate::algebra::{
+    DenseMatrix, FloatT, Matrix, MatrixShape, MatrixTriangle, MultiplySYRK, ShapedMatrix,
+};
 
 impl<T> MultiplySYRK for Matrix<T>
 where
@@ -16,6 +18,7 @@ where
         assert!(self.nrows() == A.nrows());
         assert!(self.ncols() == A.nrows());
 
+        let uplo = MatrixTriangle::Triu.as_blas_char();
         let transA = A.shape().as_blas_char();
         let n = A.nrows().try_into().unwrap();
         let k = A.ncols().try_into().unwrap();
@@ -23,7 +26,7 @@ where
         let ldc = n;
 
         T::xsyrk(
-            b'U',
+            uplo,
             transA,
             n,
             k,

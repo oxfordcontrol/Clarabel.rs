@@ -382,9 +382,9 @@ where
 
         // X .= (Y*Z + Z*Y)/2
         // NB: works b/c Y and Z are both symmetric
-        X.mul(Y, Z, T::one(), T::zero());
-        X.symmetric_part();
-        _mat_to_svec(x, X)
+        X.data_mut().set(T::zero()); //X.sym() will assert is_triu
+        X.syr2k(Y, Z, (0.0).as_T(), T::zero());
+        _mat_to_svec(x, &X.sym());
     }
 
     fn inv_circ_op(&mut self, _x: &mut [T], _y: &[T], _z: &[T]) {
@@ -440,7 +440,8 @@ fn _svec_to_mat<T: FloatT>(M: &mut Matrix<T>, x: &[T]) {
 }
 
 //PJG : double check these implementations to make sure
-//I got the order of the looping right.
+//I got the order of the looping right.   Perhaps a
+//separate implementation for Symmetric type would be faster
 fn _mat_to_svec<MAT, T: FloatT>(x: &mut [T], M: &MAT)
 where
     MAT: DenseMatrix<T = T, Output = T>,
