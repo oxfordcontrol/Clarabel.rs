@@ -1,0 +1,72 @@
+name: pypi
+
+on:
+  workflow_dispatch:
+
+env:
+  PACKAGE_NAME: clarabel
+  PYTHON_VERSION: "3.7" # to build abi3 wheels
+  PYPI_TARGET: pypi # use "testpypi" for testing, "pypi" otherwise
+
+# NB: uncomment "if" lines below to skip compilation except on version tagging
+
+jobs:
+
+  windows:
+    runs-on: windows-latest
+    # if: "startsWith(github.ref, 'refs/tags/v')"
+    strategy:
+      matrix:
+        target: [x64, x86]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          architecture: ${{ matrix.target }}
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
+      - name: Build wheels
+        uses: messense/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --features python -i python${{ env.PYTHON_VERSION }}
+      - name: Install built wheel
+        shell: bash
+        run: |
+          python -m pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
+          python -c "import clarabel"
+          python examples/python/example_qp.py 
+      - name: Upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: wheels
+          path: dist
+
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    # if: "startsWith(github.ref, 'refs/tags/v')"
+    needs: 
+      - macos
+      - windows
+      - linux
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: wheels
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Publish to PyPi
+        env:
+          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          pip install --upgrade twine
+          twine upload --skip-existing --repository ${{ env.PYPI_TARGET  }} *
