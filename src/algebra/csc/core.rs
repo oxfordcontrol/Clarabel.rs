@@ -1,26 +1,50 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{
-    Adjoint, CscMatrix, FloatT, MatrixShape, ShapedMatrix, SparseFormatError, Symmetric,
-};
+use crate::algebra::{Adjoint, FloatT, MatrixShape, ShapedMatrix, SparseFormatError, Symmetric};
 use std::iter::zip;
 
-impl<T> ShapedMatrix for CscMatrix<T> {
-    fn nrows(&self) -> usize {
-        self.m
-    }
-    fn ncols(&self) -> usize {
-        self.n
-    }
-    fn size(&self) -> (usize, usize) {
-        (self.m, self.n)
-    }
-    fn shape(&self) -> MatrixShape {
-        MatrixShape::N
-    }
-    fn is_square(&self) -> bool {
-        self.m == self.n
-    }
+/// Sparse matrix in standard Compressed Sparse Column (CSC) format
+///
+/// __Example usage__ : To construct the 3 x 3 matrix
+/// ```text
+/// A = [1.  3.  5.]
+///     [2.  0.  6.]
+///     [0.  4.  7.]
+/// ```
+///
+/// ```no_run
+/// use clarabel::algebra::CscMatrix;
+///
+/// let A : CscMatrix<f64> = CscMatrix::new(
+///    3,                                // m
+///    3,                                // n
+///    vec![0, 2, 4, 7],                 //colptr
+///    vec![0, 1, 0, 2, 0, 1, 2],        //rowval
+///    vec![1., 2., 3., 4., 5., 6., 7.], //nzval
+///  );
+///
+/// // optional correctness check
+/// assert!(A.check_format().is_ok());
+///
+/// ```
+///
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CscMatrix<T = f64> {
+    /// number of rows
+    pub m: usize,
+    /// number of columns
+    pub n: usize,
+    /// CSC format column pointer.   
+    ///
+    /// Ths field should have length `n+1`. The last entry corresponds
+    /// to the the number of nonzeros and should agree with the lengths
+    /// of the `rowval` and `nzval` fields.
+    pub colptr: Vec<usize>,
+    /// vector of row indices
+    pub rowval: Vec<usize>,
+    /// vector of non-zero matrix elements
+    pub nzval: Vec<T>,
 }
 
 impl<T> CscMatrix<T>
@@ -54,10 +78,10 @@ where
     /// allocate space for a sparse matrix with `nnz` elements
     ///
     /// To make an m x n matrix of zeros, use
-    /// ```
-    /// # use clarabel::algebra::CscMatrix;
-    /// # let m = 3;
-    /// # let n = 4;
+    /// ```no_run
+    /// use clarabel::algebra::CscMatrix;
+    /// let m = 3;
+    /// let n = 4;
     /// let A : CscMatrix<f64> = CscMatrix::spalloc(m,n,0);
     /// ```
 
@@ -239,5 +263,23 @@ where
             }
         }
         true
+    }
+}
+
+impl<T> ShapedMatrix for CscMatrix<T> {
+    fn nrows(&self) -> usize {
+        self.m
+    }
+    fn ncols(&self) -> usize {
+        self.n
+    }
+    fn size(&self) -> (usize, usize) {
+        (self.m, self.n)
+    }
+    fn shape(&self) -> MatrixShape {
+        MatrixShape::N
+    }
+    fn is_square(&self) -> bool {
+        self.m == self.n
     }
 }

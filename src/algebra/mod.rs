@@ -34,13 +34,15 @@ pub use vecmath::*;
 
 // matrix implementations
 mod csc;
-mod dense;
-mod densesym3x3;
 pub use csc::*;
-pub use dense::*;
+
+mod densesym3x3;
 pub(crate) use densesym3x3::*;
 
-//mod densesym3x3;
+#[cfg(feature = "sdp")]
+mod dense;
+#[cfg(feature = "sdp")]
+pub use dense::*;
 
 //configure tests of internals
 #[cfg(test)]

@@ -1,10 +1,8 @@
 #![allow(non_snake_case)]
-
-// PJG: Should only run this test with BLAS enabled
-
+#![allow(clippy::type_complexity)]
+#![cfg(feature = "sdp")]
 use clarabel::{algebra::*, solver::*};
 
-#[allow(clippy::type_complexity)]
 fn basic_sdp_data() -> (
     CscMatrix<f64>,
     Vec<f64>,

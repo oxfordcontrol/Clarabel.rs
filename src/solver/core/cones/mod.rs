@@ -1,39 +1,35 @@
 #![allow(non_snake_case)]
 
 use crate::algebra::FloatT;
+use crate::solver::{core::ScalingStrategy, CoreSettings};
 use enum_dispatch::*;
 
-//primitive cone types
+// the supported cone wrapper type for primitives
+// and the composite cone
+mod compositecone;
+mod supportedcone;
+// primitive cone types
 mod expcone;
 mod nonnegativecone;
 mod powcone;
-mod psdtrianglecone; //PJG: make cfg
 mod socone;
 mod zerocone;
-
-//the supported cone wrapper type for primitives
-//and the composite cone
-mod compositecone;
-mod supportedcone;
-
-//partially specialized traits and blanket implementataions
+// partially specialized traits and blanket implementataions
 mod exppow_common;
 mod symmetric_common;
 
-//flatten all cone implementations to appear in this module
-pub use compositecone::*;
-pub use compositecone::*;
-pub use expcone::*;
+//re-export everything to appear as one module
 use exppow_common::*;
-pub use nonnegativecone::*;
-pub use powcone::*;
-pub use psdtrianglecone::*; //PJG: make cfg
-pub use socone::*;
-pub use supportedcone::*;
-pub use symmetric_common::*;
-pub use zerocone::*;
+pub use {
+    compositecone::*, expcone::*, nonnegativecone::*, powcone::*, socone::*, supportedcone::*,
+    symmetric_common::*, zerocone::*,
+};
 
-use crate::solver::{core::ScalingStrategy, CoreSettings};
+// only use PSD cones with SDP/Blas enabled
+#[cfg(feature = "sdp")]
+mod psdtrianglecone;
+#[cfg(feature = "sdp")]
+pub use psdtrianglecone::*;
 
 // marker for primal / dual distinctions
 #[derive(Eq, PartialEq, Clone, Debug, Copy)]

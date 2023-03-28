@@ -7,7 +7,6 @@ fn numel_degree() {
     let scone = SecondOrderCone::<f64>::new(5);
     let expcone = ExponentialCone::<f64>::new();
     let powcone = PowerCone::<f64>::new(0.5);
-    let sdpcone = PSDTriangleCone::<f64>::new(5);
 
     assert_eq!(zcone.numel(), 5);
     assert_eq!(zcone.degree(), 0);
@@ -19,6 +18,11 @@ fn numel_degree() {
     assert_eq!(expcone.degree(), 3);
     assert_eq!(powcone.numel(), 3);
     assert_eq!(powcone.degree(), 3);
-    assert_eq!(sdpcone.numel(), 15);
-    assert_eq!(sdpcone.degree(), 5);
+
+    #[cfg(target_os = "sdp")]
+    {
+        let sdpcone = PSDTriangleCone::<f64>::new(5);
+        assert_eq!(sdpcone.numel(), 15);
+        assert_eq!(sdpcone.degree(), 5);
+    }
 }

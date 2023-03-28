@@ -18,11 +18,51 @@ enum_dispatch = "0.3.8"
 amd = "0.2.2"
 thiserror = "1"
 
-blas = "0.22.0"
-lapack = "0.19.0"
-lapack-src = { version = "0.8", features = ["openblas"] }
-blas-src = { version = "0.8", features = ["openblas"] }
-openblas-src = {features = ["system"] }
+# -------------------------------
+# default feature set
+# -------------------------------
+# sdp support by default 
+
+[features]
+default = []
+
+# enables blas/lapack for SDP support 
+sdp = ["dep:blas", "dep:lapack", "dep:blas-src","dep:lapack-src"]
+
+# build as the julia interface 
+julia = ["dep:libc","dep:num-derive","dep:serde", "dep:serde_json"] 
+ 
+# build as the python interface via pyo3.
+# should only be used with maturin builds.
+python = ["dep:pyo3","dep:num-derive"]
+
+
+# -------------------------------
+# blas / lapack configuration
+# -------------------------------
+
+[dependencies.blas]
+version = "0.22.0"
+optional = true
+
+[dependencies.lapack]
+version = "0.19.0"
+optional = true
+
+[dependencies.blas-src]
+version = "0.8"
+optional = true 
+features = ["intel-mkl"]
+
+[dependencies.lapack-src]
+version = "0.8"
+optional = true 
+features = ["intel-mkl"]
+
+
+# -------------------------------
+# examples
+# -------------------------------
 
 [[example]]
 name = "lp"
@@ -65,15 +105,6 @@ debug = true
 # ------------------------------
 # Optional julia and python interface 
 # ------------------------------
-
-[features]
-
-# enables julia interface 
-julia = ["dep:libc","dep:num-derive","dep:serde", "dep:serde_json"] 
- 
-# enables python interface via pyo3.
-# should only be used with maturin builds.
-python = ["dep:pyo3","dep:num-derive"]
 
 [dependencies.num-derive]
 optional = true 

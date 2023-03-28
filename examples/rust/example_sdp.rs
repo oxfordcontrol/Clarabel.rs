@@ -1,8 +1,15 @@
 #![allow(non_snake_case)]
-use clarabel::algebra::*;
-use clarabel::solver::*;
 
+#[cfg(not(feature = "sdp"))]
 fn main() {
+    println!("Compile with \"sdp\" to run this example");
+}
+
+#[cfg(feature = "sdp")]
+fn main() {
+    use clarabel::algebra::*;
+    use clarabel::solver::*;
+
     // SDP Example
 
     let P = CscMatrix::identity(6);

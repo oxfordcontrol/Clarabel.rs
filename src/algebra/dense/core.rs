@@ -1,64 +1,33 @@
 use crate::algebra::*;
 use std::ops::{Index, IndexMut};
 
-impl<T> DenseMatrix for Matrix<T>
-where
-    T: FloatT,
-{
-    type T = T;
-    fn index_linear(&self, idx: (usize, usize)) -> usize {
-        idx.0 + self.m * idx.1
-    }
-    fn data(&self) -> &[T] {
-        &self.data
-    }
-}
+/// Dense matrix in column major format
+///
+/// __Example usage__ : To construct the 3 x 3 matrix
+/// ```text
+/// A = [1.  3.  5.]
+///     [2.  0.  6.]
+///     [0.  4.  7.]
+/// ```
+///
+/// ```no_run
+/// use clarabel::algebra::Matrix;
+///
+/// let A : Matrix<f64> = Matrix::new(
+///    (3, 3),  //size as tuple
+///    vec![1., 2., 0., 3., 0., 4., 5., 6., 7.]
+///  );
+///
+/// ```
 
-impl<'a, T> DenseMatrix for ReshapedMatrix<'a, T>
-where
-    T: FloatT,
-{
-    type T = T;
-    fn index_linear(&self, idx: (usize, usize)) -> usize {
-        idx.0 + self.m * idx.1
-    }
-    fn data(&self) -> &[T] {
-        self.data
-    }
-}
-
-impl<'a, T> DenseMatrix for Adjoint<'a, Matrix<T>>
-where
-    T: FloatT,
-{
-    type T = T;
-    #[inline]
-    fn index_linear(&self, idx: (usize, usize)) -> usize {
-        self.src.index_linear((idx.1, idx.0))
-    }
-    fn data(&self) -> &[T] {
-        &self.src.data
-    }
-}
-
-impl<'a, T> DenseMatrix for Symmetric<'a, Matrix<T>>
-where
-    T: FloatT,
-{
-    type T = T;
-    #[inline]
-    fn index_linear(&self, idx: (usize, usize)) -> usize {
-        if idx.0 <= idx.1 {
-            //triu part
-            self.src.index_linear((idx.0, idx.1))
-        } else {
-            //tril part uses triu entry
-            self.src.index_linear((idx.1, idx.0))
-        }
-    }
-    fn data(&self) -> &[T] {
-        &self.src.data
-    }
+#[derive(Debug, Clone, PartialEq)]
+pub struct Matrix<T = f64> {
+    /// number of rows
+    pub m: usize,
+    ///number of columns
+    pub n: usize,
+    /// vector of data in column major formmat
+    pub data: Vec<T>,
 }
 
 impl<T> Matrix<T>
@@ -148,6 +117,66 @@ where
             }
         }
         true
+    }
+}
+
+impl<T> DenseMatrix for Matrix<T>
+where
+    T: FloatT,
+{
+    type T = T;
+    fn index_linear(&self, idx: (usize, usize)) -> usize {
+        idx.0 + self.m * idx.1
+    }
+    fn data(&self) -> &[T] {
+        &self.data
+    }
+}
+
+impl<'a, T> DenseMatrix for ReshapedMatrix<'a, T>
+where
+    T: FloatT,
+{
+    type T = T;
+    fn index_linear(&self, idx: (usize, usize)) -> usize {
+        idx.0 + self.m * idx.1
+    }
+    fn data(&self) -> &[T] {
+        self.data
+    }
+}
+
+impl<'a, T> DenseMatrix for Adjoint<'a, Matrix<T>>
+where
+    T: FloatT,
+{
+    type T = T;
+    #[inline]
+    fn index_linear(&self, idx: (usize, usize)) -> usize {
+        self.src.index_linear((idx.1, idx.0))
+    }
+    fn data(&self) -> &[T] {
+        &self.src.data
+    }
+}
+
+impl<'a, T> DenseMatrix for Symmetric<'a, Matrix<T>>
+where
+    T: FloatT,
+{
+    type T = T;
+    #[inline]
+    fn index_linear(&self, idx: (usize, usize)) -> usize {
+        if idx.0 <= idx.1 {
+            //triu part
+            self.src.index_linear((idx.0, idx.1))
+        } else {
+            //tril part uses triu entry
+            self.src.index_linear((idx.1, idx.0))
+        }
+    }
+    fn data(&self) -> &[T] {
+        &self.src.data
     }
 }
 

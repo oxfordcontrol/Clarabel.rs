@@ -1,7 +1,8 @@
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(clippy::too_many_arguments)]
 
-extern crate openblas_src;
+extern crate blas_src;
+extern crate lapack_src;
 use lapack::*;
 use blas::*;
 
