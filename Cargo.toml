@@ -52,12 +52,12 @@ optional = true
 [dependencies.blas-src]
 version = "0.8"
 optional = true 
-features = ["intel-mkl"]
+features = ["openblas"]
 
 [dependencies.lapack-src]
 version = "0.8"
 optional = true 
-features = ["intel-mkl"]
+features = ["openblas"]
 
 
 # -------------------------------
