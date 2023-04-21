@@ -19,7 +19,7 @@ fn numel_degree() {
     assert_eq!(powcone.numel(), 3);
     assert_eq!(powcone.degree(), 3);
 
-    #[cfg(target_os = "sdp")]
+    #[cfg(feature = "sdp")]
     {
         let sdpcone = PSDTriangleCone::<f64>::new(5);
         assert_eq!(sdpcone.numel(), 15);

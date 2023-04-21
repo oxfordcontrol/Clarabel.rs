@@ -12,6 +12,7 @@ mod cones_py;
 mod cscmatrix_py;
 mod impl_default_py;
 mod module_py;
+pub(crate) mod pyblas;
 
 // NB : Nothing is actually public here, but the python module itself
 // is made public so that we can force the docstring above to appear

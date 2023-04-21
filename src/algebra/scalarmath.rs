@@ -21,12 +21,11 @@ impl<T: FloatT> ScalarMath for T {
     }
 }
 
-#[allow(dead_code)] // only used with sdp feature
 pub(crate) fn triangular_number(k: usize) -> usize {
     (k * (k + 1)) >> 1
 }
 
-#[allow(dead_code)] // only used with sdp feature
+#[cfg(feature = "sdp")]
 pub(crate) fn triangular_index(k: usize) -> usize {
     // 0-based index into a packed triangle. Same as:
     // triangular number(k+1) - 1 = (((k+1) * (k+2)) >> 1) - 1

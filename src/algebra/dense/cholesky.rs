@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
 use crate::algebra::{
-    DenseFactorizationError, FactorCholesky, FloatT, Matrix, ShapedMatrix, VectorMath,
+    DenseFactorizationError, FactorCholesky, FloatT, Matrix, MatrixTriangle, ShapedMatrix,
+    VectorMath,
 };
 
 pub struct CholeskyEngine<T> {
@@ -31,7 +32,7 @@ where
 
         // standard BLAS ?potrf arguments for computing
         // cholesky decomposition
-        let uplo = b'U'; // only look at triu of A
+        let uplo = MatrixTriangle::Triu.as_blas_char(); // only look at triu of A
         let An = A.nrows().try_into().unwrap();
         let a = A.data_mut();
         let lda = An;
