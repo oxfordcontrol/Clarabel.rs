@@ -44,7 +44,7 @@ jobs:
           python -c "import clarabel"
           python examples/python/example_qp.py 
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist
@@ -87,7 +87,7 @@ jobs:
           python -c "import clarabel"
           python examples/python/example_qp.py 
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist
@@ -122,7 +122,7 @@ jobs:
           python -c "import clarabel"
           python examples/python/example_qp.py 
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist
@@ -137,7 +137,7 @@ jobs:
       - windows
       - linux
     steps:
-      - uses: actions/download-artifact@v2
+      - uses: actions/download-artifact@v3
         with:
           name: wheels
       - uses: actions/setup-python@v2

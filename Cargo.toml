@@ -3,6 +3,7 @@ name = "clarabel"
 version = "0.4.1"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
+rust-version = "1.60"
 license = "Apache-2.0"
 description = "Clarabel Conic Interior Point Solver for Rust / Python"
 readme = "README.md"
@@ -10,31 +11,40 @@ repository = "https://github.com/oxfordcontrol/Clarabel.rs"
 keywords = ["convex", "optimization", "QP", "LP", "SOCP", "SDP", "conic"]
 categories = ["mathematics"]
 
+#required for openssl to work on git actions
+resolver = "1"     
+
 [dependencies]
-lazy_static = "1.4"
-num-traits = "0.2"
+lazy_static    = "1.4"
+num-traits     = "0.2"
 derive_builder = "0.11"
-enum_dispatch = "0.3.8"
-amd = "0.2.2"
-thiserror = "1"
+enum_dispatch  = "0.3.8"
+amd            = "0.2.2"
+thiserror      = "1"
 
 # -------------------------------
 # default feature set
 # -------------------------------
-# sdp support by default 
 
 [features]
-default = ["sdp"]
 
-# enables blas/lapack for SDP support 
-sdp = ["dep:blas", "dep:lapack", "dep:blas-src","dep:lapack-src"]
+# enables blas/lapack for SDP support, with blas/lapack src unspecified
+sdp = []
+
+# explicit configuration options for different blas flavours
+sdp-accelerate = ["sdp", "blas-src/accelerate", "lapack-src/accelerate"]
+sdp-netlib     = ["sdp", "blas-src/netlib",     "lapack-src/netlib"]
+sdp-openblas   = ["sdp", "blas-src/openblas",   "lapack-src/openblas"]
+sdp-mkl        = ["sdp", "blas-src/intel-mkl",  "lapack-src/intel-mkl"]
 
 # build as the julia interface 
 julia = ["sdp", "dep:libc","dep:num-derive","dep:serde", "dep:serde_json"] 
  
-# build as the python interface via pyo3.
-# should only be used with maturin builds.
-python = ["sdp", "dep:pyo3","dep:num-derive"]
+# build as the python interface via maturin.
+# NB: python builds use scipy shared libraries
+# for blas/lapack, and should *not* explicitly 
+# enable a blas/lapack source package 
+python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive"]
 
 
 # -------------------------------
@@ -52,12 +62,10 @@ optional = true
 [dependencies.blas-src]
 version = "0.8"
 optional = true 
-features = ["openblas"]
 
 [dependencies.lapack-src]
 version = "0.8"
 optional = true 
-features = ["openblas"]
 
 
 # -------------------------------
@@ -91,6 +99,7 @@ path = "examples/rust/example_box.rs"
 [[example]]
 name = "sdp"
 path = "examples/rust/example_sdp.rs"
+required-features = ["sdp"]
 
 
 
@@ -144,3 +153,5 @@ crate-type = ["lib","cdylib"]
 
 [package.metadata.docs.rs]
 rustdoc-args = [ "--html-in-header", "./html/rustdocs-header.html" ]
+
+
