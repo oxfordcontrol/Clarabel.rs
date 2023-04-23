@@ -10,8 +10,8 @@
 //!  which collectively implement support for the problem format described in the top
 //! level crate documentation.
 
-use super::SolverStatus;
 use super::{cones::Cone, CoreSettings, ScalingStrategy};
+use super::{SolverStatus, StepDirection};
 use crate::algebra::*;
 use crate::timers::*;
 
@@ -64,7 +64,7 @@ pub trait Variables<T: FloatT> {
         step_lhs: &Self,
         cones: &mut Self::C,
         settings: &Self::SE,
-        steptype: &'static str,
+        step_direction: StepDirection,
     ) -> T;
 
     /// Update the variables in the given step direction, scaled by `α`.
@@ -127,7 +127,7 @@ pub trait KKTSystem<T: FloatT> {
         data: &Self::D,
         variables: &Self::V,
         cones: &mut Self::C,
-        steptype: &'static str,
+        step_direction: StepDirection,
         settings: &Self::SE,
     ) -> bool;
 

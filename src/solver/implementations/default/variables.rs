@@ -1,10 +1,9 @@
 use super::*;
 use crate::algebra::*;
-use crate::solver::core::cones::PrimalOrDualCone;
 use crate::solver::core::{
-    cones::{CompositeCone, Cone},
+    cones::{CompositeCone, Cone, PrimalOrDualCone},
     traits::{Settings, Variables},
-    ScalingStrategy,
+    ScalingStrategy, StepDirection,
 };
 
 // ---------------
@@ -119,7 +118,7 @@ where
         step: &Self,
         cones: &mut CompositeCone<T>,
         settings: &DefaultSettings<T>,
-        steptype: &'static str,
+        step_direction: StepDirection,
     ) -> T {
         let ατ = {
             if step.τ < T::zero() {
@@ -146,7 +145,7 @@ where
         // every cone
         let mut α = T::min(αz, αs);
 
-        if steptype == "combined" {
+        if step_direction == StepDirection::Combined {
             α *= settings.core().max_step_fraction;
         }
 

@@ -3,6 +3,7 @@ use crate::solver::core::{
     cones::{CompositeCone, Cone},
     kktsolvers::{direct::*, *},
     traits::{KKTSystem, Settings},
+    StepDirection,
 };
 
 use crate::algebra::*;
@@ -121,7 +122,7 @@ where
         data: &DefaultProblemData<T>,
         variables: &DefaultVariables<T>,
         cones: &mut CompositeCone<T>,
-        steptype: &'static str,
+        step_direction: StepDirection,
         settings: &DefaultSettings<T>,
     ) -> bool {
         let (x1, z1) = (&mut self.x1, &mut self.z1);
@@ -136,15 +137,12 @@ where
         // with shortcut in affine case
         let Δs_const_term = &mut self.work_conic;
 
-        match steptype {
-            "affine" => {
+        match step_direction {
+            StepDirection::Affine => {
                 Δs_const_term.copy_from(&variables.s);
             }
-            "combined" => {
+            StepDirection::Combined => {
                 cones.Δs_from_Δz_offset(Δs_const_term, &rhs.s, &mut lhs.z, &variables.z);
-            }
-            _ => {
-                panic!("Bad step direction specified");
             }
         }
 
