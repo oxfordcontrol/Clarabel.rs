@@ -4,7 +4,7 @@ use core::cmp::{max, min};
 use derive_builder::Builder;
 use std::iter::zip;
 
-/// Required settings for [QDLDLFactorisation](QDLDLFactorisation)
+/// Required settings for [`QDLDLFactorisation`](QDLDLFactorisation)
 
 #[derive(Builder, Debug)]
 pub struct QDLDLSettings<T: FloatT> {

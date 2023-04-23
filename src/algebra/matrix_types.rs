@@ -69,7 +69,7 @@ pub struct Symmetric<'a, M> {
 
 /// Borrowed data slice reshaped into a matrix.
 #[derive(Debug, Clone, PartialEq)]
-pub struct ReshapedMatrix<'a, T> {
+pub(crate) struct ReshapedMatrix<'a, T> {
     /// number of rows
     pub m: usize,
     ///number of columns

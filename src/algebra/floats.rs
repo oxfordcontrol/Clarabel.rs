@@ -4,16 +4,11 @@ use std::fmt::{Debug, Display, LowerExp};
 #[cfg(feature = "sdp")]
 use crate::algebra::dense::BlasFloatT;
 
-/// Trait for floating point types used in the Clarabel solver.
+/// Core traits for internal floating point values.
 ///
-/// All floating point calculations in Clarabel are represented internally on values
-/// implementing the `FloatT` trait, with implementations provided only for f32 and f64
-/// native types when compiled with BLAS/LAPACK support for SDPs. If SDP support is not
-/// enabled then it should be possible to compile Clarabel to support any any other
-/// floating point type provided that it satisfies the trait bounds of `CoreFloatT`.
-///
-/// `FloatT` relies on [`num_traits`](num_traits) for most of its constituent trait bounds.
-
+/// This trait defines a subset of bounds for `FloatT`, which is preferred
+/// throughout for use in the solver.  When the "sdp" feature is enabled,
+/// `FloatT` is additionally restricted to f32/f64 types supported by BLAS.
 pub trait CoreFloatT:
     'static
     + Send
@@ -47,15 +42,31 @@ impl<T> CoreFloatT for T where
 // if "sdp" is enabled, we must add an additional trait
 // trait bound to restrict compilation for f32/f64 types
 // since there is no BLAS support otherwise
-#[cfg(feature = "sdp")]
-pub trait FloatT: CoreFloatT + BlasFloatT {}
-#[cfg(feature = "sdp")]
-impl<T> FloatT for T where T: CoreFloatT + BlasFloatT {}
 
-#[cfg(not(feature = "sdp"))]
-pub trait FloatT: CoreFloatT {}
-#[cfg(not(feature = "sdp"))]
-impl<T> FloatT for T where T: CoreFloatT {}
+cfg_if::cfg_if! {
+    if #[cfg(not(feature="sdp"))] {
+    /// Main trait for floating point types used in the Clarabel solver.
+    ///
+    /// All floating point calculations in Clarabel are represented internally on values
+    /// implementing the `FloatT` trait, with implementations provided only for f32 and f64
+    /// native types when compiled with BLAS/LAPACK support for SDPs. If SDP support is not
+    /// enabled then it should be possible to compile Clarabel to support any any other
+    /// floating point type provided that it satisfies the trait bounds of `CoreFloatT`.
+    ///
+    /// `FloatT` relies on [`num_traits`](num_traits) for most of its constituent trait bounds.
+        pub trait FloatT: CoreFloatT {}
+    } else{
+        pub trait FloatT: CoreFloatT + BlasFloatT {}
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(feature="sdp")] {
+        impl<T> FloatT for T where T: CoreFloatT + BlasFloatT {}
+    } else{
+        impl<T> FloatT for T where T: CoreFloatT {}
+    }
+}
 
 /// Trait for convering Rust primitives to [`FloatT`](crate::algebra::FloatT)
 ///

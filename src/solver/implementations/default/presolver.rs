@@ -8,7 +8,7 @@ use crate::solver::SupportedConeT;
 // ---------------
 
 #[derive(Debug)]
-pub struct PresolverRowReductionIndex {
+pub(crate) struct PresolverRowReductionIndex {
     // vector of length = original RHS.   Entries are false
     // for those rows that should be eliminated before solve
     pub keep_logical: Vec<bool>,
@@ -21,7 +21,7 @@ pub struct PresolverRowReductionIndex {
 }
 
 #[derive(Debug)]
-pub struct Presolver<T> {
+pub(crate) struct Presolver<T> {
     // possibly reduced internal copy of user cone specification
     pub cone_specs: Vec<SupportedConeT<T>>,
 

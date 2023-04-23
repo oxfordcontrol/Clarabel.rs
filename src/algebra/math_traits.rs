@@ -137,20 +137,22 @@ pub trait VectorMath {
 
 /// Matrix operations for matrices of [`FloatT`](crate::algebra::FloatT)
 
-pub trait MatrixVectorMultiply {
+pub(crate) trait MatrixVectorMultiply {
     type T: FloatT;
 
     /// BLAS-like general matrix-vector multiply.  Produces `y = a*self*x + b*y`
     fn gemv(&self, y: &mut [Self::T], x: &[Self::T], a: Self::T, b: Self::T);
 }
 
-pub trait SymMatrixVectorMultiply {
+pub(crate) trait SymMatrixVectorMultiply {
     type T: FloatT;
 
     /// BLAS-like symmetric matrix-vector multiply.  Produces `y = a*self*x + b*y`.  
     /// The matrix source data should be triu.
     fn symv(&self, y: &mut [Self::T], x: &[Self::T], a: Self::T, b: Self::T);
 }
+
+/// Operations on matrices of [`FloatT`](crate::algebra::FloatT)
 
 pub trait MatrixMath {
     type T: FloatT;

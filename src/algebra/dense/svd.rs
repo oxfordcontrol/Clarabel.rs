@@ -4,14 +4,14 @@ use crate::algebra::{DenseFactorizationError, FactorSVD, FloatT, Matrix, ShapedM
 use core::cmp::min;
 
 #[derive(PartialEq, Eq)]
-pub enum SVDEngineAlgorithm {
+pub(crate) enum SVDEngineAlgorithm {
     DivideAndConquer,
     QRDecomposition,
 }
 
 const DEFAULT_SVD_ALGORITHM: SVDEngineAlgorithm = SVDEngineAlgorithm::DivideAndConquer;
 
-pub struct SVDEngine<T> {
+pub(crate) struct SVDEngine<T> {
     /// Computed singular values
     pub s: Vec<T>,
 

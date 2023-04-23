@@ -5,7 +5,7 @@ use crate::algebra::{
     VectorMath,
 };
 
-pub struct CholeskyEngine<T> {
+pub(crate) struct CholeskyEngine<T> {
     /// lower triangular factor (stored as square dense)
     pub L: Matrix<T>,
 }

@@ -4,7 +4,7 @@ use std::ops::Index;
 
 use crate::algebra::MatrixShape;
 
-pub trait ShapedMatrix {
+pub(crate) trait ShapedMatrix {
     fn nrows(&self) -> usize;
     fn ncols(&self) -> usize;
     fn shape(&self) -> MatrixShape;
@@ -20,14 +20,16 @@ pub trait ShapedMatrix {
 //is implemented on Matrix, Adjoint and ReshapedMatrix to allow for indexing
 //of values in any of those format.   This follows the Julia naming convention
 //for similar types.
-pub trait DenseMatrix: ShapedMatrix + Index<(usize, usize)> {
+pub(crate) trait DenseMatrix: ShapedMatrix + Index<(usize, usize)> {
     type T;
     fn index_linear(&self, idx: (usize, usize)) -> usize;
     fn data(&self) -> &[Self::T];
 }
 
+/// Blockwise matrix concatenation
 pub trait BlockConcatenate {
-    /// horizontal matrix concatenation:
+    /// horizontal matrix concatenation
+    ///
     /// ```text
     /// C = [A B]
     /// ```
@@ -36,7 +38,8 @@ pub trait BlockConcatenate {
 
     fn hcat(A: &Self, B: &Self) -> Self;
 
-    /// vertical matrix concatenation:
+    /// vertical matrix concatenation
+    ///
     /// ```text
     /// C = [ A ]
     ///     [ B ]

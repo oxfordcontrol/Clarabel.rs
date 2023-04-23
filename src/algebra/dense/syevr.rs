@@ -4,7 +4,7 @@ use crate::algebra::{
     DenseFactorizationError, FactorEigen, FloatT, Matrix, MatrixTriangle, ShapedMatrix,
 };
 
-pub struct EigEngine<T> {
+pub(crate) struct EigEngine<T> {
     /// Computed eigenvalues in ascending order
     pub λ: Vec<T>,
 

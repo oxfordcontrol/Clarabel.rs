@@ -6,13 +6,6 @@ impl<T> BlockConcatenate for Matrix<T>
 where
     T: FloatT,
 {
-    /// horizontal matrix concatenation:
-    /// ```text
-    /// C = [A B]
-    /// ```
-    /// # Panics
-    /// Panics if row dimensions are incompatible
-
     fn hcat(A: &Self, B: &Self) -> Self {
         //first check for compatible row dimensions
         assert_eq!(A.m, B.m);
@@ -24,15 +17,6 @@ where
         data.extend(&B.data);
         Self { m, n, data }
     }
-
-    /// vertical matrix concatenation:
-    /// ```text
-    /// C = [ A ]
-    ///     [ B ]
-    /// ```
-    ///
-    /// # Panics
-    /// Panics if column dimensions are incompatible
 
     fn vcat(A: &Self, B: &Self) -> Self {
         //first check for compatible column dimensions
