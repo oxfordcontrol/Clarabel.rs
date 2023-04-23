@@ -23,7 +23,7 @@ amd            = "0.2.2"
 thiserror      = "1"
 
 # -------------------------------
-# default feature set
+# features
 # -------------------------------
 
 [features]
