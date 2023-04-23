@@ -54,6 +54,34 @@ fn test_sdp_feasible() {
 }
 
 #[test]
+fn empty_sdp_cone() {
+    let (P, c, A, b, mut cones) = basic_sdp_data();
+    cones.append(&mut vec![PSDTriangleConeT(0)]);
+
+    let settings = DefaultSettings::default();
+
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+
+    solver.solve();
+
+    assert_eq!(solver.solution.status, SolverStatus::Solved);
+
+    let refsol = vec![
+        -3.0729833267361095,
+        0.3696004167288786,
+        -0.022226685581313674,
+        0.31441213129613066,
+        -0.026739700851545107,
+        -0.016084530571308823,
+    ];
+
+    assert!(solver.solution.x.dist(&refsol) <= 1e-6);
+
+    let refobj = 4.840076866013861;
+    assert!(f64::abs(solver.info.cost_primal - refobj) <= 1e-6);
+}
+
+#[test]
 fn test_sdp_primal_infeasible() {
     let (P, c, A, mut b, mut cones) = basic_sdp_data();
 

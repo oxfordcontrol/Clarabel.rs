@@ -18,6 +18,10 @@ where
         assert!(self.nrows() == A.nrows());
         assert!(self.ncols() == A.nrows());
 
+        if self.nrows() == 0 {
+            return self;
+        }
+
         let uplo = MatrixTriangle::Triu.as_blas_char();
         let transA = A.shape().as_blas_char();
         let n = A.nrows().try_into().unwrap();

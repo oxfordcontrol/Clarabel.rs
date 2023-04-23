@@ -17,6 +17,10 @@ where
         assert!(self.ncols() == B.nrows());
         assert!(A.ncols() == B.ncols());
 
+        if self.nrows() == 0 {
+            return self;
+        }
+
         let n = self.nrows().try_into().unwrap();
         let k = A.ncols().try_into().unwrap();
         let a = A.data();
