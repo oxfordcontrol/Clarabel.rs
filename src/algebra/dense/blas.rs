@@ -1,19 +1,22 @@
 #![cfg_attr(rustfmt, rustfmt_skip)]
 #![allow(clippy::too_many_arguments)]
 
-/*= #[cfg(not(feature="python"))] {   
-    // standard imports via blas-lapack-rs crates 
-    extern crate blas_src;
-    extern crate lapack_src;
-    use lapack::*;
-    use blas::*;
+cfg_if::cfg_if! {
+    if #[cfg(feature="python")] {   
+        // imports via scipy 
+        use crate::python::pyblas::*;
+    }
+        else {   
+        // standard imports via blas-lapack-rs crates 
+        extern crate blas_src;
+        extern crate lapack_src;
+        use lapack::*;
+        use blas::*;
+    }
 }
-=*/
 
-// #[cfg(feature="python")] {   
-    // imports via scipy 
-    use crate::python::pyblas::*;
-//}
+
+
 
 pub trait BlasFloatT: 
     private::BlasFloatSealed 

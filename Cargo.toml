@@ -20,7 +20,8 @@ num-traits     = "0.2"
 derive_builder = "0.11"
 enum_dispatch  = "0.3.8"
 amd            = "0.2.2"
-thiserror      = "1"
+thiserror      = "1.0"
+cfg-if         = "1.0"
 
 # -------------------------------
 # features
@@ -29,16 +30,16 @@ thiserror      = "1"
 [features]
 
 # enables blas/lapack for SDP support, with blas/lapack src unspecified
-sdp = []
+sdp = ["blas","lapack"]
 
 # explicit configuration options for different blas flavours
 sdp-accelerate = ["sdp", "blas-src/accelerate", "lapack-src/accelerate"]
-sdp-netlib     = ["sdp", "blas-src/netlib",     "lapack-src/netlib"]
-sdp-openblas   = ["sdp", "blas-src/openblas",   "lapack-src/openblas"]
-sdp-mkl        = ["sdp", "blas-src/intel-mkl",  "lapack-src/intel-mkl"]
+sdp-netlib     = ["sdp", "blas-src/netlib", "lapack-src/netlib"]
+sdp-openblas   = ["sdp", "blas-src/openblas", "lapack-src/openblas"]
+sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl"]
 
 # build as the julia interface 
-julia = ["sdp", "dep:libc","dep:num-derive","dep:serde", "dep:serde_json"] 
+julia = ["sdp", "dep:libc", "dep:num-derive", "dep:serde", "dep:serde_json"] 
  
 # build as the python interface via maturin.
 # NB: python builds use scipy shared libraries
