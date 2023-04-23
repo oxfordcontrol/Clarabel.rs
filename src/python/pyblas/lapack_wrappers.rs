@@ -11,6 +11,11 @@ lazy_static! {
     });
 }
 
+pub(crate) fn force_load() {
+    //forces load of the lazy_static.   Choice of function is arbitrary.
+    let _ = PYLAPACK.dsyevr_;
+}
+
 pub unsafe fn dsyevr(
     jobz: u8,
     range: u8,

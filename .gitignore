@@ -6,3 +6,5 @@ Cargo.lock
 /env
 notes*.txt
 /dist
+__pycache__
+*.so*

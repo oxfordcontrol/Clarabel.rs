@@ -12,6 +12,11 @@ lazy_static! {
     });
 }
 
+pub(crate) fn force_load() {
+    //forces load of the lazy_static.   Choice of function is arbitrary.
+    let _ = PYBLAS.ddot_;
+}
+
 pub unsafe fn ddot(n: i32, x: &[f64], incx: i32, y: &[f64], incy: i32) -> f64 {
     (PYBLAS.ddot_)(&n, x.as_ptr(), &incx, y.as_ptr(), &incy)
 }

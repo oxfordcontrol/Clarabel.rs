@@ -14,6 +14,15 @@ mod blas_types;
 mod lapack_loader;
 mod lapack_types;
 
+// a function to force instantiation of the blas/lapack wrappers
+// stored in lazy_statics.   This function can be called during
+// initialization of the python module to ensure that lazy_statics
+// are already realised before making an FFI call to blas/lapack.
+pub fn force_load() {
+    let _ = blas_wrappers::force_load();
+    let _ = lapack_wrappers::force_load();
+}
+
 // utilities for scipy blas/lapack import
 macro_rules! get_ptr {
     ($api: ident, $str: tt) => {
