@@ -15,6 +15,10 @@ where
     {
         assert!(A.ncols() == B.nrows() && self.nrows() == A.nrows() && self.ncols() == B.ncols());
 
+        if self.nrows() == 0 || self.ncols() == 0 {
+            return self;
+        }
+
         // standard BLAS ?gemm arguments for computing
         // general matrix-matrix multiply
         let transA = A.shape().as_blas_char();

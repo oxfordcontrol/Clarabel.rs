@@ -69,7 +69,7 @@ where
     T: FloatT,
 {
     pub fn new(n: usize) -> Self {
-        assert!(n >= 1);
+        // n >= 0 guaranteed by type limit
         Self {
             n,
             numel: triangular_number(n),
@@ -101,13 +101,20 @@ where
 
     // functions relating to unit vectors and cone initialization
     fn margins(&mut self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
-        let Z = &mut self.work.workmat1;
-        _svec_to_mat(Z, z);
+        let α: T;
+        let e: &[T];
 
-        self.work.Eig.eigvals(Z).expect("Eigval error");
-        let e = &self.work.Eig.λ;
+        if z.len() == 0 {
+            α = T::max_value();
+            e = &[T::zero(); 0];
+        } else {
+            let Z = &mut self.work.workmat1;
+            _svec_to_mat(Z, z);
+            self.work.Eig.eigvals(Z).expect("Eigval error");
+            e = &self.work.Eig.λ;
+            α = e.minimum();
+        }
 
-        let α = e.minimum();
         let β = e.iter().fold(T::zero(), |s, x| s + T::max(*x, T::zero())); //= sum(e[e.>0])
         (α, β)
     }
@@ -140,6 +147,11 @@ where
         _μ: T,
         _scaling_strategy: ScalingStrategy,
     ) -> bool {
+        if s.len() == 0 {
+            //bail early on zero length cone
+            return true;
+        }
+
         let f = &mut self.work;
         let (S, Z) = (&mut f.workmat1, &mut f.workmat2);
         _svec_to_mat(S, s);
@@ -412,10 +424,16 @@ fn _step_length_psd_component<T>(
 where
     T: FloatT,
 {
-    _svec_to_mat(workΔ, d);
-    workΔ.lrscale(Λisqrt, Λisqrt);
-    engine.eigvals(workΔ).expect("Eigval error");
-    let γ = engine.λ.minimum();
+    let γ;
+
+    if d.len() == 0 {
+        γ = T::max_value();
+    } else {
+        _svec_to_mat(workΔ, d);
+        workΔ.lrscale(Λisqrt, Λisqrt);
+        engine.eigvals(workΔ).expect("Eigval error");
+        γ = engine.λ.minimum();
+    }
 
     if γ < T::zero() {
         T::min(-γ.recip(), αmax)
