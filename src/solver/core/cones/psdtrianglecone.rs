@@ -104,7 +104,7 @@ where
         let α: T;
         let e: &[T];
 
-        if z.len() == 0 {
+        if z.is_empty() {
             α = T::max_value();
             e = &[T::zero(); 0];
         } else {
@@ -147,7 +147,7 @@ where
         _μ: T,
         _scaling_strategy: ScalingStrategy,
     ) -> bool {
-        if s.len() == 0 {
+        if s.is_empty() {
             //bail early on zero length cone
             return true;
         }
@@ -424,16 +424,16 @@ fn _step_length_psd_component<T>(
 where
     T: FloatT,
 {
-    let γ;
-
-    if d.len() == 0 {
-        γ = T::max_value();
-    } else {
-        _svec_to_mat(workΔ, d);
-        workΔ.lrscale(Λisqrt, Λisqrt);
-        engine.eigvals(workΔ).expect("Eigval error");
-        γ = engine.λ.minimum();
-    }
+    let γ = {
+        if d.is_empty() {
+            T::max_value()
+        } else {
+            _svec_to_mat(workΔ, d);
+            workΔ.lrscale(Λisqrt, Λisqrt);
+            engine.eigvals(workΔ).expect("Eigval error");
+            engine.λ.minimum()
+        }
+    };
 
     if γ < T::zero() {
         T::min(-γ.recip(), αmax)
