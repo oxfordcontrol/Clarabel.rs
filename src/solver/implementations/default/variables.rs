@@ -101,7 +101,7 @@ where
         // vector operation (since it amounts to M*z'*s), but it
         // doesn't happen very often
         if m != T::one() {
-            self.z.scale(m);
+            step.z.scale(m);
         }
 
         cones.combined_ds_shift(&mut self.z, &mut step.z, &mut step.s, dotσμ);
