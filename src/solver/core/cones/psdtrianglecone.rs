@@ -196,7 +196,7 @@ where
         // compute Hs = triu(B*B')
         f.Hs.syrk(&f.B, T::one(), T::zero());
 
-        true //PJG: Should be return result, with "?" operators above
+        true //PJG: Should return result, with "?" operators above
     }
 
     fn Hs_is_diagonal(&self) -> bool {
@@ -457,9 +457,7 @@ fn _svec_to_mat<T: FloatT>(M: &mut Matrix<T>, x: &[T]) {
     }
 }
 
-//PJG : double check these implementations to make sure
-//I got the order of the looping right.   Perhaps a
-//separate implementation for Symmetric type would be faster
+//PJG : Perhaps implementation for Symmetric type would be faster
 fn _mat_to_svec<MAT, T: FloatT>(x: &mut [T], M: &MAT)
 where
     MAT: DenseMatrix<T = T, Output = T>,

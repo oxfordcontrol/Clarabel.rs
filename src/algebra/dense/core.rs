@@ -188,6 +188,7 @@ where
         Self { data, m, n }
     }
 
+    #[allow(dead_code)]
     pub fn reshape(&mut self, size: (usize, usize)) -> &Self {
         assert!(size.0 * size.1 == self.m * self.n);
         self.m = size.0;

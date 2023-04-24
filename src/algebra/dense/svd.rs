@@ -4,6 +4,7 @@ use crate::algebra::{DenseFactorizationError, FactorSVD, FloatT, Matrix, ShapedM
 use core::cmp::min;
 
 #[derive(PartialEq, Eq)]
+#[allow(dead_code)] //QRDecomposition is not used yet
 pub(crate) enum SVDEngineAlgorithm {
     DivideAndConquer,
     QRDecomposition,
