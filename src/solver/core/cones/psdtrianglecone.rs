@@ -395,7 +395,7 @@ where
         // X .= (Y*Z + Z*Y)/2
         // NB: works b/c Y and Z are both symmetric
         X.data_mut().set(T::zero()); //X.sym() will assert is_triu
-        X.syr2k(Y, Z, (0.0).as_T(), T::zero());
+        X.syr2k(Y, Z, (0.5).as_T(), T::zero());
         _mat_to_svec(x, &X.sym());
     }
 
