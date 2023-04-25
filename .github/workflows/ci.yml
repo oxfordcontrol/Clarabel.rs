@@ -13,20 +13,21 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --release --verbose
+      run: cargo build --release --verbose --features "sdp-accelerate"
       
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose --features "sdp-accelerate"
 
     - name: Run cargo-tarpaulin
       uses: actions-rs/tarpaulin@v0.1
       with:
         version: 0.22.0
+        args: '--features "sdp-accelerate"'
 
     - name: Upload to codecov.io
       uses: codecov/codecov-action@v3
