@@ -1,16 +1,15 @@
 use num_traits::{Float, FloatConst, FromPrimitive, NumAssign};
+use std::fmt::{Debug, Display, LowerExp};
 
-/// Trait for floating point types used in the Clarabel solver.
-///
-/// All floating point calculations in Clarabel are represented internally on values
-/// implementing the `FloatT` trait, with implementations provided for f32 and f64
-/// native types. It should be possible to compile Clarabel to support any any other
-/// floating point type provided that it satisfies the trait bounds of
-/// `FloatT`.
-///
-/// `FloatT` relies on [`num_traits`](num_traits) for most of its constituent trait bounds.
+#[cfg(feature = "sdp")]
+use crate::algebra::dense::BlasFloatT;
 
-pub trait FloatT:
+/// Core traits for internal floating point values.
+///
+/// This trait defines a subset of bounds for `FloatT`, which is preferred
+/// throughout for use in the solver.  When the "sdp" feature is enabled,
+/// `FloatT` is additionally restricted to f32/f64 types supported by BLAS.
+pub trait CoreFloatT:
     'static
     + Send
     + Float
@@ -18,13 +17,56 @@ pub trait FloatT:
     + NumAssign
     + Default
     + FromPrimitive
-    + std::fmt::Display
-    + std::fmt::LowerExp
-    + std::fmt::Debug
+    + Display
+    + LowerExp
+    + Debug
+    + Sized
 {
 }
-impl FloatT for f32 {}
-impl FloatT for f64 {}
+
+impl<T> CoreFloatT for T where
+    T: 'static
+        + Send
+        + Float
+        + FloatConst
+        + NumAssign
+        + Default
+        + FromPrimitive
+        + Display
+        + LowerExp
+        + Debug
+        + Sized
+{
+}
+
+// if "sdp" is enabled, we must add an additional trait
+// trait bound to restrict compilation for f32/f64 types
+// since there is no BLAS support otherwise
+
+cfg_if::cfg_if! {
+    if #[cfg(not(feature="sdp"))] {
+    /// Main trait for floating point types used in the Clarabel solver.
+    ///
+    /// All floating point calculations in Clarabel are represented internally on values
+    /// implementing the `FloatT` trait, with implementations provided only for f32 and f64
+    /// native types when compiled with BLAS/LAPACK support for SDPs. If SDP support is not
+    /// enabled then it should be possible to compile Clarabel to support any any other
+    /// floating point type provided that it satisfies the trait bounds of `CoreFloatT`.
+    ///
+    /// `FloatT` relies on [`num_traits`](num_traits) for most of its constituent trait bounds.
+        pub trait FloatT: CoreFloatT {}
+    } else{
+        pub trait FloatT: CoreFloatT + BlasFloatT {}
+    }
+}
+
+cfg_if::cfg_if! {
+    if #[cfg(feature="sdp")] {
+        impl<T> FloatT for T where T: CoreFloatT + BlasFloatT {}
+    } else{
+        impl<T> FloatT for T where T: CoreFloatT {}
+    }
+}
 
 /// Trait for convering Rust primitives to [`FloatT`](crate::algebra::FloatT)
 ///
@@ -43,7 +85,7 @@ pub trait AsFloatT<T>: 'static {
     fn as_T(&self) -> T;
 }
 
-macro_rules! impl_as_T {
+macro_rules! impl_as_FloatT {
     ($ty:ty, $ident:ident) => {
         impl<T> AsFloatT<T> for $ty
         where
@@ -56,8 +98,8 @@ macro_rules! impl_as_T {
         }
     };
 }
-impl_as_T!(u32, from_u32);
-impl_as_T!(u64, from_u64);
-impl_as_T!(usize, from_usize);
-impl_as_T!(f32, from_f32);
-impl_as_T!(f64, from_f64);
+impl_as_FloatT!(u32, from_u32);
+impl_as_FloatT!(u64, from_u64);
+impl_as_FloatT!(usize, from_usize);
+impl_as_FloatT!(f32, from_f32);
+impl_as_FloatT!(f64, from_f64);

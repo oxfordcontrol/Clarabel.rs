@@ -61,7 +61,7 @@ function solver_new_jlrs(P,q,A,b,cones,settings)
             serialize(settings),        #serialized settings
         )
 
-    return Solver(ptr)
+    return Solver{Float64}(ptr)
 end 
 
 
@@ -130,6 +130,9 @@ function ccall_cones_to_arrays(cones::Vector{Clarabel.SupportedCone})
             cone_enums[i] = UInt8(PowerConeT::ConeEnumJLRS) 
             cone_floats[i] = cone.α
 
+        elseif isa(cone, Clarabel.PSDTriangleConeT)
+            cone_enums[i] = UInt8(PSDTriangleConeT::ConeEnumJLRS) 
+            cone_ints[i]  = cone.dim;
         else 
             error("Cone type ", typeof(cone), " is not supported through this interface.");
         end

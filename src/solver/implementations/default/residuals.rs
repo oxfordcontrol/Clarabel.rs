@@ -73,13 +73,8 @@ where
         let sz = variables.s.dot(&variables.z);
 
         //Px = P*x, P treated as symmetric
-        data.P.symv(
-            &mut self.Px,
-            MatrixTriangle::Triu,
-            &variables.x,
-            T::one(),
-            T::zero(),
-        );
+        let symP = data.P.sym();
+        symP.symv(&mut self.Px, &variables.x, T::one(), T::zero());
 
         let xPx = variables.x.dot(&self.Px);
 
@@ -88,23 +83,13 @@ where
 
         //Same as:
         //rx_inf .= -data.A'* variables.z
-        data.A.gemv(
-            &mut self.rx_inf,
-            MatrixShape::T,
-            &variables.z,
-            -T::one(),
-            T::zero(),
-        );
+        let At = data.A.t();
+        At.gemv(&mut self.rx_inf, &variables.z, -T::one(), T::zero());
 
         //Same as:  residuals.rz_inf .=  data.A * variables.x + variables.s
         self.rz_inf.copy_from(&variables.s);
-        data.A.gemv(
-            &mut self.rz_inf,
-            MatrixShape::N,
-            &variables.x,
-            T::one(),
-            T::one(),
-        );
+        let A = &data.A;
+        A.gemv(&mut self.rz_inf, &variables.x, T::one(), T::one());
 
         //complete the residuals
         //rx = rx_inf - Px - qτ

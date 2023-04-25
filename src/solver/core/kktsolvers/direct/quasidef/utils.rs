@@ -5,6 +5,7 @@ use crate::algebra::*;
 use crate::solver::core::cones::CompositeCone;
 use crate::solver::core::cones::*;
 use num_traits::Zero;
+use std::iter::zip;
 
 pub(crate) fn allocate_kkt_Hsblocks<T, Z>(cones: &CompositeCone<T>) -> Vec<Z>
 where
@@ -159,7 +160,7 @@ fn _kkt_assemble_fill<T: FloatT>(
     }
 
     // add the the Hs blocks in the lower right
-    for (i, (cone, rng_cone)) in cones.iter().zip(cones.rng_cones.iter()).enumerate() {
+    for (i, (cone, rng_cone)) in zip(cones.iter(), &cones.rng_cones).enumerate() {
         let firstcol = rng_cone.start + n;
         let blockdim = cone.numel();
         let block = &mut maps.Hsblocks[cones.rng_blocks[i].clone()];

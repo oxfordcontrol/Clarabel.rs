@@ -41,16 +41,12 @@ impl<T> Cone<T> for ExponentialCone<T>
 where
     T: FloatT,
 {
-    fn dim(&self) -> usize {
+    fn degree(&self) -> usize {
         3
     }
 
-    fn degree(&self) -> usize {
-        self.dim()
-    }
-
     fn numel(&self) -> usize {
-        self.dim()
+        3
     }
 
     fn is_symmetric(&self) -> bool {
@@ -62,7 +58,7 @@ where
         true // scalar equilibration
     }
 
-    fn margins(&self, _z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+    fn margins(&mut self, _z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         // We should never end up shifting to this cone, since
         // asymmetric problems should always use unit_initialization
         unreachable!();
@@ -116,7 +112,7 @@ where
         Hsblock.copy_from(&self.Hs.data);
     }
 
-    fn mul_Hs(&self, y: &mut [T], x: &[T], _work: &mut [T]) {
+    fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
         self.Hs.mul(y, x);
     }
 
@@ -135,12 +131,12 @@ where
         }
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], _work: &mut [T], _z: &[T]) {
+    fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], _work: &mut [T], _z: &[T]) {
         out.copy_from(ds);
     }
 
     fn step_length(
-        &self,
+        &mut self,
         dz: &[T],
         ds: &[T],
         z: &[T],

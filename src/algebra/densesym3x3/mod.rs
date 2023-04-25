@@ -1,15 +1,12 @@
 #![allow(non_snake_case)]
 
-use super::{FloatT, VectorMath};
+use super::FloatT;
 use crate::algebra::*;
 use std::ops::{Index, IndexMut};
 
-// Dense matrix types are restricted to the crate
-// NB: Implements a basic symmetric 3x3 container
-// to support power and exponential cones.
-// For PSDs we will want something more general that
-// is compatible (interchangeably) with nalgebra /
-// ndarray / some other blas like interface
+// 3x3 Dense matrix types are restricted to the crate
+// NB: Implements a symmetric 3x3 type to support
+// power and exponential cones.
 //
 // Data is stored as an array of 6 values belonging
 // the upper triangle of a 3x3 matrix.   Lower triangle
@@ -49,7 +46,7 @@ where
     pub fn mul(&self, y: &mut [T], x: &[T]) {
         let H = self;
 
-        //matrix is packed 3x3, so unroll it here
+        //matrix is packed triu of a 3x3, so unroll it here
         y[0] = (H.data[0] * x[0]) + (H.data[1] * x[1]) + (H.data[3] * x[2]);
         y[1] = (H.data[1] * x[0]) + (H.data[2] * x[1]) + (H.data[4] * x[2]);
         y[2] = (H.data[3] * x[0]) + (H.data[4] * x[1]) + (H.data[5] * x[2]);
@@ -64,7 +61,7 @@ where
     pub fn norm_fro(&self) -> T {
         let d = self.data;
         //Frobenius norm.   Need to be careful to count
-        //off diagonals twice
+        //the packed off diagonals twice
         let mut sumsq = T::zero();
 
         //diagonal terms
@@ -87,7 +84,7 @@ where
     }
 
     pub fn copy_from(&mut self, src: &Self) {
-        self.data.copy_from(&src.data);
+        self.data.copy_from_slice(&src.data);
     }
 
     //convert row col coordinate to triu index
@@ -95,9 +92,9 @@ where
     pub fn index_linear(idx: (usize, usize)) -> usize {
         let (r, c) = idx;
         if r < c {
-            r + ((c * (c + 1)) >> 1)
+            r + triangular_number(c)
         } else {
-            c + ((r * (r + 1)) >> 1)
+            c + triangular_number(r)
         }
     }
 
@@ -190,7 +187,7 @@ fn test_3x3_matrix_index() {
     let data = [1., 2., 3., 4., 5., 6.];
 
     assert!(
-        H.data.iter().zip(data.iter()).all(|(a, b)| a == b),
+        std::iter::zip(H.data, data).all(|(a, b)| a == b),
         "Arrays are not equal"
     );
 

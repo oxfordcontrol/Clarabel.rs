@@ -58,7 +58,8 @@ where
         _print_conedims_by_type(cones, SupportedConeTag::SecondOrderCone);
         _print_conedims_by_type(cones, SupportedConeTag::ExponentialCone);
         _print_conedims_by_type(cones, SupportedConeTag::PowerCone);
-        //_print_conedims_by_type(&cones, SupportedCone::PSDTriangleConeT(0));
+        #[cfg(feature = "sdp")]
+        _print_conedims_by_type(cones, SupportedConeTag::PSDTriangleCone);
 
         println!();
         _print_settings(settings);

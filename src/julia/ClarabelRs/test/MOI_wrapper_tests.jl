@@ -70,7 +70,7 @@ function test_MOI_standard()
         BRIDGED,
         MYCONFIG,
         # use `include` to single out a problem class
-        #include = String["test_conic_<whatever>"],
+        #include = String["test_basic_VectorQuadraticFunction_RelativeEntropyCone"],
         exclude = String[
             #these two tests fail intermittently depending on platform 
             #and MOI version.  They both converge to reasonable accuracy.
@@ -95,7 +95,7 @@ function test_SolverName()
     return
 end
 
-# Settings don't work like this in the compiled versionss
+# Settings don't work like this in the compiled versions
 # function test_passing_settings()
 #     optimizer = ClarabelRs.Optimizer{T}(; verbose=false)
 #     @test optimizer.solver_settings.verbose === false

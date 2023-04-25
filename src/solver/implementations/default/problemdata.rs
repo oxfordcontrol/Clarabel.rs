@@ -182,7 +182,7 @@ fn kkt_col_norms<T: FloatT>(
 
 fn limit_scaling<T>(s: T, minval: T, maxval: T) -> T
 where
-    T: FloatT + ScalarMath<T>,
+    T: FloatT + ScalarMath<T = T>,
 {
     s.clip(minval, maxval, T::one(), maxval)
 }

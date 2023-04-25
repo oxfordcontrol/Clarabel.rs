@@ -10,8 +10,8 @@
 //!  which collectively implement support for the problem format described in the top
 //! level crate documentation.
 
-use super::SolverStatus;
 use super::{cones::Cone, CoreSettings, ScalingStrategy};
+use super::{SolverStatus, StepDirection};
 use crate::algebra::*;
 use crate::timers::*;
 
@@ -62,16 +62,16 @@ pub trait Variables<T: FloatT> {
     fn calc_step_length(
         &self,
         step_lhs: &Self,
-        cones: &Self::C,
+        cones: &mut Self::C,
         settings: &Self::SE,
-        steptype: &'static str,
+        step_direction: StepDirection,
     ) -> T;
 
     /// Update the variables in the given step direction, scaled by `α`.
     fn add_step(&mut self, step_lhs: &Self, α: T);
 
     /// Bring the variables into the interior of the cone constraints.
-    fn symmetric_initialization(&mut self, cones: &Self::C);
+    fn symmetric_initialization(&mut self, cones: &mut Self::C);
 
     /// Initialize all conic variables to unit values.
     fn unit_initialization(&mut self, cones: &Self::C);
@@ -126,8 +126,8 @@ pub trait KKTSystem<T: FloatT> {
         step_rhs: &Self::V,
         data: &Self::D,
         variables: &Self::V,
-        cones: &Self::C,
-        steptype: &'static str,
+        cones: &mut Self::C,
+        step_direction: StepDirection,
         settings: &Self::SE,
     ) -> bool;
 

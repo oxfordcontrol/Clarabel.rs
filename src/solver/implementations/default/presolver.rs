@@ -8,7 +8,7 @@ use crate::solver::SupportedConeT;
 // ---------------
 
 #[derive(Debug)]
-pub struct PresolverRowReductionIndex {
+pub(crate) struct PresolverRowReductionIndex {
     // vector of length = original RHS.   Entries are false
     // for those rows that should be eliminated before solve
     pub keep_logical: Vec<bool>,
@@ -20,23 +20,25 @@ pub struct PresolverRowReductionIndex {
     pub keep_index: Vec<usize>,
 }
 
+/// Presolver data for the standard solver implementation
+
 #[derive(Debug)]
 pub struct Presolver<T> {
     // possibly reduced internal copy of user cone specification
-    pub cone_specs: Vec<SupportedConeT<T>>,
+    pub(crate) cone_specs: Vec<SupportedConeT<T>>,
 
     //record of reduced constraints for NN cones with inf bounds
-    pub reduce_map: Option<PresolverRowReductionIndex>,
+    pub(crate) reduce_map: Option<PresolverRowReductionIndex>,
 
     // size of original and reduced RHS, respectively
-    pub mfull: usize,
-    pub mreduced: usize,
+    pub(crate) mfull: usize,
+    pub(crate) mreduced: usize,
 
     // inf bound that was taken from the module level
     // and should be applied throughout.   Held here so
     // that any subsequent change to the module's state
     // won't mess up our solver mid-solve
-    pub infbound: f64,
+    pub(crate) infbound: f64,
 }
 
 impl<T> Presolver<T>

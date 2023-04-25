@@ -56,6 +56,13 @@ impl SolverStatus {
     }
 }
 
+#[repr(u32)]
+#[derive(PartialEq, Eq, Clone, Debug, Copy)]
+pub enum StepDirection {
+    Affine,
+    Combined,
+}
+
 /// Scaling strategy used by the solver when
 /// linearizing centrality conditions.  
 #[repr(u32)]
@@ -263,8 +270,8 @@ where
                     &self.step_rhs,
                     &self.data,
                     &self.variables,
-                    &self.cones,
-                    "affine",
+                    &mut self.cones,
+                    StepDirection::Affine,
                     &self.settings,
                 );
             }}  //end "kkt solve affine" timer
@@ -274,7 +281,7 @@ where
 
                 //calculate step length and centering parameter
                 // --------------
-                α = self.get_step_length("affine",scaling);
+                α = self.get_step_length(StepDirection::Affine, scaling);
                 σ = self.centering_parameter(α);
 
                 // make a reduced Mehrotra correction in the first iteration
@@ -300,8 +307,8 @@ where
                         &self.step_rhs,
                         &self.data,
                         &self.variables,
-                        &self.cones,
-                        "combined",
+                        &mut self.cones,
+                        StepDirection::Combined,
                         &self.settings,
                     );
                 }} //end "kkt solve"
@@ -317,7 +324,7 @@ where
 
             // compute final step length and update the current iterate
             // --------------
-            α = self.get_step_length("combined",scaling);
+            α = self.get_step_length(StepDirection::Combined,scaling);
 
             // check for undersized step and update strategy
             match self.strategy_checkpoint_small_step(α, scaling) {
@@ -375,7 +382,8 @@ mod internal {
         fn centering_parameter(&self, α: T) -> T;
 
         /// Compute the current step length
-        fn get_step_length(&self, steptype: &'static str, scaling: ScalingStrategy) -> T;
+        fn get_step_length(&mut self, step_direction: StepDirection, scaling: ScalingStrategy)
+            -> T;
 
         /// backtrack a step direction to the barrier
         fn backtrack_step_to_barrier(&self, αinit: T) -> T;
@@ -429,7 +437,7 @@ mod internal {
                 self.kktsystem
                     .solve_initial_point(&mut self.variables, &self.data, &self.settings);
                 // fix up (z,s) so that they are in the cone
-                self.variables.symmetric_initialization(&self.cones);
+                self.variables.symmetric_initialization(&mut self.cones);
             } else {
                 // Assigns unit (z,s) and zeros the primal variables
                 self.variables.unit_initialization(&self.cones);
@@ -440,18 +448,22 @@ mod internal {
             T::powi(T::one() - α, 3)
         }
 
-        fn get_step_length(&self, steptype: &'static str, scaling: ScalingStrategy) -> T {
+        fn get_step_length(
+            &mut self,
+            step_direction: StepDirection,
+            scaling: ScalingStrategy,
+        ) -> T {
             //step length to stay within the cones
             let mut α = self.variables.calc_step_length(
                 &self.step_lhs,
-                &self.cones,
+                &mut self.cones,
                 &self.settings,
-                steptype,
+                step_direction,
             );
 
             // additional barrier function limits for asymmetric cones
             if !self.cones.is_symmetric()
-                && steptype.eq("combined")
+                && step_direction == StepDirection::Combined
                 && scaling == ScalingStrategy::Dual
             {
                 let αinit = α;

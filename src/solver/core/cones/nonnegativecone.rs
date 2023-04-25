@@ -3,6 +3,7 @@ use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
 };
+use std::iter::zip;
 
 // -------------------------------------
 // Nonnegative Cone
@@ -31,16 +32,12 @@ impl<T> Cone<T> for NonnegativeCone<T>
 where
     T: FloatT,
 {
-    fn dim(&self) -> usize {
+    fn degree(&self) -> usize {
         self.dim
     }
 
-    fn degree(&self) -> usize {
-        self.dim()
-    }
-
     fn numel(&self) -> usize {
-        self.dim()
+        self.dim
     }
 
     fn is_symmetric(&self) -> bool {
@@ -52,7 +49,7 @@ where
         false
     }
 
-    fn margins(&self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+    fn margins(&mut self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         let α = z.minimum();
         let β = z.iter().fold(T::zero(), |β, &zi| β + T::max(zi, T::zero()));
         (α, β)
@@ -78,10 +75,7 @@ where
         _μ: T,
         _scaling_strategy: ScalingStrategy,
     ) -> bool {
-        let λw = self.λ.iter_mut().zip(self.w.iter_mut());
-        let sz = s.iter().zip(z.iter());
-
-        for ((λ, w), (s, z)) in λw.zip(sz) {
+        for ((λ, w), (s, z)) in zip(zip(&mut self.λ, &mut self.w), zip(s, z)) {
             *λ = T::sqrt((*s) * (*z));
             *w = T::sqrt((*s) / (*z));
         }
@@ -95,21 +89,21 @@ where
 
     fn get_Hs(&self, Hsblock: &mut [T]) {
         assert_eq!(self.w.len(), Hsblock.len());
-        for (blki, &wi) in Hsblock.iter_mut().zip(self.w.iter()) {
+        for (blki, &wi) in zip(Hsblock, &self.w) {
             *blki = wi * wi;
         }
     }
 
-    fn mul_Hs(&self, y: &mut [T], x: &[T], _work: &mut [T]) {
+    fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
         //NB : seemingly sensitive to order of multiplication
         for (yi, (&wi, &xi)) in y.iter_mut().zip(self.w.iter().zip(x)) {
-            *yi = wi * (wi * xi);
+            *yi = wi * (wi * xi)
         }
     }
 
     fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
         assert_eq!(self.λ.len(), ds.len());
-        for (dsi, &λi) in ds.iter_mut().zip(self.λ.iter()) {
+        for (dsi, &λi) in zip(ds, &self.λ) {
             *dsi = λi * λi;
         }
     }
@@ -119,14 +113,14 @@ where
         self._combined_ds_shift_symmetric(dz, step_z, step_s, σμ);
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], ds: &[T], _work: &mut [T], z: &[T]) {
-        for (outi, (&dsi, &zi)) in out.iter_mut().zip(ds.iter().zip(z)) {
+    fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], _work: &mut [T], z: &[T]) {
+        for (outi, (&dsi, &zi)) in zip(out, zip(ds, z)) {
             *outi = dsi / zi;
         }
     }
 
     fn step_length(
-        &self,
+        &mut self,
         dz: &[T],
         ds: &[T],
         z: &[T],
@@ -157,9 +151,7 @@ where
         assert_eq!(dz.len(), z.len());
         assert_eq!(ds.len(), s.len());
         let mut barrier = T::zero();
-        let s_ds = s.iter().zip(ds.iter());
-        let z_dz = z.iter().zip(dz.iter());
-        for ((&s, &ds), (&z, &dz)) in s_ds.zip(z_dz) {
+        for ((&s, &ds), (&z, &dz)) in zip(zip(s, ds), zip(z, dz)) {
             let si = s + α * ds;
             let zi = z + α * dz;
             barrier += (si * zi).logsafe();
@@ -176,11 +168,11 @@ impl<T> SymmetricCone<T> for NonnegativeCone<T>
 where
     T: FloatT,
 {
-    fn λ_inv_circ_op(&self, x: &mut [T], z: &[T]) {
-        self.inv_circ_op(x, &self.λ, z);
+    fn λ_inv_circ_op(&mut self, x: &mut [T], z: &[T]) {
+        _inv_circ_op(x, &self.λ, z);
     }
 
-    fn mul_W(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+    fn mul_W(&mut self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
         assert_eq!(y.len(), x.len());
         assert_eq!(y.len(), self.w.len());
         for i in 0..y.len() {
@@ -188,7 +180,7 @@ where
         }
     }
 
-    fn mul_Winv(&self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
+    fn mul_Winv(&mut self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
         assert_eq!(y.len(), x.len());
         assert_eq!(y.len(), self.w.len());
         for i in 0..y.len() {
@@ -205,19 +197,32 @@ impl<T> JordanAlgebra<T> for NonnegativeCone<T>
 where
     T: FloatT,
 {
-    fn circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        let yz = y.iter().zip(z.iter());
-
-        for (x, (y, z)) in x.iter_mut().zip(yz) {
-            *x = (*y) * (*z);
-        }
+    fn circ_op(&mut self, x: &mut [T], y: &[T], z: &[T]) {
+        _circ_op(x, y, z);
     }
 
-    fn inv_circ_op(&self, x: &mut [T], y: &[T], z: &[T]) {
-        let yz = y.iter().zip(z.iter());
+    fn inv_circ_op(&mut self, x: &mut [T], y: &[T], z: &[T]) {
+        _inv_circ_op(x, y, z);
+    }
+}
 
-        for (x, (y, z)) in x.iter_mut().zip(yz) {
-            *x = (*z) / (*y);
-        }
+// circ ops don't use self for this cone, so put the actual
+// implementations outside so that they can be called by
+// other functions with entering borrow check hell
+fn _circ_op<T>(x: &mut [T], y: &[T], z: &[T])
+where
+    T: FloatT,
+{
+    for (x, (y, z)) in zip(x, zip(y, z)) {
+        *x = (*y) * (*z);
+    }
+}
+
+fn _inv_circ_op<T>(x: &mut [T], y: &[T], z: &[T])
+where
+    T: FloatT,
+{
+    for (x, (y, z)) in zip(x, zip(y, z)) {
+        *x = (*z) / (*y);
     }
 }

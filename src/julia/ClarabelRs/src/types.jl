@@ -76,13 +76,14 @@ end
     SecondOrderConeT = 2
     ExponentialConeT = 3
     PowerConeT       = 4
+    PSDTriangleConeT = 5
 end
 
 
-mutable struct Solver <: Clarabel.AbstractSolver{Float64}
+mutable struct Solver{T <: Float64} <: Clarabel.AbstractSolver{Float64}
     ptr:: Ptr{Cvoid}
 
-    function Solver(ptr)
+    function Solver{T}(ptr) where T
         obj = new(ptr)
         finalizer(solver_drop_jlrs,obj)
         return obj

@@ -4,6 +4,7 @@ use super::ldlsolvers::qdldl::*;
 use super::*;
 use crate::solver::core::kktsolvers::KKTSolver;
 use crate::solver::core::{cones::*, CoreSettings};
+use std::iter::zip;
 
 // -------------------------------------
 // KKTSolver using direct LDL factorisation
@@ -212,7 +213,7 @@ where
         if settings.static_regularization_enable {
             // hold a copy of the true KKT diagonal
             // diag_kkt .= KKT.nzval[map.diag_full];
-            for (d, idx) in diag_kkt.iter_mut().zip(map.diag_full.iter()) {
+            for (d, idx) in zip(&mut *diag_kkt, &map.diag_full) {
                 *d = KKT.nzval[*idx];
             }
 
@@ -221,16 +222,13 @@ where
             // compute an offset version, accounting for signs
             diag_shifted.copy_from(diag_kkt);
 
-            diag_shifted
-                .iter_mut()
-                .zip(dsigns.iter())
-                .for_each(|(shift, &sign)| {
-                    if sign == 1 {
-                        *shift += eps;
-                    } else {
-                        *shift -= eps;
-                    }
-                });
+            zip(&mut *diag_shifted, dsigns).for_each(|(shift, &sign)| {
+                if sign == 1 {
+                    *shift += eps;
+                } else {
+                    *shift -= eps;
+                }
+            });
 
             // overwrite the diagonal of KKT and within the ldlsolver
             _update_values(&mut self.ldlsolver, KKT, &map.diag_full, diag_shifted);
@@ -324,7 +322,8 @@ fn _get_refine_error<T: FloatT>(e: &mut [T], b: &[T], K: &CscMatrix<T>, ξ: &mut
     // be careful when computing the residual here
 
     e.copy_from(b);
-    K.symv(e, MatrixTriangle::Triu, ξ, -T::one(), T::one()); //#  e = b - Kξ
+    let Ksym = K.sym();
+    Ksym.symv(e, ξ, -T::one(), T::one()); //#  e = b - Kξ
 
     e.norm_inf()
 }
@@ -380,7 +379,7 @@ fn _update_values<T: FloatT>(
 }
 
 fn _update_values_KKT<T: FloatT>(KKT: &mut CscMatrix<T>, index: &[usize], values: &[T]) {
-    for (idx, v) in index.iter().zip(values.iter()) {
+    for (idx, v) in zip(index, values) {
         KKT.nzval[*idx] = *v;
     }
 }

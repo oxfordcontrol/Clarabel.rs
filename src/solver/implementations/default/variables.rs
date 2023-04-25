@@ -1,10 +1,9 @@
 use super::*;
 use crate::algebra::*;
-use crate::solver::core::cones::PrimalOrDualCone;
 use crate::solver::core::{
-    cones::{CompositeCone, Cone},
+    cones::{CompositeCone, Cone, PrimalOrDualCone},
     traits::{Settings, Variables},
-    ScalingStrategy,
+    ScalingStrategy, StepDirection,
 };
 
 // ---------------
@@ -102,7 +101,7 @@ where
         // vector operation (since it amounts to M*z'*s), but it
         // doesn't happen very often
         if m != T::one() {
-            self.z.scale(m);
+            step.z.scale(m);
         }
 
         cones.combined_ds_shift(&mut self.z, &mut step.z, &mut step.s, dotσμ);
@@ -117,9 +116,9 @@ where
     fn calc_step_length(
         &self,
         step: &Self,
-        cones: &CompositeCone<T>,
+        cones: &mut CompositeCone<T>,
         settings: &DefaultSettings<T>,
-        steptype: &'static str,
+        step_direction: StepDirection,
     ) -> T {
         let ατ = {
             if step.τ < T::zero() {
@@ -146,7 +145,7 @@ where
         // every cone
         let mut α = T::min(αz, αs);
 
-        if steptype == "combined" {
+        if step_direction == StepDirection::Combined {
             α *= settings.core().max_step_fraction;
         }
 
@@ -161,7 +160,7 @@ where
         self.κ += α * step.κ;
     }
 
-    fn symmetric_initialization(&mut self, cones: &CompositeCone<T>) {
+    fn symmetric_initialization(&mut self, cones: &mut CompositeCone<T>) {
         _shift_to_cone_interior(&mut self.s, cones, PrimalOrDualCone::PrimalCone);
         _shift_to_cone_interior(&mut self.z, cones, PrimalOrDualCone::DualCone);
 
@@ -201,7 +200,7 @@ where
         let cur_κ = self.κ + α * step.κ;
 
         // compute current μ
-        let sz = <[T] as VectorMath<T>>::dot_shifted(&self.z, &self.s, &step.z, &step.s, α);
+        let sz = <[T] as VectorMath>::dot_shifted(&self.z, &self.s, &step.z, &step.s, α);
         let μ = (sz + cur_τ * cur_κ) / central_coef;
 
         // barrier terms from gap and scalars
@@ -228,7 +227,7 @@ where
     }
 }
 
-fn _shift_to_cone_interior<T>(z: &mut [T], cones: &CompositeCone<T>, pd: PrimalOrDualCone)
+fn _shift_to_cone_interior<T>(z: &mut [T], cones: &mut CompositeCone<T>, pd: PrimalOrDualCone)
 where
     T: FloatT,
 {

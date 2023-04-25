@@ -30,16 +30,12 @@ impl<T> Cone<T> for ZeroCone<T>
 where
     T: FloatT,
 {
-    fn dim(&self) -> usize {
-        self.dim
-    }
-
     fn degree(&self) -> usize {
         0
     }
 
     fn numel(&self) -> usize {
-        self.dim()
+        self.dim
     }
 
     fn is_symmetric(&self) -> bool {
@@ -51,7 +47,7 @@ where
         false
     }
 
-    fn margins(&self, _z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
+    fn margins(&mut self, _z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         // for either primal or dual case we specify infinite
         // minimum margin and zero total margin.
         // if we later shift a vector into the zero cone
@@ -94,7 +90,7 @@ where
         Hsblock.fill(T::zero());
     }
 
-    fn mul_Hs(&self, y: &mut [T], _x: &[T], _work: &mut [T]) {
+    fn mul_Hs(&mut self, y: &mut [T], _x: &[T], _work: &mut [T]) {
         y.fill(T::zero());
     }
 
@@ -108,12 +104,12 @@ where
         shift.fill(T::zero());
     }
 
-    fn Δs_from_Δz_offset(&self, out: &mut [T], _ds: &[T], _work: &mut [T], _z: &[T]) {
+    fn Δs_from_Δz_offset(&mut self, out: &mut [T], _ds: &[T], _work: &mut [T], _z: &[T]) {
         out.fill(T::zero());
     }
 
     fn step_length(
-        &self,
+        &mut self,
         _dz: &[T],
         _ds: &[T],
         _z: &[T],
