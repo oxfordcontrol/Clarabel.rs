@@ -47,7 +47,7 @@ Clarabel is also available in a Julia implementation.  See [here](https://github
 
 ## Features
 
-* __Versatile__: Clarabel.rs solves linear programs (LPs), quadratic programs (QPs) and second-order cone programs (SOCPs).   It also solves problems with exponential and power cone constraints.  Future versions will provide support for problems involving positive semidefinite cone constraints.
+* __Versatile__: Clarabel.rs solves linear programs (LPs), quadratic programs (QPs), second-order cone programs (SOCPs) and semidefinite programs (SDPs). It also solves problems with exponential and power cone constraints.
 * __Quadratic objectives__: Unlike interior point solvers based on the standard homogeneous self-dual embedding (HSDE), Clarabel.rs handles quadratic objectives without requiring any epigraphical reformulation of the objective.   It can therefore be significantly faster than other HSDE-based solvers for problems with quadratic objective functions.
 * __Infeasibility detection__: Infeasible problems are detected using a homogeneous embedding technique.
 * __Open Source__: Our code is available on [GitHub](https://github.com/oxfordcontrol/Clarabel.rs) and distributed under the Apache 2.0 License
