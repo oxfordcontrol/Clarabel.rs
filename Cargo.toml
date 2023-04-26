@@ -8,7 +8,7 @@ license = "Apache-2.0"
 description = "Clarabel Conic Interior Point Solver for Rust / Python"
 readme = "README.md"
 repository = "https://github.com/oxfordcontrol/Clarabel.rs"
-keywords = ["convex", "optimization", "QP", "LP", "SOCP", "SDP", "conic"]
+keywords = ["convex" "optimization", "QP", "SOCP", "SDP"]
 categories = ["mathematics"]
 
 #required for openssl to work on git actions
