@@ -270,7 +270,7 @@ where
     /// # Panics
     /// Panics if the given index is out of bounds.
     #[allow(dead_code)]
-    fn get_entry(&self, idx: (usize, usize)) -> Option<T> {
+    pub fn get_entry(&self, idx: (usize, usize)) -> Option<T> {
         let (row, col) = idx;
         assert!(row < self.nrows() && col < self.ncols());
 
