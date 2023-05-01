@@ -320,20 +320,20 @@ fn test_csc_get_entry() {
         vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14.], // nzval
     );
 
-    assert_eq!(A.get_entry((1, 0)).unwrap(), 1.);
-    assert_eq!(A.get_entry((5, 0)).unwrap(), 3.);
-    assert_eq!(A.get_entry((0, 1)).unwrap(), 4.);
-    assert_eq!(A.get_entry((3, 1)).unwrap(), 7.);
-    assert_eq!(A.get_entry((5, 1)).unwrap(), 9.);
-    assert_eq!(A.get_entry((3, 2)).unwrap(), 10.);
-    assert_eq!(A.get_entry((4, 2)).unwrap(), 11.);
-    assert_eq!(A.get_entry((4, 4)).unwrap(), 14.);
+    assert_eq!(A.get_entry((1, 0)), Some(1.));
+    assert_eq!(A.get_entry((5, 0)), Some(3.));
+    assert_eq!(A.get_entry((0, 1)), Some(4.));
+    assert_eq!(A.get_entry((3, 1)), Some(7.));
+    assert_eq!(A.get_entry((5, 1)), Some(9.));
+    assert_eq!(A.get_entry((3, 2)), Some(10.));
+    assert_eq!(A.get_entry((4, 2)), Some(11.));
+    assert_eq!(A.get_entry((4, 4)), Some(14.));
 
-    assert!(A.get_entry((0, 0)).is_none());
-    assert!(A.get_entry((4, 0)).is_none());
-    assert!(A.get_entry((2, 2)).is_none());
-    assert!(A.get_entry((1, 3)).is_none());
-    assert!(A.get_entry((2, 3)).is_none());
-    assert!(A.get_entry((4, 3)).is_none());
-    assert!(A.get_entry((3, 4)).is_none());
+    assert_eq!(A.get_entry((0, 0)), None);
+    assert_eq!(A.get_entry((4, 0)), None);
+    assert_eq!(A.get_entry((2, 2)), None);
+    assert_eq!(A.get_entry((1, 3)), None);
+    assert_eq!(A.get_entry((2, 3)), None);
+    assert_eq!(A.get_entry((4, 3)), None);
+    assert_eq!(A.get_entry((3, 4)), None);
 }
