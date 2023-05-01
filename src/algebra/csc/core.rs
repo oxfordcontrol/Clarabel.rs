@@ -218,7 +218,6 @@ where
     ///
     /// # Panics
     /// Panics if row dimensions are incompatible
-
     pub fn select_rows(&self, rowidx: &Vec<bool>) -> Self {
         //first check for compatible row dimensions
         assert_eq!(rowidx.len(), self.m);
@@ -259,7 +258,6 @@ where
     }
 
     /// Allocates a new matrix containing only entries from the upper triangular part
-
     pub fn to_triu(&self) -> Self {
         assert_eq!(self.m, self.n);
         let (m, n) = (self.m, self.n);
@@ -309,6 +307,7 @@ where
         CscMatrix::new(m, n, colptr, rowval, nzval)
     }
 
+    /// True if the matrix is upper triangular
     pub fn is_triu(&self) -> bool {
         // check lower triangle for any structural entries, regardless
         // of the values that may be assigned to them
@@ -325,6 +324,25 @@ where
             }
         }
         true
+    }
+
+    /// Returns the value at the given (row,col) index as an Option.
+    /// Returns None if the given index is not a structural nonzero.
+    ///
+    /// # Panics
+    /// Panics if the given index is out of bounds.
+    #[allow(dead_code)]
+    pub fn get_entry(&self, idx: (usize, usize)) -> Option<T> {
+        let (row, col) = idx;
+        assert!(row < self.nrows() && col < self.ncols());
+
+        let first = self.colptr[col];
+        let last = self.colptr[col + 1];
+        let rows_in_this_column = &self.rowval[first..last];
+        match rows_in_this_column.binary_search(&row) {
+            Ok(idx) => Some(self.nzval[first + idx]),
+            Err(_) => None,
+        }
     }
 }
 
@@ -344,6 +362,42 @@ impl<T> ShapedMatrix for CscMatrix<T> {
     fn is_square(&self) -> bool {
         self.m == self.n
     }
+}
+
+#[test]
+fn test_csc_get_entry() {
+    // A =
+    //[ ⋅   4.0    ⋅    ⋅   12.0]
+    //[1.0  5.0    ⋅    ⋅     ⋅ ]
+    //[ ⋅   6.0    ⋅    ⋅   13.0]
+    //[2.0  7.0  10.0   ⋅     ⋅ ]
+    //[ ⋅   8.0  11.0   ⋅   14.0]
+    //[3.0  9.0    ⋅    ⋅     ⋅ ]
+
+    let A = CscMatrix::new(
+        6,                                                                 // m
+        5,                                                                 // n
+        vec![0, 3, 9, 11, 11, 14],                                         // colptr
+        vec![1, 3, 5, 0, 1, 2, 3, 4, 5, 3, 4, 0, 2, 4],                    // rowval
+        vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14.], // nzval
+    );
+
+    assert_eq!(A.get_entry((1, 0)), Some(1.));
+    assert_eq!(A.get_entry((5, 0)), Some(3.));
+    assert_eq!(A.get_entry((0, 1)), Some(4.));
+    assert_eq!(A.get_entry((3, 1)), Some(7.));
+    assert_eq!(A.get_entry((5, 1)), Some(9.));
+    assert_eq!(A.get_entry((3, 2)), Some(10.));
+    assert_eq!(A.get_entry((4, 2)), Some(11.));
+    assert_eq!(A.get_entry((4, 4)), Some(14.));
+
+    assert_eq!(A.get_entry((0, 0)), None);
+    assert_eq!(A.get_entry((4, 0)), None);
+    assert_eq!(A.get_entry((2, 2)), None);
+    assert_eq!(A.get_entry((1, 3)), None);
+    assert_eq!(A.get_entry((2, 3)), None);
+    assert_eq!(A.get_entry((4, 3)), None);
+    assert_eq!(A.get_entry((3, 4)), None);
 }
 
 #[test]
