@@ -38,14 +38,32 @@ where
 
 #[test]
 fn test_dense_concatenate() {
-    let A = Matrix::new((2, 2), vec![1., 2., 3., 4.]);
-    let B = Matrix::new((2, 2), vec![5., 6., 7., 8.]);
+    let A = Matrix::from(&[
+        [1., 3.], //
+        [2., 4.], //
+    ]);
+    let B = Matrix::from(&[
+        [5., 7.], //
+        [6., 8.], //
+    ]);
 
     let C = Matrix::hcat(&A, &B);
-    assert!(C.data == [1., 2., 3., 4., 5., 6., 7., 8.]);
-    assert!(C.size() == (2, 4));
+
+    let Ctest = Matrix::from(&[
+        [1., 3., 5., 7.], //
+        [2., 4., 6., 8.], //
+    ]);
+
+    assert_eq!(C, Ctest);
 
     let C = Matrix::vcat(&A, &B);
-    assert!(C.data == [1., 2., 5., 6., 3., 4., 7., 8.]);
-    assert!(C.size() == (4, 2));
+
+    let Ctest = Matrix::from(&[
+        [1., 3.], //
+        [2., 4.], //
+        [5., 7.], //
+        [6., 8.], //
+    ]);
+
+    assert_eq!(C, Ctest);
 }

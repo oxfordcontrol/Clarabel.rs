@@ -53,7 +53,8 @@ pub fn assemble_kkt_matrix<T: FloatT>(
     nnz_SOC_vecs +           // Number of elements in sparse SOC off diagonal columns
     nnz_SOC_ext; // Number of elements in diagonal of SOC extension
 
-    let mut K = CscMatrix::<T>::spalloc(m + n + p, m + n + p, nnzKKT);
+    let Kdim = m + n + p;
+    let mut K = CscMatrix::<T>::spalloc((Kdim, Kdim), nnzKKT);
 
     _kkt_assemble_colcounts(&mut K, P, A, cones, (m, n, p), shape);
     _kkt_assemble_fill(&mut K, &mut maps, P, A, cones, (m, n, p), shape);

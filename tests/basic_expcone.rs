@@ -15,7 +15,7 @@ fn basic_expcone_data() -> (
     // s.t. y * exp(x / y) <= z
     //      y == 1, z == exp(5)
 
-    let P = CscMatrix::<f64>::spalloc(3, 3, 0);
+    let P = CscMatrix::<f64>::zeros((3, 3));
     let c = vec![-1., 0., 0.];
 
     let mut A1 = CscMatrix::<f64>::identity(3);
@@ -93,7 +93,7 @@ fn test_expcone_dual_infeasible() {
     //
     // Same as default, but no equality constraint
 
-    let P = CscMatrix::<f64>::spalloc(3, 3, 0);
+    let P = CscMatrix::<f64>::zeros((3, 3));
     let c = vec![-1., 0., 0.];
 
     let mut A = CscMatrix::<f64>::identity(3);

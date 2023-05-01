@@ -26,6 +26,13 @@ use std::iter::zip;
 /// // optional correctness check
 /// assert!(A.check_format().is_ok());
 ///
+/// // the above is equivalent to the following,
+/// // which is more convenient for small matrices
+/// let A = CscMatrix::from(
+///      &[[1.0, 3.0, 5.0],
+///        [2.0, 0.0, 6.0],
+///        [0.0, 4.0, 7.0]]);
+///
 /// ```
 ///
 
@@ -45,6 +52,63 @@ pub struct CscMatrix<T = f64> {
     pub rowval: Vec<usize>,
     /// vector of non-zero matrix elements
     pub nzval: Vec<T>,
+}
+
+/// Creates a CscMatrix from a slice of arrays.
+///
+/// Example:
+/// ```
+/// use clarabel::algebra::CscMatrix;
+/// let A = CscMatrix::from(
+///      &[[1.0, 2.0],
+///        [3.0, 0.0],
+///        [0.0, 4.0]]);
+///
+impl<'a, I, J, T> From<I> for CscMatrix<T>
+where
+    I: IntoIterator<Item = J>,
+    J: IntoIterator<Item = &'a T>,
+    T: FloatT,
+{
+    fn from(rows: I) -> CscMatrix<T> {
+        let rows: Vec<Vec<T>> = rows
+            .into_iter()
+            .map(|r| r.into_iter().map(|&v| v).collect())
+            .collect();
+
+        let m = rows.len();
+        let n = rows.iter().map(|r| r.len()).next().unwrap_or(0);
+        assert!(rows.iter().all(|r| r.len() == n));
+        let nnz = rows
+            .iter()
+            .flat_map(|r| r)
+            .filter(|&&v| v != T::zero())
+            .count();
+
+        let mut colptr = Vec::with_capacity(n + 1);
+        let mut rowval = Vec::with_capacity(nnz);
+        let mut nzval = Vec::<T>::with_capacity(nnz);
+
+        colptr.push(0);
+        for c in 0..n {
+            for r in 0..m {
+                let value = rows[r][c];
+                if value != T::zero() {
+                    rowval.push(r);
+                    nzval.push(value);
+                }
+            }
+            colptr.push(nzval.len());
+        }
+
+        CscMatrix::<T> {
+            m,
+            n,
+            colptr,
+            rowval,
+            nzval,
+        }
+    }
 }
 
 impl<T> CscMatrix<T>
@@ -76,22 +140,20 @@ where
     }
 
     /// allocate space for a sparse matrix with `nnz` elements
-    ///
-    /// To make an m x n matrix of zeros, use
-    /// ```no_run
-    /// use clarabel::algebra::CscMatrix;
-    /// let m = 3;
-    /// let n = 4;
-    /// let A : CscMatrix<f64> = CscMatrix::spalloc(m,n,0);
-    /// ```
 
-    pub fn spalloc(m: usize, n: usize, nnz: usize) -> Self {
+    pub fn spalloc(size: (usize, usize), nnz: usize) -> Self {
+        let (m, n) = size;
         let mut colptr = vec![0; n + 1];
         let rowval = vec![0; nnz];
         let nzval = vec![T::zero(); nnz];
         colptr[n] = nnz;
 
         CscMatrix::new(m, n, colptr, rowval, nzval)
+    }
+
+    /// Sparse matrix of zeros of size `m` x `n`
+    pub fn zeros(size: (usize, usize)) -> Self {
+        Self::spalloc(size, 0)
     }
 
     /// Identity matrix of size `n`
@@ -176,7 +238,7 @@ where
         let nzred = self.rowval.iter().filter(|&r| rowidx[*r]).count();
 
         // Allocate a reduced size A
-        let mut Ared = CscMatrix::spalloc(mred, self.n, nzred);
+        let mut Ared = CscMatrix::spalloc((mred, self.n), nzred);
 
         //populate new matrix
         let mut ptrred = 0;
@@ -282,4 +344,31 @@ impl<T> ShapedMatrix for CscMatrix<T> {
     fn is_square(&self) -> bool {
         self.m == self.n
     }
+}
+
+#[test]
+fn test_csc_from_slice_of_arrays() {
+    let A = CscMatrix::new(
+        3,                    // m
+        2,                    // n
+        vec![0, 2, 4],        // colptr
+        vec![0, 1, 0, 2],     // rowval
+        vec![1., 3., 2., 4.], // nzval
+    );
+
+    let B = CscMatrix::from(&[
+        [1., 2.], //
+        [3., 0.], //
+        [0., 4.],
+    ]); //
+
+    let C: CscMatrix = (&[
+        [1., 2.], //
+        [3., 0.], //
+        [0., 4.],
+    ])
+        .into();
+
+    assert_eq!(A, B);
+    assert_eq!(A, C);
 }

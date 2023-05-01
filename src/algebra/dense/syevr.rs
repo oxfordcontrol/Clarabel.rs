@@ -120,7 +120,12 @@ where
 fn test_eigen() {
     use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
 
-    let mut S = Matrix::new((3, 3), vec![3., 2., 4., 2., 0., 2., 4., 2., 3.]);
+    let mut S = Matrix::from(&[
+        [3., 2., 4.], //
+        [2., 0., 2.], //
+        [4., 2., 3.], //
+    ]);
+
     let Scopy = S.clone(); //S is corrupted after factorization
 
     let mut eng = EigEngine::<f64>::new(3);

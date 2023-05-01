@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use crate::algebra::*;
 use std::ops::{Index, IndexMut};
 
@@ -28,6 +29,45 @@ pub struct Matrix<T = f64> {
     pub n: usize,
     /// vector of data in column major formmat
     pub data: Vec<T>,
+}
+
+/// Creates a Matrix from a slice of arrays.
+///
+/// Example:
+/// ```
+/// use clarabel::algebra::Matrix;
+/// let A = Matrix::from(
+///      &[[1.0, 2.0],
+///        [3.0, 0.0],
+///        [0.0, 4.0]]);
+// ```
+//
+impl<'a, I, J, T> From<I> for Matrix<T>
+where
+    I: IntoIterator<Item = J>,
+    J: IntoIterator<Item = &'a T>,
+    T: FloatT,
+{
+    fn from(rows: I) -> Matrix<T> {
+        let rows: Vec<Vec<T>> = rows
+            .into_iter()
+            .map(|r| r.into_iter().map(|&v| v).collect())
+            .collect();
+
+        let m = rows.len();
+        let n = rows.iter().map(|r| r.len()).next().unwrap_or(0);
+        assert!(rows.iter().all(|r| r.len() == n));
+        let nnz = m * n;
+
+        let mut data = Vec::with_capacity(nnz);
+        for c in 0..n {
+            for r in 0..m {
+                data.push(rows[r][c]);
+            }
+        }
+
+        Matrix::<T> { m, n, data }
+    }
 }
 
 impl<T> Matrix<T>
@@ -283,10 +323,43 @@ where
 }
 
 #[test]
+#[rustfmt::skip]
 fn test_matrix_istriu() {
-    use crate::algebra::Matrix;
-    let (m, n) = (3, 3);
-    let a = vec![1.0, 0.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 6.0];
-    let mat = Matrix::new((m, n), a);
-    assert!(mat.is_triu());
+    
+    let A = Matrix::from(&[
+        [1., 2., 3.], 
+        [0., 2., 0.], 
+        [0., 0., 1.]]); 
+
+    assert_eq!(A.is_triu(),true);
+
+    let A = Matrix::from(&[
+        [1., 2., 3.], 
+        [0., 2., 0.], 
+        [1., 0., 1.]]); 
+
+    assert_eq!(A.is_triu(),false);
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_matrix_from_slice_of_arrays() {
+    let A = Matrix::new(
+        (3, 2), // n
+        vec![1., 3., 0., 2., 0., 4.],
+    );
+
+    let B = Matrix::from(&[
+        [1., 2.], 
+        [3., 0.], 
+        [0., 4.]]); 
+
+    let C: Matrix = (&[
+        [1., 2.], 
+        [3., 0.], 
+        [0., 4.],
+    ]).into();
+
+    assert_eq!(A, B);
+    assert_eq!(A, C);
 }

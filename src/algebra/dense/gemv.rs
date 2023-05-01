@@ -58,9 +58,11 @@ where
 #[test]
 fn test_gemv() {
     use crate::algebra::Matrix;
-    let (m, n) = (2, 3);
-    let a = vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0];
-    let A = Matrix::new((m, n), a);
+
+    #[rustfmt::skip]
+    let A = Matrix::from(
+        &[[ 1.,  2., 3.],
+          [ 4.,  5., 6.]]);
 
     let x = vec![1., 2., 3.];
     let mut y = vec![-1., -2.];

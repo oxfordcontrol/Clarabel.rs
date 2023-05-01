@@ -63,7 +63,12 @@ where
 fn test_cholesky() {
     use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
 
-    let mut S = Matrix::new((3, 3), vec![8., -2., 4., -2., 12., 2., 4., 2., 6.]);
+    #[rustfmt::skip]
+    let mut S = Matrix::from(
+        &[[ 8., -2., 4.],
+          [-2., 12., 2.],
+          [ 4.,  2., 6.]]);
+
     let Scopy = S.clone(); //S is corrupted after factorization
 
     let mut eng = CholeskyEngine::<f64>::new(3);
