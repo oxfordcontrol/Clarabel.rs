@@ -331,7 +331,6 @@ where
     ///
     /// # Panics
     /// Panics if the given index is out of bounds.
-    #[allow(dead_code)]
     pub fn get_entry(&self, idx: (usize, usize)) -> Option<T> {
         let (row, col) = idx;
         assert!(row < self.nrows() && col < self.ncols());
@@ -365,42 +364,6 @@ impl<T> ShapedMatrix for CscMatrix<T> {
 }
 
 #[test]
-fn test_csc_get_entry() {
-    // A =
-    //[ ⋅   4.0    ⋅    ⋅   12.0]
-    //[1.0  5.0    ⋅    ⋅     ⋅ ]
-    //[ ⋅   6.0    ⋅    ⋅   13.0]
-    //[2.0  7.0  10.0   ⋅     ⋅ ]
-    //[ ⋅   8.0  11.0   ⋅   14.0]
-    //[3.0  9.0    ⋅    ⋅     ⋅ ]
-
-    let A = CscMatrix::new(
-        6,                                                                 // m
-        5,                                                                 // n
-        vec![0, 3, 9, 11, 11, 14],                                         // colptr
-        vec![1, 3, 5, 0, 1, 2, 3, 4, 5, 3, 4, 0, 2, 4],                    // rowval
-        vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14.], // nzval
-    );
-
-    assert_eq!(A.get_entry((1, 0)), Some(1.));
-    assert_eq!(A.get_entry((5, 0)), Some(3.));
-    assert_eq!(A.get_entry((0, 1)), Some(4.));
-    assert_eq!(A.get_entry((3, 1)), Some(7.));
-    assert_eq!(A.get_entry((5, 1)), Some(9.));
-    assert_eq!(A.get_entry((3, 2)), Some(10.));
-    assert_eq!(A.get_entry((4, 2)), Some(11.));
-    assert_eq!(A.get_entry((4, 4)), Some(14.));
-
-    assert_eq!(A.get_entry((0, 0)), None);
-    assert_eq!(A.get_entry((4, 0)), None);
-    assert_eq!(A.get_entry((2, 2)), None);
-    assert_eq!(A.get_entry((1, 3)), None);
-    assert_eq!(A.get_entry((2, 3)), None);
-    assert_eq!(A.get_entry((4, 3)), None);
-    assert_eq!(A.get_entry((3, 4)), None);
-}
-
-#[test]
 fn test_csc_from_slice_of_arrays() {
     let A = CscMatrix::new(
         3,                    // m
@@ -425,4 +388,33 @@ fn test_csc_from_slice_of_arrays() {
 
     assert_eq!(A, B);
     assert_eq!(A, C);
+}
+
+#[test]
+fn test_csc_get_entry() {
+    let A = CscMatrix::from(&[
+        [0.0, 4.0, 0.0, 0.0, 12.0],
+        [1.0, 5.0, 0.0, 0.0, 0.0],
+        [0.0, 6.0, 0.0, 0.0, 13.0],
+        [2.0, 7.0, 10.0, 0.0, 0.0],
+        [0.0, 8.0, 11.0, 0.0, 14.0],
+        [3.0, 9.0, 0.0, 0.0, 0.0],
+    ]);
+
+    assert_eq!(A.get_entry((1, 0)), Some(1.));
+    assert_eq!(A.get_entry((5, 0)), Some(3.));
+    assert_eq!(A.get_entry((0, 1)), Some(4.));
+    assert_eq!(A.get_entry((3, 1)), Some(7.));
+    assert_eq!(A.get_entry((5, 1)), Some(9.));
+    assert_eq!(A.get_entry((3, 2)), Some(10.));
+    assert_eq!(A.get_entry((4, 2)), Some(11.));
+    assert_eq!(A.get_entry((4, 4)), Some(14.));
+
+    assert_eq!(A.get_entry((0, 0)), None);
+    assert_eq!(A.get_entry((4, 0)), None);
+    assert_eq!(A.get_entry((2, 2)), None);
+    assert_eq!(A.get_entry((1, 3)), None);
+    assert_eq!(A.get_entry((2, 3)), None);
+    assert_eq!(A.get_entry((4, 3)), None);
+    assert_eq!(A.get_entry((3, 4)), None);
 }

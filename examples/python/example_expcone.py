@@ -8,8 +8,7 @@ from scipy import sparse;
 #      y == 1, z == exp(5)
 
 # Define problem data
-P = sparse.csc_matrix([[0., 0., 0.], [0., 0., 0.], [0., 0., 0.]])
-P = sparse.triu(P).tocsc()
+P = sparse.csc_matrix((3,3))
 
 q = np.array([-1.,0.,0.])
 

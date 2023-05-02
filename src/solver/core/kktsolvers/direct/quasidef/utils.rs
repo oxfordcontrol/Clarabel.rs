@@ -229,3 +229,87 @@ fn _kkt_assemble_fill<T: FloatT>(
         }
     }
 }
+
+#[test]
+fn test_kkt_assembly_upper_lower() {
+    let P = CscMatrix::from(&[
+        [1., 2., 4.], //
+        [0., 3., 5.], //
+        [0., 0., 6.], //
+    ]);
+    let A = CscMatrix::from(&[
+        [7., 0., 8.],  //
+        [0., 9., 10.], //
+        [1., 2., 3.],
+    ]);
+
+    let Ku_true_diag = CscMatrix::from(&[
+        [1., 2., 4., 7., 0., 1.],  //
+        [0., 3., 5., 0., 9., 2.],  //
+        [0., 0., 6., 8., 10., 3.], //
+        [0., 0., 0., -1., 0., 0.], //
+        [0., 0., 0., 0., -1., 0.], //
+        [0., 0., 0., 0., 0., -1.], //
+    ]);
+
+    let Kl_true_diag = CscMatrix::from(&[
+        [1., 0., 0., 0., 0., 0.],   //
+        [2., 3., 0., 0., 0., 0.],   //
+        [4., 5., 6., 0., 0., 0.],   //
+        [7., 0., 8., -1., 0., 0.],  //
+        [0., 9., 10., 0., -1., 0.], //
+        [1., 2., 3., 0., 0., -1.],  //
+    ]);
+
+    let Ku_true_dense = CscMatrix::from(&[
+        [1., 2., 4., 7., 0., 1.],    //
+        [0., 3., 5., 0., 9., 2.],    //
+        [0., 0., 6., 8., 10., 3.],   //
+        [0., 0., 0., -1., -1., -1.], //
+        [0., 0., 0., 0., -1., -1.],  //
+        [0., 0., 0., 0., 0., -1.],   //
+    ]);
+
+    let Kl_true_dense = CscMatrix::from(&[
+        [1., 0., 0., 0., 0., 0.],    //
+        [2., 3., 0., 0., 0., 0.],    //
+        [4., 5., 6., 0., 0., 0.],    //
+        [7., 0., 8., -1., 0., 0.],   //
+        [0., 9., 10., -1., -1., 0.], //
+        [1., 2., 3., -1., -1., -1.], //
+    ]);
+
+    // diagonal lower right block tests
+    // --------------------------------
+    let K = SupportedConeT::NonnegativeConeT(3);
+    let cones = CompositeCone::new(&[K]);
+
+    let (mut Ku, mapu) = assemble_kkt_matrix(&P, &A, &cones, MatrixTriangle::Triu);
+    for i in mapu.Hsblocks {
+        Ku.nzval[i] = -1.;
+    }
+    assert_eq!(Ku, Ku_true_diag);
+
+    let (mut Kl, mapl) = assemble_kkt_matrix(&P, &A, &cones, MatrixTriangle::Tril);
+    for i in mapl.Hsblocks {
+        Kl.nzval[i] = -1.;
+    }
+    assert_eq!(Kl, Kl_true_diag);
+
+    // dense lower right block tests
+    // --------------------------------
+    let K = SupportedConeT::ExponentialConeT();
+    let cones = CompositeCone::new(&[K]);
+
+    let (mut Ku, mapu) = assemble_kkt_matrix(&P, &A, &cones, MatrixTriangle::Triu);
+    for i in mapu.Hsblocks {
+        Ku.nzval[i] = -1.;
+    }
+    assert_eq!(Ku, Ku_true_dense);
+
+    let (mut Kl, mapl) = assemble_kkt_matrix(&P, &A, &cones, MatrixTriangle::Tril);
+    for i in mapl.Hsblocks {
+        Kl.nzval[i] = -1.;
+    }
+    assert_eq!(Kl, Kl_true_dense);
+}
