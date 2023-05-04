@@ -268,12 +268,11 @@ where
         //compute the initial error
         let mut norme = _get_refine_error(e, b, K, x);
 
-        for _ in 0..maxiter {
-            // bail on numerical error
-            if !norme.is_finite() {
-                return false;
-            }
+        if !norme.is_finite() {
+            return false;
+        }
 
+        for _ in 0..maxiter {
             if norme <= (abstol + reltol * normb) {
                 //within tolerance.  Exit
                 break;
@@ -286,21 +285,23 @@ where
 
             //prospective solution is x + dx.  Use dx space to
             // hold it for a check before applying to x
-            dx.axpby(T::one(), x, T::one()); //now dx is really x + dx
+            dx.axpby(T::one(), x, T::one());
+
             norme = _get_refine_error(e, b, K, dx);
+
+            if !norme.is_finite() {
+                return false;
+            }
 
             let improved_ratio = lastnorme / norme;
             if improved_ratio < stopratio {
                 //insufficient improvement.  Exit
                 if improved_ratio > T::one() {
-                    //swap instead of copying to x
                     std::mem::swap(x, dx);
                 }
                 break;
-            } else {
-                //swap instead of copying to x
-                std::mem::swap(x, dx);
             }
+            std::mem::swap(x, dx);
         }
         //NB: "success" means only that we had a finite valued result
         true
