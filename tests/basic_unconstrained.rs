@@ -6,7 +6,7 @@ use clarabel::{algebra::*, solver::*};
 fn test_unconstrained_feasible() {
     let P = CscMatrix::identity(3);
     let mut c = [1., 2., -3.];
-    let A = CscMatrix::spalloc(0, 3, 0); // <- no constraints
+    let A = CscMatrix::zeros((0, 3)); // <- no constraints
     let b = [];
     let cones = [];
 
@@ -22,9 +22,9 @@ fn test_unconstrained_feasible() {
 
 #[test]
 fn test_unconstrained_dual_infeasible() {
-    let P = CscMatrix::spalloc(3, 3, 0);
+    let P = CscMatrix::zeros((3, 3));
     let c = [1., 0., 0.];
-    let A = CscMatrix::spalloc(0, 3, 0); // <- no constraints
+    let A = CscMatrix::zeros((0, 3)); // <- no constraints
     let b = [];
     let cones = [];
 

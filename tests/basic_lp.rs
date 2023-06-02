@@ -11,7 +11,7 @@ fn basic_lp_data() -> (
     Vec<f64>,
     Vec<SupportedConeT<f64>>,
 ) {
-    let P = CscMatrix::<f64>::spalloc(3, 3, 0);
+    let P = CscMatrix::<f64>::zeros((3, 3));
 
     let I1 = CscMatrix::<f64>::identity(3);
     let mut I2 = CscMatrix::<f64>::identity(3);

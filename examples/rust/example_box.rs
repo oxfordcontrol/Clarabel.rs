@@ -1,5 +1,4 @@
 #![allow(non_snake_case)]
-
 use clarabel::algebra::*;
 use clarabel::solver::*;
 

@@ -3,28 +3,20 @@ use clarabel::algebra::*;
 use clarabel::solver::*;
 
 fn main() {
-    // QP Example
+    // SOCP Example
 
-    // let P = CscMatrix::identity(2);    // For P = I
-    // let P = CscMatrix::spalloc(2,2,0); // For P = 0
-
-    let P = CscMatrix::new(
-        2,             // m
-        2,             // n
-        vec![0, 0, 1], // colptr
-        vec![1],       // rowval
-        vec![2.],      // nzval
-    );
+    let P = CscMatrix::from(&[
+        [0., 0.], //
+        [0., 2.], //
+    ]);
 
     let q = vec![0., 0.];
 
-    let A = CscMatrix::new(
-        3,              // m
-        2,              // n
-        vec![0, 1, 2],  // colptr
-        vec![1, 2],     // rowval
-        vec![-2., -1.], // nzval
-    );
+    let A = CscMatrix::from(&[
+        [0., 0.],  //
+        [-2., 0.], //
+        [0., -1.], //
+    ]);
 
     let b = vec![1., -2., -2.];
 

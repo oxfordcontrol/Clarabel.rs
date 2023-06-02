@@ -48,17 +48,32 @@ where
 #[test]
 fn test_syrk() {
     let (m, n) = (2, 3);
-    let A = Matrix::new((m, n), vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0]);
+    let A = Matrix::from(&[
+        [1., 2., 3.], //
+        [4., 5., 6.], //
+    ]);
 
     let mut AAt = Matrix::<f64>::zeros((m, m));
     AAt.syrk(&A, 1.0, 0.0);
-    //NB: fills upper triangle only
-    assert!(AAt.data() == [14.0, 0.0, 32.0, 77.0]);
+
+    //NB: writes to upper triangle only
+    let AAt_test = Matrix::from(&[
+        [14., 32.], //
+        [0., 77.],  //
+    ]);
+
+    assert_eq!(AAt, AAt_test);
 
     let mut AtA = Matrix::<f64>::zeros((n, n));
     AtA.data_mut().fill(1.0);
     AtA.syrk(&A.t(), 2.0, 1.0);
-    //NB: fills upper triangle only
-    println!("AtA = {}", AtA);
-    assert!(AtA.data() == [35.0, 1.0, 1.0, 45.0, 59.0, 1.0, 55.0, 73.0, 91.0]);
+
+    //NB: writes to upper triangle only
+    let AtA_test = Matrix::from(&[
+        [35., 45., 55.], //
+        [1., 59., 73.],  //
+        [1., 1., 91.],   //
+    ]);
+
+    assert_eq!(AtA, AtA_test);
 }

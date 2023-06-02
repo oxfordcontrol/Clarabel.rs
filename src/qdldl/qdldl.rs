@@ -189,7 +189,7 @@ fn _qdldl_new<T: FloatT>(
     let sumLnz = workspace.Lnz.iter().sum();
 
     // allocate space for the L matrix row indices and data
-    let mut L = CscMatrix::spalloc(n, n, sumLnz);
+    let mut L = CscMatrix::spalloc((n, n), sumLnz);
 
     // allocate for D and D inverse in LDL^T
     let mut D = vec![T::zero(); n];
@@ -712,7 +712,7 @@ fn _permute_symmetric<T: FloatT>(A: &CscMatrix<T>, iperm: &[usize]) -> (CscMatri
         panic!("Dimensions of sparse matrix A must equal the length of iperm");
     }
 
-    let mut P = CscMatrix::<T>::spalloc(n, n, A.nnz());
+    let mut P = CscMatrix::<T>::spalloc((n, n), A.nnz());
 
     // we will record a mapping of entries from A to PAPt
     let mut AtoPAPt = vec![0; A.nnz()];

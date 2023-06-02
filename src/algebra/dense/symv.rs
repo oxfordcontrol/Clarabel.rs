@@ -27,13 +27,15 @@ where
 
 #[test]
 fn test_gsymv() {
-    use crate::algebra::Matrix;
-    let (m, n) = (3, 3);
-    let a = vec![1.0, 0.0, 0.0, 2.0, 3.0, 0.0, 4.0, 5.0, 6.0];
-    let A = Matrix::new((m, n), a);
+    #[rustfmt::skip]
+    let A = Matrix::from(&[
+        [ 1.,  2.,   4.], 
+        [ 0.,  3.,   5.], 
+        [ 0.,  0.,   6.],
+    ]);
 
     let x = vec![1., -2., 3.];
     let mut y = vec![-4., -1., 3.];
     A.sym().symv(&x, &mut y, 2.0, 3.0);
-    assert!(y == [6.0, 19.0, 33.0]);
+    assert_eq!(y, [6.0, 19.0, 33.0]);
 }

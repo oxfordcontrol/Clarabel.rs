@@ -32,23 +32,66 @@ where
 }
 
 #[test]
+#[rustfmt::skip]
 fn test_kron() {
-    let A = Matrix::new((2, 2), vec![1.0, 4.0, 2.0, 5.0]);
-    let B = Matrix::new((1, 2), vec![1.0, 2.0]);
 
+    let A = Matrix::from(
+        &[[ 1.,  2.],
+          [ 4.,  5.]]);
+
+    let B = Matrix::from(
+        &[[ 1.,  2.]]);
+
+
+    // A ⊗ B
     let (k1, m1) = A.size();
     let (k2, m2) = B.size();
-
     let mut K = Matrix::<f64>::zeros((k1 * k2, m1 * m2));
     K.kron(&A, &B);
-    assert!(K.data() == vec![1., 4., 2., 8., 2., 5., 4., 10.]);
-    K.kron(&A.t(), &B);
-    assert!(K.data() == vec![1., 2., 2., 4., 4., 5., 8., 10.]);
 
+    let Ktest = Matrix::from(
+        &[[ 1.,  2.,  2.,  4.],
+          [ 4.,  8.,  5., 10.]]);
+
+    assert_eq!(K,Ktest);
+
+    // A' ⊗ B
+    let (k1, m1) = A.t().size();
+    let (k2, m2) = B.size();
+    let mut K = Matrix::<f64>::zeros((k1 * k2, m1 * m2));
+    K.kron(&A.t(), &B);
+
+    let Ktest = Matrix::from(
+        &[[ 1.,  2.,  4.,  8.],
+          [ 2.,  4.,  5., 10.]]);
+          
+    assert_eq!(K,Ktest);
+
+    // A ⊗ B'            
+    let (k1, m1) = A.size();
     let (k2, m2) = B.t().size();
     let mut K = Matrix::<f64>::zeros((k1 * k2, m1 * m2));
     K.kron(&A, &B.t());
-    assert!(K.data() == vec![1., 2., 4., 8., 2., 4., 5., 10.]);
+
+    let Ktest = Matrix::from(
+        &[[1., 2. ],
+          [2., 4. ],
+          [4., 5. ],
+          [8., 10.]]);
+          
+    assert_eq!(K,Ktest);
+
+    // A' ⊗ B'  
+    let (k1, m1) = A.t().size();
+    let (k2, m2) = B.t().size();  
+    let mut K = Matrix::<f64>::zeros((k1 * k2, m1 * m2));  
     K.kron(&A.t(), &B.t());
-    assert!(K.data() == vec![1., 2., 2., 4., 4., 8., 5., 10.]);
+
+    let Ktest = Matrix::from(
+        &[[1., 4. ],
+          [2., 8. ],
+          [2., 5. ],
+          [4., 10.]]);
+
+    assert_eq!(K,Ktest);
 }

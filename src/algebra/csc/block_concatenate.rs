@@ -12,7 +12,7 @@ where
         let nnz = A.nnz() + B.nnz();
         let m = A.m; //rows C
         let n = A.n + B.n; //cols C
-        let mut C = CscMatrix::spalloc(m, n, nnz);
+        let mut C = CscMatrix::spalloc((m, n), nnz);
 
         //we make dummy mapping indices since we don't care
         //where the entries go.  An alternative would be to
@@ -40,7 +40,7 @@ where
         let nnz = A.nnz() + B.nnz();
         let m = A.m + B.m; //rows C
         let n = A.n; //cols C
-        let mut C = CscMatrix::spalloc(m, n, nnz);
+        let mut C = CscMatrix::spalloc((m, n), nnz);
 
         //we make dummy mapping indices since we don't care
         //where the entries go.  An alternative would be to

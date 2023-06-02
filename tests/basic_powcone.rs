@@ -16,7 +16,7 @@ fn test_powcone_feasible() {
 
     // x = (x1, y, z1, x2, y2, z2)
     let n = 6;
-    let P = CscMatrix::<f64>::spalloc(n, n, 0);
+    let P = CscMatrix::<f64>::zeros((n, n));
     let c = vec![0., 0., -1., 0., 0., -1.];
 
     // (x1, y, z1) in K_pow(0.6)

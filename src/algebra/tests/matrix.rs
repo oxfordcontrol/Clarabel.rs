@@ -276,7 +276,7 @@ fn test_matrix_to_triu_identity() {
 
 #[test]
 fn test_matrix_to_triu_empty() {
-    let A = CscMatrix::<f64>::spalloc(5, 5, 0);
+    let A = CscMatrix::<f64>::zeros((5, 5));
     let B = A.to_triu();
     assert_eq!(B, A);
 }
@@ -284,7 +284,7 @@ fn test_matrix_to_triu_empty() {
 #[test]
 #[should_panic]
 fn test_matrix_to_triu_notsquare() {
-    let A = CscMatrix::<f64>::spalloc(5, 4, 0);
+    let A = CscMatrix::<f64>::zeros((5, 4));
     let B = A.to_triu();
     assert_eq!(B, A);
 }

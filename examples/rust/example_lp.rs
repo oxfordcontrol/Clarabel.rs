@@ -1,17 +1,14 @@
 #![allow(non_snake_case)]
-
 use clarabel::algebra::*;
 use clarabel::solver::*;
 
-fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
-    // an empty P matrix / P = 0
-    let P: CscMatrix<f64> = CscMatrix::<f64>::spalloc(2, 2, 0);
-
+fn main() {
+    let P: CscMatrix<f64> = CscMatrix::<f64>::zeros((2, 2));
     let q = vec![1., -1.];
 
     //a 2-d box constraint, separated into 4 inequalities.
     //A = [I; -I]
-    let A = CscMatrix::new(
+    let _A = CscMatrix::new(
         4,                      // m
         2,                      // n
         vec![0, 2, 4],          // colptr
@@ -19,13 +16,15 @@ fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
         vec![1., -1., 1., -1.], // nzval
     );
 
+    // easier way - use the From trait to construct A:
+    let A = CscMatrix::from(&[
+        [1., 0.],  //
+        [0., 1.],  //
+        [-1., 0.], //
+        [0., -1.], //
+    ]);
+
     let b = vec![1.; 4];
-
-    (P, q, A, b)
-}
-
-fn main() {
-    let (P, q, A, b) = problem_data();
 
     let cones = [NonnegativeConeT(4)];
 

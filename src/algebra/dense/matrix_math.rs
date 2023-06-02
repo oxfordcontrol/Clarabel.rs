@@ -100,10 +100,13 @@ impl<T: FloatT> MatrixMath for Matrix<T> {
 
 #[test]
 fn test_quad_form() {
-    let mut A = Matrix::new((2, 2), vec![1.0, 4.0, 4.0, 5.0]);
+    let mut A = Matrix::from(&[
+        [1., 4.], //
+        [4., 5.], //
+    ]);
+
     let x = vec![1.0, 2.0];
     let y = vec![3.0, 4.0];
-    println!("Quad form was {:?}", A.quad_form(&x, &y));
     assert!(A.quad_form(&x, &y) == 83.0);
 
     //remove lower triangle part and check again.
@@ -114,12 +117,12 @@ fn test_quad_form() {
 
 #[test]
 fn test_row_col_norms() {
-    //A =
-    //[-1   4   6]
-    //[ 3  -8   7]
-    //[ 0   4   9]
-
-    let A = Matrix::new((3, 3), vec![-1., 3., 0., 4., -8., 4., 6., 7., 9.]);
+    #[rustfmt::skip]
+    let A = Matrix::from(&[
+        [-1.,  4.,  6.], 
+        [ 3., -8.,  7.], 
+        [ 0.,  4.,  9.],
+    ]);
 
     let mut rnorms = vec![0.0; 3];
     let mut cnorms = vec![0.0; 3];
@@ -142,13 +145,14 @@ fn test_row_col_norms() {
 }
 
 #[test]
+#[rustfmt::skip]
 fn test_l_r_scalings() {
-    //A =
-    //[-1   4   6]
-    //[ 3  -8   7]
-    //[ 0   4   9]
 
-    let A = Matrix::new((3, 3), vec![-1., 3., 0., 4., -8., 4., 6., 7., 9.]);
+    let A = Matrix::from(&[
+        [-1.,  4.,  6.], 
+        [ 3., -8.,  7.], 
+        [ 0.,  4.,  9.],
+    ]);
 
     let lscale = vec![1., -2., 3.];
     let rscale = vec![-2., 1., -3.];
@@ -156,15 +160,30 @@ fn test_l_r_scalings() {
     //right scale
     let mut B = A.clone();
     B.rscale(&rscale);
-    assert!(B.data == [2., -6., 0., 4., -8., 4., -18., -21., -27.]);
+    let Btest = Matrix::from(&[
+        [ 2.,  4.,  -18.], 
+        [-6., -8.,  -21.], 
+        [ 0.,  4.,  -27.],
+    ]);
+    assert_eq!(B,Btest);
 
     //left scale
     let mut B = A.clone();
     B.lscale(&lscale);
-    assert!(B.data == [-1., -6., 0., 4., 16., 12., 6., -14., 27.]);
+    let Btest = Matrix::from(&[
+        [-1.,  4.,   6.], 
+        [-6., 16., -14.], 
+        [ 0., 12.,  27.],
+    ]);
+    assert_eq!(B,Btest);
 
     //left-right scale
     let mut B = A.clone();
     B.lrscale(&lscale, &rscale);
-    assert!(B.data == [2., 12., 0., 4., 16., 12., -18., 42., -81.]);
+    let Btest = Matrix::from(&[
+        [ 2.,  4., -18.], 
+        [12., 16.,  42.], 
+        [ 0., 12., -81.],
+    ]);
+    assert_eq!(B,Btest);
 }

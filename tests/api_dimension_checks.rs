@@ -12,9 +12,9 @@ fn api_dim_check_data() -> (
     Vec<f64>,
     Vec<SupportedConeT<f64>>,
 ) {
-    let P = CscMatrix::<f64>::spalloc(4, 4, 0);
+    let P = CscMatrix::<f64>::zeros((4, 4));
     let q = vec![0.; 4];
-    let A = CscMatrix::<f64>::spalloc(6, 4, 0);
+    let A = CscMatrix::<f64>::zeros((6, 4));
     let b = vec![0.; 6];
     let cones = vec![ZeroConeT(1), NonnegativeConeT(2), NonnegativeConeT(3)];
     (P, q, A, b, cones)
@@ -36,7 +36,7 @@ fn api_dim_check_working() {
 #[should_panic]
 fn api_dim_check_bad_P() {
     let (_P, q, A, b, cones) = api_dim_check_data();
-    let P = CscMatrix::<f64>::spalloc(3, 3, 0);
+    let P = CscMatrix::<f64>::zeros((3, 3));
 
     let settings = DefaultSettings::default();
     let _solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
@@ -46,7 +46,7 @@ fn api_dim_check_bad_P() {
 #[should_panic]
 fn api_dim_check_bad_A_rows() {
     let (P, q, _A, b, cones) = api_dim_check_data();
-    let A = CscMatrix::<f64>::spalloc(5, 4, 0);
+    let A = CscMatrix::<f64>::zeros((5, 4));
 
     let settings = DefaultSettings::default();
     let _solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
@@ -56,7 +56,7 @@ fn api_dim_check_bad_A_rows() {
 #[should_panic]
 fn api_dim_check_bad_A_cols() {
     let (P, q, _A, b, cones) = api_dim_check_data();
-    let A = CscMatrix::<f64>::spalloc(6, 3, 0);
+    let A = CscMatrix::<f64>::zeros((6, 3));
 
     let settings = DefaultSettings::default();
     let _solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
@@ -66,7 +66,7 @@ fn api_dim_check_bad_A_cols() {
 #[should_panic]
 fn api_dim_check_P_not_square() {
     let (_P, q, A, b, cones) = api_dim_check_data();
-    let P = CscMatrix::<f64>::spalloc(4, 3, 0);
+    let P = CscMatrix::<f64>::zeros((4, 3));
 
     let settings = DefaultSettings::default();
     let _solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);

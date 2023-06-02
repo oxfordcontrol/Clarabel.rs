@@ -120,10 +120,13 @@ impl<T: FloatT> VectorMath for [T] {
         T::sqrt(total)
     }
 
-    // Returns infinity norm, ignoring NaNs
+    // Returns infinity norm
     fn norm_inf(&self) -> T {
         let mut out = T::zero();
         for v in self.iter().map(|v| v.abs()) {
+            if v.is_nan() {
+                return T::nan();
+            }
             out = if v > out { v } else { out };
         }
         out
