@@ -1,6 +1,6 @@
 [package]
 name = "clarabel"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 rust-version = "1.60"
@@ -37,6 +37,7 @@ sdp-accelerate = ["sdp", "blas-src/accelerate", "lapack-src/accelerate"]
 sdp-netlib     = ["sdp", "blas-src/netlib", "lapack-src/netlib"]
 sdp-openblas   = ["sdp", "blas-src/openblas", "lapack-src/openblas"]
 sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl"]
+sdp-r          = ["sdp", "blas-src/r", "lapack-src/r"]
 
 # build as the julia interface 
 julia = ["sdp", "dep:libc", "dep:num-derive", "dep:serde", "dep:serde_json"] 
@@ -61,11 +62,11 @@ version = "0.19.0"
 optional = true
 
 [dependencies.blas-src]
-version = "0.8"
+version = "0.9"
 optional = true 
 
 [dependencies.lapack-src]
-version = "0.8"
+version = "0.9"
 optional = true 
 
 
