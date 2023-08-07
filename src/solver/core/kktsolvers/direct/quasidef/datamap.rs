@@ -12,6 +12,10 @@ pub struct LDLDataMap {
     pub SOC_u: Vec<Vec<usize>>, //off diag dense columns u
     pub SOC_v: Vec<Vec<usize>>, //off diag dense columns v
     pub SOC_D: Vec<usize>,      //diag of just the sparse SOC expansion D
+    pub GenPow_p: Vec<Vec<usize>>,      // off diag dense columns p
+    pub GenPow_q: Vec<Vec<usize>>,      // off diag dense columns q
+    pub GenPow_r: Vec<Vec<usize>>,      // off diag dense columns r
+    pub GenPow_D: Vec<usize>,           // diag of just the sparse GenPow expansion D
 
     // all of above terms should be disjoint and their union
     // should cover all of the user data in the KKT matrix.  Now
@@ -40,13 +44,21 @@ impl LDLDataMap {
         // make an index for each of the Hs blocks for each cone
         let Hsblocks = allocate_kkt_Hsblocks::<T, usize>(cones);
 
-        // now do the SOC expansion pieces
+        // now do the SOC and generalized power expansion pieces
         let nsoc = cones.type_count(SupportedConeTag::SecondOrderCone);
-        let p = 2 * nsoc;
-        let SOC_D = vec![0; p];
+        let psoc = 2 * nsoc;
+        let SOC_D = vec![0; psoc];
 
         let mut SOC_u = Vec::<Vec<usize>>::with_capacity(nsoc);
         let mut SOC_v = Vec::<Vec<usize>>::with_capacity(nsoc);
+
+        let ngenpow = cones.type_count(SupportedConeTag::GenPowerCone);
+        let pgenpow = 3 * ngenpow;
+        let GenPow_D = vec![0; pgenpow];
+
+        let mut GenPow_p = Vec::<Vec<usize>>::with_capacity(ngenpow);
+        let mut GenPow_q = Vec::<Vec<usize>>::with_capacity(ngenpow);
+        let mut GenPow_r = Vec::<Vec<usize>>::with_capacity(ngenpow);
 
         for cone in cones.iter() {
             // `cone` here will be of our SupportedCone enum wrapper, so
@@ -55,9 +67,15 @@ impl LDLDataMap {
                 SOC_u.push(vec![0; soc.numel()]);
                 SOC_v.push(vec![0; soc.numel()]);
             }
+            // Generalized power cones
+            if let SupportedCone::GenPowerCone(genpow) = cone {
+                GenPow_p.push(vec![0; genpow.numel()]);
+                GenPow_q.push(vec![0; genpow.dim1]);
+                GenPow_r.push(vec![0; genpow.dim2]);
+            }
         }
 
-        let diag_full = vec![0; m + n + p];
+        let diag_full = vec![0; m + n + psoc + pgenpow];
 
         Self {
             P,
@@ -66,6 +84,10 @@ impl LDLDataMap {
             SOC_u,
             SOC_v,
             SOC_D,
+            GenPow_p,
+            GenPow_q,
+            GenPow_r,
+            GenPow_D,
             diagP,
             diag_full,
         }

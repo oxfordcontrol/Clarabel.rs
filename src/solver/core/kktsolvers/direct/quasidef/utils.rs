@@ -26,8 +26,11 @@ pub fn assemble_kkt_matrix<T: FloatT>(
     shape: MatrixTriangle,
 ) -> (CscMatrix<T>, LDLDataMap) {
     let (m, n) = (A.nrows(), P.nrows());
+
     let n_socs = cones.type_count(SupportedConeTag::SecondOrderCone);
-    let p = 2 * n_socs;
+    let p_socs = 2 * n_socs;
+    let n_genpows = cones.type_count(SupportedConeTag::GenPowerCone);
+    let p_genpows = 3 * n_genpows;
 
     let mut maps = LDLDataMap::new(P, A, cones);
 
@@ -42,8 +45,16 @@ pub fn assemble_kkt_matrix<T: FloatT>(
     // counting elements in both columns
     let nnz_SOC_vecs = 2 * maps.SOC_u.iter().fold(0, |acc, block| acc + block.len());
 
+    // entries in the dense columns p.q.r of the
+    // sparse generalized power expansion terms.
+    let nnz_GenPow_vecs = maps.GenPow_p.iter().fold(0, |acc, block| acc + block.len())
+                                + maps.GenPow_q.iter().fold(0, |acc, block| acc + block.len())
+                                + maps.GenPow_r.iter().fold(0, |acc, block| acc + block.len());
+
     //entries in the sparse SOC diagonal extension block
     let nnz_SOC_ext = maps.SOC_D.len();
+    //entries in the sparse generalized power diagonal extension block
+    let nnz_GenPow_ext = maps.GenPow_D.len();
 
     let nnzKKT = P.nnz() +   // Number of elements in P
     n -                      // Number of elements in diagonal top left block
@@ -51,13 +62,15 @@ pub fn assemble_kkt_matrix<T: FloatT>(
     A.nnz() +                 // Number of nonzeros in A
     nnz_Hsblocks +         // Number of elements in diagonal below A'
     nnz_SOC_vecs +           // Number of elements in sparse SOC off diagonal columns
-    nnz_SOC_ext; // Number of elements in diagonal of SOC extension
+    nnz_SOC_ext  +          // Number of elements in diagonal of SOC extension
+    nnz_GenPow_vecs +       // Number of elements in sparse generalized power off diagonal columns
+    nnz_GenPow_ext;         // Number of elements in diagonal of generalized power extension
 
-    let Kdim = m + n + p;
+    let Kdim = m + n + p_socs + p_genpows;
     let mut K = CscMatrix::<T>::spalloc((Kdim, Kdim), nnzKKT);
 
-    _kkt_assemble_colcounts(&mut K, P, A, cones, (m, n, p), shape);
-    _kkt_assemble_fill(&mut K, &mut maps, P, A, cones, (m, n, p), shape);
+    _kkt_assemble_colcounts(&mut K, P, A, cones, (m, n, p_socs, p_genpows), shape);
+    _kkt_assemble_fill(&mut K, &mut maps, P, A, cones, (m, n, p_socs, p_genpows), shape);
 
     (K, maps)
 }
@@ -67,10 +80,10 @@ fn _kkt_assemble_colcounts<T: FloatT>(
     P: &CscMatrix<T>,
     A: &CscMatrix<T>,
     cones: &CompositeCone<T>,
-    mnp: (usize, usize, usize),
+    mnp: (usize, usize, usize, usize),
     shape: MatrixTriangle,
 ) {
-    let (m, n, p) = (mnp.0, mnp.1, mnp.2);
+    let (m, n, p_socs, p_genpows) = (mnp.0, mnp.1, mnp.2, mnp.3);
 
     // use K.p to hold nnz entries in each
     // column of the KKT matrix
@@ -128,7 +141,41 @@ fn _kkt_assemble_colcounts<T: FloatT>(
 
     // add diagonal block in the lower RH corner
     // to allow for the diagonal terms in SOC expansion
-    K.colcount_diag(n + m, p);
+    K.colcount_diag(n + m, p_socs);
+
+    // count dense columns for each generalized power cone
+    let mut genpowidx = 0; // which Genpow are we working on?
+
+    for (i, cone) in cones.iter().enumerate() {
+        if let SupportedCone::GenPowerCone(GenPow) = cone {
+            // we will add the p,q,r columns for this cone
+            let nvars = GenPow.numel();
+            let dim1 = GenPow.dim1;
+            let dim2 = GenPow.dim2;
+            let headidx = cones.rng_cones[i].start;
+
+            // which column does q go into?
+            let col = m + n + 2 * socidx + 3 * genpowidx;
+
+            match shape {
+                MatrixTriangle::Triu => {
+                    K.colcount_colvec(dim1, headidx + n, col); // q column
+                    K.colcount_colvec(dim2, headidx + n + dim1, col + 1); // r column
+                    K.colcount_colvec(nvars, headidx + n, col + 2); // p column
+                }
+                MatrixTriangle::Tril => {
+                    K.colcount_rowvec(dim1, col, headidx + n); // q row
+                    K.colcount_rowvec(dim2, col + 1, headidx + n + dim1); // r row
+                    K.colcount_rowvec(nvars, col + 2, headidx + n); // p row
+                }
+            }
+            genpowidx = genpowidx + 1;
+        }
+    }
+
+    // add diagonal block in the lower RH corner
+    // to allow for the diagonal terms in generalized power expansion
+    K.colcount_diag(n + m + p_socs, p_genpows);
 }
 
 fn _kkt_assemble_fill<T: FloatT>(
@@ -137,10 +184,10 @@ fn _kkt_assemble_fill<T: FloatT>(
     P: &CscMatrix<T>,
     A: &CscMatrix<T>,
     cones: &CompositeCone<T>,
-    mnp: (usize, usize, usize),
+    mnp: (usize, usize, usize, usize),
     shape: MatrixTriangle,
 ) {
-    let (m, n, p) = (mnp.0, mnp.1, mnp.2);
+    let (m, n, p_socs, p_genpows) = (mnp.0, mnp.1, mnp.2, mnp.3);
 
     // cumsum total entries to convert to K.p
     K.colcount_to_colptr();
@@ -202,7 +249,41 @@ fn _kkt_assemble_fill<T: FloatT>(
     }
 
     // fill in SOC diagonal extension with diagonal of structural zeros
-    K.fill_diag(&mut maps.SOC_D, n + m, p);
+    K.fill_diag(&mut maps.SOC_D, n + m, p_socs);
+
+    // fill in dense columns for each generalized power cone
+    let mut genpowidx = 0; //which generalized power cone are we working on?
+
+    for (i, cone) in cones.iter().enumerate() {
+        if let SupportedCone::GenPowerCone(_) = cone {
+            let headidx = cones.rng_cones[i].start;
+            let dim1 = cone.dim1;
+
+            // which column does q go into (if triu)?
+            let col = m + n + 2 * socidx + 3 * genpowidx;
+
+            // fill structural zeros for p,q,r columns for this cone
+            match shape {
+                MatrixTriangle::Triu => {
+                    K.fill_colvec(&mut maps.GenPow_q[genpowidx], headidx + n, col); //q
+                    K.fill_colvec(&mut maps.GenPow_r[genpowidx], headidx + n + dim1, col + 1); //r
+                    K.fill_colvec(&mut maps.GenPow_p[genpowidx], headidx + n, col + 2); //p
+                    //v
+                }
+                MatrixTriangle::Tril => {
+                    K.fill_rowvec(&mut maps.GenPow_q[genpowidx], col, headidx + n); //q
+                    K.fill_rowvec(&mut maps.GenPow_r[genpowidx], col + 1, headidx + n + dim1); //r
+                    K.fill_rowvec(&mut maps.GenPow_p[genpowidx], col + 2, headidx + n); //p
+                    //v
+                }
+            }
+
+            genpowidx += 1;
+        }
+    }
+
+    // fill in SOC diagonal extension with diagonal of structural zeros
+    K.fill_diag(&mut maps.GenPow_D, n + m + p_socs, p_genpows);
 
     // backshift the colptrs to recover K.p again
     K.backshift_colptrs();

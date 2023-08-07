@@ -19,7 +19,8 @@ pub struct DirectLDLKKTSolver<T> {
     // problem dimensions
     m: usize,
     n: usize,
-    p: usize,
+    p_soc: usize,
+    p_genpow: usize,
 
     // Left and right hand sides for solves
     x: Vec<T>,
@@ -64,17 +65,18 @@ where
     ) -> Self {
         // solving in sparse format.  Need this many
         // extra variables for SOCs
-        let p = 2 * cones.type_count(SupportedConeTag::SecondOrderCone);
+        let p_soc = 2 * cones.type_count(SupportedConeTag::SecondOrderCone);
+        let p_genpow = 3 * cones.type_count(SupportedConeTag::GenPowerCone);
 
         // LHS/RHS/work for iterative refinement
-        let x = vec![T::zero(); n + m + p];
-        let b = vec![T::zero(); n + m + p];
-        let work1 = vec![T::zero(); n + m + p];
-        let work2 = vec![T::zero(); n + m + p];
+        let x = vec![T::zero(); n + m + p_soc + p_genpow];
+        let b = vec![T::zero(); n + m + p_soc + p_genpow];
+        let work1 = vec![T::zero(); n + m + p_soc + p_genpow];
+        let work2 = vec![T::zero(); n + m + p_soc + p_genpow];
 
         // the expected signs of D in LDL
-        let mut dsigns = vec![1_i8; n + m + p];
-        _fill_signs(&mut dsigns, m, n, p);
+        let mut dsigns = vec![1_i8; n + m + p_soc + p_genpow];
+        _fill_signs(&mut dsigns, m, n, p_soc, p_genpow);
 
         // updates to the diagonal of KKT will be
         // assigned here before updating matrix entries
@@ -95,7 +97,8 @@ where
         Self {
             m,
             n,
-            p,
+            p_soc,
+            p_genpow,
             x,
             b,
             work1,
@@ -125,7 +128,7 @@ where
         values.negate();
         _update_values(&mut self.ldlsolver, &mut self.KKT, index, values);
 
-        // update the scaled u and v columns.
+        // SOC: update the scaled u and v columns.
         let mut cidx = 0; // which of the SOCs are we working on?
 
         for cone in cones.iter() {
@@ -151,15 +154,45 @@ where
             } //end match
         } //end for
 
+        // GenPow: update the scaled p,q,r columns.
+        let mut cidx = 0; // which of the GenPows are we working on?
+
+        for cone in cones.iter() {
+            // `cone` here will be of our SupportedCone enum wrapper, so
+            //  we can extract a GenPowerCone `genpow`
+            if let SupportedCone::GenPowerCone(genpow) = cone {
+                let minus_sqrtμ = -genpow.μ.sqrt();
+
+                //off diagonal columns (or rows)s
+                let KKT = &mut self.KKT;
+                let ldlsolver = &mut self.ldlsolver;
+
+                _update_values(ldlsolver, KKT, &map.GenPow_q[cidx], &genpow.q);
+                _update_values(ldlsolver, KKT, &map.GenPow_r[cidx], &genpow.r);
+                _update_values(ldlsolver, KKT, &map.GenPow_p[cidx], &genpow.p);
+                _scale_values(ldlsolver, KKT, &map.GenPow_q[cidx], minus_sqrtμ);
+                _scale_values(ldlsolver, KKT, &map.GenPow_r[cidx], minus_sqrtμ);
+                _scale_values(ldlsolver, KKT, &map.GenPow_p[cidx], minus_sqrtμ);
+
+                //add η^2*(-1/1) to diagonal in the extended rows/cols
+                // YC: Is it a bug in SOC implementation?
+                _update_values(ldlsolver, KKT, &[map.GenPow_D[cidx * 3]], &[-T::one()]);
+                _update_values(ldlsolver, KKT, &[map.GenPow_D[cidx * 3 + 1]], &[-T::one()]);
+                _update_values(ldlsolver, KKT, &[map.GenPow_D[cidx * 3 + 2]], &[T::one()]);
+
+                cidx += 1;
+            } //end match
+        } //end for
+
         self.regularize_and_refactor(settings)
     } //end fn
 
     fn setrhs(&mut self, rhsx: &[T], rhsz: &[T]) {
-        let (m, n, p) = (self.m, self.n, self.p);
+        let (m, n, p, p_genpow) = (self.m, self.n, self.p, self.p_genpow);
 
         self.b[0..n].copy_from(rhsx);
         self.b[n..(n + m)].copy_from(rhsz);
-        self.b[n + m..(n + m + p)].fill(T::zero());
+        self.b[n + m..(n + m + p + p_genpow)].fill(T::zero());
     }
 
     fn solve(
@@ -193,7 +226,7 @@ where
     // extra helper functions, not required for KKTSolver trait
     fn getlhs(&self, lhsx: Option<&mut [T]>, lhsz: Option<&mut [T]>) {
         let x = &self.x;
-        let (m, n, _p) = (self.m, self.n, self.p);
+        let (m, n) = (self.m, self.n);
 
         if let Some(v) = lhsx {
             v.copy_from(&x[0..n]);
@@ -405,16 +438,28 @@ fn _scale_values_KKT<T: FloatT>(KKT: &mut CscMatrix<T>, index: &[usize], scale: 
     }
 }
 
-fn _fill_signs(signs: &mut [i8], m: usize, n: usize, p: usize) {
+fn _fill_signs(signs: &mut [i8], m: usize, n: usize, p_soc: usize, p_genpow: usize) {
     signs.fill(1);
 
     //flip expected negative signs of D in LDL
     signs[n..(n + m)].iter_mut().for_each(|x| *x = -*x);
 
-    //the trailing block of p entries should
+    //the trailing block of p_soc entries should
     //have alternating signs
-    signs[(n + m)..(n + m + p)]
+    signs[(n + m)..(n + m + p_soc)]
         .iter_mut()
         .step_by(2)
         .for_each(|x| *x = -*x);
+
+    //the trailing block of p_genpow entries should
+    //have two - signs and one + sign alternatively
+    signs[(n + m + p_soc)..(n + m + p_soc + p_genpow)]
+        .iter_mut()
+        .step_by(3)
+        .for_each(|x| *x = -*x);
+    signs[(n + m + p_soc)..(n + m + p_soc + p_genpow)]
+    .iter_mut()
+    .skip(1)
+    .step_by(3)
+    .for_each(|x| *x = -*x);
 }

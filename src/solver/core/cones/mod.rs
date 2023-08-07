@@ -14,6 +14,7 @@ mod nonnegativecone;
 mod powcone;
 mod socone;
 mod zerocone;
+mod genpowcone;
 // partially specialized traits and blanket implementataions
 mod exppow_common;
 mod symmetric_common;
@@ -22,7 +23,7 @@ mod symmetric_common;
 use exppow_common::*;
 pub use {
     compositecone::*, expcone::*, nonnegativecone::*, powcone::*, socone::*, supportedcone::*,
-    symmetric_common::*, zerocone::*,
+    symmetric_common::*, zerocone::*, genpowcone::*,
 };
 
 // only use PSD cones with SDP/Blas enabled
