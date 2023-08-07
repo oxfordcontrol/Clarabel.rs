@@ -39,6 +39,10 @@ pub enum SupportedConeT<T> {
     /// means that the variable is the upper triangle of an nxn matrix.
     #[cfg(feature = "sdp")]
     PSDTriangleConeT(usize),
+    /// The generalized power cone.
+    ///
+    /// The parameter indicates the power and dimensions.
+    GenPowerConeT(&[T],usize,usize),
 }
 
 impl<T> SupportedConeT<T> {
@@ -55,6 +59,7 @@ impl<T> SupportedConeT<T> {
             SupportedConeT::PowerConeT(_) => 3,
             #[cfg(feature = "sdp")]
             SupportedConeT::PSDTriangleConeT(dim) => triangular_number(*dim),
+            SupportedConeT::GenPowerConeT(_,dim1,dim2) => *dim1+*dim2,
         }
     }
 }
@@ -81,6 +86,7 @@ pub fn make_cone<T: FloatT>(cone: SupportedConeT<T>) -> SupportedCone<T> {
         SupportedConeT::PowerConeT(α) => PowerCone::<T>::new(α).into(),
         #[cfg(feature = "sdp")]
         SupportedConeT::PSDTriangleConeT(dim) => PSDTriangleCone::<T>::new(dim).into(),
+        SupportedConeT::GenPowerConeT(α, dim1, dim2) => GenPowerCone::<T>::new(α, dim1, dim2).into(),
     }
 }
 
@@ -103,6 +109,7 @@ where
     PowerCone(PowerCone<T>),
     #[cfg(feature = "sdp")]
     PSDTriangleCone(PSDTriangleCone<T>),
+    GenPowerCone(GenPowerCone<T>),
 }
 
 // we put PSDTriangleCone in a Box above since it is by the
@@ -131,6 +138,7 @@ pub(crate) enum SupportedConeTag {
     PowerCone,
     #[cfg(feature = "sdp")]
     PSDTriangleCone,
+    GenPowerCone,
 }
 
 pub(crate) trait SupportedConeAsTag {
@@ -148,6 +156,7 @@ impl<T> SupportedConeAsTag for SupportedConeT<T> {
             SupportedConeT::PowerConeT(_) => SupportedConeTag::PowerCone,
             #[cfg(feature = "sdp")]
             SupportedConeT::PSDTriangleConeT(_) => SupportedConeTag::PSDTriangleCone,
+            SupportedConeT::GenPowerConeT(_,_,_) => SupportedConeTag::GenPowerCone,
         }
     }
 }
@@ -163,6 +172,7 @@ impl<T: FloatT> SupportedConeAsTag for SupportedCone<T> {
             SupportedCone::PowerCone(_) => SupportedConeTag::PowerCone,
             #[cfg(feature = "sdp")]
             SupportedCone::PSDTriangleCone(_) => SupportedConeTag::PSDTriangleCone,
+            SupportedCone::GenPowerCone(_) => SupportedConeTag::GenPowerCone,
         }
     }
 }
@@ -178,6 +188,7 @@ impl SupportedConeTag {
             SupportedConeTag::PowerCone => "PowerCone",
             #[cfg(feature = "sdp")]
             SupportedConeTag::PSDTriangleCone => "PSDTriangleCone",
+            SupportedConeTag::GenPowerCone => "GenPowerCone",
         }
     }
 }

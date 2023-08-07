@@ -190,3 +190,80 @@ where
         α
     }
 }
+
+
+
+// --------------------------------------
+// Traits and blanket implementations for Generalized PowerCones
+// -------------------------------------
+
+// Operations supported on 3d nonsymmetrics only
+pub(crate) trait NonsymmetricCone<T: FloatT> {
+    // Returns true if s is primal feasible
+    fn is_primal_feasible(& self, s: &[T]) -> bool;
+
+    // Returns true if z is dual feasible
+    fn is_dual_feasible(& self, z: &[T]) -> bool;
+
+    // Compute the primal gradient of f(s) at s
+    fn minus_gradient_primal(& self, s: &[T]) -> (T,T);
+
+    fn update_dual_grad_H(&mut self, z: &[T]);
+
+    fn barrier_dual(&self, z: &[T]) -> T;
+
+    fn barrier_primal(&self, s: &[T]) -> T;
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) trait NonsymmetricConeUtils<T: FloatT> {
+    fn step_length_n_cone(
+        & self,
+        wq: &mut [T],
+        dq: &[T],
+        q: &[T],
+        α_init: T,
+        α_min: T,
+        backtrack: T,
+        is_in_cone_fcn: impl Fn(&[T]) -> bool,
+    ) -> T;
+}
+
+impl<T, C> NonsymmetricConeUtils<T> for C
+where
+    T: FloatT,
+    C: NonsymmetricCone<T>,
+{
+    // find the maximum step length α≥0 so that
+    // q + α*dq stays in an exponential or power
+    // cone, or their respective dual cones.
+    fn step_length_n_cone(
+        & self,
+        wq: &mut [T],
+        dq: &[T],
+        q: &[T],
+        α_init: T,
+        α_min: T,
+        backtrack: T,
+        is_in_cone_fcn: impl Fn(&[T]) -> bool,
+    ) -> T {
+        let mut α = α_init;
+
+        loop {
+            // wq = q + α*dq
+            for i in 0..q.len() {
+                wq[i] = q[i] + α * dq[i];
+            }
+
+            if is_in_cone_fcn(wq) {
+                break;
+            }
+            α *= backtrack;
+            if α < α_min {
+                α = T::zero();
+                break;
+            }
+        }
+        α
+    }
+}
