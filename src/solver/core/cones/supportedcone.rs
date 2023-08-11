@@ -11,7 +11,7 @@ use crate::algebra::triangular_number;
 
 /// API type describing the type of a conic constraint.
 ///  
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum SupportedConeT<T> {
     /// The zero cone (used for equality constraints).
     ///
@@ -42,7 +42,7 @@ pub enum SupportedConeT<T> {
     /// The generalized power cone.
     ///
     /// The parameter indicates the power and dimensions.
-    GenPowerConeT(&[T],usize,usize),
+    GenPowerConeT(Vec<T>,usize,usize),
 }
 
 impl<T> SupportedConeT<T> {

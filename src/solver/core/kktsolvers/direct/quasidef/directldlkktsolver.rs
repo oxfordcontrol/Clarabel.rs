@@ -188,7 +188,7 @@ where
     } //end fn
 
     fn setrhs(&mut self, rhsx: &[T], rhsz: &[T]) {
-        let (m, n, p, p_genpow) = (self.m, self.n, self.p, self.p_genpow);
+        let (m, n, p, p_genpow) = (self.m, self.n, self.p_soc, self.p_genpow);
 
         self.b[0..n].copy_from(rhsx);
         self.b[n..(n + m)].copy_from(rhsz);
