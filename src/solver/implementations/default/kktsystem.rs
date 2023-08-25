@@ -209,7 +209,7 @@ where
         if data.P.nnz() == 0 {
             // LP initialization
 
-            // solve with [0;b] as a RHS to get (x,s) initializers
+            // solve with [0;b] as a RHS to get (x,-s) initializers
             // zero out any sparse cone variables at end
             self.workx.fill(T::zero());
             self.workz.copy_from(&data.b);
@@ -219,6 +219,7 @@ where
                 Some(&mut variables.s),
                 settings.core(),
             );
+            variables.s.negate();
 
             // solve with [-c;0] as a RHS to get z initializer
             // zero out any sparse cone variables at end
