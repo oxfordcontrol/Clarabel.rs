@@ -11,7 +11,6 @@ use std::iter::zip;
 ///     [2.  0.  6.]
 ///     [0.  4.  7.]
 /// ```
-///
 /// ```no_run
 /// use clarabel::algebra::CscMatrix;
 ///
@@ -363,6 +362,53 @@ impl<T> ShapedMatrix for CscMatrix<T> {
     }
 }
 
+/// Make a concrete [CscMatrix] from its [Adjoint].   This operation will
+/// allocate a new matrix and copy the data from the adjoint.
+///
+/// __Example usage__ : To construct the transpose of a 3 x 3 matrix:
+/// ```text
+/// A = [1.,  0.,  0.]
+///     [2.,  4.,  0.]
+///     [3.,  5.,  6.]
+///```
+/// ```no_run
+/// use clarabel::algebra::CscMatrix;
+///
+/// let A : CscMatrix = (&[
+///     [1., 0., 0.], //
+///     [2., 4., 0.], //
+///     [3., 5., 6.],
+/// ]).into();
+///
+/// let At = A.t();  //Adjoint form.   Does not copy anything.
+///
+/// let B : CscMatrix = At.into(); //Concrete form.  Allocates and copies.
+///
+/// assert_eq!(A, B);
+///
+/// ```
+impl<'a, T> From<Adjoint<'a, CscMatrix<T>>> for CscMatrix<T>
+where
+    T: FloatT,
+{
+    fn from(M: Adjoint<'a, CscMatrix<T>>) -> CscMatrix<T> {
+        let src = M.src;
+
+        let (m, n) = (src.n, src.m);
+        let mut A = CscMatrix::spalloc((m, n), src.nnz());
+
+        //make dummy mapping indices since we don't care
+        //where the entries go
+        let mut amap = vec![0usize; src.nnz()];
+
+        A.colcount_block(src, 0, MatrixShape::T);
+        A.colcount_to_colptr();
+        A.fill_block(src, &mut amap, 0, 0, MatrixShape::T);
+        A.backshift_colptrs();
+        A
+    }
+}
+
 #[test]
 fn test_csc_from_slice_of_arrays() {
     let A = CscMatrix::new(
@@ -417,4 +463,25 @@ fn test_csc_get_entry() {
     assert_eq!(A.get_entry((2, 3)), None);
     assert_eq!(A.get_entry((4, 3)), None);
     assert_eq!(A.get_entry((3, 4)), None);
+}
+
+#[test]
+fn test_adjoint_into() {
+    let A: CscMatrix = (&[
+        [1., 0., 0.], //
+        [2., 4., 0.], //
+        [3., 5., 6.],
+    ])
+        .into();
+
+    let T: CscMatrix = (&[
+        [1., 2., 3.], //
+        [0., 4., 5.], //
+        [0., 0., 6.],
+    ])
+        .into();
+
+    let B: CscMatrix = A.t().into(); //Concrete form.  Allocates and copies.
+
+    assert_eq!(B, T);
 }
