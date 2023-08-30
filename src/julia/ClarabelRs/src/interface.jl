@@ -29,6 +29,11 @@ function get_info(solver::Solver)
 
 end
 
+function print_timers(solver::Solver)
+
+    solver_print_timers_jlrs(solver::Solver)
+
+end
 
 # -------------------------------------
 # Wrappers for rust-side interface  
@@ -79,6 +84,13 @@ function solver_get_info_jlrs(solver::Solver)
     
 end
 
+
+function solver_print_timers_jlrs(solver::Solver)
+
+    ccall(Libdl.dlsym(librust,:solver_print_timers_jlrs),Cvoid,
+    (Ptr{Cvoid},), solver.ptr)
+    
+end
 
 function solver_drop_jlrs(solver::Solver)
     ccall(Libdl.dlsym(librust,:solver_drop_jlrs),Cvoid,
