@@ -11,7 +11,6 @@ use std::iter::zip;
 ///     [2.  0.  6.]
 ///     [0.  4.  7.]
 /// ```
-///
 /// ```no_run
 /// use clarabel::algebra::CscMatrix;
 ///
@@ -367,11 +366,12 @@ impl<T> ShapedMatrix for CscMatrix<T> {
 /// allocate a new matrix and copy the data from the adjoint.
 ///
 /// __Example usage__ : To construct the transpose of a 3 x 3 matrix:
+/// ```text
+/// A = [1.,  0.,  0.]
+///     [2.,  4.,  0.]
+///     [3.,  5.,  6.]
+///```
 /// ```no_run
-/// A = [1.  0.  0.]
-///     [2.  4.  0.]
-///     [3.  5.  6.]
-///
 /// use clarabel::algebra::CscMatrix;
 ///
 /// let A : CscMatrix = (&[
