@@ -107,6 +107,20 @@ pub(crate) extern "C" fn solver_get_info_jlrs(ptr: *mut c_void) -> DefaultInfo<f
     info
 }
 
+#[no_mangle]
+pub(crate) extern "C" fn solver_print_timers_jlrs(ptr: *mut c_void) {
+    let solver = from_ptr(ptr);
+
+    match solver.timers {
+        Some(ref timers) => timers.print(),
+        None => println!("No timer info available"),
+    }
+
+    // don't drop, since the memory is owned by
+    // Julia and we might want to solve again
+    std::mem::forget(solver);
+}
+
 // safely drop a solver object through its pointer.
 // called by the Julia side finalizer when a solver
 // is out of scope
