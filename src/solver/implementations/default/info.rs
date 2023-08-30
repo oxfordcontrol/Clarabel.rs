@@ -157,7 +157,7 @@ where
             && (self.res_dual > self.prev_res_dual || self.res_primal > self.prev_res_primal)
         {
             // Poor progress at high tolerance.
-            if self.ktratio < T::epsilon() * (100.).as_T()
+            if self.ktratio < T::one() * (100.).as_T()
                 && (self.prev_gap_abs < settings.tol_gap_abs
                     || self.prev_gap_rel < settings.tol_gap_rel)
             {
@@ -308,7 +308,7 @@ where
         pinf_status: SolverStatus,
         dinf_status: SolverStatus,
     ) {
-        if self.ktratio < tol_ktratio && self.is_solved(tol_gap_abs, tol_gap_rel, tol_feas) {
+        if self.ktratio <= T::one() && self.is_solved(tol_gap_abs, tol_gap_rel, tol_feas) {
             self.status = solved_status;
         //PJG hardcoded factor 1000 here should be fixed
         } else if self.ktratio > tol_ktratio.recip() * (1000.0).as_T() {
