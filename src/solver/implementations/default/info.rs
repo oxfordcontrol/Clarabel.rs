@@ -122,16 +122,11 @@ where
 
         // absolute and relative gaps
         self.gap_abs = T::abs(self.cost_primal - self.cost_dual);
-
-        if (self.cost_primal > T::zero()) && (self.cost_dual < T::zero()) {
-            self.gap_rel = T::max_value();
-        } else {
-            self.gap_rel = self.gap_abs
-                / T::max(
-                    T::one(),
-                    T::min(T::abs(self.cost_primal), T::abs(self.cost_dual)),
-                );
-        }
+        self.gap_rel = self.gap_abs
+            / T::max(
+                T::one(),
+                T::min(T::abs(self.cost_primal), T::abs(self.cost_dual)),
+            );
 
         // κ/τ
         self.ktratio = variables.κ / variables.τ;
