@@ -25,24 +25,25 @@ pub enum SupportedConeT<T> {
     ///  
     /// The parameter indicates the cones dimension.
     SecondOrderConeT(usize),
-    /// The exponential cone in R^3.
-    ///
-    /// This cone takes no parameters
-    ExponentialConeT(),
     /// The power cone in R^3.
     ///
     /// The parameter indicates the power.
     PowerConeT(T),
+    /// The generalized power cone.
+    ///
+    /// The parameter indicates the power and dimensions.
+    /// PJG: second dimensions is redundant to length(α)
+    GenPowerConeT(Vec<T>, usize, usize),
+    /// The exponential cone in R^3.
+    ///
+    /// This cone takes no parameters
+    ExponentialConeT(),
     /// The positive semidefinite cone in triangular form.
     ///
     /// The parameter indicates the matrix dimension, i.e. size = n
     /// means that the variable is the upper triangle of an nxn matrix.
     #[cfg(feature = "sdp")]
     PSDTriangleConeT(usize),
-    /// The generalized power cone.
-    ///
-    /// The parameter indicates the power and dimensions.
-    GenPowerConeT(Vec<T>,usize,usize),
 }
 
 impl<T> SupportedConeT<T> {
@@ -59,7 +60,7 @@ impl<T> SupportedConeT<T> {
             SupportedConeT::PowerConeT(_) => 3,
             #[cfg(feature = "sdp")]
             SupportedConeT::PSDTriangleConeT(dim) => triangular_number(*dim),
-            SupportedConeT::GenPowerConeT(_,dim1,dim2) => *dim1+*dim2,
+            SupportedConeT::GenPowerConeT(_, dim1, dim2) => *dim1 + *dim2,
         }
     }
 }
@@ -77,16 +78,18 @@ where
 // for the constraint types, and then map them through
 // make_cone to get the internal cone representations.
 
-pub fn make_cone<T: FloatT>(cone: SupportedConeT<T>) -> SupportedCone<T> {
+pub fn make_cone<T: FloatT>(cone: &SupportedConeT<T>) -> SupportedCone<T> {
     match cone {
-        SupportedConeT::NonnegativeConeT(dim) => NonnegativeCone::<T>::new(dim).into(),
-        SupportedConeT::ZeroConeT(dim) => ZeroCone::<T>::new(dim).into(),
-        SupportedConeT::SecondOrderConeT(dim) => SecondOrderCone::<T>::new(dim).into(),
+        SupportedConeT::NonnegativeConeT(dim) => NonnegativeCone::<T>::new(*dim).into(),
+        SupportedConeT::ZeroConeT(dim) => ZeroCone::<T>::new(*dim).into(),
+        SupportedConeT::SecondOrderConeT(dim) => SecondOrderCone::<T>::new(*dim).into(),
         SupportedConeT::ExponentialConeT() => ExponentialCone::<T>::new().into(),
-        SupportedConeT::PowerConeT(α) => PowerCone::<T>::new(α).into(),
+        SupportedConeT::PowerConeT(α) => PowerCone::<T>::new(*α).into(),
         #[cfg(feature = "sdp")]
         SupportedConeT::PSDTriangleConeT(dim) => PSDTriangleCone::<T>::new(dim).into(),
-        SupportedConeT::GenPowerConeT(α, dim1, dim2) => GenPowerCone::<T>::new(α, dim1, dim2).into(),
+        SupportedConeT::GenPowerConeT(α, dim1, dim2) => {
+            GenPowerCone::<T>::new((*α).clone(), *dim1, *dim2).into()
+        }
     }
 }
 
@@ -156,7 +159,7 @@ impl<T> SupportedConeAsTag for SupportedConeT<T> {
             SupportedConeT::PowerConeT(_) => SupportedConeTag::PowerCone,
             #[cfg(feature = "sdp")]
             SupportedConeT::PSDTriangleConeT(_) => SupportedConeTag::PSDTriangleCone,
-            SupportedConeT::GenPowerConeT(_,_,_) => SupportedConeTag::GenPowerCone,
+            SupportedConeT::GenPowerConeT(_, _, _) => SupportedConeTag::GenPowerCone,
         }
     }
 }
