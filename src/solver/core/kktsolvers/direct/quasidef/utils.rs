@@ -48,8 +48,8 @@ pub fn assemble_kkt_matrix<T: FloatT>(
     // entries in the dense columns p.q.r of the
     // sparse generalized power expansion terms.
     let nnz_GenPow_vecs = maps.GenPow_p.iter().fold(0, |acc, block| acc + block.len())
-                                + maps.GenPow_q.iter().fold(0, |acc, block| acc + block.len())
-                                + maps.GenPow_r.iter().fold(0, |acc, block| acc + block.len());
+        + maps.GenPow_q.iter().fold(0, |acc, block| acc + block.len())
+        + maps.GenPow_r.iter().fold(0, |acc, block| acc + block.len());
 
     //entries in the sparse SOC diagonal extension block
     let nnz_SOC_ext = maps.SOC_D.len();
@@ -64,13 +64,21 @@ pub fn assemble_kkt_matrix<T: FloatT>(
     nnz_SOC_vecs +           // Number of elements in sparse SOC off diagonal columns
     nnz_SOC_ext  +          // Number of elements in diagonal of SOC extension
     nnz_GenPow_vecs +       // Number of elements in sparse generalized power off diagonal columns
-    nnz_GenPow_ext;         // Number of elements in diagonal of generalized power extension
+    nnz_GenPow_ext; // Number of elements in diagonal of generalized power extension
 
     let Kdim = m + n + p_socs + p_genpows;
     let mut K = CscMatrix::<T>::spalloc((Kdim, Kdim), nnzKKT);
 
     _kkt_assemble_colcounts(&mut K, P, A, cones, (m, n, p_socs, p_genpows), shape);
-    _kkt_assemble_fill(&mut K, &mut maps, P, A, cones, (m, n, p_socs, p_genpows), shape);
+    _kkt_assemble_fill(
+        &mut K,
+        &mut maps,
+        P,
+        A,
+        cones,
+        (m, n, p_socs, p_genpows),
+        shape,
+    );
 
     (K, maps)
 }
@@ -255,7 +263,7 @@ fn _kkt_assemble_fill<T: FloatT>(
     let mut genpowidx = 0; //which generalized power cone are we working on?
 
     for (i, cone) in cones.iter().enumerate() {
-        if let SupportedCone::GenPowerCone(_) = cone {
+        if let SupportedCone::GenPowerCone(cone) = cone {
             let headidx = cones.rng_cones[i].start;
             let dim1 = cone.dim1;
 
@@ -267,13 +275,15 @@ fn _kkt_assemble_fill<T: FloatT>(
                 MatrixTriangle::Triu => {
                     K.fill_colvec(&mut maps.GenPow_q[genpowidx], headidx + n, col); //q
                     K.fill_colvec(&mut maps.GenPow_r[genpowidx], headidx + n + dim1, col + 1); //r
-                    K.fill_colvec(&mut maps.GenPow_p[genpowidx], headidx + n, col + 2); //p
+                    K.fill_colvec(&mut maps.GenPow_p[genpowidx], headidx + n, col + 2);
+                    //p
                     //v
                 }
                 MatrixTriangle::Tril => {
                     K.fill_rowvec(&mut maps.GenPow_q[genpowidx], col, headidx + n); //q
                     K.fill_rowvec(&mut maps.GenPow_r[genpowidx], col + 1, headidx + n + dim1); //r
-                    K.fill_rowvec(&mut maps.GenPow_p[genpowidx], col + 2, headidx + n); //p
+                    K.fill_rowvec(&mut maps.GenPow_p[genpowidx], col + 2, headidx + n);
+                    //p
                     //v
                 }
             }

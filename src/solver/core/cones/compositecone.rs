@@ -52,7 +52,7 @@ where
         // create cones with the given dims
         for t in types.iter() {
             //make a new cone
-            let cone = make_cone(*t);
+            let cone = make_cone(t);
 
             //update global problem symmetry
             _is_symmetric = _is_symmetric && cone.is_symmetric();
