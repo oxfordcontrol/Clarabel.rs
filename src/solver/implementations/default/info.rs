@@ -152,7 +152,7 @@ where
             && (self.res_dual > self.prev_res_dual || self.res_primal > self.prev_res_primal)
         {
             // Poor progress at high tolerance.
-            if self.ktratio < T::one() * (100.).as_T()
+            if self.ktratio < T::epsilon() * (100.).as_T()
                 && (self.prev_gap_abs < settings.tol_gap_abs
                     || self.prev_gap_rel < settings.tol_gap_rel)
             {
