@@ -1,19 +1,15 @@
 use crate::{algebra::*, solver::core::ScalingStrategy};
 
 // --------------------------------------
-// Traits and blanket implementations for Exponential and PowerCones
+// Traits and blanket implementations for Exponential, 3D Power and ND Power Cones
 // -------------------------------------
-
-// Operations supported on 3d nonsymmetrics only
-pub(crate) trait Nonsymmetric3DCone<T: FloatT> {
+// Operations supported on all nonsymmetric cones
+pub(crate) trait NonsymmetricCone<T: FloatT> {
     // Returns true if s is primal feasible
     fn is_primal_feasible(&self, s: &[T]) -> bool;
 
     // Returns true if z is dual feasible
     fn is_dual_feasible(&self, z: &[T]) -> bool;
-
-    // Compute the primal gradient of f(s) at s
-    fn gradient_primal(&self, s: &[T]) -> [T; 3];
 
     fn update_dual_grad_H(&mut self, z: &[T]);
 
@@ -22,6 +18,21 @@ pub(crate) trait Nonsymmetric3DCone<T: FloatT> {
     fn barrier_primal(&self, s: &[T]) -> T;
 
     fn higher_correction(&mut self, η: &mut [T; 3], ds: &[T], v: &[T]);
+}
+
+// --------------------------------------
+// Traits and blanket implementations for Exponential, 3D Power Cones
+// -------------------------------------
+#[allow(clippy::too_many_arguments)]
+pub(crate) trait Nonsymmetric3DCone<T: FloatT> {
+    fn update_Hs(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy);
+
+    // Compute the primal gradient of f(s) at s
+    fn gradient_primal(&self, s: &[T]) -> [T; 3];
+
+    fn use_dual_scaling(&mut self, μ: T);
+
+    fn use_primal_dual_scaling(&mut self, s: &[T], z: &[T]);
 
     // we can't mutably borrow individual fields through getter methods,
     // so we have this one method to borrow them simultaneously.
@@ -36,39 +47,11 @@ pub(crate) trait Nonsymmetric3DCone<T: FloatT> {
     );
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(crate) trait Nonsymmetric3DConeUtils<T: FloatT> {
-    fn update_Hs(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy);
-
-    fn use_dual_scaling(&mut self, μ: T);
-
-    fn use_primal_dual_scaling(&mut self, s: &[T], z: &[T]);
-
-    fn step_length_3d_cone(
-        &self,
-        wq: &mut [T],
-        dq: &[T],
-        q: &[T],
-        α_init: T,
-        α_min: T,
-        backtrack: T,
-        is_in_cone_fcn: impl Fn(&[T]) -> bool,
-    ) -> T;
-}
-
-impl<T, C> Nonsymmetric3DConeUtils<T> for C
+impl<T, C> Nonsymmetric3DCone<T> for C
 where
     T: FloatT,
     C: Nonsymmetric3DCone<T>,
 {
-    // find the maximum step length α≥0 so that
-    // q + α*dq stays in an exponential or power
-    // cone, or their respective dual cones.
-    //
-    // NB: Not for use as a general checking
-    // function because cone lengths are hardcoded
-    // to R^3 for faster execution.
-
     fn update_Hs(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy) {
         // Choose the scaling strategy
         if scaling_strategy == ScalingStrategy::Dual {
@@ -159,66 +142,24 @@ where
             self.use_dual_scaling(μ);
         }
     }
-
-    fn step_length_3d_cone(
-        &self,
-        wq: &mut [T],
-        dq: &[T],
-        q: &[T],
-        α_init: T,
-        α_min: T,
-        backtrack: T,
-        is_in_cone_fcn: impl Fn(&[T]) -> bool,
-    ) -> T {
-        let mut α = α_init;
-
-        loop {
-            // wq = q + α*dq
-            for i in 0..3 {
-                wq[i] = q[i] + α * dq[i];
-            }
-
-            if is_in_cone_fcn(wq) {
-                break;
-            }
-            α *= backtrack;
-            if α < α_min {
-                α = T::zero();
-                break;
-            }
-        }
-        α
-    }
 }
 
-
-
 // --------------------------------------
-// Traits and blanket implementations for Generalized PowerCones
+// Traits Generalized PowerCones
 // -------------------------------------
 
-// Operations supported on 3d nonsymmetrics only
-pub(crate) trait NonsymmetricCone<T: FloatT> {
-    // Returns true if s is primal feasible
-    fn is_primal_feasible(& self, s: &[T]) -> bool;
-
-    // Returns true if z is dual feasible
-    fn is_dual_feasible(& self, z: &[T]) -> bool;
-
+// Operations supported on ND nonsymmetrics only.  Note this
+// differs from the 3D cone in particular because we don't
+// return a 3D tuple for the primal gradient.
+pub(crate) trait NonsymmetricNDCone<T: FloatT> {
     // Compute the primal gradient of f(s) at s
-    fn minus_gradient_primal(& self, s: &[T]) -> (T,T);
-
-    fn update_dual_grad_H(&mut self, z: &[T]);
-
-    fn barrier_dual(&self, z: &[T]) -> T;
-
-    fn barrier_primal(&self, s: &[T]) -> T;
+    fn minus_gradient_primal(&self, s: &[T]) -> (T, T);
 }
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) trait NonsymmetricConeUtils<T: FloatT> {
-    fn step_length_n_cone(
-        & self,
+    fn step_length_cone(
+        &self,
         wq: &mut [T],
         dq: &[T],
         q: &[T],
@@ -229,16 +170,19 @@ pub(crate) trait NonsymmetricConeUtils<T: FloatT> {
     ) -> T;
 }
 
-impl<T, C> NonsymmetricConeUtils<T> for C
+// --------------------------------------
+// Useful utilities for nonsymmetric cones
+// -------------------------------------
+
+impl<T, C> NonsymmetricCone<T>
 where
     T: FloatT,
-    C: NonsymmetricCone<T>,
 {
     // find the maximum step length α≥0 so that
     // q + α*dq stays in an exponential or power
     // cone, or their respective dual cones.
-    fn step_length_n_cone(
-        & self,
+    fn step_length_cone(
+        &self,
         wq: &mut [T],
         dq: &[T],
         q: &[T],

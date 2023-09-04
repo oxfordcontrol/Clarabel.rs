@@ -3,51 +3,52 @@ use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
 };
+use std::iter::zip;
 
 // -------------------------------------
 // Generalized Power Cone
 // -------------------------------------
 
 pub struct GenPowerCone<T: FloatT = f64> {
-    // power defining the cone
+    // power defining the cone.  length determines dim1
     α: Vec<T>,
+    // dimension of w
+    dim2: usize,
+
     // gradient of the dual barrier at z
     grad: Vec<T>,
     // holds copy of z at scaling point
     z: Vec<T>,
-    // dimension of u, w and their sum
-    pub dim1: usize,
-    pub dim2: usize,
-    dim: usize,
     // central path parameter
-    pub μ: T,
+    μ: T,
+
     // vectors for rank 3 update representation of Hs
-    pub p: Vec<T>,
-    pub q: Vec<T>,
-    pub r: Vec<T>,
+    p: Vec<T>,
+    q: Vec<T>,
+    r: Vec<T>,
     // first part of the diagonal
     d1: Vec<T>,
+
     // additional scalar terms for rank-2 rep
     d2: T,
     // additional constant for initialization in the Newton-Raphson method
     ψ: T,
+
+    //work vector length dim, e.g. for line searches
+    work: Vec<T>,
 }
 
 impl<T> GenPowerCone<T>
 where
     T: FloatT,
 {
-    pub fn new(α: Vec<T>, dim1: usize, dim2: usize) -> Self {
+    pub fn new(α: Vec<T>, dim2: usize) -> Self {
+        let dim1 = α.len();
         let dim = dim1 + dim2;
 
-        //PJG : this check belongs elsewhere
+        //PJG : these check belongs elsewhere
         assert!(α.iter().all(|r| *r > T::zero())); // check all powers are greater than 0
-
-        // YC: should polish this check
-        let mut powerr = T::zero();
-        α.iter().for_each(|x| powerr += *x);
-        powerr -= T::one();
-        assert!(powerr.abs() < T::epsilon()); //check the sum of powers is 1
+        assert!((T::one() - α.sum()).abs() < T::epsilon());
 
         let ψ = T::one() / (α.sumsq());
 
@@ -55,9 +56,7 @@ where
             α,
             grad: vec![T::zero(); dim],
             z: vec![T::zero(); dim],
-            dim1,
             dim2,
-            dim,
             μ: T::one(),
             p: vec![T::zero(); dim],
             q: vec![T::zero(); dim1],
@@ -65,7 +64,18 @@ where
             d1: vec![T::zero(); dim1],
             d2: T::zero(),
             ψ,
+            work: [T::zero(); dim],
         }
+    }
+
+    pub fn dim1(&self) -> usize {
+        self.α.len()
+    }
+    pub fn dim2(&self) -> usize {
+        self.dim2
+    }
+    pub fn dim(&self) -> usize {
+        self.dim1() + self.dim2()
     }
 }
 
@@ -74,11 +84,11 @@ where
     T: FloatT,
 {
     fn degree(&self) -> usize {
-        self.dim1 + 1
+        self.dim1() + 1
     }
 
     fn numel(&self) -> usize {
-        self.dim
+        self.dim()
     }
 
     fn is_symmetric(&self) -> bool {
@@ -104,11 +114,11 @@ where
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
         let α = &self.α;
 
-        s[..α.len()]
+        s[..self.dim1()]
             .iter_mut()
             .enumerate()
             .for_each(|(i, s)| *s = (T::one() + α[i]).sqrt());
-        s[α.len()..].iter_mut().for_each(|x| *x = T::zero());
+        s[self.dim1()..].iter_mut().for_each(|x| *x = T::zero());
 
         z.copy_from(&s);
     }
@@ -142,40 +152,34 @@ where
 
     fn get_Hs(&self, Hsblock: &mut [T]) {
         // we are returning here the diagonal D = [d1; d2] block
-        let d1 = &self.d1;
-        Hsblock[..self.dim1]
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = self.μ * d1[i]);
-        let c = self.μ * self.d2;
-        Hsblock[self.dim1..].iter_mut().for_each(|x| *x = c);
+        let dim1 = self.dim1();
+
+        Hsblock[..dim1].scalarop_from(|x| self.μ * x, &self.d1);
+        Hsblock[dim1..].set(self.μ * self.d2);
     }
 
     fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
-        let d1 = &self.d1;
-        let d2 = self.d2;
-        let dim1 = self.dim1;
+        // Hs = μ*(D + pp' -qq' -rr')
+
+        let rng1 = 0..self.dim1();
+        let rng2 = self.dim1()..self.dim();
 
         let coef_p = self.p.dot(x);
-        let coef_q = self.q.dot(&x[..dim1]);
-        let coef_r = self.r.dot(&x[dim1..]);
+        let coef_q = self.q.dot(&x[rng1]);
+        let coef_r = self.r.dot(&x[rng2]);
 
-        let x1 = &x[..dim1];
-        let x2 = &x[dim1..];
+        // y1 .= K.d1 .* x1 - coef_q.*K.q
+        // NB: d1 is a vector
+        zip(zip(&mut y[rng1], &x[rng1]), zip(&self.d1, &self.q))
+            .for_each(|((y, &x), (&d1, &q))| *y += d1 * x - coef_q * q);
 
-        y.iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = coef_p * self.p[i]);
-        y[..dim1]
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x += d1[i] * x1[i] - coef_q * self.q[i]);
-        y[dim1..]
-            .iter_mut()
-            .enumerate()
-            .skip(dim1)
-            .for_each(|(i, x)| *x += d2 * x2[i] - coef_r * self.r[i]);
-        y.iter_mut().for_each(|x| *x *= self.μ);
+        // y2 .= K.d2 .* x2 - coef_r.*K.r.
+        // NB: d2 is a scalar
+        zip(zip(&mut y[rng2], &x[rng2]), &self.r)
+            .for_each(|((y, &x), &r)| *y += self.d2 * x - coef_r * r);
+
+        y.axpby(coef_p, &self.p, T::one());
+        y.scale(self.μ);
     }
 
     fn affine_ds(&self, ds: &mut [T], s: &[T]) {
@@ -186,12 +190,7 @@ where
         &mut self, shift: &mut [T], _step_z: &mut [T], _step_s: &mut [T], σμ: T
     ) {
         //YC: No 3rd order correction at present
-
-        let grad = &self.grad;
-        shift
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = σμ * grad[i]);
+        shift.scalarop_from(|g| g * σμ, &self.grad);
     }
 
     fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], _work: &mut [T], _z: &[T]) {
@@ -211,15 +210,27 @@ where
         let αmin = settings.min_terminate_step_length;
 
         // final backtracked position
-
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        //YC: Do we need to care about the memory allocation time for wq?
-        let mut wq = Vec::with_capacity(self.dim);
-
-        let αz = self.step_length_n_cone(&mut wq, dz, z, αmax, αmin, step, _is_dual_feasible_fcn);
-        let αs = self.step_length_n_cone(&mut wq, ds, s, αmax, αmin, step, _is_prim_feasible_fcn);
+        let αz = self.step_length_cone(
+            &mut self.work,
+            dz,
+            z,
+            αmax,
+            αmin,
+            step,
+            _is_dual_feasible_fcn,
+        );
+        let αs = self.step_length_cone(
+            &mut self.work,
+            ds,
+            s,
+            αmax,
+            αmin,
+            step,
+            _is_prim_feasible_fcn,
+        );
 
         (αz, αs)
     }
@@ -227,18 +238,17 @@ where
     fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
 
-        //YC: Do we need to care about the memory allocation time for wq?
-        let mut wq = Vec::with_capacity(self.dim);
+        let wq = &mut self.work;
 
         wq.iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = z[i] + α * dz[i]);
-        barrier += self.barrier_dual(&wq);
+        barrier += self.barrier_dual(wq);
 
         wq.iter_mut()
             .enumerate()
             .for_each(|(i, x)| *x = s[i] + α * ds[i]);
-        barrier += self.barrier_primal(&wq);
+        barrier += self.barrier_primal(wq);
 
         barrier
     }

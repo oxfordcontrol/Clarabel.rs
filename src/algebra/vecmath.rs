@@ -101,6 +101,10 @@ impl<T: FloatT> VectorMath for [T] {
         T::sqrt(dist2)
     }
 
+    fn sum(&self) -> T {
+        self.iter().fold(T::zero(), |acc, &x| acc + x)
+    }
+
     fn sumsq(&self) -> T {
         self.dot(self)
     }

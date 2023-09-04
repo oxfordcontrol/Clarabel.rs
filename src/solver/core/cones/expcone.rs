@@ -153,8 +153,8 @@ where
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = self.step_length_3d_cone(wq, dz, z, αmax, αmin, step, _is_dual_feasible_fcn);
-        let αs = self.step_length_3d_cone(wq, ds, s, αmax, αmin, step, _is_prim_feasible_fcn);
+        let αz = self.step_length_cone(wq, dz, z, αmax, αmin, step, _is_dual_feasible_fcn);
+        let αs = self.step_length_cone(wq, ds, s, αmax, αmin, step, _is_prim_feasible_fcn);
 
         (αz, αs)
     }
