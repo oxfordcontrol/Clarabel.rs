@@ -348,9 +348,9 @@ where
         (α, α)
     }
 
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
-        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
+        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             let zi = &z[rng.clone()];
             let si = &s[rng.clone()];
             let dzi = &dz[rng.clone()];

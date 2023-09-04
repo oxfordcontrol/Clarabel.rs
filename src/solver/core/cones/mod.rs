@@ -10,11 +10,11 @@ mod compositecone;
 mod supportedcone;
 // primitive cone types
 mod expcone;
+mod genpowcone;
 mod nonnegativecone;
 mod powcone;
 mod socone;
 mod zerocone;
-mod genpowcone;
 // partially specialized traits and blanket implementataions
 mod exppow_common;
 mod symmetric_common;
@@ -22,8 +22,8 @@ mod symmetric_common;
 //re-export everything to appear as one module
 use exppow_common::*;
 pub use {
-    compositecone::*, expcone::*, nonnegativecone::*, powcone::*, socone::*, supportedcone::*,
-    symmetric_common::*, zerocone::*, genpowcone::*,
+    compositecone::*, expcone::*, genpowcone::*, nonnegativecone::*, powcone::*, socone::*,
+    supportedcone::*, symmetric_common::*, zerocone::*,
 };
 
 // only use PSD cones with SDP/Blas enabled
@@ -143,5 +143,5 @@ where
     ) -> (T, T);
 
     // return the barrier function at (z+αdz,s+αds)
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T;
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T;
 }

@@ -458,8 +458,8 @@ fn _fill_signs(signs: &mut [i8], m: usize, n: usize, p_soc: usize, p_genpow: usi
         .step_by(3)
         .for_each(|x| *x = -*x);
     signs[(n + m + p_soc)..(n + m + p_soc + p_genpow)]
-    .iter_mut()
-    .skip(1)
-    .step_by(3)
-    .for_each(|x| *x = -*x);
+        .iter_mut()
+        .skip(1)
+        .step_by(3)
+        .for_each(|x| *x = -*x);
 }

@@ -125,9 +125,9 @@ fn _kkt_assemble_colcounts<T: FloatT>(
     let mut socidx = 0; // which SOC are we working on?
 
     for (i, cone) in cones.iter().enumerate() {
-        if let SupportedCone::SecondOrderCone(SOC) = cone {
+        if let SupportedCone::SecondOrderCone(socone) = cone {
             // we will add the u and v columns for this cone
-            let nvars = SOC.numel();
+            let nvars = socone.numel();
             let headidx = cones.rng_cones[i].start;
 
             // which column does u go into?
@@ -155,11 +155,11 @@ fn _kkt_assemble_colcounts<T: FloatT>(
     let mut genpowidx = 0; // which Genpow are we working on?
 
     for (i, cone) in cones.iter().enumerate() {
-        if let SupportedCone::GenPowerCone(GenPow) = cone {
+        if let SupportedCone::GenPowerCone(gpcone) = cone {
             // we will add the p,q,r columns for this cone
-            let nvars = GenPow.numel();
-            let dim1 = GenPow.dim1;
-            let dim2 = GenPow.dim2;
+            let nvars = gpcone.numel();
+            let dim1 = gpcone.dim1();
+            let dim2 = gpcone.dim2();
             let headidx = cones.rng_cones[i].start;
 
             // which column does q go into?
@@ -263,9 +263,9 @@ fn _kkt_assemble_fill<T: FloatT>(
     let mut genpowidx = 0; //which generalized power cone are we working on?
 
     for (i, cone) in cones.iter().enumerate() {
-        if let SupportedCone::GenPowerCone(cone) = cone {
+        if let SupportedCone::GenPowerCone(gpcone) = cone {
             let headidx = cones.rng_cones[i].start;
-            let dim1 = cone.dim1;
+            let dim1 = gpcone.dim1();
 
             // which column does q go into (if triu)?
             let col = m + n + 2 * socidx + 3 * genpowidx;

@@ -150,19 +150,18 @@ where
         let step = settings.linesearch_backtrack_step;
         let αmin = settings.min_terminate_step_length;
 
-        // final backtracked position
-        let mut wq = [T::zero(); 3];
+        let mut work = [T::zero(); 3];
 
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = self.step_length_3d_cone(&mut wq, dz, z, αmax, αmin, step, _is_dual_feasible_fcn);
-        let αs = self.step_length_3d_cone(&mut wq, ds, s, αmax, αmin, step, _is_prim_feasible_fcn);
+        let αz = Self::backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
+        let αs = Self::backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
 
         (αz, αs)
     }
 
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
 
         let cur_z = [z[0] + α * dz[0], z[1] + α * dz[1], z[2] + α * dz[2]];
@@ -179,7 +178,7 @@ where
 // primal-dual scaling
 //-------------------------------------
 
-impl<T> Nonsymmetric3DCone<T> for PowerCone<T>
+impl<T> NonsymmetricCone<T> for PowerCone<T>
 where
     T: FloatT,
 {
@@ -218,35 +217,6 @@ where
             }
         }
         false
-    }
-
-    // Compute the primal gradient of f(s) at s
-    fn gradient_primal(&self, s: &[T]) -> [T; 3]
-    where
-        T: FloatT,
-    {
-        let α = self.α;
-        let mut g = [T::zero(); 3];
-        let two: T = (2.).as_T();
-
-        // unscaled ϕ
-        let phi = (s[0]).powf(two * α) * (s[1]).powf(two - α * two);
-
-        // obtain last element of g from the Newton-Raphson method
-        let abs_s = s[2].abs();
-        if abs_s > T::epsilon() {
-            g[2] = _newton_raphson_powcone(abs_s, phi, α);
-            if s[2] < T::zero() {
-                g[2] = -g[2];
-            }
-            g[0] = -(α * g[2] * s[2] + T::one() + α) / s[0];
-            g[1] = -((T::one() - α) * g[2] * s[2] + two - α) / s[1];
-        } else {
-            g[2] = T::zero();
-            g[0] = -(T::one() + α) / s[0];
-            g[1] = -(two - α) / s[1];
-        }
-        g
     }
 
     fn update_dual_grad_H(&mut self, z: &[T]) {
@@ -409,6 +379,40 @@ where
         // @. η <= (η + Hψu*dotψv*inv_ψ2)/2
         η[..].axpby(dotψv * inv_ψ2, Hψu, T::one());
         η[..].scale((0.5).as_T());
+    }
+}
+
+impl<T> Nonsymmetric3DCone<T> for PowerCone<T>
+where
+    T: FloatT,
+{
+    // Compute the primal gradient of f(s) at s
+    fn gradient_primal(&self, s: &[T]) -> [T; 3]
+    where
+        T: FloatT,
+    {
+        let α = self.α;
+        let mut g = [T::zero(); 3];
+        let two: T = (2.).as_T();
+
+        // unscaled ϕ
+        let phi = (s[0]).powf(two * α) * (s[1]).powf(two - α * two);
+
+        // obtain last element of g from the Newton-Raphson method
+        let abs_s = s[2].abs();
+        if abs_s > T::epsilon() {
+            g[2] = _newton_raphson_powcone(abs_s, phi, α);
+            if s[2] < T::zero() {
+                g[2] = -g[2];
+            }
+            g[0] = -(α * g[2] * s[2] + T::one() + α) / s[0];
+            g[1] = -((T::one() - α) * g[2] * s[2] + two - α) / s[1];
+        } else {
+            g[2] = T::zero();
+            g[0] = -(T::one() + α) / s[0];
+            g[1] = -(two - α) / s[1];
+        }
+        g
     }
 
     //getters

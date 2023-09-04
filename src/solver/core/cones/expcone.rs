@@ -147,19 +147,18 @@ where
         let step = settings.linesearch_backtrack_step;
         let αmin = settings.min_terminate_step_length;
 
-        // final backtracked position
-        let wq = &mut [T::zero(); 3];
+        let mut work = [T::zero(); 3];
 
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = self.step_length_cone(wq, dz, z, αmax, αmin, step, _is_dual_feasible_fcn);
-        let αs = self.step_length_cone(wq, ds, s, αmax, αmin, step, _is_prim_feasible_fcn);
+        let αz = Self::backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
+        let αs = Self::backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
 
         (αz, αs)
     }
 
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
 
         let cur_z = [z[0] + α * dz[0], z[1] + α * dz[1], z[2] + α * dz[2]];
@@ -172,9 +171,7 @@ where
     }
 }
 
-// implement this marker trait to get access to
-// functions common to exp and pow cones
-impl<T> Nonsymmetric3DCone<T> for ExponentialCone<T>
+impl<T> NonsymmetricCone<T> for ExponentialCone<T>
 where
     T: FloatT,
 {
@@ -212,20 +209,6 @@ where
             }
         }
         false
-    }
-
-    // Compute the primal gradient of f(s) at s
-    fn gradient_primal(&self, s: &[T]) -> [T; 3]
-    where
-        T: FloatT,
-    {
-        let mut g = [T::zero(); 3];
-        let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
-
-        g[0] = T::one() / ((ω - T::one()) * s[1]);
-        g[1] = g[0] + g[0] * ((ω * s[1] / s[2]).logsafe()) - T::one() / s[1];
-        g[2] = ω / ((T::one() - ω) * s[2]);
-        g
     }
 
     fn update_dual_grad_H(&mut self, z: &[T]) {
@@ -353,6 +336,25 @@ where
             + dotψv * inv_ψ2 * (z[0] * u[2] / (z[2] * z[2]) - u[0] / z[2]);
 
         η[..].scale((0.5).as_T());
+    }
+}
+
+impl<T> Nonsymmetric3DCone<T> for ExponentialCone<T>
+where
+    T: FloatT,
+{
+    // Compute the primal gradient of f(s) at s
+    fn gradient_primal(&self, s: &[T]) -> [T; 3]
+    where
+        T: FloatT,
+    {
+        let mut g = [T::zero(); 3];
+        let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
+
+        g[0] = T::one() / ((ω - T::one()) * s[1]);
+        g[1] = g[0] + g[0] * ((ω * s[1] / s[2]).logsafe()) - T::one() / s[1];
+        g[2] = ω / ((T::one() - ω) * s[2]);
+        g
     }
 
     //getters

@@ -201,7 +201,7 @@ where
         (αz, αs)
     }
 
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let res_s = _soc_residual_shifted(s, ds, α);
         let res_z = _soc_residual_shifted(z, dz, α);
 
@@ -390,6 +390,7 @@ where
 // fcn.  The operation λ = Wz produces a borrow conflict
 // otherwise because λ is part of the cone's internal data
 // and we can't borrow self and &mut λ at the same time.
+// Could also have been done using std::mem::take
 
 #[allow(non_snake_case)]
 fn _soc_mul_W_inner<T>(y: &mut [T], x: &[T], α: T, β: T, w: &[T], η: T)

@@ -12,10 +12,10 @@ pub struct LDLDataMap {
     pub SOC_u: Vec<Vec<usize>>, //off diag dense columns u
     pub SOC_v: Vec<Vec<usize>>, //off diag dense columns v
     pub SOC_D: Vec<usize>,      //diag of just the sparse SOC expansion D
-    pub GenPow_p: Vec<Vec<usize>>,      // off diag dense columns p
-    pub GenPow_q: Vec<Vec<usize>>,      // off diag dense columns q
-    pub GenPow_r: Vec<Vec<usize>>,      // off diag dense columns r
-    pub GenPow_D: Vec<usize>,           // diag of just the sparse GenPow expansion D
+    pub GenPow_p: Vec<Vec<usize>>, // off diag dense columns p
+    pub GenPow_q: Vec<Vec<usize>>, // off diag dense columns q
+    pub GenPow_r: Vec<Vec<usize>>, // off diag dense columns r
+    pub GenPow_D: Vec<usize>,   // diag of just the sparse GenPow expansion D
 
     // all of above terms should be disjoint and their union
     // should cover all of the user data in the KKT matrix.  Now
@@ -70,8 +70,8 @@ impl LDLDataMap {
             // Generalized power cones
             if let SupportedCone::GenPowerCone(genpow) = cone {
                 GenPow_p.push(vec![0; genpow.numel()]);
-                GenPow_q.push(vec![0; genpow.dim1]);
-                GenPow_r.push(vec![0; genpow.dim2]);
+                GenPow_q.push(vec![0; genpow.dim1()]);
+                GenPow_r.push(vec![0; genpow.dim2()]);
             }
         }
 

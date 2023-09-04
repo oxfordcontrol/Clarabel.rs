@@ -146,7 +146,7 @@ where
         (αz, αs)
     }
 
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         assert_eq!(z.len(), s.len());
         assert_eq!(dz.len(), z.len());
         assert_eq!(ds.len(), s.len());

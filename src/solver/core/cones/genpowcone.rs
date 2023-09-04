@@ -19,15 +19,15 @@ pub struct GenPowerCone<T: FloatT = f64> {
     grad: Vec<T>,
     // holds copy of z at scaling point
     z: Vec<T>,
+
     // central path parameter
-    μ: T,
+    pub μ: T,
 
     // vectors for rank 3 update representation of Hs
-    p: Vec<T>,
-    q: Vec<T>,
-    r: Vec<T>,
-    // first part of the diagonal
-    d1: Vec<T>,
+    pub p: Vec<T>,
+    pub q: Vec<T>,
+    pub r: Vec<T>,
+    pub d1: Vec<T>,
 
     // additional scalar terms for rank-2 rep
     d2: T,
@@ -64,7 +64,7 @@ where
             d1: vec![T::zero(); dim1],
             d2: T::zero(),
             ψ,
-            work: [T::zero(); dim],
+            work: vec![T::zero(); dim],
         }
     }
 
@@ -161,22 +161,26 @@ where
     fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
         // Hs = μ*(D + pp' -qq' -rr')
 
-        let rng1 = 0..self.dim1();
-        let rng2 = self.dim1()..self.dim();
+        let dim1 = self.dim1();
 
         let coef_p = self.p.dot(x);
-        let coef_q = self.q.dot(&x[rng1]);
-        let coef_r = self.r.dot(&x[rng2]);
+        let coef_q = self.q.dot(&x[..dim1]);
+        let coef_r = self.r.dot(&x[dim1..]);
 
         // y1 .= K.d1 .* x1 - coef_q.*K.q
         // NB: d1 is a vector
-        zip(zip(&mut y[rng1], &x[rng1]), zip(&self.d1, &self.q))
+        let y1 = &mut y[..dim1];
+        let x1 = &x[..dim1];
+
+        zip(zip(y1, x1), zip(&self.d1, &self.q))
             .for_each(|((y, &x), (&d1, &q))| *y += d1 * x - coef_q * q);
 
         // y2 .= K.d2 .* x2 - coef_r.*K.r.
         // NB: d2 is a scalar
-        zip(zip(&mut y[rng2], &x[rng2]), &self.r)
-            .for_each(|((y, &x), &r)| *y += self.d2 * x - coef_r * r);
+        let y2 = &mut y[dim1..];
+        let x2 = &x[dim1..];
+
+        zip(zip(y2, x2), &self.r).for_each(|((y, &x), &r)| *y += self.d2 * x - coef_r * r);
 
         y.axpby(coef_p, &self.p, T::one());
         y.scale(self.μ);
@@ -209,46 +213,35 @@ where
         let step = settings.linesearch_backtrack_step;
         let αmin = settings.min_terminate_step_length;
 
-        // final backtracked position
+        //simultaneously using "work" and the closures defined
+        //below produces a borrow check error, so temporarily
+        //move "work" out of self
+        let mut work = std::mem::take(&mut self.work);
+
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = self.step_length_cone(
-            &mut self.work,
-            dz,
-            z,
-            αmax,
-            αmin,
-            step,
-            _is_dual_feasible_fcn,
-        );
-        let αs = self.step_length_cone(
-            &mut self.work,
-            ds,
-            s,
-            αmax,
-            αmin,
-            step,
-            _is_prim_feasible_fcn,
-        );
+        let αz = Self::backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
+        let αs = Self::backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
+
+        //restore work to self
+        self.work = work;
 
         (αz, αs)
     }
 
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
 
-        let wq = &mut self.work;
+        let mut work = std::mem::take(&mut self.work);
 
-        wq.iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = z[i] + α * dz[i]);
-        barrier += self.barrier_dual(wq);
+        work.waxpby(T::one(), &z, α, &dz);
+        barrier += self.barrier_dual(&work);
 
-        wq.iter_mut()
-            .enumerate()
-            .for_each(|(i, x)| *x = s[i] + α * ds[i]);
-        barrier += self.barrier_primal(wq);
+        work.waxpby(T::one(), &s, α, &ds);
+        barrier += self.barrier_primal(&work);
+
+        self.work = work;
 
         barrier
     }
@@ -258,7 +251,6 @@ where
 // Dual scaling
 //-------------------------------------
 
-//YC: better to define an additional trait "NonsymmetricCone" for it
 impl<T> NonsymmetricCone<T> for GenPowerCone<T>
 where
     T: FloatT,
@@ -270,7 +262,7 @@ where
     {
         let α = &self.α;
         let two: T = (2f64).as_T();
-        let dim1 = self.dim1;
+        let dim1 = self.dim1();
 
         if s[..dim1].iter().all(|x| *x > T::zero()) {
             let mut res = T::zero();
@@ -293,7 +285,7 @@ where
     {
         let α = &self.α;
         let two: T = (2.).as_T();
-        let dim1 = self.dim1;
+        let dim1 = self.dim1();
 
         if z[..dim1].iter().all(|x| *x > T::zero()) {
             let mut res = T::zero();
@@ -309,37 +301,9 @@ where
         false
     }
 
-    // Compute the primal gradient of f(s) at s
-    fn minus_gradient_primal(&self, s: &[T]) -> (T, T)
-    where
-        T: FloatT,
-    {
-        let α = &self.α;
-        let dim1 = self.dim1;
-        let two: T = (2.).as_T();
-
-        // unscaled phi
-        let mut phi = T::one();
-        for i in 0..dim1 {
-            phi *= s[i].powf(two * α[i]);
-        }
-
-        // obtain g1 from the Newton-Raphson method
-        let norm_r = s[dim1..].norm();
-        let mut g1 = T::zero();
-
-        if norm_r > T::epsilon() {
-            g1 = _newton_raphson_genpowcone(norm_r, &s[..dim1], phi, α, self.ψ);
-            // minus_g.iter_mut().enumerate().skip(dim1).for_each(|(i,x)| *x = g1*s[i]/norm_r);
-            // minus_g[..dim1].iter_mut().enumerate().for_each(|(i,x)| *x = -(T::one()+α[i]+α[i]*g1*norm_r)/s[i]);
-        }
-
-        (g1, norm_r)
-    }
-
     fn update_dual_grad_H(&mut self, z: &[T]) {
         let α = &self.α;
-        let dim1 = self.dim1;
+        let dim1 = self.dim1();
         let two: T = (2.).as_T();
 
         let mut phi = T::one();
@@ -384,7 +348,7 @@ where
         p[..dim1].copy_from(&τ);
         p[..dim1].iter_mut().for_each(|x| *x *= c1);
         let c2 = p1 / ζ;
-        p[dim1..].copy_from(&z[self.dim1..]);
+        p[dim1..].copy_from(&z[dim1..]);
         p[dim1..].iter_mut().for_each(|x| *x *= c2);
 
         let c3 = q0 / ζ;
@@ -402,7 +366,7 @@ where
     {
         // Dual barrier:
         let α = &self.α;
-        let dim1 = self.dim1;
+        let dim1 = self.dim1();
         let two: T = (2.).as_T();
         let mut res = T::zero();
 
@@ -430,9 +394,9 @@ where
 
         //YC: Do we need to care about the memory allocation time for minus_q?
         let (g1, norm_r) = self.minus_gradient_primal(s);
-        let mut minus_g = Vec::with_capacity(self.dim);
+        let mut minus_g = Vec::with_capacity(self.dim());
 
-        let dim1 = self.dim1;
+        let dim1 = self.dim1();
         if norm_r > T::epsilon() {
             minus_g
                 .iter_mut()
@@ -458,8 +422,44 @@ where
 
         out
     }
+
+    fn higher_correction(&mut self, _η: &mut [T; 3], _ds: &[T], _v: &[T]) {
+        unimplemented!()
+    }
 }
 
+impl<T> NonsymmetricNDCone<T> for GenPowerCone<T>
+where
+    T: FloatT,
+{
+    // Compute the primal gradient of f(s) at s
+    fn minus_gradient_primal(&self, s: &[T]) -> (T, T)
+    where
+        T: FloatT,
+    {
+        let α = &self.α;
+        let dim1 = self.dim1();
+        let two: T = (2.).as_T();
+
+        // unscaled phi
+        let mut phi = T::one();
+        for i in 0..dim1 {
+            phi *= s[i].powf(two * α[i]);
+        }
+
+        // obtain g1 from the Newton-Raphson method
+        let norm_r = s[dim1..].norm();
+        let mut g1 = T::zero();
+
+        if norm_r > T::epsilon() {
+            g1 = _newton_raphson_genpowcone(norm_r, &s[..dim1], phi, α, self.ψ);
+            // minus_g.iter_mut().enumerate().skip(dim1).for_each(|(i,x)| *x = g1*s[i]/norm_r);
+            // minus_g[..dim1].iter_mut().enumerate().for_each(|(i,x)| *x = -(T::one()+α[i]+α[i]*g1*norm_r)/s[i]);
+        }
+
+        (g1, norm_r)
+    }
+}
 // ----------------------------------------------
 //  internal operations for generalized power cones
 

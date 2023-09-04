@@ -121,7 +121,7 @@ where
         (αmax, αmax)
     }
 
-    fn compute_barrier(&self, _z: &[T], _s: &[T], _dz: &[T], _ds: &[T], _α: T) -> T {
+    fn compute_barrier(&mut self, _z: &[T], _s: &[T], _dz: &[T], _ds: &[T], _α: T) -> T {
         T::zero()
     }
 }

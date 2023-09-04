@@ -79,13 +79,13 @@ pub trait Variables<T: FloatT> {
     /// Overwrite values with those from another object
     fn copy_from(&mut self, src: &Self);
 
-    /// Apply NT scaling to the a collection of cones.
+    /// Apply NT scaling to a collection of cones.
 
     fn scale_cones(&self, cones: &mut Self::C, μ: T, scaling_strategy: ScalingStrategy) -> bool;
 
     /// Compute the barrier function
 
-    fn barrier(&self, step: &Self, α: T, cones: &Self::C) -> T;
+    fn barrier(&self, step: &Self, α: T, cones: &mut Self::C) -> T;
 
     /// Rescale variables, e.g. to renormalize iterates
     /// in a homogeneous embedding

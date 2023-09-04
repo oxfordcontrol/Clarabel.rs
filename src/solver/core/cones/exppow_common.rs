@@ -20,23 +20,63 @@ pub(crate) trait NonsymmetricCone<T: FloatT> {
     fn higher_correction(&mut self, η: &mut [T; 3], ds: &[T], v: &[T]);
 }
 
+#[allow(clippy::too_many_arguments)]
+pub(crate) trait NonsymmetricConeUtils<T: FloatT> {
+    fn backtrack_search(
+        dq: &[T],
+        q: &[T],
+        α_init: T,
+        α_min: T,
+        backtrack: T,
+        is_in_cone_fcn: impl Fn(&[T]) -> bool,
+        work: &mut [T],
+    ) -> T;
+}
+
+impl<T, C> NonsymmetricConeUtils<T> for C
+where
+    T: FloatT,
+    C: NonsymmetricCone<T>,
+{
+    // find the maximum step length α≥0 so that
+    // q + α*dq stays in an exponential or power
+    // cone, or their respective dual cones.
+    fn backtrack_search(
+        dq: &[T],
+        q: &[T],
+        α_init: T,
+        α_min: T,
+        backtrack: T,
+        is_in_cone_fcn: impl Fn(&[T]) -> bool,
+        work: &mut [T],
+    ) -> T {
+        let mut α = α_init;
+
+        loop {
+            // work = q + α*dq
+            work.waxpby(T::one(), &q, α, &dq);
+
+            if is_in_cone_fcn(work) {
+                break;
+            }
+            α *= backtrack;
+            if α < α_min {
+                α = T::zero();
+                break;
+            }
+        }
+        α
+    }
+}
+
 // --------------------------------------
-// Traits and blanket implementations for Exponential, 3D Power Cones
+// Trait and blanket utlity implementations for Exponential and 3D Power Cones
 // -------------------------------------
 #[allow(clippy::too_many_arguments)]
-pub(crate) trait Nonsymmetric3DCone<T: FloatT> {
-    fn update_Hs(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy);
 
-    // Compute the primal gradient of f(s) at s
+pub(crate) trait Nonsymmetric3DCone<T: FloatT> {
     fn gradient_primal(&self, s: &[T]) -> [T; 3];
 
-    fn use_dual_scaling(&mut self, μ: T);
-
-    fn use_primal_dual_scaling(&mut self, s: &[T], z: &[T]);
-
-    // we can't mutably borrow individual fields through getter methods,
-    // so we have this one method to borrow them simultaneously.
-    // Usage: let (H_dual, Hs, grad, z) = self.split_borrow_mut ();
     fn split_borrow_mut(
         &mut self,
     ) -> (
@@ -47,7 +87,15 @@ pub(crate) trait Nonsymmetric3DCone<T: FloatT> {
     );
 }
 
-impl<T, C> Nonsymmetric3DCone<T> for C
+pub(crate) trait Nonsymmetric3DConeUtils<T: FloatT> {
+    fn update_Hs(&mut self, s: &[T], z: &[T], μ: T, scaling_strategy: ScalingStrategy);
+
+    fn use_dual_scaling(&mut self, μ: T);
+
+    fn use_primal_dual_scaling(&mut self, s: &[T], z: &[T]);
+}
+
+impl<T, C> Nonsymmetric3DConeUtils<T> for C
 where
     T: FloatT,
     C: Nonsymmetric3DCone<T>,
@@ -145,7 +193,7 @@ where
 }
 
 // --------------------------------------
-// Traits Generalized PowerCones
+// Traits for general ND cones
 // -------------------------------------
 
 // Operations supported on ND nonsymmetrics only.  Note this
@@ -154,60 +202,4 @@ where
 pub(crate) trait NonsymmetricNDCone<T: FloatT> {
     // Compute the primal gradient of f(s) at s
     fn minus_gradient_primal(&self, s: &[T]) -> (T, T);
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) trait NonsymmetricConeUtils<T: FloatT> {
-    fn step_length_cone(
-        &self,
-        wq: &mut [T],
-        dq: &[T],
-        q: &[T],
-        α_init: T,
-        α_min: T,
-        backtrack: T,
-        is_in_cone_fcn: impl Fn(&[T]) -> bool,
-    ) -> T;
-}
-
-// --------------------------------------
-// Useful utilities for nonsymmetric cones
-// -------------------------------------
-
-impl<T, C> NonsymmetricCone<T>
-where
-    T: FloatT,
-{
-    // find the maximum step length α≥0 so that
-    // q + α*dq stays in an exponential or power
-    // cone, or their respective dual cones.
-    fn step_length_cone(
-        &self,
-        wq: &mut [T],
-        dq: &[T],
-        q: &[T],
-        α_init: T,
-        α_min: T,
-        backtrack: T,
-        is_in_cone_fcn: impl Fn(&[T]) -> bool,
-    ) -> T {
-        let mut α = α_init;
-
-        loop {
-            // wq = q + α*dq
-            for i in 0..q.len() {
-                wq[i] = q[i] + α * dq[i];
-            }
-
-            if is_in_cone_fcn(wq) {
-                break;
-            }
-            α *= backtrack;
-            if α < α_min {
-                α = T::zero();
-                break;
-            }
-        }
-        α
-    }
 }

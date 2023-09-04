@@ -386,7 +386,7 @@ mod internal {
             -> T;
 
         /// backtrack a step direction to the barrier
-        fn backtrack_step_to_barrier(&self, αinit: T) -> T;
+        fn backtrack_step_to_barrier(&mut self, αinit: T) -> T;
 
         /// Scaling strategy checkpointing functions
         fn strategy_checkpoint_insufficient_progress(
@@ -472,12 +472,12 @@ mod internal {
             α
         }
 
-        fn backtrack_step_to_barrier(&self, αinit: T) -> T {
+        fn backtrack_step_to_barrier(&mut self, αinit: T) -> T {
             let backtrack = self.settings.core().linesearch_backtrack_step;
             let mut α = αinit;
 
             for _ in 0..50 {
-                let barrier = self.variables.barrier(&self.step_lhs, α, &self.cones);
+                let barrier = self.variables.barrier(&self.step_lhs, α, &mut self.cones);
                 if barrier < T::one() {
                     return α;
                 } else {

@@ -193,7 +193,7 @@ where
         cones.update_scaling(&self.s, &self.z, μ, scaling_strategy)
     }
 
-    fn barrier(&self, step: &Self, α: T, cones: &CompositeCone<T>) -> T {
+    fn barrier(&self, step: &Self, α: T, cones: &mut CompositeCone<T>) -> T {
         let central_coef = (cones.degree() + 1).as_T();
 
         let cur_τ = self.τ + α * step.τ;

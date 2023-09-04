@@ -32,8 +32,7 @@ pub enum SupportedConeT<T> {
     /// The generalized power cone.
     ///
     /// The parameter indicates the power and dimensions.
-    /// PJG: second dimensions is redundant to length(α)
-    GenPowerConeT(Vec<T>, usize, usize),
+    GenPowerConeT(Vec<T>, usize),
     /// The exponential cone in R^3.
     ///
     /// This cone takes no parameters
@@ -60,7 +59,7 @@ impl<T> SupportedConeT<T> {
             SupportedConeT::PowerConeT(_) => 3,
             #[cfg(feature = "sdp")]
             SupportedConeT::PSDTriangleConeT(dim) => triangular_number(*dim),
-            SupportedConeT::GenPowerConeT(_, dim1, dim2) => *dim1 + *dim2,
+            SupportedConeT::GenPowerConeT(α, dim2) => α.len() + *dim2,
         }
     }
 }
@@ -87,8 +86,8 @@ pub fn make_cone<T: FloatT>(cone: &SupportedConeT<T>) -> SupportedCone<T> {
         SupportedConeT::PowerConeT(α) => PowerCone::<T>::new(*α).into(),
         #[cfg(feature = "sdp")]
         SupportedConeT::PSDTriangleConeT(dim) => PSDTriangleCone::<T>::new(dim).into(),
-        SupportedConeT::GenPowerConeT(α, dim1, dim2) => {
-            GenPowerCone::<T>::new((*α).clone(), *dim1, *dim2).into()
+        SupportedConeT::GenPowerConeT(α, dim2) => {
+            GenPowerCone::<T>::new((*α).clone(), *dim2).into()
         }
     }
 }
@@ -159,7 +158,7 @@ impl<T> SupportedConeAsTag for SupportedConeT<T> {
             SupportedConeT::PowerConeT(_) => SupportedConeTag::PowerCone,
             #[cfg(feature = "sdp")]
             SupportedConeT::PSDTriangleConeT(_) => SupportedConeTag::PSDTriangleCone,
-            SupportedConeT::GenPowerConeT(_, _, _) => SupportedConeTag::GenPowerCone,
+            SupportedConeT::GenPowerConeT(_, _) => SupportedConeTag::GenPowerCone,
         }
     }
 }
