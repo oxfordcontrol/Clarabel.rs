@@ -1,4 +1,5 @@
 use super::{FloatT, ScalarMath, VectorMath};
+use itertools::izip;
 use std::iter::zip;
 
 impl<T: FloatT> VectorMath for [T] {
@@ -88,7 +89,7 @@ impl<T: FloatT> VectorMath for [T] {
         assert_eq!(s.len(), ds.len());
 
         let mut out = T::zero();
-        for ((&s, &ds), (&z, &dz)) in zip(zip(s, ds), zip(z, dz)) {
+        for (&s, &ds, &z, &dz) in izip!(s, ds, z, dz) {
             let si = s + α * ds;
             let zi = z + α * dz;
             out += si * zi;

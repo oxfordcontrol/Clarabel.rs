@@ -3,6 +3,7 @@ use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
 };
+use itertools::izip;
 use std::iter::zip;
 
 // -------------------------------------
@@ -75,7 +76,7 @@ where
         _μ: T,
         _scaling_strategy: ScalingStrategy,
     ) -> bool {
-        for ((λ, w), (s, z)) in zip(zip(&mut self.λ, &mut self.w), zip(s, z)) {
+        for ((λ, w, s, z)) in izip!(&mut self.λ, &mut self.w, s, z) {
             *λ = T::sqrt((*s) * (*z));
             *w = T::sqrt((*s) / (*z));
         }
@@ -151,7 +152,7 @@ where
         assert_eq!(dz.len(), z.len());
         assert_eq!(ds.len(), s.len());
         let mut barrier = T::zero();
-        for ((&s, &ds), (&z, &dz)) in zip(zip(s, ds), zip(z, dz)) {
+        for (&s, &ds, &z, &dz) in izip!(s, ds, z, dz) {
             let si = s + α * ds;
             let zi = z + α * dz;
             barrier += (si * zi).logsafe();
