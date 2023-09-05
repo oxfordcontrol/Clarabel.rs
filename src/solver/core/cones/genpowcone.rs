@@ -313,7 +313,7 @@ where
         let τ = &mut self.q;
 
         for (τ, grad, &α, &z) in izip!(τ.iter_mut(), &mut grad[..dim1], α, &z[..dim1]) {
-            *τ = two * α * (z / α).logsafe();
+            *τ = two * α / z;
             *grad = -(*τ) * phi / ζ - (T::one() - α) / z;
         }
 
