@@ -176,13 +176,13 @@ where
         // y1 .= K.d1 .* x1 - coef_q.*K.q
         // NB: d1 is a vector
         for (y, &x, &d1, &q) in izip!(&mut y[..dim1], &x[..dim1], &self.d1, &self.q) {
-            *y += d1 * x - coef_q * q;
+            *y = d1 * x - coef_q * q;
         }
 
         // y2 .= K.d2 .* x2 - coef_r.*K.r.
         // NB: d2 is a scalar
         for (y, &x, &r) in izip!(&mut y[dim1..], &x[dim1..], &self.r) {
-            *y += self.d2 * x - coef_r * r;
+            *y = self.d2 * x - coef_r * r;
         }
 
         y.axpby(coef_p, &self.p, T::one());
