@@ -11,62 +11,13 @@ pub(crate) trait NonsymmetricCone<T: FloatT> {
     // Returns true if z is dual feasible
     fn is_dual_feasible(&self, z: &[T]) -> bool;
 
+    fn barrier_primal(&mut self, s: &[T]) -> T;
+
+    fn barrier_dual(&mut self, z: &[T]) -> T;
+
+    fn higher_correction(&mut self, η: &mut [T], ds: &[T], v: &[T]);
+
     fn update_dual_grad_H(&mut self, z: &[T]);
-
-    fn barrier_dual(&self, z: &[T]) -> T;
-
-    fn barrier_primal(&self, s: &[T]) -> T;
-
-    fn higher_correction(&mut self, η: &mut [T; 3], ds: &[T], v: &[T]);
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) trait NonsymmetricConeUtils<T: FloatT> {
-    fn backtrack_search(
-        dq: &[T],
-        q: &[T],
-        α_init: T,
-        α_min: T,
-        backtrack: T,
-        is_in_cone_fcn: impl Fn(&[T]) -> bool,
-        work: &mut [T],
-    ) -> T;
-}
-
-impl<T, C> NonsymmetricConeUtils<T> for C
-where
-    T: FloatT,
-    C: NonsymmetricCone<T>,
-{
-    // find the maximum step length α≥0 so that
-    // q + α*dq stays in an exponential or power
-    // cone, or their respective dual cones.
-    fn backtrack_search(
-        dq: &[T],
-        q: &[T],
-        α_init: T,
-        α_min: T,
-        backtrack: T,
-        is_in_cone_fcn: impl Fn(&[T]) -> bool,
-        work: &mut [T],
-    ) -> T {
-        let mut α = α_init;
-
-        loop {
-            // work = q + α*dq
-            work.waxpby(T::one(), &q, α, &dq);
-
-            if is_in_cone_fcn(work) {
-                break;
-            }
-            α *= backtrack;
-            if α < α_min {
-                α = T::zero();
-                break;
-            }
-        }
-        α
-    }
 }
 
 // --------------------------------------
@@ -201,5 +152,69 @@ where
 // return a 3D tuple for the primal gradient.
 pub(crate) trait NonsymmetricNDCone<T: FloatT> {
     // Compute the primal gradient of f(s) at s
-    fn minus_gradient_primal(&self, s: &[T]) -> (T, T);
+    fn gradient_primal(&self, grad: &mut [T], s: &[T]);
+}
+
+// --------------------------------------
+// utility functions for nonsymmetric cones
+// --------------------------------------
+
+// find the maximum step length α≥0 so that
+// q + α*dq stays in an exponential or power
+// cone, or their respective dual cones.
+pub(crate) fn backtrack_search<T>(
+    dq: &[T],
+    q: &[T],
+    α_init: T,
+    α_min: T,
+    backtrack: T,
+    is_in_cone_fcn: impl Fn(&[T]) -> bool,
+    work: &mut [T],
+) -> T
+where
+    T: FloatT,
+{
+    let mut α = α_init;
+
+    loop {
+        // work = q + α*dq
+        work.waxpby(T::one(), q, α, dq);
+
+        if is_in_cone_fcn(work) {
+            break;
+        }
+        α *= backtrack;
+        if α < α_min {
+            α = T::zero();
+            break;
+        }
+    }
+    α
+}
+pub(crate) fn newton_raphson_onesided<T>(x0: T, f0: impl Fn(T) -> T, f1: impl Fn(T) -> T) -> T
+where
+    T: FloatT,
+{
+    // implements NR method from a starting point assumed to be to the
+    // left of the true value.   Once a negative step is encountered
+    // this function will halt regardless of the calculated correction.
+
+    let mut x = x0;
+    let mut iter = 0;
+
+    while iter < 100 {
+        iter += 1;
+        let dfdx = f1(x);
+        let dx = -f0(x) / dfdx;
+
+        if (dx < T::epsilon())
+            || (T::abs(dx / x) < T::sqrt(T::epsilon()))
+            || (T::abs(dfdx) < T::epsilon())
+        {
+            break;
+        }
+        x += dx;
+    }
+
+    x
 }

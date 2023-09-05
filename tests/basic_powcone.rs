@@ -3,7 +3,7 @@
 use clarabel::{algebra::*, solver::*};
 
 #[test]
-fn test_powcone_feasible() {
+fn test_powcone() {
     // solve the following power cone problem
     // max  x1^0.6 y^0.4 + x2^0.1
     // s.t. x1, y, x2 >= 0
@@ -15,6 +15,7 @@ fn test_powcone_feasible() {
     //      x1 + 2y + 3x2 == 3
 
     // x = (x1, y, z1, x2, y2, z2)
+
     let n = 6;
     let P = CscMatrix::<f64>::zeros((n, n));
     let c = vec![0., 0., -1., 0., 0., -1.];
@@ -28,13 +29,10 @@ fn test_powcone_feasible() {
 
     // x1 + 2y + 3x2 == 3
     // y2 == 1
-    let A2 = CscMatrix::new(
-        2,                         // m
-        6,                         // n
-        vec![0, 1, 2, 2, 3, 4, 4], //colptr
-        vec![0, 0, 0, 1],          //rowval
-        vec![1., 2., 3., 1.],      //nzval
-    );
+    let A2 = CscMatrix::from(&[
+        [1., 2., 0., 3., 0., 0.], //
+        [0., 0., 0., 0., 1., 0.], //
+    ]);
     let b2 = vec![3., 1.];
     let cones2 = vec![ZeroConeT(2)];
 

@@ -177,7 +177,7 @@ fn _kkt_assemble_colcounts<T: FloatT>(
                     K.colcount_rowvec(nvars, col + 2, headidx + n); // p row
                 }
             }
-            genpowidx = genpowidx + 1;
+            genpowidx += 1;
         }
     }
 

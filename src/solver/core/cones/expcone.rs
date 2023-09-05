@@ -152,8 +152,8 @@ where
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = Self::backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
-        let αs = Self::backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
+        let αz = backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
+        let αs = backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
 
         (αz, αs)
     }
@@ -236,7 +236,7 @@ where
         H[(2, 2)] = (r * r - z[0] * r + z[0] * z[0]) / (r * r * z[2] * z[2]);
     }
 
-    fn barrier_dual(&self, z: &[T]) -> T
+    fn barrier_dual(&mut self, z: &[T]) -> T
     where
         T: FloatT,
     {
@@ -247,7 +247,7 @@ where
         -(-z[2] * z[0]).logsafe() - (z[1] - z[0] - z[0] * l).logsafe()
     }
 
-    fn barrier_primal(&self, s: &[T]) -> T
+    fn barrier_primal(&mut self, s: &[T]) -> T
     where
         T: FloatT,
     {
@@ -284,7 +284,7 @@ where
     // Hψu = Hψ*u
     // gψ is used inside η
 
-    fn higher_correction(&mut self, η: &mut [T; 3], ds: &[T], v: &[T])
+    fn higher_correction(&mut self, η: &mut [T], ds: &[T], v: &[T])
     where
         T: FloatT,
     {
@@ -312,8 +312,8 @@ where
 
         let ψ = z[0] * η[0] - z[0] + z[1];
 
-        let dotψu = u.dot(&η[..]);
-        let dotψv = v.dot(&η[..]);
+        let dotψu = u.dot(η);
+        let dotψv = v.dot(η);
 
         let two: T = (2.).as_T();
         let coef =

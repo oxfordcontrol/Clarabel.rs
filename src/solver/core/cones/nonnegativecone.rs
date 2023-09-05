@@ -76,7 +76,7 @@ where
         _μ: T,
         _scaling_strategy: ScalingStrategy,
     ) -> bool {
-        for ((λ, w, s, z)) in izip!(&mut self.λ, &mut self.w, s, z) {
+        for (λ, w, s, z) in izip!(&mut self.λ, &mut self.w, s, z) {
             *λ = T::sqrt((*s) * (*z));
             *w = T::sqrt((*s) / (*z));
         }

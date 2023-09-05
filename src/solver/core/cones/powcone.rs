@@ -155,8 +155,8 @@ where
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = Self::backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
-        let αs = Self::backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
+        let αz = backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
+        let αs = backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
 
         (αz, αs)
     }
@@ -253,7 +253,7 @@ where
         grad[2] = two * z[2] / ψ;
     }
 
-    fn barrier_dual(&self, z: &[T]) -> T
+    fn barrier_dual(&mut self, z: &[T]) -> T
     where
         T: FloatT,
     {
@@ -267,7 +267,7 @@ where
         -arg1.logsafe() - (T::one() - α) * z[0].logsafe() - α * z[1].logsafe()
     }
 
-    fn barrier_primal(&self, s: &[T]) -> T
+    fn barrier_primal(&mut self, s: &[T]) -> T
     where
         T: FloatT,
     {
@@ -301,7 +301,7 @@ where
     //         4*α*(1-α)*ϕ/(z1*z2)     2*(1-α)*(1-2*α)*ϕ/(z2*z2)   0;
     //         0                       0                          -2;]
 
-    fn higher_correction(&mut self, η: &mut [T; 3], ds: &[T], v: &[T])
+    fn higher_correction(&mut self, η: &mut [T], ds: &[T], v: &[T])
     where
         T: FloatT,
     {
@@ -346,8 +346,8 @@ where
         Hψ[(1, 2)] = T::zero();
         Hψ[(2, 2)] = -two;
 
-        let dotψu = u.dot(&η[..]);
-        let dotψv = v.dot(&η[..]);
+        let dotψu = u.dot(η);
+        let dotψv = v.dot(η);
 
         let mut Hψv = [T::zero(); 3];
         Hψ.mul(&mut Hψv, v);
@@ -483,33 +483,5 @@ where
                 - ((x + s3.recip()) * two) / (t1 + t2)
         }
     };
-    _newton_raphson_onesided(x0, f0, f1)
-}
-
-fn _newton_raphson_onesided<T>(x0: T, f0: impl Fn(T) -> T, f1: impl Fn(T) -> T) -> T
-where
-    T: FloatT,
-{
-    // implements NR method from a starting point assumed to be to the
-    // left of the true value.   Once a negative step is encountered
-    // this function will halt regardless of the calculated correction.
-
-    let mut x = x0;
-    let mut iter = 0;
-
-    while iter < 100 {
-        iter += 1;
-        let dfdx = f1(x);
-        let dx = -f0(x) / dfdx;
-
-        if (dx < T::epsilon())
-            || (T::abs(dx / x) < T::sqrt(T::epsilon()))
-            || (T::abs(dfdx) < T::epsilon())
-        {
-            break;
-        }
-        x += dx;
-    }
-
-    x
+    newton_raphson_onesided(x0, f0, f1)
 }
