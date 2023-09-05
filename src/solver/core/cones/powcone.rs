@@ -451,8 +451,13 @@ where
     // init point x0: since our dual barrier has an additional
     // shift -2α*log(α) - 2(1-α)*log(1-α) > 0 in f(x),
     // the previous selection is still feasible, i.e. f(x0) > 0
+
+    // PJG: Not clear which one of these is correct.  Second
+    // one is from Julia yc/genpow branch.  First is from main
     let x0 = -s3.recip()
         + (s3 + ((phi * four) * phi / s3 / s3 + three * phi).sqrt()) * two / (phi * four - s3 * s3);
+    let x0 =
+        -s3.recip() + (s3 * two + T::sqrt((phi * phi) / (s3 * s3) + phi * three)) / (phi - s3 * s3);
 
     // additional shift due to the choice of dual barrier
     let t0 = -two * α * (α.logsafe()) - two * (T::one() - α) * (T::one() - α).logsafe();
