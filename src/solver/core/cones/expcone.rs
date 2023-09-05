@@ -434,7 +434,7 @@ where
     let mut r = z - w - w.logsafe();
 
     // Santiago suggests two refinement iterations only
-    for _ in 0..3 {
+    for _ in 0..2 {
         let wp1 = w + T::one();
         let t = wp1 * (wp1 + (r * (2.).as_T()) / (3.0).as_T());
         w *= T::one() + (r / wp1) * (t - r * (0.5).as_T()) / (t - r);
