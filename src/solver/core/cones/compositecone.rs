@@ -251,18 +251,10 @@ where
     }
 
     fn Hs_is_diagonal(&self) -> bool {
-        //PJG: replace with "all" here
         //This function should probably never be called since
         //we only us it to interrogate the blocks, but we can
         //implement something reasonable anyway
-        let mut is_diag = true;
-        for cone in self.iter() {
-            is_diag &= cone.Hs_is_diagonal();
-            if !is_diag {
-                break;
-            }
-        }
-        is_diag
+        self.cones.iter().all(|cone| cone.Hs_is_diagonal())
     }
 
     #[allow(non_snake_case)]
