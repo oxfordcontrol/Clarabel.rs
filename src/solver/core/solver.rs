@@ -196,7 +196,10 @@ where
         // main loop
         // ----------
 
-        let mut scaling = ScalingStrategy::PrimalDual;
+        let mut scaling ={
+            if self.cones.allows_primal_dual_scaling() {ScalingStrategy::PrimalDual}
+            else {ScalingStrategy::Dual}
+        };
 
         loop {
 

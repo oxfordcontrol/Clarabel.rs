@@ -182,6 +182,12 @@ where
         self._is_symmetric
     }
 
+    fn allows_primal_dual_scaling(&self) -> bool {
+        self.cones
+            .iter()
+            .all(|cone| cone.allows_primal_dual_scaling())
+    }
+
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
         let mut any_changed = false;
 
@@ -245,6 +251,7 @@ where
     }
 
     fn Hs_is_diagonal(&self) -> bool {
+        //PJG: replace with "all" here
         //This function should probably never be called since
         //we only us it to interrogate the blocks, but we can
         //implement something reasonable anyway

@@ -53,6 +53,10 @@ where
         false
     }
 
+    fn allows_primal_dual_scaling(&self) -> bool {
+        true
+    }
+
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
         δ.copy_from(e).recip().scale(e.mean());
         true // scalar equilibration

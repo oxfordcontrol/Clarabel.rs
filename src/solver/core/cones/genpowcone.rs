@@ -37,6 +37,8 @@ pub struct GenPowerCone<T: FloatT = f64> {
 
     //work vector length dim, e.g. for line searches
     work: Vec<T>,
+    //work vector exclusively for computing the primal barrier function.
+    work_pb: Vec<T>,
 }
 
 impl<T> GenPowerCone<T>
@@ -66,6 +68,7 @@ where
             d2: T::zero(),
             ψ,
             work: vec![T::zero(); dim],
+            work_pb: vec![T::zero(); dim],
         }
     }
 
@@ -93,6 +96,10 @@ where
     }
 
     fn is_symmetric(&self) -> bool {
+        false
+    }
+
+    fn allows_primal_dual_scaling(&self) -> bool {
         false
     }
 
@@ -369,14 +376,16 @@ where
         // Primal barrier: f(s) = ⟨s,g(s)⟩ - f*(-g(s))
         // NB: ⟨s,g(s)⟩ = -(dim1(K)+1) = - ν
 
-        let mut g = std::mem::take(&mut self.work);
+        // can't use "work" here because it was already
+        // used to construct the argument s in some cases
+        let mut g = std::mem::take(&mut self.work_pb);
 
         self.gradient_primal(&mut g, s);
         g.negate(); //-g(s)
 
         let out = -self.barrier_dual(&g) - self.degree().as_T();
 
-        self.work = g;
+        self.work_pb = g;
 
         out
     }

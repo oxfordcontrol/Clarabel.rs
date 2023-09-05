@@ -48,7 +48,11 @@ where
     fn degree(&self) -> usize;
     fn numel(&self) -> usize;
 
+    // is the cone symmetric?  NB: zero cone still reports true
     fn is_symmetric(&self) -> bool;
+
+    // report false here if only dual scaling is implemented (e.g. GenPowerCone)
+    fn allows_primal_dual_scaling(&self) -> bool;
 
     // converts an elementwise scaling into
     // a scaling that preserves cone memership

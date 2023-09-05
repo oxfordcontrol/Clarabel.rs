@@ -45,6 +45,10 @@ where
         true
     }
 
+    fn allows_primal_dual_scaling(&self) -> bool {
+        true
+    }
+
     fn rectify_equilibration(&self, δ: &mut [T], _e: &[T]) -> bool {
         δ.set(T::one());
         false
