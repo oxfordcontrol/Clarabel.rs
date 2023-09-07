@@ -13,14 +13,13 @@ use std::iter::zip;
 // We require Send here to allow pyo3 builds to share
 // solver objects between threads.
 
-type BoxedDirectLDLSolver<T> = Box<dyn DirectLDLSolver<T> + Send>;
+pub(crate) type BoxedDirectLDLSolver<T> = Box<dyn DirectLDLSolver<T> + Send>;
 
 pub struct DirectLDLKKTSolver<T> {
     // problem dimensions
     m: usize,
     n: usize,
-    p_soc: usize,
-    p_genpow: usize,
+    p: usize,
 
     // Left and right hand sides for solves
     x: Vec<T>,
@@ -63,31 +62,29 @@ where
         n: usize,
         settings: &CoreSettings<T>,
     ) -> Self {
-        // solving in sparse format.  Need this many
-        // extra variables for SOCs
-        let p_soc = 2 * cones.type_count(SupportedConeTag::SecondOrderCone);
-        let p_genpow = 3 * cones.type_count(SupportedConeTag::GenPowerCone);
-
-        // LHS/RHS/work for iterative refinement
-        let x = vec![T::zero(); n + m + p_soc + p_genpow];
-        let b = vec![T::zero(); n + m + p_soc + p_genpow];
-        let work1 = vec![T::zero(); n + m + p_soc + p_genpow];
-        let work2 = vec![T::zero(); n + m + p_soc + p_genpow];
-
-        // the expected signs of D in LDL
-        let mut dsigns = vec![1_i8; n + m + p_soc + p_genpow];
-        _fill_signs(&mut dsigns, m, n, p_soc, p_genpow);
-
-        // updates to the diagonal of KKT will be
-        // assigned here before updating matrix entries
-        let Hsblocks = allocate_kkt_Hsblocks::<T, T>(cones);
-
         // get a constructor for the LDL solver we should use,
         // and also the matrix shape it requires
         let (kktshape, ldl_ctor) = _get_ldlsolver_config(settings);
 
         //construct a KKT matrix of the right shape
         let (KKT, map) = assemble_kkt_matrix(P, A, cones, kktshape);
+
+        //Need this many extra variables for sparse cones
+        let p = map.sparse_maps.pdim();
+
+        // LHS/RHS/work for iterative refinement
+        let x = vec![T::zero(); n + m + p];
+        let b = vec![T::zero(); n + m + p];
+        let work1 = vec![T::zero(); n + m + p];
+        let work2 = vec![T::zero(); n + m + p];
+
+        // the expected signs of D in LDL
+        let mut dsigns = vec![1_i8; n + m + p];
+        _fill_signs(&mut dsigns, m, n, &map);
+
+        // updates to the diagonal of KKT will be
+        // assigned here before updating matrix entries
+        let Hsblocks = allocate_kkt_Hsblocks::<T, T>(cones);
 
         let diagonal_regularizer = T::zero();
 
@@ -97,8 +94,7 @@ where
         Self {
             m,
             n,
-            p_soc,
-            p_genpow,
+            p,
             x,
             b,
             work1,
@@ -128,71 +124,26 @@ where
         values.negate();
         _update_values(&mut self.ldlsolver, &mut self.KKT, index, values);
 
-        // SOC: update the scaled u and v columns.
-        let mut cidx = 0; // which of the SOCs are we working on?
+        let mut sparse_map_iter = map.sparse_maps.iter();
+        let ldl = &mut self.ldlsolver;
+        let KKT = &mut self.KKT;
 
         for cone in cones.iter() {
-            // `cone` here will be of our SupportedCone enum wrapper, so
-            //  we can extract a SecondOrderCone `soc`
-            if let SupportedCone::SecondOrderCone(soc) = cone {
-                let η2 = T::powi(soc.η, 2);
-
-                //off diagonal columns (or rows)s
-                let KKT = &mut self.KKT;
-                let ldlsolver = &mut self.ldlsolver;
-
-                _update_values(ldlsolver, KKT, &map.SOC_u[cidx], &soc.u);
-                _update_values(ldlsolver, KKT, &map.SOC_v[cidx], &soc.v);
-                _scale_values(ldlsolver, KKT, &map.SOC_u[cidx], -η2);
-                _scale_values(ldlsolver, KKT, &map.SOC_v[cidx], -η2);
-
-                //add η^2*(-1/1) to diagonal in the extended rows/cols
-                _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2]], &[-η2; 1]);
-                _update_values(ldlsolver, KKT, &[map.SOC_D[cidx * 2 + 1]], &[η2; 1]);
-
-                cidx += 1;
-            } //end match
-        } //end for
-
-        // GenPow: update the scaled p,q,r columns.
-        let mut cidx = 0; // which of the GenPows are we working on?
-
-        for cone in cones.iter() {
-            // `cone` here will be of our SupportedCone enum wrapper, so
-            //  we can extract a GenPowerCone `genpow`
-            if let SupportedCone::GenPowerCone(genpow) = cone {
-                let minus_sqrtμ = -genpow.μ.sqrt();
-
-                //off diagonal columns (or rows)s
-                let KKT = &mut self.KKT;
-                let ldlsolver = &mut self.ldlsolver;
-
-                _update_values(ldlsolver, KKT, &map.GenPow_q[cidx], &genpow.q);
-                _update_values(ldlsolver, KKT, &map.GenPow_r[cidx], &genpow.r);
-                _update_values(ldlsolver, KKT, &map.GenPow_p[cidx], &genpow.p);
-                _scale_values(ldlsolver, KKT, &map.GenPow_q[cidx], minus_sqrtμ);
-                _scale_values(ldlsolver, KKT, &map.GenPow_r[cidx], minus_sqrtμ);
-                _scale_values(ldlsolver, KKT, &map.GenPow_p[cidx], minus_sqrtμ);
-
-                //add η^2*(-1/1) to diagonal in the extended rows/cols
-                // YC: Is it a bug in SOC implementation?
-                _update_values(ldlsolver, KKT, &[map.GenPow_D[cidx * 3]], &[-T::one()]);
-                _update_values(ldlsolver, KKT, &[map.GenPow_D[cidx * 3 + 1]], &[-T::one()]);
-                _update_values(ldlsolver, KKT, &[map.GenPow_D[cidx * 3 + 2]], &[T::one()]);
-
-                cidx += 1;
-            } //end match
-        } //end for
+            if let Some(sc) = cone.to_sparse() {
+                let thismap = sparse_map_iter.next().unwrap();
+                sc.csc_update_sparsecone(thismap, ldl, KKT, _update_values, _scale_values);
+            }
+        }
 
         self.regularize_and_refactor(settings)
     } //end fn
 
     fn setrhs(&mut self, rhsx: &[T], rhsz: &[T]) {
-        let (m, n, p, p_genpow) = (self.m, self.n, self.p_soc, self.p_genpow);
+        let (m, n, p) = (self.m, self.n, self.p);
 
         self.b[0..n].copy_from(rhsx);
         self.b[n..(n + m)].copy_from(rhsz);
-        self.b[n + m..(n + m + p + p_genpow)].fill(T::zero());
+        self.b[n + m..(n + m + p)].fill(T::zero());
     }
 
     fn solve(
@@ -438,28 +389,17 @@ fn _scale_values_KKT<T: FloatT>(KKT: &mut CscMatrix<T>, index: &[usize], scale: 
     }
 }
 
-fn _fill_signs(signs: &mut [i8], m: usize, n: usize, p_soc: usize, p_genpow: usize) {
+fn _fill_signs(signs: &mut [i8], m: usize, n: usize, map: &LDLDataMap) {
     signs.fill(1);
 
     //flip expected negative signs of D in LDL
     signs[n..(n + m)].iter_mut().for_each(|x| *x = -*x);
 
-    //the trailing block of p_soc entries should
-    //have alternating signs
-    signs[(n + m)..(n + m + p_soc)]
-        .iter_mut()
-        .step_by(2)
-        .for_each(|x| *x = -*x);
-
-    //the trailing block of p_genpow entries should
-    //have two - signs and one + sign alternatively
-    signs[(n + m + p_soc)..(n + m + p_soc + p_genpow)]
-        .iter_mut()
-        .step_by(3)
-        .for_each(|x| *x = -*x);
-    signs[(n + m + p_soc)..(n + m + p_soc + p_genpow)]
-        .iter_mut()
-        .skip(1)
-        .step_by(3)
-        .for_each(|x| *x = -*x);
+    let mut p = m + n;
+    // assign D signs for sparse expansion cones
+    for thismap in map.sparse_maps.iter() {
+        let thisp = thismap.pdim();
+        signs[p..(p + thisp)].copy_from_slice(thismap.Dsigns());
+        p += thisp;
+    }
 }

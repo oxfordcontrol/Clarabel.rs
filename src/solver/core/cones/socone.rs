@@ -8,7 +8,7 @@ use crate::{
 // Second order Cone
 // -------------------------------------
 
-pub struct SecondOrderCone<T: FloatT = f64> {
+pub struct SecondOrderCone<T> {
     dim: usize,
     //internal working variables for W and its products
     w: Vec<T>,

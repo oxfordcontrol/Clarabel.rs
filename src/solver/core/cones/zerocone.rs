@@ -9,7 +9,7 @@ use core::marker::PhantomData;
 // Zero Cone
 // -------------------------------------
 
-pub struct ZeroCone<T: FloatT = f64> {
+pub struct ZeroCone<T> {
     dim: usize,
     phantom: PhantomData<T>,
 }

@@ -16,11 +16,11 @@ mod powcone;
 mod socone;
 mod zerocone;
 // partially specialized traits and blanket implementataions
-mod exppow_common;
+mod nonsymmetric_common;
 mod symmetric_common;
 
 //re-export everything to appear as one module
-use exppow_common::*;
+use nonsymmetric_common::*;
 pub use {
     compositecone::*, expcone::*, genpowcone::*, nonnegativecone::*, powcone::*, socone::*,
     supportedcone::*, symmetric_common::*, zerocone::*,

@@ -232,8 +232,7 @@ where
                 .solve(None, Some(&mut variables.z), settings.core());
         } else {
             //QP initialization
-            self.workx.copy_from(&data.q);
-            self.workx.negate();
+            self.workx.scalarop_from(|q| -q, &data.q);
             self.workz.copy_from(&data.b);
             self.kktsolver.setrhs(&self.workx, &self.workz);
             is_success = self.kktsolver.solve(
@@ -241,8 +240,7 @@ where
                 Some(&mut variables.z),
                 settings.core(),
             );
-            variables.s.copy_from(&variables.z);
-            variables.s.negate();
+            variables.s.scalarop_from(|z| -z, &variables.z);
         }
         is_success
     }

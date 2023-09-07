@@ -10,12 +10,7 @@ use std::iter::zip;
 // Generalized Power Cone
 // -------------------------------------
 
-pub struct GenPowerCone<T: FloatT = f64> {
-    // power defining the cone.  length determines dim1
-    α: Vec<T>,
-    // dimension of w
-    dim2: usize,
-
+pub struct GenPowerConeData<T> {
     // gradient of the dual barrier at z
     grad: Vec<T>,
     // holds copy of z at scaling point
@@ -41,35 +36,47 @@ pub struct GenPowerCone<T: FloatT = f64> {
     work_pb: Vec<T>,
 }
 
-impl<T> GenPowerCone<T>
+impl<T> GenPowerConeData<T>
 where
     T: FloatT,
 {
-    pub fn new(α: Vec<T>, dim2: usize) -> Self {
+    pub fn new(α: &Vec<T>, dim2: usize) -> Self {
         let dim1 = α.len();
         let dim = dim1 + dim2;
 
         //PJG : these checks belong elsewhere
         assert!(α.iter().all(|r| *r > T::zero())); // check all powers are greater than 0
-        assert!((T::one() - α.sum()).abs() < T::epsilon());
-
-        let ψ = T::one() / (α.sumsq());
+        assert!((T::one() - α.sum()).abs() < (T::epsilon() * α.len().as_T() * (0.5).as_T()));
 
         Self {
-            α,
             grad: vec![T::zero(); dim],
             z: vec![T::zero(); dim],
-            dim2,
             μ: T::one(),
             p: vec![T::zero(); dim],
             q: vec![T::zero(); dim1],
             r: vec![T::zero(); dim2],
             d1: vec![T::zero(); dim1],
             d2: T::zero(),
-            ψ,
+            ψ: T::one() / (α.sumsq()),
             work: vec![T::zero(); dim],
             work_pb: vec![T::zero(); dim],
         }
+    }
+}
+
+pub struct GenPowerCone<T> {
+    pub α: Vec<T>,                      // power defining the cone.  length determines dim1
+    pub dim2: usize,                    // dimension of w
+    pub data: Box<GenPowerConeData<T>>, // Boxed so that the enum_dispatch variant isn't huge
+}
+
+impl<T> GenPowerCone<T>
+where
+    T: FloatT,
+{
+    pub fn new(α: Vec<T>, dim2: usize) -> Self {
+        let data = Box::new(GenPowerConeData::<T>::new(&α, dim2));
+        Self { α, dim2, data }
     }
 
     pub fn dim1(&self) -> usize {
@@ -144,10 +151,10 @@ where
     ) -> bool {
         // update both gradient and Hessian for function f*(z) at the point z
         self.update_dual_grad_H(z);
-        self.μ = μ;
+        self.data.μ = μ;
 
         // K.z .= z
-        self.z.copy_from(z);
+        self.data.z.copy_from(z);
 
         true
     }
@@ -159,34 +166,36 @@ where
     fn get_Hs(&self, Hsblock: &mut [T]) {
         // we are returning here the diagonal D = [d1; d2] block
         let dim1 = self.dim1();
+        let data = &self.data;
 
-        Hsblock[..dim1].scalarop_from(|x| self.μ * x, &self.d1);
-        Hsblock[dim1..].set(self.μ * self.d2);
+        Hsblock[..dim1].scalarop_from(|d1| data.μ * d1, &data.d1);
+        Hsblock[dim1..].set(data.μ * data.d2);
     }
 
     fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
         // Hs = μ*(D + pp' -qq' -rr')
 
         let dim1 = self.dim1();
+        let data = &self.data;
 
-        let coef_p = self.p.dot(x);
-        let coef_q = self.q.dot(&x[..dim1]);
-        let coef_r = self.r.dot(&x[dim1..]);
+        let coef_p = data.p.dot(x);
+        let coef_q = data.q.dot(&x[..dim1]);
+        let coef_r = data.r.dot(&x[dim1..]);
 
         // y1 .= K.d1 .* x1 - coef_q.*K.q
         // NB: d1 is a vector
-        for (y, &x, &d1, &q) in izip!(&mut y[..dim1], &x[..dim1], &self.d1, &self.q) {
+        for (y, &x, &d1, &q) in izip!(&mut y[..dim1], &x[..dim1], &data.d1, &data.q) {
             *y = d1 * x - coef_q * q;
         }
 
         // y2 .= K.d2 .* x2 - coef_r.*K.r.
         // NB: d2 is a scalar
-        for (y, &x, &r) in izip!(&mut y[dim1..], &x[dim1..], &self.r) {
-            *y = self.d2 * x - coef_r * r;
+        for (y, &x, &r) in izip!(&mut y[dim1..], &x[dim1..], &data.r) {
+            *y = data.d2 * x - coef_r * r;
         }
 
-        y.axpby(coef_p, &self.p, T::one());
-        y.scale(self.μ);
+        y.axpby(coef_p, &data.p, T::one());
+        y.scale(data.μ);
     }
 
     fn affine_ds(&self, ds: &mut [T], s: &[T]) {
@@ -197,7 +206,7 @@ where
         &mut self, shift: &mut [T], _step_z: &mut [T], _step_s: &mut [T], σμ: T
     ) {
         //YC: No 3rd order correction at present
-        shift.scalarop_from(|g| g * σμ, &self.grad);
+        shift.scalarop_from(|g| g * σμ, &self.data.grad);
     }
 
     fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], _work: &mut [T], _z: &[T]) {
@@ -219,7 +228,7 @@ where
         //simultaneously using "work" and the closures defined
         //below produces a borrow check error, so temporarily
         //move "work" out of self
-        let mut work = std::mem::take(&mut self.work);
+        let mut work = std::mem::take(&mut self.data.work);
 
         let is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
@@ -228,7 +237,7 @@ where
         let αs = backtrack_search(ds, s, αmax, αmin, step, is_prim_feasible_fcn, &mut work);
 
         //restore work to self
-        self.work = work;
+        self.data.work = work;
 
         (αz, αs)
     }
@@ -236,7 +245,7 @@ where
     fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
 
-        let mut work = std::mem::take(&mut self.work);
+        let mut work = std::mem::take(&mut self.data.work);
 
         work.waxpby(T::one(), z, α, dz);
         barrier += self.barrier_dual(&work);
@@ -244,7 +253,7 @@ where
         work.waxpby(T::one(), s, α, ds);
         barrier += self.barrier_primal(&work);
 
-        self.work = work;
+        self.data.work = work;
 
         barrier
     }
@@ -304,46 +313,25 @@ where
         false
     }
 
-    fn update_dual_grad_H(&mut self, z: &[T]) {
-        let α = &self.α;
-        let dim1 = self.dim1();
-        let two: T = (2.).as_T();
+    fn barrier_primal(&mut self, s: &[T]) -> T
+    where
+        T: FloatT,
+    {
+        // Primal barrier: f(s) = ⟨s,g(s)⟩ - f*(-g(s))
+        // NB: ⟨s,g(s)⟩ = -(dim1(K)+1) = - ν
 
-        let phi = zip(α, z).fold(T::one(), |phi, (&αi, &zi)| phi * (zi / αi).powf(two * αi));
+        // can't use "work" here because it was already
+        // used to construct the argument s in some cases
+        let mut g = std::mem::take(&mut self.data.work_pb);
 
-        let norm2w = z[dim1..].sumsq();
-        let ζ = phi - norm2w;
-        assert!(ζ > T::zero());
+        self.gradient_primal(&mut g, s);
+        g.negate(); //-g(s)
 
-        // compute the gradient at z
-        let grad = &mut self.grad;
-        let τ = &mut self.q;
+        let out = -self.barrier_dual(&g) - self.degree().as_T();
 
-        for (τ, grad, &α, &z) in izip!(τ.iter_mut(), &mut grad[..dim1], α, &z[..dim1]) {
-            *τ = two * α / z;
-            *grad = -(*τ) * phi / ζ - (T::one() - α) / z;
-        }
+        self.data.work_pb = g;
 
-        grad[dim1..].scalarop_from(|z| (two / ζ) * z, &z[dim1..]);
-
-        // compute Hessian information at z
-        let p0 = T::sqrt(phi * (phi + norm2w) / two);
-        let p1 = -two * phi / p0;
-        let q0 = T::sqrt(ζ * phi / two);
-        let r1 = two * T::sqrt(ζ / (phi + norm2w));
-
-        // compute the diagonal d1,d2
-        for (d1, &τ, &α, &z) in izip!(&mut self.d1, τ.iter(), α, &z[..dim1]) {
-            *d1 = (τ) * phi / (ζ * z) + (T::one() - α) / (z * z);
-        }
-        self.d2 = two / ζ;
-
-        // compute p, q, r where τ shares memory with q
-        self.p[..dim1].scalarop_from(|τi| (p0 / ζ) * τi, τ);
-        self.p[dim1..].scalarop_from(|zi| (p1 / ζ) * zi, &z[dim1..]);
-
-        self.q.scale(q0 / ζ);
-        self.r.scalarop_from(|zi| (r1 / ζ) * zi, &z[dim1..]);
+        out
     }
 
     fn barrier_dual(&mut self, z: &[T]) -> T
@@ -369,29 +357,51 @@ where
         barrier
     }
 
-    fn barrier_primal(&mut self, s: &[T]) -> T
-    where
-        T: FloatT,
-    {
-        // Primal barrier: f(s) = ⟨s,g(s)⟩ - f*(-g(s))
-        // NB: ⟨s,g(s)⟩ = -(dim1(K)+1) = - ν
-
-        // can't use "work" here because it was already
-        // used to construct the argument s in some cases
-        let mut g = std::mem::take(&mut self.work_pb);
-
-        self.gradient_primal(&mut g, s);
-        g.negate(); //-g(s)
-
-        let out = -self.barrier_dual(&g) - self.degree().as_T();
-
-        self.work_pb = g;
-
-        out
-    }
-
     fn higher_correction(&mut self, _η: &mut [T], _ds: &[T], _v: &[T]) {
         unimplemented!()
+    }
+
+    fn update_dual_grad_H(&mut self, z: &[T]) {
+        let α = &self.α;
+        let dim1 = self.dim1();
+        let data = &mut self.data;
+        let two: T = (2.).as_T();
+
+        let phi = zip(α, z).fold(T::one(), |phi, (&αi, &zi)| phi * (zi / αi).powf(two * αi));
+
+        let norm2w = z[dim1..].sumsq();
+        let ζ = phi - norm2w;
+        assert!(ζ > T::zero());
+
+        // compute the gradient at z
+        let grad = &mut data.grad;
+        let τ = &mut data.q;
+
+        for (τ, grad, &α, &z) in izip!(τ.iter_mut(), &mut grad[..dim1], α, &z[..dim1]) {
+            *τ = two * α / z;
+            *grad = -(*τ) * phi / ζ - (T::one() - α) / z;
+        }
+
+        grad[dim1..].scalarop_from(|z| (two / ζ) * z, &z[dim1..]);
+
+        // compute Hessian information at z
+        let p0 = T::sqrt(phi * (phi + norm2w) / two);
+        let p1 = -two * phi / p0;
+        let q0 = T::sqrt(ζ * phi / two);
+        let r1 = two * T::sqrt(ζ / (phi + norm2w));
+
+        // compute the diagonal d1,d2
+        for (d1, &τ, &α, &z) in izip!(&mut data.d1, τ.iter(), α, &z[..dim1]) {
+            *d1 = (τ) * phi / (ζ * z) + (T::one() - α) / (z * z);
+        }
+        data.d2 = two / ζ;
+
+        // compute p, q, r where τ shares memory with q
+        data.p[..dim1].scalarop_from(|τi| (p0 / ζ) * τi, τ);
+        data.p[dim1..].scalarop_from(|zi| (p1 / ζ) * zi, &z[dim1..]);
+
+        data.q.scale(q0 / ζ);
+        data.r.scalarop_from(|zi| (r1 / ζ) * zi, &z[dim1..]);
     }
 }
 
@@ -406,6 +416,7 @@ where
     {
         let dim1 = self.dim1();
         let two: T = (2.).as_T();
+        let data = &self.data;
 
         // unscaled phi
         let phi =
@@ -417,9 +428,9 @@ where
         let norm_r = r.norm();
 
         if norm_r > T::epsilon() {
-            let g1 = _newton_raphson_genpowcone(norm_r, p, phi, &self.α, self.ψ);
+            let g1 = _newton_raphson_genpowcone(norm_r, p, phi, &self.α, data.ψ);
 
-            gr.scalarop_from(|r| (g1 / norm_r) * r, &self.r);
+            gr.scalarop_from(|r| (g1 / norm_r) * r, &data.r);
 
             for (gp, &α, &p) in izip!(gp.iter_mut(), &self.α, p) {
                 *gp = -(T::one() + α + α * g1 * norm_r) / p;

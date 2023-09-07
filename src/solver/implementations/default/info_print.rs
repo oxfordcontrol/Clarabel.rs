@@ -210,14 +210,15 @@ fn _get_precision_string<T: FloatT>() -> String {
 fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetag: SupportedConeTag) {
     let maxlistlen = 5;
 
+    let count = cones.get_type_count(conetag);
+
     //skip if there are none of this type
-    if !cones.type_counts.contains_key(&conetag) {
+    if count == 0 {
         return;
     }
 
     // how many of this type of cone?
     let name = conetag.as_str();
-    let count = cones.type_counts[&conetag];
 
     // drops trailing "Cone" part of name
     let name = &name[0..name.len() - 4];

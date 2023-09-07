@@ -10,7 +10,7 @@ use std::iter::zip;
 // Nonnegative Cone
 // -------------------------------------
 
-pub struct NonnegativeCone<T: FloatT = f64> {
+pub struct NonnegativeCone<T> {
     dim: usize,
     w: Vec<T>,
     λ: Vec<T>,

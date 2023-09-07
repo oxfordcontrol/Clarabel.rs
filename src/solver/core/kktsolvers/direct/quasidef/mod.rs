@@ -4,12 +4,12 @@ use crate::algebra::*;
 pub mod ldlsolvers;
 
 //flatten direct KKT module structure
-mod datamap;
+mod datamaps;
 mod directldlkktsolver;
-mod utils;
-pub use datamap::*;
+mod kkt_assembly;
+use datamaps::*;
 pub use directldlkktsolver::*;
-pub use utils::*;
+use kkt_assembly::*;
 
 pub trait DirectLDLSolver<T: FloatT> {
     fn update_values(&mut self, index: &[usize], values: &[T]);

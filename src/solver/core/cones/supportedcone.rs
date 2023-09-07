@@ -25,6 +25,10 @@ pub enum SupportedConeT<T> {
     ///  
     /// The parameter indicates the cones dimension.
     SecondOrderConeT(usize),
+    /// The exponential cone in R^3.
+    ///
+    /// This cone takes no parameters
+    ExponentialConeT(),
     /// The power cone in R^3.
     ///
     /// The parameter indicates the power.
@@ -33,10 +37,7 @@ pub enum SupportedConeT<T> {
     ///
     /// The parameter indicates the power and dimensions.
     GenPowerConeT(Vec<T>, usize),
-    /// The exponential cone in R^3.
-    ///
-    /// This cone takes no parameters
-    ExponentialConeT(),
+
     /// The positive semidefinite cone in triangular form.
     ///
     /// The parameter indicates the matrix dimension, i.e. size = n
@@ -84,11 +85,11 @@ pub fn make_cone<T: FloatT>(cone: &SupportedConeT<T>) -> SupportedCone<T> {
         SupportedConeT::SecondOrderConeT(dim) => SecondOrderCone::<T>::new(*dim).into(),
         SupportedConeT::ExponentialConeT() => ExponentialCone::<T>::new().into(),
         SupportedConeT::PowerConeT(α) => PowerCone::<T>::new(*α).into(),
-        #[cfg(feature = "sdp")]
-        SupportedConeT::PSDTriangleConeT(dim) => PSDTriangleCone::<T>::new(dim).into(),
         SupportedConeT::GenPowerConeT(α, dim2) => {
             GenPowerCone::<T>::new((*α).clone(), *dim2).into()
         }
+        #[cfg(feature = "sdp")]
+        SupportedConeT::PSDTriangleConeT(dim) => PSDTriangleCone::<T>::new(*dim).into(),
     }
 }
 
@@ -109,17 +110,13 @@ where
     SecondOrderCone(SecondOrderCone<T>),
     ExponentialCone(ExponentialCone<T>),
     PowerCone(PowerCone<T>),
+    GenPowerCone(GenPowerCone<T>),
     #[cfg(feature = "sdp")]
     PSDTriangleCone(PSDTriangleCone<T>),
-    GenPowerCone(GenPowerCone<T>),
 }
 
-// we put PSDTriangleCone in a Box above since it is by the
-// largest enum variant.   We need some auto dereferencing
-// for it so that it behaves like the other variants
-
 // -------------------------------------
-// Finally, we need a tagging enum with no data fields to act
+// we need a tagging enum with no data fields to act
 // as a bridge between the SupportedConeT API types and the
 // internal SupportedCone enum_dispatch wrapper.   This enum
 // has no data attached at all, so we can just convert to a u8.
@@ -138,9 +135,9 @@ pub(crate) enum SupportedConeTag {
     SecondOrderCone,
     ExponentialCone,
     PowerCone,
+    GenPowerCone,
     #[cfg(feature = "sdp")]
     PSDTriangleCone,
-    GenPowerCone,
 }
 
 pub(crate) trait SupportedConeAsTag {

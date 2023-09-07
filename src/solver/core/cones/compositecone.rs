@@ -157,7 +157,7 @@ where
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, SupportedCone<T>> {
         self.cones.iter_mut()
     }
-    pub(crate) fn type_count(&self, tag: SupportedConeTag) -> usize {
+    pub(crate) fn get_type_count(&self, tag: SupportedConeTag) -> usize {
         if self.type_counts.contains_key(&tag) {
             self.type_counts[&tag]
         } else {

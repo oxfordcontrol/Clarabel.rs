@@ -8,7 +8,7 @@ use crate::{
 // Power Cone
 // -------------------------------------
 
-pub struct PowerCone<T: FloatT = f64> {
+pub struct PowerCone<T> {
     // power defining the cone
     α: T,
     // Hessian of the dual barrier at z
@@ -223,54 +223,6 @@ where
         false
     }
 
-    fn update_dual_grad_H(&mut self, z: &[T]) {
-        let H = &mut self.H_dual;
-        let α = self.α;
-        let two: T = (2.).as_T();
-        let four: T = (4.).as_T();
-
-        let phi = (z[0] / α).powf(two * α) * (z[1] / (T::one() - α)).powf(two - two * α);
-        let ψ = phi - z[2] * z[2];
-
-        // use K.grad as a temporary workspace
-        let gψ = &mut self.grad;
-        gψ[0] = two * α * phi / (z[0] * ψ);
-        gψ[1] = two * (T::one() - α) * phi / (z[1] * ψ);
-        gψ[2] = -two * z[2] / ψ;
-
-        // compute_Hessian(K,z,H).   Type is symmetric, so
-        // only need to assign upper triangle.
-        H[(0, 0)] = gψ[0] * gψ[0] - two * α * (two * α - T::one()) * phi / (z[0] * z[0] * ψ)
-            + (T::one() - α) / (z[0] * z[0]);
-        H[(0, 1)] = gψ[0] * gψ[1] - four * α * (T::one() - α) * phi / (z[0] * z[1] * ψ);
-        H[(1, 1)] = gψ[1] * gψ[1]
-            - two * (T::one() - α) * (T::one() - two * α) * phi / (z[1] * z[1] * ψ)
-            + α / (z[1] * z[1]);
-        H[(0, 2)] = gψ[0] * gψ[2];
-        H[(1, 2)] = gψ[1] * gψ[2];
-        H[(2, 2)] = gψ[2] * gψ[2] + two / ψ;
-
-        // compute the gradient at z
-        let grad = &mut self.grad;
-        grad[0] = -two * α * phi / (z[0] * ψ) - (T::one() - α) / z[0];
-        grad[1] = -two * (T::one() - α) * phi / (z[1] * ψ) - α / z[1];
-        grad[2] = two * z[2] / ψ;
-    }
-
-    fn barrier_dual(&mut self, z: &[T]) -> T
-    where
-        T: FloatT,
-    {
-        // Dual barrier:
-        // f*(z) = -log((z1/α)^{2α} * (z2/(1-α))^{2(1-α)} - z3*z3) - (1-α)*log(z1) - α*log(z2):
-        let α = self.α;
-        let two: T = (2.).as_T();
-        let arg1 =
-            (z[0] / α).powf(two * α) * (z[1] / (T::one() - α)).powf(two - two * α) - z[2] * z[2];
-
-        -arg1.logsafe() - (T::one() - α) * z[0].logsafe() - α * z[1].logsafe()
-    }
-
     fn barrier_primal(&mut self, s: &[T]) -> T
     where
         T: FloatT,
@@ -294,16 +246,19 @@ where
         out
     }
 
-    // 3rd-order correction at the point z.  Output is η.
-    //
-    // 3rd order correction:
-    // η = -0.5*[(dot(u,Hψ,v)*ψ - 2*dotψu*dotψv)/(ψ*ψ*ψ)*gψ +
-    //            dotψu/(ψ*ψ)*Hψv + dotψv/(ψ*ψ)*Hψu -
-    //            dotψuv/ψ + dothuv]
-    // where:
-    // Hψ = [  2*α*(2*α-1)*ϕ/(z1*z1)     4*α*(1-α)*ϕ/(z1*z2)       0;
-    //         4*α*(1-α)*ϕ/(z1*z2)     2*(1-α)*(1-2*α)*ϕ/(z2*z2)   0;
-    //         0                       0                          -2;]
+    fn barrier_dual(&mut self, z: &[T]) -> T
+    where
+        T: FloatT,
+    {
+        // Dual barrier:
+        // f*(z) = -log((z1/α)^{2α} * (z2/(1-α))^{2(1-α)} - z3*z3) - (1-α)*log(z1) - α*log(z2):
+        let α = self.α;
+        let two: T = (2.).as_T();
+        let arg1 =
+            (z[0] / α).powf(two * α) * (z[1] / (T::one() - α)).powf(two - two * α) - z[2] * z[2];
+
+        -arg1.logsafe() - (T::one() - α) * z[0].logsafe() - α * z[1].logsafe()
+    }
 
     fn higher_correction(&mut self, η: &mut [T], ds: &[T], v: &[T])
     where
@@ -383,6 +338,51 @@ where
         // @. η <= (η + Hψu*dotψv*inv_ψ2)/2
         η[..].axpby(dotψv * inv_ψ2, Hψu, T::one());
         η[..].scale((0.5).as_T());
+    }
+
+    // 3rd-order correction at the point z.  Output is η.
+    //
+    // 3rd order correction:
+    // η = -0.5*[(dot(u,Hψ,v)*ψ - 2*dotψu*dotψv)/(ψ*ψ*ψ)*gψ +
+    //            dotψu/(ψ*ψ)*Hψv + dotψv/(ψ*ψ)*Hψu -
+    //            dotψuv/ψ + dothuv]
+    // where:
+    // Hψ = [  2*α*(2*α-1)*ϕ/(z1*z1)     4*α*(1-α)*ϕ/(z1*z2)       0;
+    //         4*α*(1-α)*ϕ/(z1*z2)     2*(1-α)*(1-2*α)*ϕ/(z2*z2)   0;
+    //         0                       0                          -2;]
+
+    fn update_dual_grad_H(&mut self, z: &[T]) {
+        let H = &mut self.H_dual;
+        let α = self.α;
+        let two: T = (2.).as_T();
+        let four: T = (4.).as_T();
+
+        let phi = (z[0] / α).powf(two * α) * (z[1] / (T::one() - α)).powf(two - two * α);
+        let ψ = phi - z[2] * z[2];
+
+        // use K.grad as a temporary workspace
+        let gψ = &mut self.grad;
+        gψ[0] = two * α * phi / (z[0] * ψ);
+        gψ[1] = two * (T::one() - α) * phi / (z[1] * ψ);
+        gψ[2] = -two * z[2] / ψ;
+
+        // compute_Hessian(K,z,H).   Type is symmetric, so
+        // only need to assign upper triangle.
+        H[(0, 0)] = gψ[0] * gψ[0] - two * α * (two * α - T::one()) * phi / (z[0] * z[0] * ψ)
+            + (T::one() - α) / (z[0] * z[0]);
+        H[(0, 1)] = gψ[0] * gψ[1] - four * α * (T::one() - α) * phi / (z[0] * z[1] * ψ);
+        H[(1, 1)] = gψ[1] * gψ[1]
+            - two * (T::one() - α) * (T::one() - two * α) * phi / (z[1] * z[1] * ψ)
+            + α / (z[1] * z[1]);
+        H[(0, 2)] = gψ[0] * gψ[2];
+        H[(1, 2)] = gψ[1] * gψ[2];
+        H[(2, 2)] = gψ[2] * gψ[2] + two / ψ;
+
+        // compute the gradient at z
+        let grad = &mut self.grad;
+        grad[0] = -two * α * phi / (z[0] * ψ) - (T::one() - α) / z[0];
+        grad[1] = -two * (T::one() - α) * phi / (z[1] * ψ) - α / z[1];
+        grad[2] = two * z[2] / ψ;
     }
 }
 
