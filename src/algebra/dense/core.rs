@@ -42,6 +42,7 @@ pub struct Matrix<T = f64> {
 ///        [0.0, 4.0]]);
 // ```
 //
+#[allow(clippy::needless_range_loop)]
 impl<'a, I, J, T> From<I> for Matrix<T>
 where
     I: IntoIterator<Item = J>,
@@ -51,7 +52,7 @@ where
     fn from(rows: I) -> Matrix<T> {
         let rows: Vec<Vec<T>> = rows
             .into_iter()
-            .map(|r| r.into_iter().map(|&v| v).collect())
+            .map(|r| r.into_iter().copied().collect())
             .collect();
 
         let m = rows.len();
