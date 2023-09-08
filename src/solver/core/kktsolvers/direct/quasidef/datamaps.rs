@@ -145,7 +145,7 @@ where
     T: FloatT,
 {
     fn expansion_map(&self) -> SparseExpansionMap {
-        SparseExpansionMap::SOCExpansionMap(SOCExpansionMap::new(&self))
+        SparseExpansionMap::SOCExpansionMap(SOCExpansionMap::new(self))
     }
 
     fn csc_colcount_sparsecone(
@@ -156,7 +156,7 @@ where
         col: usize,
         shape: MatrixTriangle,
     ) {
-        let map = self.recover_map(&map);
+        let map = self.recover_map(map);
         let nvars = self.numel();
 
         match shape {
@@ -260,7 +260,7 @@ where
     T: FloatT,
 {
     fn expansion_map(&self) -> SparseExpansionMap {
-        SparseExpansionMap::GenPowExpansionMap(GenPowExpansionMap::new(&self))
+        SparseExpansionMap::GenPowExpansionMap(GenPowExpansionMap::new(self))
     }
 
     fn csc_colcount_sparsecone(
@@ -271,7 +271,7 @@ where
         col: usize,
         shape: MatrixTriangle,
     ) {
-        let map = self.recover_map(&map);
+        let map = self.recover_map(map);
         let nvars = self.numel();
         let dim1 = self.dim1();
         let dim2 = self.dim2();
@@ -325,7 +325,7 @@ where
         updateFcn: UpdateFcn<T>,
         scaleFcn: ScaleFcn<T>,
     ) {
-        let map = self.recover_map(&map);
+        let map = self.recover_map(map);
         let data = &self.data;
         let sqrtμ = data.μ.sqrt();
 

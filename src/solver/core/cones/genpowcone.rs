@@ -276,12 +276,11 @@ where
         let two: T = (2f64).as_T();
         let dim1 = self.dim1();
 
-        if s[..dim1].iter().all(|x| *x > T::zero()) {
-            let mut res = T::zero();
-            for i in 0..dim1 {
-                res += two * α[i] * s[i].logsafe()
-            }
-            res = T::exp(res) - s[dim1..].sumsq();
+        if s[..dim1].iter().all(|&x| x > T::zero()) {
+            let res = zip(α, &s[..dim1]).fold(T::zero(), |res, (&αi, &si)| -> T {
+                res + two * αi * si.logsafe()
+            });
+            let res = T::exp(res) - s[dim1..].sumsq();
 
             if res > T::zero() {
                 return true;
@@ -299,12 +298,11 @@ where
         let two: T = (2.).as_T();
         let dim1 = self.dim1();
 
-        if z[..dim1].iter().all(|x| *x > T::zero()) {
-            let mut res = T::zero();
-            for i in 0..dim1 {
-                res += two * α[i] * (z[i] / α[i]).logsafe()
-            }
-            res = T::exp(res) - z[dim1..].sumsq();
+        if z[..dim1].iter().all(|&x| x > T::zero()) {
+            let res = zip(α, &z[..dim1]).fold(T::zero(), |res, (&αi, &zi)| -> T {
+                res + two * αi * (zi / αi).logsafe()
+            });
+            let res = T::exp(res) - z[dim1..].sumsq();
 
             if res > T::zero() {
                 return true;
