@@ -167,7 +167,7 @@ pub(crate) fn backtrack_search<T>(
     q: &[T],
     α_init: T,
     α_min: T,
-    backtrack: T,
+    step: T,
     is_in_cone_fcn: impl Fn(&[T]) -> bool,
     work: &mut [T],
 ) -> T
@@ -183,7 +183,7 @@ where
         if is_in_cone_fcn(work) {
             break;
         }
-        α *= backtrack;
+        α *= step;
         if α < α_min {
             α = T::zero();
             break;

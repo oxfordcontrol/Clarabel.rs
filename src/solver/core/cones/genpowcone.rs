@@ -66,7 +66,7 @@ where
 
 pub struct GenPowerCone<T> {
     pub α: Vec<T>,                      // power defining the cone.  length determines dim1
-    pub dim2: usize,                    // dimension of w
+    dim2: usize,                        // dimension of w
     pub data: Box<GenPowerConeData<T>>, // Boxed so that the enum_dispatch variant isn't huge
 }
 

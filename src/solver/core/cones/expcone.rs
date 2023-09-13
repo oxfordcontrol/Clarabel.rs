@@ -150,7 +150,6 @@ where
     ) -> (T, T) {
         let step = settings.linesearch_backtrack_step;
         let αmin = settings.min_terminate_step_length;
-
         let mut work = [T::zero(); 3];
 
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };

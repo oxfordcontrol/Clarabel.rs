@@ -204,24 +204,27 @@ where
         data: &DefaultProblemData<T>,
         settings: &DefaultSettings<T>,
     ) -> bool {
-        let is_success;
+        let mut is_success;
 
         if data.P.nnz() == 0 {
             // LP initialization
-
             // solve with [0;b] as a RHS to get (x,-s) initializers
             // zero out any sparse cone variables at end
             self.workx.fill(T::zero());
             self.workz.copy_from(&data.b);
             self.kktsolver.setrhs(&self.workx, &self.workz);
-            self.kktsolver.solve(
+            is_success = self.kktsolver.solve(
                 Some(&mut variables.x),
                 Some(&mut variables.s),
                 settings.core(),
             );
             variables.s.negate();
 
-            // solve with [-c;0] as a RHS to get z initializer
+            if !is_success {
+                return is_success;
+            }
+
+            // solve with [-q;0] as a RHS to get z initializer
             // zero out any sparse cone variables at end
             self.workx.axpby(-T::one(), &data.q, T::zero());
             self.workz.fill(T::zero());
