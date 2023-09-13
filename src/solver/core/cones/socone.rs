@@ -86,11 +86,14 @@ where
     }
 
     fn set_identity_scaling(&mut self) {
-        self.d = T::one();
+        self.w.fill(T::zero());
+        self.w[0] = T::one();
+
+        self.d = (0.5).as_T();
         self.u.fill(T::zero());
+        self.u[0] = T::FRAC_1_SQRT_2();
         self.v.fill(T::zero());
         self.η = T::one();
-        self.w.fill(T::zero());
     }
 
     fn update_scaling(
