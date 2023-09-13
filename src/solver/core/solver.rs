@@ -476,7 +476,7 @@ mod internal {
         }
 
         fn backtrack_step_to_barrier(&mut self, αinit: T) -> T {
-            let backtrack = self.settings.core().linesearch_backtrack_step;
+            let step = self.settings.core().linesearch_backtrack_step;
             let mut α = αinit;
 
             for _ in 0..50 {
@@ -484,7 +484,7 @@ mod internal {
                 if barrier < T::one() {
                     return α;
                 } else {
-                    α = backtrack * α; // backtrack line search
+                    α = step * α;
                 }
             }
             α

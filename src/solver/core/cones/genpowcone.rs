@@ -244,24 +244,19 @@ where
 
     fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
-
         let mut work = std::mem::take(&mut self.data.work);
-
-        work.waxpby(T::one(), z, α, dz);
-        barrier += self.barrier_dual(&work);
 
         work.waxpby(T::one(), s, α, ds);
         barrier += self.barrier_primal(&work);
+
+        work.waxpby(T::one(), z, α, dz);
+        barrier += self.barrier_dual(&work);
 
         self.data.work = work;
 
         barrier
     }
 }
-
-//-------------------------------------
-// Dual scaling
-//-------------------------------------
 
 impl<T> NonsymmetricCone<T> for GenPowerCone<T>
 where
