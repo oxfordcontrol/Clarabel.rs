@@ -183,8 +183,9 @@ where
     }
 
     fn is_sparse_expandable(&self) -> bool {
-        //This will probably never be called
-        self.cones.iter().all(|cone| cone.is_sparse_expandable())
+        //This should probably never be called
+        //self.cones.iter().any(|cone| cone.is_sparse_expandable())
+        unreachable!();
     }
 
     fn allows_primal_dual_scaling(&self) -> bool {
