@@ -182,6 +182,11 @@ where
         self._is_symmetric
     }
 
+    fn is_sparse_expandable(&self) -> bool {
+        //This will probably never be called
+        self.cones.iter().all(|cone| cone.is_sparse_expandable())
+    }
+
     fn allows_primal_dual_scaling(&self) -> bool {
         self.cones
             .iter()

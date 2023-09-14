@@ -48,6 +48,9 @@ where
     fn degree(&self) -> usize;
     fn numel(&self) -> usize;
 
+    //Can the cone provide a sparse expanded representation?
+    fn is_sparse_expandable(&self) -> bool;
+
     // is the cone symmetric?  NB: zero cone still reports true
     fn is_symmetric(&self) -> bool;
 

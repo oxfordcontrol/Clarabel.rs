@@ -53,6 +53,10 @@ where
         false
     }
 
+    fn is_sparse_expandable(&self) -> bool {
+        false
+    }
+
     fn allows_primal_dual_scaling(&self) -> bool {
         true
     }

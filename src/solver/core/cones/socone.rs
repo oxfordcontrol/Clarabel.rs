@@ -8,18 +8,36 @@ use crate::{
 // Second order Cone
 // -------------------------------------
 
-pub struct SecondOrderCone<T> {
-    dim: usize,
-    //internal working variables for W and its products
-    w: Vec<T>,
-    //scaled version of (s,z)
-    λ: Vec<T>,
+pub struct SecondOrderConeSparseData<T> {
     //vectors for rank 2 update representation of W^2
     pub u: Vec<T>,
     pub v: Vec<T>,
+
     //additional scalar terms for rank-2 rep
-    d: T,
+    pub d: T,
+}
+
+impl<T> SecondOrderConeSparseData<T>
+where
+    T: FloatT,
+{
+    pub fn new(dim: usize) -> Self {
+        Self {
+            u: vec![T::zero(); dim],
+            v: vec![T::zero(); dim],
+            d: T::one(),
+        }
+    }
+}
+
+pub struct SecondOrderCone<T> {
+    pub dim: usize,
+    //internal working variables for W and its products
+    pub w: Vec<T>,
+    //scaled version of (s,z)
+    pub λ: Vec<T>,
     pub η: T,
+    pub sparse_data: Option<SecondOrderConeSparseData<T>>,
 }
 
 impl<T> SecondOrderCone<T>
@@ -27,15 +45,28 @@ where
     T: FloatT,
 {
     pub fn new(dim: usize) -> Self {
+        const SOC_NO_EXPANSION_MAX_SIZE: usize = 4;
+
         assert!(dim >= 2);
+
+        let w = vec![T::zero(); dim];
+        let λ = vec![T::zero(); dim];
+        let η = T::zero();
+
+        let sparse_data = {
+            if dim > SOC_NO_EXPANSION_MAX_SIZE {
+                Some(SecondOrderConeSparseData::new(dim))
+            } else {
+                None
+            }
+        };
+
         Self {
             dim,
-            w: vec![T::zero(); dim],
-            λ: vec![T::zero(); dim],
-            u: vec![T::zero(); dim],
-            v: vec![T::zero(); dim],
-            d: T::one(),
-            η: T::zero(),
+            w,
+            λ,
+            η,
+            sparse_data,
         }
     }
 }
@@ -55,6 +86,10 @@ where
 
     fn is_symmetric(&self) -> bool {
         true
+    }
+
+    fn is_sparse_expandable(&self) -> bool {
+        self.sparse_data.is_some()
     }
 
     fn allows_primal_dual_scaling(&self) -> bool {
@@ -88,12 +123,14 @@ where
     fn set_identity_scaling(&mut self) {
         self.w.fill(T::zero());
         self.w[0] = T::one();
-
-        self.d = (0.5).as_T();
-        self.u.fill(T::zero());
-        self.u[0] = T::FRAC_1_SQRT_2();
-        self.v.fill(T::zero());
         self.η = T::one();
+
+        if let Some(sparse_data) = &mut self.sparse_data {
+            sparse_data.d = (0.5).as_T();
+            sparse_data.u.fill(T::zero());
+            sparse_data.u[0] = T::FRAC_1_SQRT_2();
+            sparse_data.v.fill(T::zero());
+        }
     }
 
     fn update_scaling(
@@ -115,14 +152,17 @@ where
             return false;
         }
 
+        //the leading scalar term for W^TW
+        self.η = T::sqrt(sscale / zscale);
+
         // construct w and normalize
         let w = &mut self.w;
         w.copy_from(s);
         w.scale(sscale.recip());
         w[0] += z[0] / zscale;
         w[1..].axpby(-zscale.recip(), &z[1..], T::one());
-        let wscale = _sqrt_soc_residual(w);
 
+        let wscale = _sqrt_soc_residual(w);
         // Fail if w is not an interior point
         if wscale.is_zero() {
             return false;
@@ -132,48 +172,68 @@ where
         // try to force badly scaled w to come out normalized
         let w1sq = w[1..].sumsq();
         w[0] = T::sqrt(T::one() + w1sq);
-        let wsq = w[0] * w[0] + w1sq;
-
-        //various intermediate calcs for u,v,d,η
-        let α = two * w[0];
-
-        //Scalar d is the upper LH corner of the diagonal
-        //term in the rank-2 update form of W^TW
-        let wsqinv = wsq.recip();
-        self.d = half * wsqinv;
-
-        //the leading scalar term for W^TW
-        self.η = T::sqrt(sscale / zscale);
-
-        //the vectors for the rank two update
-        //representation of W^TW
-        let u0 = T::sqrt(wsq - self.d);
-        let u1 = α / u0;
-        let v0 = T::zero();
-        let v1 = T::sqrt(two * (two + wsqinv) / (two * wsq - wsqinv));
-
-        self.u[0] = u0;
-        self.u[1..].axpby(u1, &self.w[1..], T::zero());
-        self.v[0] = v0;
-        self.v[1..].axpby(v1, &self.w[1..], T::zero());
 
         //λ = Wz.  Use inner function here because can't
         //borrow self and self.λ at the same time
-        _soc_mul_W_inner(&mut self.λ, z, T::one(), T::zero(), &self.w, self.η);
+        _soc_mul_W_inner(&mut self.λ, z, T::one(), T::zero(), w, self.η);
+
+        if let Some(sparse_data) = &mut self.sparse_data {
+            //various intermediate calcs for u,v,d,η
+            let α = two * w[0];
+
+            //Scalar d is the upper LH corner of the diagonal
+            //term in the rank-2 update form of W^TW
+            let wsq = w[0] * w[0] + w1sq;
+            let wsqinv = wsq.recip();
+            sparse_data.d = half * wsqinv;
+
+            //the vectors for the rank two update
+            //representation of W^TW
+            let u0 = T::sqrt(wsq - sparse_data.d);
+            let u1 = α / u0;
+            let v0 = T::zero();
+            let v1 = T::sqrt(two * (two + wsqinv) / (two * wsq - wsqinv));
+
+            sparse_data.u[0] = u0;
+            sparse_data.u[1..].axpby(u1, &self.w[1..], T::zero());
+            sparse_data.v[0] = v0;
+            sparse_data.v[1..].axpby(v1, &self.w[1..], T::zero());
+        }
 
         true
     }
 
     fn Hs_is_diagonal(&self) -> bool {
-        true
+        self.is_sparse_expandable()
     }
 
     fn get_Hs(&self, Hsblock: &mut [T]) {
-        //NB: we are returning here the diagonal D block from the
-        //sparse representation of W^TW, but not the
-        //extra two entries at the bottom right of the block.
-        Hsblock.fill(self.η * self.η);
-        Hsblock[0] *= self.d;
+        if let Some(sparse_data) = &self.sparse_data {
+            // For sparse form, we are returning here the diagonal D block
+            // from the sparse representation of W^TW, but not the
+            // extra two entries at the bottom right of the block.
+            // The ConicVector for s and z (and its views) don't
+            // know anything about the 2 extra sparsifying entries
+            Hsblock.fill(self.η * self.η);
+            Hsblock[0] *= sparse_data.d;
+        } else {
+            let two: T = (2.).as_T();
+            // for dense form, we return H = \eta^2 (2*ww^T - J), where
+            // J = diag(1,-I).  We are packing into dense triu form
+            Hsblock[0] = two * self.w[0] * self.w[0] - T::one();
+            let mut hidx = 1;
+
+            for col in 1..self.dim {
+                let wcol = self.w[col];
+                for row in 0..=col {
+                    Hsblock[hidx] = two * self.w[row] * wcol;
+                    hidx += 1
+                }
+                //go back to add the offset term from J
+                Hsblock[hidx - 1] += T::one()
+            }
+            Hsblock.scale(self.η * self.η);
+        }
     }
 
     fn mul_Hs(&mut self, y: &mut [T], x: &[T], work: &mut [T]) {

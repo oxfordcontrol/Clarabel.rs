@@ -92,7 +92,8 @@ fn _kkt_assemble_colcounts<T: FloatT>(
         }
 
         //add sparse expansions columns for sparse cones
-        if let Some(sc) = cone.to_sparse() {
+        if cone.is_sparse_expandable() {
+            let sc = cone.to_sparse_expansion().unwrap();
             let thismap = sparse_map_iter.next().unwrap();
             sc.csc_colcount_sparsecone(thismap, K, row, pcol, shape);
             pcol += thismap.pdim();
@@ -146,7 +147,8 @@ fn _kkt_assemble_fill<T: FloatT>(
         }
 
         //add sparse expansions columns for sparse cones
-        if let Some(sc) = cone.to_sparse() {
+        if cone.is_sparse_expandable() {
+            let sc = cone.to_sparse_expansion().unwrap();
             let thismap = sparse_map_iter.next().unwrap();
             sc.csc_fill_sparsecone(thismap, K, row, pcol, shape);
             pcol += thismap.pdim();
