@@ -3,6 +3,7 @@ use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
 };
+use itertools::izip;
 
 // -------------------------------------
 // Second order Cone
@@ -173,9 +174,27 @@ where
         let w1sq = w[1..].sumsq();
         w[0] = T::sqrt(T::one() + w1sq);
 
+        //---------------------
+        //DEBUG ALTERNATIVE λ
+
         //λ = Wz.  Use inner function here because can't
         //borrow self and self.λ at the same time
-        _soc_mul_W_inner(&mut self.λ, z, T::one(), T::zero(), w, self.η);
+        //_soc_mul_W_inner(&mut self.λ, z, T::one(), T::zero(), w, self.η);
+
+        let phi = T::sqrt(sscale * zscale);
+        let γ = half * wscale;
+        self.λ[0] = γ;
+        self.λ[1..].waxpby(
+            (γ + z[0] / zscale) / sscale,
+            &s[1..],
+            (γ + s[0] / sscale) / zscale,
+            &z[1..],
+        );
+        self.λ[1..].scale(T::recip(s[0] / sscale + z[0] / zscale + two * γ));
+        self.λ.scale(phi);
+
+        //DEBUG ALTERNATIVE λ
+        //--------------------
 
         if let Some(sparse_data) = &mut self.sparse_data {
             //various intermediate calcs for u,v,d,η
@@ -236,9 +255,14 @@ where
         }
     }
 
-    fn mul_Hs(&mut self, y: &mut [T], x: &[T], work: &mut [T]) {
-        self.mul_W(MatrixShape::N, work, x, T::one(), T::zero()); // work = Wx
-        self.mul_W(MatrixShape::T, y, work, T::one(), T::zero()); // y = c Wᵀwork = W^TWx
+    fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
+        //self.mul_W(MatrixShape::N, work, x, T::one(), T::zero()); // work = Wx
+        //self.mul_W(MatrixShape::T, y, work, T::one(), T::zero()); // y = c Wᵀwork = W^TWx
+        let c = self.w.dot(x) * (2.).as_T();
+        y.copy_from(x);
+        y[0] = -x[0];
+        y.axpby(c, &self.w, T::one());
+        y.scale(self.η * self.η);
     }
 
     fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
@@ -249,8 +273,26 @@ where
         self._combined_ds_shift_symmetric(shift, step_z, step_s, σμ);
     }
 
-    fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], work: &mut [T], _z: &[T]) {
-        self._Δs_from_Δz_offset_symmetric(out, ds, work);
+    fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], _work: &mut [T], z: &[T]) {
+        //self._Δs_from_Δz_offset_symmetric(out, ds, work);
+
+        let resz = _soc_residual(z);
+
+        let λ1ds1 = self.λ[1..].dot(&ds[1..]);
+        let w1ds1 = self.w[1..].dot(&ds[1..]);
+
+        out.scalarop_from(|zi| -zi, &z);
+        out[0] = z[0];
+
+        let c = self.λ[0] * ds[0] - λ1ds1;
+        out.scale(c / resz);
+
+        out[0] += self.η * w1ds1;
+        for (outi, &dsi, &wi) in izip!(out[1..].iter_mut(), &ds[1..], &self.w[1..]) {
+            *outi += self.η * (dsi + w1ds1 / (T::one() + self.w[0]) * wi);
+        }
+
+        out.scale(self.λ[0].recip());
     }
 
     fn step_length(
