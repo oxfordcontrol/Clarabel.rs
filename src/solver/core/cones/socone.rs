@@ -275,7 +275,7 @@ where
         let λ1ds1 = self.λ[1..].dot(&ds[1..]);
         let w1ds1 = self.w[1..].dot(&ds[1..]);
 
-        out.scalarop_from(|zi| -zi, &z);
+        out.scalarop_from(|zi| -zi, z);
         out[0] = z[0];
 
         let c = self.λ[0] * ds[0] - λ1ds1;
