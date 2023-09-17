@@ -177,11 +177,7 @@ where
         //---------------------
         //DEBUG ALTERNATIVE λ
 
-        //λ = Wz.  Use inner function here because can't
-        //borrow self and self.λ at the same time
-        //_soc_mul_W_inner(&mut self.λ, z, T::one(), T::zero(), w, self.η);
-
-        let phi = T::sqrt(sscale * zscale);
+        //Compute the scaling point λ.   Should satisfy λ = Wz = W^{-T}s
         let γ = half * wscale;
         self.λ[0] = γ;
         self.λ[1..].waxpby(
@@ -191,10 +187,7 @@ where
             &z[1..],
         );
         self.λ[1..].scale(T::recip(s[0] / sscale + z[0] / zscale + two * γ));
-        self.λ.scale(phi);
-
-        //DEBUG ALTERNATIVE λ
-        //--------------------
+        self.λ.scale(T::sqrt(sscale * zscale));
 
         if let Some(sparse_data) = &mut self.sparse_data {
             //various intermediate calcs for u,v,d,η
@@ -274,7 +267,8 @@ where
     }
 
     fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], _work: &mut [T], z: &[T]) {
-        //self._Δs_from_Δz_offset_symmetric(out, ds, work);
+        // out = Wᵀ(λ \ ds).  Below is equivalent,
+        // but appears to be a little more stable
 
         let resz = _soc_residual(z);
 
