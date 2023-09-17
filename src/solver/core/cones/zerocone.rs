@@ -9,7 +9,7 @@ use core::marker::PhantomData;
 // Zero Cone
 // -------------------------------------
 
-pub struct ZeroCone<T: FloatT = f64> {
+pub struct ZeroCone<T> {
     dim: usize,
     phantom: PhantomData<T>,
 }
@@ -39,6 +39,10 @@ where
     }
 
     fn is_symmetric(&self) -> bool {
+        true
+    }
+
+    fn allows_primal_dual_scaling(&self) -> bool {
         true
     }
 
@@ -121,7 +125,7 @@ where
         (αmax, αmax)
     }
 
-    fn compute_barrier(&self, _z: &[T], _s: &[T], _dz: &[T], _ds: &[T], _α: T) -> T {
+    fn compute_barrier(&mut self, _z: &[T], _s: &[T], _dz: &[T], _ds: &[T], _α: T) -> T {
         T::zero()
     }
 }

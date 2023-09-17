@@ -69,20 +69,18 @@ where
     J: IntoIterator<Item = &'a T>,
     T: FloatT,
 {
+    #[allow(clippy::needless_range_loop)]
     fn from(rows: I) -> CscMatrix<T> {
         let rows: Vec<Vec<T>> = rows
             .into_iter()
-            .map(|r| r.into_iter().map(|&v| v).collect())
+            .map(|r| r.into_iter().copied().collect())
             .collect();
 
         let m = rows.len();
         let n = rows.iter().map(|r| r.len()).next().unwrap_or(0);
+
         assert!(rows.iter().all(|r| r.len() == n));
-        let nnz = rows
-            .iter()
-            .flat_map(|r| r)
-            .filter(|&&v| v != T::zero())
-            .count();
+        let nnz = rows.iter().flatten().filter(|&&v| v != T::zero()).count();
 
         let mut colptr = Vec::with_capacity(n + 1);
         let mut rowval = Vec::with_capacity(nnz);

@@ -15,7 +15,6 @@ fn test_powcone() {
     //      x1 + 2y + 3x2 == 3
 
     // x = (x1, y, z1, x2, y2, z2)
-
     let n = 6;
     let P = CscMatrix::<f64>::zeros((n, n));
     let c = vec![0., 0., -1., 0., 0., -1.];
@@ -25,7 +24,10 @@ fn test_powcone() {
     let mut A1 = CscMatrix::<f64>::identity(n);
     A1.negate();
     let b1 = vec![0.; n];
-    let cones1 = vec![PowerConeT(0.6), PowerConeT(0.1)];
+    let cones1 = vec![
+        GenPowerConeT(vec![0.6, 0.4], 1),
+        GenPowerConeT(vec![0.1, 0.9], 1),
+    ];
 
     // x1 + 2y + 3x2 == 3
     // y2 == 1
@@ -33,6 +35,7 @@ fn test_powcone() {
         [1., 2., 0., 3., 0., 0.], //
         [0., 0., 0., 0., 1., 0.], //
     ]);
+
     let b2 = vec![3., 1.];
     let cones2 = vec![ZeroConeT(2)];
 
