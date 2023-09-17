@@ -106,6 +106,12 @@ where
         false
     }
 
+    fn is_sparse_expandable(&self) -> bool {
+        // we do not curently have a way of representing
+        // this cone in non-expanded form
+        true
+    }
+
     fn allows_primal_dual_scaling(&self) -> bool {
         false
     }

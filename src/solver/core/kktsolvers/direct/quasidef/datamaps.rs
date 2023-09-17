@@ -23,15 +23,12 @@ impl<'a, T> SupportedCone<T>
 where
     T: FloatT,
 {
-    pub(crate) fn to_sparse(&'a self) -> Option<SparseExpansionCone<T>> {
+    pub(crate) fn to_sparse_expansion(&'a self) -> Option<SparseExpansionCone<T>> {
         match self {
             SupportedCone::SecondOrderCone(sc) => Some(SparseExpansionCone::SecondOrderCone(sc)),
             SupportedCone::GenPowerCone(sc) => Some(SparseExpansionCone::GenPowerCone(sc)),
             _ => None,
         }
-    }
-    fn is_sparsifiable(&self) -> bool {
-        self.to_sparse().is_some()
     }
 }
 
@@ -56,6 +53,7 @@ impl SparseExpansionMapTrait for Vec<SparseExpansionMap> {
 
 type UpdateFcn<T> = fn(&mut BoxedDirectLDLSolver<T>, &mut CscMatrix<T>, &[usize], &[T]) -> ();
 type ScaleFcn<T> = fn(&mut BoxedDirectLDLSolver<T>, &mut CscMatrix<T>, &[usize], T) -> ();
+
 #[enum_dispatch]
 pub(crate) trait SparseExpansionConeTrait<T>
 where
@@ -206,12 +204,14 @@ where
         updateFcn: UpdateFcn<T>,
         scaleFcn: ScaleFcn<T>,
     ) {
+        let sparse_data = self.sparse_data.as_ref().unwrap();
+
         let map = self.recover_map(map);
         let η2 = self.η * self.η;
 
         // off diagonal columns (or rows)
-        updateFcn(ldl, K, &map.u, &self.u);
-        updateFcn(ldl, K, &map.v, &self.v);
+        updateFcn(ldl, K, &map.u, &sparse_data.u);
+        updateFcn(ldl, K, &map.v, &sparse_data.v);
         scaleFcn(ldl, K, &map.u, -η2);
         scaleFcn(ldl, K, &map.v, -η2);
 
@@ -380,11 +380,12 @@ impl LDLDataMap {
         let Hsblocks = allocate_kkt_Hsblocks::<T, usize>(cones);
 
         // now do the sparse cone expansion pieces
-        let nsparse = cones.iter().filter(|&c| c.is_sparsifiable()).count();
+        let nsparse = cones.iter().filter(|&c| c.is_sparse_expandable()).count();
         let mut sparse_maps = Vec::with_capacity(nsparse);
 
         for cone in cones.iter() {
-            if let Some(sc) = cone.to_sparse() {
+            if cone.is_sparse_expandable() {
+                let sc = cone.to_sparse_expansion().unwrap();
                 sparse_maps.push(sc.expansion_map());
             }
         }

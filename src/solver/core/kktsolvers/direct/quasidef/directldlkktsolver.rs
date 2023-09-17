@@ -129,7 +129,8 @@ where
         let KKT = &mut self.KKT;
 
         for cone in cones.iter() {
-            if let Some(sc) = cone.to_sparse() {
+            if cone.is_sparse_expandable() {
+                let sc = cone.to_sparse_expansion().unwrap();
                 let thismap = sparse_map_iter.next().unwrap();
                 sc.csc_update_sparsecone(thismap, ldl, KKT, _update_values, _scale_values);
             }
