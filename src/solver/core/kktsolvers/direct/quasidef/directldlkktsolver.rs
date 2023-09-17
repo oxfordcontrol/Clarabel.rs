@@ -137,7 +137,7 @@ where
         }
 
         self.regularize_and_refactor(settings)
-    } //end fn
+    }
 
     fn setrhs(&mut self, rhsx: &[T], rhsz: &[T]) {
         let (m, n, p) = (self.m, self.n, self.p);

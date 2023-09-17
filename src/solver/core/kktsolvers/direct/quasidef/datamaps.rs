@@ -314,7 +314,8 @@ where
                 K.fill_rowvec(&mut map.p, col + 2, row); //p row
             }
         }
-        K.colcount_diag(col, map.pdim());
+        let pdim = map.pdim();
+        K.fill_diag(&mut map.D, col, pdim);
     }
 
     fn csc_update_sparsecone(
