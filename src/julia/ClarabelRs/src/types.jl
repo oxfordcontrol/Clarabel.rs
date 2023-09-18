@@ -1,7 +1,7 @@
 # The types defined here are for exchanging data
 # between Rust and Julia.   
 
-struct VectorJLRS{T<:Real} 
+struct VectorJLRS{T} 
 
     p::Ptr{T}
     len::UInt64 
@@ -17,10 +17,30 @@ function Vector(v::VectorJLRS{T}) where {T}
     unsafe_wrap(Vector{T},v.p,v.len)
 end
 
+# it is not obvious at all how to pass data through 
+# ccall for a data-carrying enum type in rust.   This 
+# makes it very difficult to pass the `cones` object 
+# directly.   Here we make an enum for the different 
+# cone types, with a complementary enum type on 
+# the rust side with equivalent base types and values 
+# We then pass a data structure that looks something 
+# like a tagged union 
+
+#NB: mutability here causes alignment errors?
+ struct ConeDataJLRS
+    tag::UInt8
+    int::UInt64
+    float::Float64
+    vec::VectorJLRS{Float64}
+    function ConeDataJLRS(enum; int = 0,float = 0.0,vec = Float64[])
+        return new(UInt8(enum),int,float,VectorJLRS(vec))
+    end
+end
+
+
 
 #NB: mutability here causes alignment errors?
 struct CscMatrixJLRS
-
     m::UInt64
     n::UInt64
     colptr::VectorJLRS{Int64}
@@ -76,7 +96,8 @@ end
     SecondOrderConeT = 2
     ExponentialConeT = 3
     PowerConeT       = 4
-    PSDTriangleConeT = 5
+    GenPowerConeT    = 5
+    PSDTriangleConeT = 6
 end
 
 

@@ -8,11 +8,20 @@ use std::slice;
 // The types defined here are for exchanging data
 // between Rust and Julia.
 
+#[derive(Debug, Clone)]
 #[repr(C)]
-#[derive(Debug)]
 pub(crate) struct VectorJLRS<T> {
     pub p: *const T,
     pub len: libc::size_t,
+}
+
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub(crate) struct ConeDataJLRS {
+    pub tag: u8,
+    pub int: usize,
+    pub float: f64,
+    pub vec: VectorJLRS<f64>,
 }
 
 impl<T> VectorJLRS<T>
@@ -24,10 +33,14 @@ where
         unsafe { slice::from_raw_parts(self.p, self.len) }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn len(&self) -> usize {
         self.len
     }
 }
+
+// The following conversions are used to convert from
+// Julia problem data into Rust types.
 
 impl From<&VectorJLRS<i64>> for Vec<usize> {
     fn from(v: &VectorJLRS<i64>) -> Self {
@@ -44,6 +57,9 @@ where
         sl.to_vec()
     }
 }
+
+// The following conversions are used to convert from Rust data
+// back to Julia.   Here we only need vectors of floats.
 
 impl<T> From<&Vec<T>> for VectorJLRS<T>
 where
@@ -124,5 +140,6 @@ pub(crate) enum ConeEnumJLRS {
     SecondOrderConeT = 2,
     ExponentialConeT = 3,
     PowerConeT = 4,
-    PSDTriangleConeT = 5,
+    GenPowerConeT = 5,
+    PSDTriangleConeT = 6,
 }
