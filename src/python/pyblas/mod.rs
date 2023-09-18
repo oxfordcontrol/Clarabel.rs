@@ -19,8 +19,8 @@ mod lapack_types;
 // initialization of the python module to ensure that lazy_statics
 // are already realised before making an FFI call to blas/lapack.
 pub fn force_load() {
-    let _ = blas_wrappers::force_load();
-    let _ = lapack_wrappers::force_load();
+    blas_wrappers::force_load();
+    lapack_wrappers::force_load();
 }
 
 // utilities for scipy blas/lapack import

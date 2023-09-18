@@ -46,6 +46,7 @@ fn clarabel(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PySecondOrderConeT>()?;
     m.add_class::<PyExponentialConeT>()?;
     m.add_class::<PyPowerConeT>()?;
+    m.add_class::<PyGenPowerConeT>()?;
     m.add_class::<PyPSDTriangleConeT>()?;
 
     //other API data types
