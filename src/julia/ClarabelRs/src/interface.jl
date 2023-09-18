@@ -43,7 +43,7 @@ function solver_new_jlrs(P,q,A,b,cones,settings)
 
 
     # first flatten the cones to three primitive arrays 
-    (cone_enums, cone_ints, cone_floats) = ccall_cones_to_arrays(cones)
+    (cone_data) = ccall_cones_to_array(cones)
 
     ptr = ccall(Libdl.dlsym(librust,:solver_new_jlrs),Ptr{Cvoid},
         (
@@ -51,18 +51,14 @@ function solver_new_jlrs(P,q,A,b,cones,settings)
             Ref{VectorJLRS{Float64}},   #q
             Ref{CscMatrixJLRS},         #A
             Ref{VectorJLRS{Float64}},   #b
-            Ref{VectorJLRS{UInt8}},     #cone_enums
-            Ref{VectorJLRS{UInt64}},    #cone_ints
-            Ref{VectorJLRS{Float64}},   #cone_floats
+            Ref{VectorJLRS{ConeDataJLRS}},   #cone_data in tagged form
             Cstring                     #json_settings
         ),
             CscMatrixJLRS(P),           #P
             VectorJLRS(q),              #q
             CscMatrixJLRS(A),           #A
             VectorJLRS(b),              #b
-            VectorJLRS(cone_enums),     #cone_enums
-            VectorJLRS(cone_ints),      #cone_ints
-            VectorJLRS(cone_floats),    #cone_floats
+            VectorJLRS(cone_data),      #cone data in tagged form
             serialize(settings),        #serialized settings
         )
 
@@ -103,54 +99,64 @@ end
 # functions for passing cones and settings 
 # -------------------------------------
 
-# it is not obvious at all how to pass data through 
-# ccall for a data-carrying enum type in rust.   This 
-# makes it very difficult to pass the `cones` object 
-# directly.   Here we make an enum for the different 
-# cone types, with a complementary enum type on 
-# the rust side with equivalent base types and values 
-# We will pass three arrays to rust : the enum value,
-# an integer (for dimensions) and a float (for powers)
-# Every cone needs at least of one these values.  
-# Values not needed for a particular cone get a zero 
-# placeholder 
 
-function ccall_cones_to_arrays(cones::Vector{Clarabel.SupportedCone})
+function ccall_cones_to_array(cones::Vector{Clarabel.SupportedCone})
 
-    cone_enums  = zeros(UInt8,length(cones))
-    cone_ints   = zeros(UInt64,length(cones))
-    cone_floats = zeros(Float64,length(cones))
+    rscones = ConeDataJLRS[]
+    sizehint!(rscones,length(cones))
+    
+    for cone in cones
 
-    for (i,cone) in enumerate(cones)
+        rscone = begin 
+            if isa(cone, Clarabel.ZeroConeT)
+                ConeDataJLRS(ZeroConeT::ConeEnumJLRS;
+                    int = cone.dim,
+                )
 
-        if isa(cone, Clarabel.ZeroConeT)
-            cone_enums[i] = UInt8(ZeroConeT::ConeEnumJLRS)
-            cone_ints[i]  = cone.dim;
+            elseif isa(cone, Clarabel.NonnegativeConeT)
+                ConeDataJLRS(
+                    NonnegativeConeT::ConeEnumJLRS;
+                    int = cone.dim,
+                )
 
-        elseif isa(cone, Clarabel.NonnegativeConeT)
-            cone_enums[i] = UInt8(NonnegativeConeT::ConeEnumJLRS) 
-            cone_ints[i]  = cone.dim;
+            elseif isa(cone, Clarabel.SecondOrderConeT)
+                ConeDataJLRS(
+                    SecondOrderConeT::ConeEnumJLRS;
+                    int = cone.dim,
+                )
 
-        elseif isa(cone, Clarabel.SecondOrderConeT)
-            cone_enums[i] = UInt8(SecondOrderConeT::ConeEnumJLRS) 
-            cone_ints[i]  = cone.dim;
+            elseif isa(cone, Clarabel.ExponentialConeT)
+                ConeDataJLRS(
+                    ExponentialConeT::ConeEnumJLRS
+                )
 
-        elseif isa(cone, Clarabel.ExponentialConeT)
-            cone_enums[i] = UInt8(ExponentialConeT::ConeEnumJLRS) 
+            elseif isa(cone, Clarabel.PowerConeT)
+                ConeDataJLRS(
+                    PowerConeT::ConeEnumJLRS;
+                    float = cone.α
+                )
 
-        elseif isa(cone, Clarabel.PowerConeT)
-            cone_enums[i] = UInt8(PowerConeT::ConeEnumJLRS) 
-            cone_floats[i] = cone.α
+            elseif isa(cone, Clarabel.GenPowerConeT)   
+                ConeDataJLRS(
+                    GenPowerConeT::ConeEnumJLRS;
+                    int = cone.dim2,
+                    vec = cone.α
+                )
 
-        elseif isa(cone, Clarabel.PSDTriangleConeT)
-            cone_enums[i] = UInt8(PSDTriangleConeT::ConeEnumJLRS) 
-            cone_ints[i]  = cone.dim;
-        else 
-            error("Cone type ", typeof(cone), " is not supported through this interface.");
-        end
+            elseif isa(cone, Clarabel.PSDTriangleConeT)
+                ConeDataJLRS(
+                    PSDTriangleConeT::ConeEnumJLRS;
+                    int = cone.dim,
+                )
+            else 
+                error("Cone type ", typeof(cone), " is not supported through this interface.");
+            end
+        end 
+
+        push!(rscones,rscone)
     end 
 
-    return (cone_enums, cone_ints, cone_floats)
+    return rscones
 end 
 
 

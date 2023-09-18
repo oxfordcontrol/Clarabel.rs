@@ -22,32 +22,24 @@ fn from_ptr(ptr: *mut c_void) -> Box<DefaultSolver<f64>> {
     unsafe { Box::from_raw(ptr as *mut DefaultSolver<f64>) }
 }
 
-// function for receiving cone specifications in rust
-// in a flattened form from Julia
+// function for sending cone specifications into rust
+// from a tagged union type form supplied from Julia
 
-fn ccall_arrays_to_cones(
-    cones_enums: &VectorJLRS<u8>,
-    cones_ints: &VectorJLRS<u64>,
-    cones_floats: &VectorJLRS<f64>,
-) -> Vec<SupportedConeT<f64>> {
+fn ccall_arrays_to_cones(jlcones: &VectorJLRS<ConeDataJLRS>) -> Vec<SupportedConeT<f64>> {
     let mut cones: Vec<SupportedConeT<f64>> = Vec::new();
 
-    assert_eq!(cones_enums.len(), cones_ints.len());
-    assert_eq!(cones_enums.len(), cones_floats.len());
-
-    // convert to rust vector types from raw pointers
-    let cones_enums = Vec::from(cones_enums);
-    let cones_ints = Vec::from(cones_ints);
-    let _cones_floats = Vec::from(cones_floats);
-
-    for i in 0..cones_enums.len() {
-        let cone = match FromPrimitive::from_u8(cones_enums[i]) {
-            Some(ConeEnumJLRS::ZeroConeT) => ZeroConeT(cones_ints[i] as usize),
-            Some(ConeEnumJLRS::NonnegativeConeT) => NonnegativeConeT(cones_ints[i] as usize),
-            Some(ConeEnumJLRS::SecondOrderConeT) => SecondOrderConeT(cones_ints[i] as usize),
+    for jlcone in jlcones.to_slice() {
+        let cone = match FromPrimitive::from_u8(jlcone.tag) {
+            Some(ConeEnumJLRS::ZeroConeT) => ZeroConeT(jlcone.int),
+            Some(ConeEnumJLRS::NonnegativeConeT) => NonnegativeConeT(jlcone.int),
+            Some(ConeEnumJLRS::SecondOrderConeT) => SecondOrderConeT(jlcone.int),
             Some(ConeEnumJLRS::ExponentialConeT) => ExponentialConeT(),
-            Some(ConeEnumJLRS::PowerConeT) => PowerConeT(_cones_floats[i]),
-            Some(ConeEnumJLRS::PSDTriangleConeT) => PSDTriangleConeT(cones_ints[i] as usize),
+            Some(ConeEnumJLRS::PowerConeT) => PowerConeT(jlcone.float),
+            Some(ConeEnumJLRS::GenPowerConeT) => {
+                let alpha = Vec::<f64>::from(&jlcone.vec);
+                GenPowerConeT(alpha, jlcone.int)
+            }
+            Some(ConeEnumJLRS::PSDTriangleConeT) => PSDTriangleConeT(jlcone.int),
             None => panic!("Received unrecognized cone type"),
         };
         cones.push(cone)
@@ -61,9 +53,7 @@ pub(crate) extern "C" fn solver_new_jlrs(
     q: &VectorJLRS<f64>,
     A: &CscMatrixJLRS,
     b: &VectorJLRS<f64>,
-    cones_enums: &VectorJLRS<u8>,
-    cones_ints: &VectorJLRS<u64>,
-    cones_floats: &VectorJLRS<f64>,
+    jlcones: &VectorJLRS<ConeDataJLRS>,
     json_settings: *const std::os::raw::c_char,
 ) -> *mut c_void {
     let P = P.to_CscMatrix();
@@ -71,7 +61,7 @@ pub(crate) extern "C" fn solver_new_jlrs(
     let q = Vec::from(q);
     let b = Vec::from(b);
 
-    let cones = ccall_arrays_to_cones(cones_enums, cones_ints, cones_floats);
+    let cones = ccall_arrays_to_cones(jlcones);
 
     let settings = settings_from_json(json_settings);
 
