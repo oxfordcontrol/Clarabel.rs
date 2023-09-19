@@ -35,7 +35,10 @@ pub enum SupportedConeT<T> {
     PowerConeT(T),
     /// The generalized power cone.
     ///
-    /// The parameter indicates the power and dimensions.
+    /// The first vector of parameters supplies the nonnegative powers "alpha" of
+    /// the left-hand side of the constraint.  The second scalar parameter provides
+    /// the dimension of the 2-norm bounded vector in the right-hand side of the
+    /// constraint.   The "alpha" terms must sum to 1.
     GenPowerConeT(Vec<T>, usize),
 
     /// The positive semidefinite cone in triangular form.
