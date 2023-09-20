@@ -3,6 +3,7 @@ use crate::{
     algebra::*,
     solver::core::{traits::Solution, SolverStatus},
 };
+use itertools::izip;
 use std::iter::zip;
 
 /// Standard-form solver type implementing the [`Solution`](crate::solver::core::traits::Solution) trait
@@ -78,20 +79,13 @@ where
         self.x.copy_from(&variables.x).hadamard(d).scale(scaleinv);
 
         if let Some(map) = data.presolver.reduce_map.as_ref() {
-            //PJG : temporary alloc makes implementation much easier
-            //here. could also use something like e or einv as scratch
-            let mut tmp = vec![T::zero(); variables.s.len()];
+            //
 
-            tmp.copy_from(&variables.z)
-                .hadamard(e)
-                .scale(scaleinv / cscale);
-            for (vi, mapi) in zip(&tmp, &map.keep_index) {
-                self.z[*mapi] = *vi;
-            }
-
-            tmp.copy_from(&variables.s).hadamard(einv).scale(scaleinv);
-            for (vi, mapi) in zip(&tmp, &map.keep_index) {
-                self.s[*mapi] = *vi;
+            for (&zi, &si, &ei, &einvi, &mapi) in
+                izip!(&variables.z, &variables.s, e, einv, &map.keep_index)
+            {
+                self.z[mapi] = zi * ei * (scaleinv / cscale);
+                self.s[mapi] = si * einvi * scaleinv;
             }
 
             // eliminated constraints get huge slacks

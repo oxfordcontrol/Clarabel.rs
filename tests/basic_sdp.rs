@@ -90,7 +90,7 @@ fn test_sdp_primal_infeasible() {
     A2.negate();
     let A = CscMatrix::vcat(&A, &A2);
     b.extend(vec![0.0; b.len()]);
-    cones.extend([cones[0]]);
+    cones.extend([cones[0].clone()]);
 
     let settings = DefaultSettings::default();
 

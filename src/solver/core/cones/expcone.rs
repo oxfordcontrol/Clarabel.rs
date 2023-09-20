@@ -8,7 +8,7 @@ use crate::{
 // Exponential Cone
 // -------------------------------------
 
-pub struct ExponentialCone<T: FloatT = f64> {
+pub struct ExponentialCone<T> {
     // Hessian of the dual barrier at z
     H_dual: DenseMatrixSym3<T>,
 
@@ -51,6 +51,14 @@ where
 
     fn is_symmetric(&self) -> bool {
         false
+    }
+
+    fn is_sparse_expandable(&self) -> bool {
+        false
+    }
+
+    fn allows_primal_dual_scaling(&self) -> bool {
+        true
     }
 
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
@@ -146,20 +154,18 @@ where
     ) -> (T, T) {
         let step = settings.linesearch_backtrack_step;
         let αmin = settings.min_terminate_step_length;
-
-        // final backtracked position
-        let wq = &mut [T::zero(); 3];
+        let mut work = [T::zero(); 3];
 
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = self.step_length_3d_cone(wq, dz, z, αmax, αmin, step, _is_dual_feasible_fcn);
-        let αs = self.step_length_3d_cone(wq, ds, s, αmax, αmin, step, _is_prim_feasible_fcn);
+        let αz = backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
+        let αs = backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
 
         (αz, αs)
     }
 
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
 
         let cur_z = [z[0] + α * dz[0], z[1] + α * dz[1], z[2] + α * dz[2]];
@@ -172,9 +178,7 @@ where
     }
 }
 
-// implement this marker trait to get access to
-// functions common to exp and pow cones
-impl<T> Nonsymmetric3DCone<T> for ExponentialCone<T>
+impl<T> NonsymmetricCone<T> for ExponentialCone<T>
 where
     T: FloatT,
 {
@@ -214,57 +218,7 @@ where
         false
     }
 
-    // Compute the primal gradient of f(s) at s
-    fn gradient_primal(&self, s: &[T]) -> [T; 3]
-    where
-        T: FloatT,
-    {
-        let mut g = [T::zero(); 3];
-        let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
-
-        g[0] = T::one() / ((ω - T::one()) * s[1]);
-        g[1] = g[0] + g[0] * ((ω * s[1] / s[2]).logsafe()) - T::one() / s[1];
-        g[2] = ω / ((T::one() - ω) * s[2]);
-        g
-    }
-
-    fn update_dual_grad_H(&mut self, z: &[T]) {
-        let grad = &mut self.grad;
-        let H = &mut self.H_dual;
-
-        // Hessian computation, compute μ locally
-        let l = (-z[2] / z[0]).logsafe();
-        let r = -z[0] * l - z[0] + z[1];
-
-        // compute the gradient at z
-        let c2 = r.recip();
-
-        grad[0] = c2 * l - z[0].recip();
-        grad[1] = -c2;
-        grad[2] = (c2 * z[0] - T::one()) / z[2];
-
-        // compute_Hessian(K,z,H).   Type is symmetric, so
-        // only need to assign upper triangle.
-        H[(0, 0)] = (r * r - z[0] * r + l * l * z[0] * z[0]) / (r * z[0] * z[0] * r);
-        H[(0, 1)] = -l / (r * r);
-        H[(1, 1)] = (r * r).recip();
-        H[(0, 2)] = (z[1] - z[0]) / (r * r * z[2]);
-        H[(1, 2)] = -z[0] / (r * r * z[2]);
-        H[(2, 2)] = (r * r - z[0] * r + z[0] * z[0]) / (r * r * z[2] * z[2]);
-    }
-
-    fn barrier_dual(&self, z: &[T]) -> T
-    where
-        T: FloatT,
-    {
-        // Dual barrier:
-        // f*(z) = -log(z2 - z1 - z1*log(z3/-z1)) - log(-z1) - log(z3)
-        // -----------------------------------------
-        let l = (-z[2] / z[0]).logsafe();
-        -(-z[2] * z[0]).logsafe() - (z[1] - z[0] - z[0] * l).logsafe()
-    }
-
-    fn barrier_primal(&self, s: &[T]) -> T
+    fn barrier_primal(&mut self, s: &[T]) -> T
     where
         T: FloatT,
     {
@@ -281,27 +235,18 @@ where
         -ω.logsafe() - (s[1].logsafe()) * ((2.).as_T()) - s[2].logsafe() - (3.).as_T()
     }
 
-    // 3rd-order correction at the point z.  Output is η.
-    //
-    // η = -0.5*[(dot(u,Hψ,v)*ψ - 2*dotψu*dotψv)/(ψ*ψ*ψ)*gψ +
-    //      dotψu/(ψ*ψ)*Hψv + dotψv/(ψ*ψ)*Hψu - dotψuv/ψ + dothuv]
-    //
-    // where :
-    // Hψ = [  1/z[1]    0   -1/z[3];
-    //           0       0   0;
-    //         -1/z[3]   0   z[1]/(z[3]*z[3]);]
-    // dotψuv = [-u[1]*v[1]/(z[1]*z[1]) + u[3]*v[3]/(z[3]*z[3]);
-    //            0;
-    //           (u[3]*v[1]+u[1]*v[3])/(z[3]*z[3]) - 2*z[1]*u[3]*v[3]/(z[3]*z[3]*z[3])]
-    //
-    // dothuv = [-2*u[1]*v[1]/(z[1]*z[1]*z[1]) ;
-    //            0;
-    //           -2*u[3]*v[3]/(z[3]*z[3]*z[3])]
-    // Hψv = Hψ*v
-    // Hψu = Hψ*u
-    // gψ is used inside η
+    fn barrier_dual(&mut self, z: &[T]) -> T
+    where
+        T: FloatT,
+    {
+        // Dual barrier:
+        // f*(z) = -log(z2 - z1 - z1*log(z3/-z1)) - log(-z1) - log(z3)
+        // -----------------------------------------
+        let l = (-z[2] / z[0]).logsafe();
+        -(-z[2] * z[0]).logsafe() - (z[1] - z[0] - z[0] * l).logsafe()
+    }
 
-    fn higher_correction(&mut self, η: &mut [T; 3], ds: &[T], v: &[T])
+    fn higher_correction(&mut self, η: &mut [T], ds: &[T], v: &[T])
     where
         T: FloatT,
     {
@@ -329,8 +274,8 @@ where
 
         let ψ = z[0] * η[0] - z[0] + z[1];
 
-        let dotψu = u.dot(&η[..]);
-        let dotψv = v.dot(&η[..]);
+        let dotψu = u.dot(η);
+        let dotψv = v.dot(η);
 
         let two: T = (2.).as_T();
         let coef =
@@ -353,6 +298,70 @@ where
             + dotψv * inv_ψ2 * (z[0] * u[2] / (z[2] * z[2]) - u[0] / z[2]);
 
         η[..].scale((0.5).as_T());
+    }
+
+    // 3rd-order correction at the point z.  Output is η.
+    //
+    // η = -0.5*[(dot(u,Hψ,v)*ψ - 2*dotψu*dotψv)/(ψ*ψ*ψ)*gψ +
+    //      dotψu/(ψ*ψ)*Hψv + dotψv/(ψ*ψ)*Hψu - dotψuv/ψ + dothuv]
+    //
+    // where :
+    // Hψ = [  1/z[1]    0   -1/z[3];
+    //           0       0   0;
+    //         -1/z[3]   0   z[1]/(z[3]*z[3]);]
+    // dotψuv = [-u[1]*v[1]/(z[1]*z[1]) + u[3]*v[3]/(z[3]*z[3]);
+    //            0;
+    //           (u[3]*v[1]+u[1]*v[3])/(z[3]*z[3]) - 2*z[1]*u[3]*v[3]/(z[3]*z[3]*z[3])]
+    //
+    // dothuv = [-2*u[1]*v[1]/(z[1]*z[1]*z[1]) ;
+    //            0;
+    //           -2*u[3]*v[3]/(z[3]*z[3]*z[3])]
+    // Hψv = Hψ*v
+    // Hψu = Hψ*u
+    // gψ is used inside η
+
+    fn update_dual_grad_H(&mut self, z: &[T]) {
+        let grad = &mut self.grad;
+        let H = &mut self.H_dual;
+
+        // Hessian computation, compute μ locally
+        let l = (-z[2] / z[0]).logsafe();
+        let r = -z[0] * l - z[0] + z[1];
+
+        // compute the gradient at z
+        let c2 = r.recip();
+
+        grad[0] = c2 * l - z[0].recip();
+        grad[1] = -c2;
+        grad[2] = (c2 * z[0] - T::one()) / z[2];
+
+        // compute_Hessian(K,z,H).   Type is symmetric, so
+        // only need to assign upper triangle.
+        H[(0, 0)] = (r * r - z[0] * r + l * l * z[0] * z[0]) / (r * z[0] * z[0] * r);
+        H[(0, 1)] = -l / (r * r);
+        H[(1, 1)] = (r * r).recip();
+        H[(0, 2)] = (z[1] - z[0]) / (r * r * z[2]);
+        H[(1, 2)] = -z[0] / (r * r * z[2]);
+        H[(2, 2)] = (r * r - z[0] * r + z[0] * z[0]) / (r * r * z[2] * z[2]);
+    }
+}
+
+impl<T> Nonsymmetric3DCone<T> for ExponentialCone<T>
+where
+    T: FloatT,
+{
+    // Compute the primal gradient of f(s) at s
+    fn gradient_primal(&self, s: &[T]) -> [T; 3]
+    where
+        T: FloatT,
+    {
+        let mut g = [T::zero(); 3];
+        let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
+
+        g[0] = T::one() / ((ω - T::one()) * s[1]);
+        g[1] = g[0] + g[0] * ((ω * s[1] / s[2]).logsafe()) - T::one() / s[1];
+        g[2] = ω / ((T::one() - ω) * s[2]);
+        g
     }
 
     //getters
@@ -428,7 +437,7 @@ where
     let mut r = z - w - w.logsafe();
 
     // Santiago suggests two refinement iterations only
-    for _ in 0..3 {
+    for _ in 0..2 {
         let wp1 = w + T::one();
         let t = wp1 * (wp1 + (r * (2.).as_T()) / (3.0).as_T());
         w *= T::one() + (r / wp1) * (t - r * (0.5).as_T()) / (t - r);

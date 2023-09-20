@@ -8,7 +8,7 @@ use crate::{
 // Positive Semidefinite Cone (Scaled triangular form)
 // ------------------------------------
 
-pub struct PSDConeWork<T> {
+pub struct PSDConeData<T> {
     cholS: CholeskyEngine<T>,
     cholZ: CholeskyEngine<T>,
     SVD: SVDEngine<T>,
@@ -28,7 +28,7 @@ pub struct PSDConeWork<T> {
     workvec: Vec<T>,
 }
 
-impl<T> PSDConeWork<T>
+impl<T> PSDConeData<T>
 where
     T: FloatT,
 {
@@ -59,9 +59,9 @@ where
 }
 
 pub struct PSDTriangleCone<T> {
-    n: usize,                  // matrix dimension, i.e. matrix is n /times n
-    numel: usize,              // total number of elements (lower triangle of) the matrix
-    work: Box<PSDConeWork<T>>, // Boxed so that the PSDCone enum_dispatch variant isn't huge
+    n: usize,                  // matrix dimension, i.e. matrix is n × n
+    numel: usize,              // total number of elements in (lower triangle of) the matrix
+    data: Box<PSDConeData<T>>, // Boxed so that the PSDCone enum_dispatch variant isn't huge
 }
 
 impl<T> PSDTriangleCone<T>
@@ -73,7 +73,7 @@ where
         Self {
             n,
             numel: triangular_number(n),
-            work: Box::new(PSDConeWork::<T>::new(n)),
+            data: Box::new(PSDConeData::<T>::new(n)),
         }
     }
 }
@@ -94,6 +94,14 @@ where
         true
     }
 
+    fn is_sparse_expandable(&self) -> bool {
+        false
+    }
+
+    fn allows_primal_dual_scaling(&self) -> bool {
+        true
+    }
+
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
         δ.copy_from(e).recip().scale(e.mean());
         true // scalar equilibration
@@ -108,10 +116,10 @@ where
             α = T::max_value();
             e = &[T::zero(); 0];
         } else {
-            let Z = &mut self.work.workmat1;
+            let Z = &mut self.data.workmat1;
             _svec_to_mat(Z, z);
-            self.work.Eig.eigvals(Z).expect("Eigval error");
-            e = &self.work.Eig.λ;
+            self.data.Eig.eigvals(Z).expect("Eigval error");
+            e = &self.data.Eig.λ;
             α = e.minimum();
         }
 
@@ -135,9 +143,9 @@ where
     }
 
     fn set_identity_scaling(&mut self) {
-        self.work.R.set_identity();
-        self.work.Rinv.set_identity();
-        self.work.Hs.set_identity();
+        self.data.R.set_identity();
+        self.data.Rinv.set_identity();
+        self.data.Hs.set_identity();
     }
 
     fn update_scaling(
@@ -152,7 +160,7 @@ where
             return true;
         }
 
-        let f = &mut self.work;
+        let f = &mut self.data;
         let (S, Z) = (&mut f.workmat1, &mut f.workmat2);
         _svec_to_mat(S, s);
         _svec_to_mat(Z, z);
@@ -204,7 +212,7 @@ where
     }
 
     fn get_Hs(&self, Hsblock: &mut [T]) {
-        self.work.Hs.sym().pack_triu(Hsblock);
+        self.data.Hs.sym().pack_triu(Hsblock);
     }
 
     fn mul_Hs(&mut self, y: &mut [T], x: &[T], work: &mut [T]) {
@@ -216,7 +224,7 @@ where
     fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
         ds.set(T::zero());
         for k in 0..self.n {
-            ds[triangular_index(k)] = self.work.λ[k] * self.work.λ[k];
+            ds[triangular_index(k)] = self.data.λ[k] * self.data.λ[k];
         }
     }
 
@@ -237,9 +245,9 @@ where
         _settings: &CoreSettings<T>,
         αmax: T,
     ) -> (T, T) {
-        let Λisqrt = &self.work.Λisqrt;
-        let d = &mut self.work.workvec;
-        let engine = &mut self.work.Eig;
+        let Λisqrt = &self.data.Λisqrt;
+        let d = &mut self.data.workvec;
+        let engine = &mut self.data.Eig;
 
         // d = Δz̃ = WΔz
         _mul_Wx_inner(
@@ -248,12 +256,12 @@ where
             dz,
             T::one(),
             T::zero(),
-            &self.work.R,
-            &mut self.work.workmat1,
-            &mut self.work.workmat2,
-            &mut self.work.workmat3,
+            &self.data.R,
+            &mut self.data.workmat1,
+            &mut self.data.workmat2,
+            &mut self.data.workmat3,
         );
-        let workΔ = &mut self.work.workmat1;
+        let workΔ = &mut self.data.workmat1;
         let αz = _step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
 
         // d = Δs̃ = W^{-T}Δs
@@ -263,18 +271,18 @@ where
             ds,
             T::one(),
             T::zero(),
-            &self.work.Rinv,
-            &mut self.work.workmat1,
-            &mut self.work.workmat2,
-            &mut self.work.workmat3,
+            &self.data.Rinv,
+            &mut self.data.workmat1,
+            &mut self.data.workmat2,
+            &mut self.data.workmat3,
         );
-        let workΔ = &mut self.work.workmat1;
+        let workΔ = &mut self.data.workmat1;
         let αs = _step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
 
         (αz, αs)
     }
 
-    fn compute_barrier(&self, _z: &[T], _s: &[T], _dz: &[T], _ds: &[T], _α: T) -> T {
+    fn compute_barrier(&mut self, _z: &[T], _s: &[T], _dz: &[T], _ds: &[T], _α: T) -> T {
         // We should return this, but in a smarter way.
         // This is not yet implemented, but would only
         // be required for problems mixing PSD and
@@ -295,13 +303,13 @@ where
 {
     // implements x = λ \ z for the SDP cone
     fn λ_inv_circ_op(&mut self, x: &mut [T], z: &[T]) {
-        let X = &mut self.work.workmat1;
-        let Z = &mut self.work.workmat2;
+        let X = &mut self.data.workmat1;
+        let Z = &mut self.data.workmat2;
 
         _svec_to_mat(X, x);
         _svec_to_mat(Z, z);
 
-        let λ = &self.work.λ;
+        let λ = &self.data.λ;
         let two: T = (2.).as_T();
         for i in 0..self.n {
             for j in 0..self.n {
@@ -318,10 +326,10 @@ where
             x,
             α,
             β,
-            &self.work.R,
-            &mut self.work.workmat1,
-            &mut self.work.workmat2,
-            &mut self.work.workmat3,
+            &self.data.R,
+            &mut self.data.workmat1,
+            &mut self.data.workmat2,
+            &mut self.data.workmat3,
         )
     }
 
@@ -332,10 +340,10 @@ where
             x,
             α,
             β,
-            &self.work.Rinv,
-            &mut self.work.workmat1,
-            &mut self.work.workmat2,
-            &mut self.work.workmat3,
+            &self.data.Rinv,
+            &mut self.data.workmat1,
+            &mut self.data.workmat2,
+            &mut self.data.workmat3,
         )
     }
 }
@@ -385,9 +393,9 @@ where
 {
     fn circ_op(&mut self, x: &mut [T], y: &[T], z: &[T]) {
         let (Y, Z, X) = (
-            &mut self.work.workmat1,
-            &mut self.work.workmat2,
-            &mut self.work.workmat3,
+            &mut self.data.workmat1,
+            &mut self.data.workmat2,
+            &mut self.data.workmat3,
         );
         _svec_to_mat(Y, y);
         _svec_to_mat(Z, z);

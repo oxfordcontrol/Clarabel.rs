@@ -37,7 +37,7 @@ where
             .build()
             .unwrap();
 
-        let factors = QDLDLFactorisation::<T>::new(KKT, Some(opts));
+        let factors = QDLDLFactorisation::<T>::new(KKT, Some(opts)).unwrap();
 
         Self { factors }
     }
@@ -71,8 +71,7 @@ where
         //QDLDL has maintained its own version of the permuted
         //KKT matrix through custom update/scale/offset methods,
         //so we ignore the KKT matrix provided by the caller
-        self.factors.refactor();
-
+        self.factors.refactor().unwrap();
         self.factors.Dinv.is_finite()
     }
 

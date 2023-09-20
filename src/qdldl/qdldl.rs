@@ -3,10 +3,27 @@ use crate::algebra::*;
 use core::cmp::{max, min};
 use derive_builder::Builder;
 use std::iter::zip;
+use thiserror::Error;
+
+/// Error codes returnable from [`QDLDLFactorisation`](QDLDLFactorisation) factor operations
+
+#[derive(Error, Debug)]
+pub enum QDLDLError {
+    #[error("Matrix dimension fields are incompatible")]
+    IncompatibleDimension,
+    #[error("Matrix has a zero column")]
+    EmptyColumn,
+    #[error("Matrix is not upper triangular")]
+    NotUpperTriangular,
+    #[error("Matrix factorization produced a zero pivot")]
+    ZeroPivot,
+    #[error("Invalid permutation vector")]
+    InvalidPermutation,
+}
 
 /// Required settings for [`QDLDLFactorisation`](QDLDLFactorisation)
 
-#[derive(Builder, Debug)]
+#[derive(Builder, Debug, Clone)]
 pub struct QDLDLSettings<T: FloatT> {
     #[builder(default = "1.0")]
     amd_dense_scale: f64,
@@ -33,7 +50,7 @@ where
     }
 }
 
-/// Performs $LDL^T$ factorization of a symmetric quasidefinite matrix.
+/// Performs $LDL^T$ factorization of a symmetric quasidefinite matrix
 
 #[derive(Debug)]
 pub struct QDLDLFactorisation<T = f64> {
@@ -57,7 +74,12 @@ impl<T> QDLDLFactorisation<T>
 where
     T: FloatT,
 {
-    pub fn new(Ain: &CscMatrix<T>, opts: Option<QDLDLSettings<T>>) -> QDLDLFactorisation<T> {
+    pub fn new(
+        Ain: &CscMatrix<T>,
+        opts: Option<QDLDLSettings<T>>,
+    ) -> Result<QDLDLFactorisation<T>, QDLDLError> {
+        //sanity check on structure
+        check_structure(Ain)?;
         _qdldl_new(Ain, opts)
     }
 
@@ -72,9 +94,7 @@ where
     // Solves in place (x replaces b)
     pub fn solve(&mut self, b: &mut [T]) {
         // bomb if logical factorisation only
-        if self.is_logical {
-            panic!("Can't solve with logical factorisation only");
-        }
+        assert!(!self.is_logical);
 
         // bomb if b is the wrong size
         assert_eq!(b.len(), self.D.len());
@@ -126,7 +146,7 @@ where
         }
     }
 
-    pub fn refactor(&mut self) {
+    pub fn refactor(&mut self) -> Result<(), QDLDLError> {
         // It never makes sense to call refactor for a logical
         // factorization since it will always be the same.  Calling
         // this function implies that we want a numerical factorization
@@ -137,15 +157,31 @@ where
             &mut self.Dinv,
             &mut self.workspace,
             self.is_logical,
-        );
+        )
     }
+}
+
+fn check_structure<T: FloatT>(A: &CscMatrix<T>) -> Result<(), QDLDLError> {
+    if !A.is_square() {
+        return Err(QDLDLError::IncompatibleDimension);
+    }
+
+    if !A.is_triu() {
+        return Err(QDLDLError::NotUpperTriangular);
+    }
+
+    //Error if A doesn't have at least one entry in every column
+    if !A.colptr.windows(2).all(|c| c[0] < c[1]) {
+        return Err(QDLDLError::EmptyColumn);
+    }
+
+    Ok(())
 }
 
 fn _qdldl_new<T: FloatT>(
     Ain: &CscMatrix<T>,
     opts: Option<QDLDLSettings<T>>,
-) -> QDLDLFactorisation<T> {
-    assert!(Ain.is_square());
+) -> Result<QDLDLFactorisation<T>, QDLDLError> {
     let n = Ain.nrows();
 
     //get default values if no options passed at all
@@ -156,7 +192,7 @@ fn _qdldl_new<T: FloatT>(
     //user would need to pass (0..n).collect() explicitly
     let (perm, iperm);
     if let Some(_perm) = opts.perm {
-        iperm = _invperm(&_perm);
+        iperm = _invperm(&_perm)?;
         perm = _perm;
     } else {
         (perm, iperm) = _get_amd_ordering(Ain, opts.amd_dense_scale);
@@ -183,7 +219,7 @@ fn _qdldl_new<T: FloatT>(
         opts.regularize_enable,
         opts.regularize_eps,
         opts.regularize_delta,
-    );
+    )?;
 
     //total nonzeros in factorization
     let sumLnz = workspace.Lnz.iter().sum();
@@ -196,9 +232,9 @@ fn _qdldl_new<T: FloatT>(
     let mut Dinv = vec![T::zero(); n];
 
     // factor the matrix into A = LDL^T
-    _factor(&mut L, &mut D, &mut Dinv, &mut workspace, opts.logical);
+    _factor(&mut L, &mut D, &mut Dinv, &mut workspace, opts.logical)?;
 
-    QDLDLFactorisation {
+    Ok(QDLDLFactorisation {
         perm,
         iperm,
         L,
@@ -206,7 +242,7 @@ fn _qdldl_new<T: FloatT>(
         Dinv,
         workspace,
         is_logical: opts.logical,
-    }
+    })
 }
 
 #[derive(Debug)]
@@ -253,7 +289,7 @@ where
         regularize_enable: bool,
         regularize_eps: T,
         regularize_delta: T,
-    ) -> Self {
+    ) -> Result<Self, QDLDLError> {
         let mut etree = vec![0; triuA.ncols()];
         let mut Lnz = vec![0; triuA.ncols()]; //nonzeros in each L column
         let mut iwork = vec![0; triuA.ncols() * 3];
@@ -268,8 +304,7 @@ where
             &mut iwork,
             &mut Lnz,
             &mut etree,
-        )
-        .unwrap();
+        )?;
 
         // positive inertia count.
         let positive_inertia = 0;
@@ -277,7 +312,7 @@ where
         // number of regularized entries in D. None to start
         let regularize_count = 0;
 
-        Self {
+        Ok(Self {
             etree,
             Lnz,
             iwork,
@@ -291,7 +326,7 @@ where
             regularize_eps,
             regularize_delta,
             regularize_count,
-        }
+        })
     }
 }
 
@@ -301,7 +336,7 @@ fn _factor<T: FloatT>(
     Dinv: &mut [T],
     workspace: &mut QDLDLWorkspace<T>,
     logical: bool,
-) {
+) -> Result<(), QDLDLError> {
     if logical {
         L.nzval.fill(T::zero());
         D.fill(T::zero());
@@ -332,12 +367,11 @@ fn _factor<T: FloatT>(
         workspace.regularize_eps,
         workspace.regularize_delta,
         &mut workspace.regularize_count,
-    );
+    )?;
 
-    if pos_d_count.is_err() {
-        panic!("Zero entry in D (matrix is not quasidefinite)");
-    }
-    workspace.positive_inertia = pos_d_count.unwrap();
+    workspace.positive_inertia = pos_d_count;
+
+    Ok(())
 }
 
 const QDLDL_UNKNOWN: usize = usize::MAX;
@@ -354,26 +388,17 @@ fn _etree(
     work: &mut [usize],
     Lnz: &mut [usize],
     etree: &mut [usize],
-) -> Result<usize, i8> {
+) -> Result<usize, QDLDLError> {
     // zero out Lnz and work.  Set all etree values to unknown
     work.fill(0);
     Lnz.fill(0);
     etree.fill(QDLDL_UNKNOWN);
-
-    //Abort if A doesn't have at least one entry in every column
-    if !Ap.windows(2).all(|c| c[0] < c[1]) {
-        return Err(-1);
-    }
 
     // compute the elimination tree
     for j in 0..n {
         work[j] = j;
         for istart in Ai.iter().take(Ap[j + 1]).skip(Ap[j]) {
             let mut i = *istart;
-
-            if i > j {
-                return Err(-1);
-            }
 
             while work[i] != j {
                 if etree[i] == QDLDL_UNKNOWN {
@@ -413,7 +438,7 @@ fn _factor_inner<T: FloatT>(
     regularize_eps: T,
     regularize_delta: T,
     regularize_count: &mut usize,
-) -> Result<usize, i8> {
+) -> Result<usize, QDLDLError> {
     *regularize_count = 0;
     let mut positiveValuesInD = 0;
 
@@ -451,7 +476,7 @@ fn _factor_inner<T: FloatT>(
         }
 
         if D[0] == T::zero() {
-            return Err(-1);
+            return Err(QDLDLError::ZeroPivot);
         }
         if D[0] > T::zero() {
             positiveValuesInD += 1;
@@ -580,7 +605,7 @@ fn _factor_inner<T: FloatT>(
         // in D.  If we hit a zero, we can't factor
         // this matrix, so abort
         if D[k] == T::zero() {
-            return Err(-1);
+            return Err(QDLDLError::ZeroPivot);
         }
         if D[k] > T::zero() {
             positiveValuesInD += 1;
@@ -674,17 +699,17 @@ fn _solve<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], Dinv: &[T], b: &mut [
 }
 
 // Construct an inverse permutation from a permutation
-fn _invperm(p: &[usize]) -> Vec<usize> {
+fn _invperm(p: &[usize]) -> Result<Vec<usize>, QDLDLError> {
     let mut b = vec![0; p.len()];
 
     for (i, j) in p.iter().enumerate() {
         if *j < p.len() && b[*j] == 0 {
             b[*j] = i;
         } else {
-            panic!("Input vector is not a permutation");
+            return Err(QDLDLError::InvalidPermutation);
         }
     }
-    b
+    Ok(b)
 }
 
 // internal permutation and inverse permutation
@@ -703,15 +728,7 @@ fn _ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
 // inverse permutation vector `iperm`."
 fn _permute_symmetric<T: FloatT>(A: &CscMatrix<T>, iperm: &[usize]) -> (CscMatrix<T>, Vec<usize>) {
     // perform a number of argument checks
-    let (m, n) = A.size();
-    if m != n {
-        panic!("Matrix A must be sparse and square")
-    };
-
-    if n != iperm.len() {
-        panic!("Dimensions of sparse matrix A must equal the length of iperm");
-    }
-
+    let (_m, n) = A.size();
     let mut P = CscMatrix::<T>::spalloc((n, n), A.nnz());
 
     // we will record a mapping of entries from A to PAPt

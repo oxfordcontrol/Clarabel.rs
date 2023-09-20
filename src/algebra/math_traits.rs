@@ -96,7 +96,10 @@ pub trait VectorMath {
     /// Standard Euclidian or 2-norm distance from `self` to `y`
     fn dist(&self, y: &Self) -> Self::T;
 
-    /// Sum of elements squared.
+    /// Sum of elements.
+    fn sum(&self) -> Self::T;
+
+    /// Sum of squares of the elements.
     fn sumsq(&self) -> Self::T;
 
     /// 2-norm

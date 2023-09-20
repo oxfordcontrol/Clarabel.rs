@@ -122,16 +122,11 @@ where
 
         // absolute and relative gaps
         self.gap_abs = T::abs(self.cost_primal - self.cost_dual);
-
-        if (self.cost_primal > T::zero()) && (self.cost_dual < T::zero()) {
-            self.gap_rel = T::max_value();
-        } else {
-            self.gap_rel = self.gap_abs
-                / T::max(
-                    T::one(),
-                    T::min(T::abs(self.cost_primal), T::abs(self.cost_dual)),
-                );
-        }
+        self.gap_rel = self.gap_abs
+            / T::max(
+                T::one(),
+                T::min(T::abs(self.cost_primal), T::abs(self.cost_dual)),
+            );
 
         // κ/τ
         self.ktratio = variables.κ / variables.τ;
@@ -308,7 +303,7 @@ where
         pinf_status: SolverStatus,
         dinf_status: SolverStatus,
     ) {
-        if self.ktratio < tol_ktratio && self.is_solved(tol_gap_abs, tol_gap_rel, tol_feas) {
+        if self.ktratio <= T::one() && self.is_solved(tol_gap_abs, tol_gap_rel, tol_feas) {
             self.status = solved_status;
         //PJG hardcoded factor 1000 here should be fixed
         } else if self.ktratio > tol_ktratio.recip() * (1000.0).as_T() {

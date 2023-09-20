@@ -1,6 +1,6 @@
 [package]
 name = "clarabel"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 rust-version = "1.60"
@@ -8,7 +8,7 @@ license = "Apache-2.0"
 description = "Clarabel Conic Interior Point Solver for Rust / Python"
 readme = "README.md"
 repository = "https://github.com/oxfordcontrol/Clarabel.rs"
-keywords = ["convex", "optimization", "QP", "SOCP", "SDP"]
+keywords = ["convex", "optimization", "conic", "solver", "linear-programming"]
 categories = ["mathematics"]
 
 #required for openssl to work on git actions
@@ -22,6 +22,7 @@ enum_dispatch  = "0.3.8"
 amd            = "0.2.2"
 thiserror      = "1.0"
 cfg-if         = "1.0"
+itertools      = "0.11"
 
 # -------------------------------
 # features

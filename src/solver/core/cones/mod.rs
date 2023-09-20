@@ -10,19 +10,20 @@ mod compositecone;
 mod supportedcone;
 // primitive cone types
 mod expcone;
+mod genpowcone;
 mod nonnegativecone;
 mod powcone;
 mod socone;
 mod zerocone;
 // partially specialized traits and blanket implementataions
-mod exppow_common;
+mod nonsymmetric_common;
 mod symmetric_common;
 
 //re-export everything to appear as one module
-use exppow_common::*;
+use nonsymmetric_common::*;
 pub use {
-    compositecone::*, expcone::*, nonnegativecone::*, powcone::*, socone::*, supportedcone::*,
-    symmetric_common::*, zerocone::*,
+    compositecone::*, expcone::*, genpowcone::*, nonnegativecone::*, powcone::*, socone::*,
+    supportedcone::*, symmetric_common::*, zerocone::*,
 };
 
 // only use PSD cones with SDP/Blas enabled
@@ -47,7 +48,14 @@ where
     fn degree(&self) -> usize;
     fn numel(&self) -> usize;
 
+    //Can the cone provide a sparse expanded representation?
+    fn is_sparse_expandable(&self) -> bool;
+
+    // is the cone symmetric?  NB: zero cone still reports true
     fn is_symmetric(&self) -> bool;
+
+    // report false here if only dual scaling is implemented (e.g. GenPowerCone)
+    fn allows_primal_dual_scaling(&self) -> bool;
 
     // converts an elementwise scaling into
     // a scaling that preserves cone memership
@@ -142,5 +150,5 @@ where
     ) -> (T, T);
 
     // return the barrier function at (z+αdz,s+αds)
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T;
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T;
 }

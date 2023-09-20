@@ -52,7 +52,7 @@ where
         // create cones with the given dims
         for t in types.iter() {
             //make a new cone
-            let cone = make_cone(*t);
+            let cone = make_cone(t);
 
             //update global problem symmetry
             _is_symmetric = _is_symmetric && cone.is_symmetric();
@@ -157,7 +157,7 @@ where
     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, SupportedCone<T>> {
         self.cones.iter_mut()
     }
-    pub(crate) fn type_count(&self, tag: SupportedConeTag) -> usize {
+    pub(crate) fn get_type_count(&self, tag: SupportedConeTag) -> usize {
         if self.type_counts.contains_key(&tag) {
             self.type_counts[&tag]
         } else {
@@ -180,6 +180,18 @@ where
 
     fn is_symmetric(&self) -> bool {
         self._is_symmetric
+    }
+
+    fn is_sparse_expandable(&self) -> bool {
+        //This should probably never be called
+        //self.cones.iter().any(|cone| cone.is_sparse_expandable())
+        unreachable!();
+    }
+
+    fn allows_primal_dual_scaling(&self) -> bool {
+        self.cones
+            .iter()
+            .all(|cone| cone.allows_primal_dual_scaling())
     }
 
     fn rectify_equilibration(&self, δ: &mut [T], e: &[T]) -> bool {
@@ -248,14 +260,7 @@ where
         //This function should probably never be called since
         //we only us it to interrogate the blocks, but we can
         //implement something reasonable anyway
-        let mut is_diag = true;
-        for cone in self.iter() {
-            is_diag &= cone.Hs_is_diagonal();
-            if !is_diag {
-                break;
-            }
-        }
-        is_diag
+        self.cones.iter().all(|cone| cone.Hs_is_diagonal())
     }
 
     #[allow(non_snake_case)]
@@ -348,9 +353,9 @@ where
         (α, α)
     }
 
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
-        for (cone, rng) in zip(&self.cones, &self.rng_cones) {
+        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             let zi = &z[rng.clone()];
             let si = &s[rng.clone()];
             let dzi = &dz[rng.clone()];

@@ -11,7 +11,7 @@ use crate::algebra::triangular_number;
 
 /// API type describing the type of a conic constraint.
 ///  
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum SupportedConeT<T> {
     /// The zero cone (used for equality constraints).
     ///
@@ -33,6 +33,14 @@ pub enum SupportedConeT<T> {
     ///
     /// The parameter indicates the power.
     PowerConeT(T),
+    /// The generalized power cone.
+    ///
+    /// The first vector of parameters supplies the nonnegative powers "alpha" of
+    /// the left-hand side of the constraint.  The second scalar parameter provides
+    /// the dimension of the 2-norm bounded vector in the right-hand side of the
+    /// constraint.   The "alpha" terms must sum to 1.
+    GenPowerConeT(Vec<T>, usize),
+
     /// The positive semidefinite cone in triangular form.
     ///
     /// The parameter indicates the matrix dimension, i.e. size = n
@@ -55,6 +63,7 @@ impl<T> SupportedConeT<T> {
             SupportedConeT::PowerConeT(_) => 3,
             #[cfg(feature = "sdp")]
             SupportedConeT::PSDTriangleConeT(dim) => triangular_number(*dim),
+            SupportedConeT::GenPowerConeT(α, dim2) => α.len() + *dim2,
         }
     }
 }
@@ -72,15 +81,18 @@ where
 // for the constraint types, and then map them through
 // make_cone to get the internal cone representations.
 
-pub fn make_cone<T: FloatT>(cone: SupportedConeT<T>) -> SupportedCone<T> {
+pub fn make_cone<T: FloatT>(cone: &SupportedConeT<T>) -> SupportedCone<T> {
     match cone {
-        SupportedConeT::NonnegativeConeT(dim) => NonnegativeCone::<T>::new(dim).into(),
-        SupportedConeT::ZeroConeT(dim) => ZeroCone::<T>::new(dim).into(),
-        SupportedConeT::SecondOrderConeT(dim) => SecondOrderCone::<T>::new(dim).into(),
+        SupportedConeT::NonnegativeConeT(dim) => NonnegativeCone::<T>::new(*dim).into(),
+        SupportedConeT::ZeroConeT(dim) => ZeroCone::<T>::new(*dim).into(),
+        SupportedConeT::SecondOrderConeT(dim) => SecondOrderCone::<T>::new(*dim).into(),
         SupportedConeT::ExponentialConeT() => ExponentialCone::<T>::new().into(),
-        SupportedConeT::PowerConeT(α) => PowerCone::<T>::new(α).into(),
+        SupportedConeT::PowerConeT(α) => PowerCone::<T>::new(*α).into(),
+        SupportedConeT::GenPowerConeT(α, dim2) => {
+            GenPowerCone::<T>::new((*α).clone(), *dim2).into()
+        }
         #[cfg(feature = "sdp")]
-        SupportedConeT::PSDTriangleConeT(dim) => PSDTriangleCone::<T>::new(dim).into(),
+        SupportedConeT::PSDTriangleConeT(dim) => PSDTriangleCone::<T>::new(*dim).into(),
     }
 }
 
@@ -101,16 +113,13 @@ where
     SecondOrderCone(SecondOrderCone<T>),
     ExponentialCone(ExponentialCone<T>),
     PowerCone(PowerCone<T>),
+    GenPowerCone(GenPowerCone<T>),
     #[cfg(feature = "sdp")]
     PSDTriangleCone(PSDTriangleCone<T>),
 }
 
-// we put PSDTriangleCone in a Box above since it is by the
-// largest enum variant.   We need some auto dereferencing
-// for it so that it behaves like the other variants
-
 // -------------------------------------
-// Finally, we need a tagging enum with no data fields to act
+// we need a tagging enum with no data fields to act
 // as a bridge between the SupportedConeT API types and the
 // internal SupportedCone enum_dispatch wrapper.   This enum
 // has no data attached at all, so we can just convert to a u8.
@@ -129,6 +138,7 @@ pub(crate) enum SupportedConeTag {
     SecondOrderCone,
     ExponentialCone,
     PowerCone,
+    GenPowerCone,
     #[cfg(feature = "sdp")]
     PSDTriangleCone,
 }
@@ -148,6 +158,7 @@ impl<T> SupportedConeAsTag for SupportedConeT<T> {
             SupportedConeT::PowerConeT(_) => SupportedConeTag::PowerCone,
             #[cfg(feature = "sdp")]
             SupportedConeT::PSDTriangleConeT(_) => SupportedConeTag::PSDTriangleCone,
+            SupportedConeT::GenPowerConeT(_, _) => SupportedConeTag::GenPowerCone,
         }
     }
 }
@@ -163,6 +174,7 @@ impl<T: FloatT> SupportedConeAsTag for SupportedCone<T> {
             SupportedCone::PowerCone(_) => SupportedConeTag::PowerCone,
             #[cfg(feature = "sdp")]
             SupportedCone::PSDTriangleCone(_) => SupportedConeTag::PSDTriangleCone,
+            SupportedCone::GenPowerCone(_) => SupportedConeTag::GenPowerCone,
         }
     }
 }
@@ -178,6 +190,7 @@ impl SupportedConeTag {
             SupportedConeTag::PowerCone => "PowerCone",
             #[cfg(feature = "sdp")]
             SupportedConeTag::PSDTriangleCone => "PSDTriangleCone",
+            SupportedConeTag::GenPowerCone => "GenPowerCone",
         }
     }
 }

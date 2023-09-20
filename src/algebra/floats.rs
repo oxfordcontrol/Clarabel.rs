@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use num_traits::{Float, FloatConst, FromPrimitive, NumAssign};
 use std::fmt::{Debug, Display, LowerExp};
 
@@ -79,8 +80,6 @@ cfg_if::cfg_if! {
 // NB: `AsFloatT` is a convenience trait for f32/64 and u32/64
 // so that we can do things like (2.0).as_T() everywhere on
 // constants, rather than the awful T::from_f32(2.0).unwrap()
-
-#[allow(non_snake_case)]
 pub trait AsFloatT<T>: 'static {
     fn as_T(&self) -> T;
 }

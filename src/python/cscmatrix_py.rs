@@ -17,6 +17,11 @@ impl Deref for PyCscMatrix {
         &self.0
     }
 }
+impl From<PyCscMatrix> for CscMatrix<f64> {
+    fn from(mat: PyCscMatrix) -> Self {
+        mat.0
+    }
+}
 
 impl<'a> FromPyObject<'a> for PyCscMatrix {
     fn extract(obj: &'a PyAny) -> PyResult<Self> {

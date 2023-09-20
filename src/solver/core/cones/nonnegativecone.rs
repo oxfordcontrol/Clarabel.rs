@@ -3,13 +3,14 @@ use crate::{
     algebra::*,
     solver::{core::ScalingStrategy, CoreSettings},
 };
+use itertools::izip;
 use std::iter::zip;
 
 // -------------------------------------
 // Nonnegative Cone
 // -------------------------------------
 
-pub struct NonnegativeCone<T: FloatT = f64> {
+pub struct NonnegativeCone<T> {
     dim: usize,
     w: Vec<T>,
     λ: Vec<T>,
@@ -44,6 +45,14 @@ where
         true
     }
 
+    fn is_sparse_expandable(&self) -> bool {
+        false
+    }
+
+    fn allows_primal_dual_scaling(&self) -> bool {
+        true
+    }
+
     fn rectify_equilibration(&self, δ: &mut [T], _e: &[T]) -> bool {
         δ.set(T::one());
         false
@@ -75,7 +84,7 @@ where
         _μ: T,
         _scaling_strategy: ScalingStrategy,
     ) -> bool {
-        for ((λ, w), (s, z)) in zip(zip(&mut self.λ, &mut self.w), zip(s, z)) {
+        for (λ, w, s, z) in izip!(&mut self.λ, &mut self.w, s, z) {
             *λ = T::sqrt((*s) * (*z));
             *w = T::sqrt((*s) / (*z));
         }
@@ -146,12 +155,12 @@ where
         (αz, αs)
     }
 
-    fn compute_barrier(&self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         assert_eq!(z.len(), s.len());
         assert_eq!(dz.len(), z.len());
         assert_eq!(ds.len(), s.len());
         let mut barrier = T::zero();
-        for ((&s, &ds), (&z, &dz)) in zip(zip(s, ds), zip(z, dz)) {
+        for (&s, &ds, &z, &dz) in izip!(s, ds, z, dz) {
             let si = s + α * ds;
             let zi = z + α * dz;
             barrier += (si * zi).logsafe();

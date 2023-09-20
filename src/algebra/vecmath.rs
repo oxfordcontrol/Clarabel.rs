@@ -1,4 +1,5 @@
 use super::{FloatT, ScalarMath, VectorMath};
+use itertools::izip;
 use std::iter::zip;
 
 impl<T: FloatT> VectorMath for [T] {
@@ -88,7 +89,7 @@ impl<T: FloatT> VectorMath for [T] {
         assert_eq!(s.len(), ds.len());
 
         let mut out = T::zero();
-        for ((&s, &ds), (&z, &dz)) in zip(zip(s, ds), zip(z, dz)) {
+        for (&s, &ds, &z, &dz) in izip!(s, ds, z, dz) {
             let si = s + α * ds;
             let zi = z + α * dz;
             out += si * zi;
@@ -99,6 +100,10 @@ impl<T: FloatT> VectorMath for [T] {
     fn dist(&self, y: &Self) -> T {
         let dist2 = zip(self, y).fold(T::zero(), |acc, (&x, &y)| acc + T::powi(x - y, 2));
         T::sqrt(dist2)
+    }
+
+    fn sum(&self) -> T {
+        self.iter().fold(T::zero(), |acc, &x| acc + x)
     }
 
     fn sumsq(&self) -> T {
