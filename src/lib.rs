@@ -38,7 +38,7 @@
 //!
 //! ## Features
 //!
-//! * __Versatile__: Clarabel.rs solves linear programs (LPs), quadratic programs (QPs) and second-order cone programs (SOCPs).  Future versions will provide support for problems involving positive semidefinite, exponential and power cones.
+//! * __Versatile__: Clarabel.rs solves linear programs (LPs), quadratic programs (QPs), second-order cone programs (SOCPs) and semidefinite programs (SDPs). It also solves problems with exponential, power cone and generalized power cone constraints.
 //!
 //! * __Quadratic objectives__: Unlike interior point solvers based on the standard homogeneous self-dual embedding (HSDE), Clarabel.rs handles quadratic objectives without requiring any epigraphical reformulation of the objective.   It can therefore be significantly faster than other HSDE-based solvers for problems with quadratic objective functions.
 //!
