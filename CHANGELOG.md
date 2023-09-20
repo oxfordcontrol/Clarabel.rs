@@ -13,8 +13,8 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 This version introduces support for the generalized power cone and implements stability and speed improvements for SOC problems.  SOCs with
 dimension less than or equal to 4 are now treated as special cases with dense Hessian blocks.
 
-- Introduces support for the generalized power cone and implements stability and speed improvements for SOC problems.  
-- SOCs with dimension less than or equal to 4 are now treated as special cases with dense Hessian blocks.
+- Introduces support for the generalized power cone. 
+- Implements stability and speed improvements for SOC problems.  SOCs with dimension less than or equal to 4 are now treated as special cases with dense Hessian blocks.
 - Fixes bad initialization point for non-quadratic objectives 
 - Improved convergence speed for QPs with no constraints or only ZeroCone constraints.
 - Internal code restructuring for cones with sparsifiable Hessian blocks.
