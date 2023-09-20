@@ -94,7 +94,7 @@ where
     // Solves in place (x replaces b)
     pub fn solve(&mut self, b: &mut [T]) {
         // bomb if logical factorisation only
-        assert!(self.is_logical);
+        assert!(!self.is_logical);
 
         // bomb if b is the wrong size
         assert_eq!(b.len(), self.D.len());
