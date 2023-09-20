@@ -5,6 +5,8 @@ use derive_builder::Builder;
 use std::iter::zip;
 use thiserror::Error;
 
+/// Error codes returnable from [`QDLDLFactorisation`](QDLDLFactorisation) factor operations
+
 #[derive(Error, Debug)]
 pub enum QDLDLError {
     #[error("Matrix dimension fields are incompatible")]
@@ -48,7 +50,7 @@ where
     }
 }
 
-/// Performs $LDL^T$ factorization of a symmetric quasidefinite matrix.
+/// Performs $LDL^T$ factorization of a symmetric quasidefinite matrix
 
 #[derive(Debug)]
 pub struct QDLDLFactorisation<T = f64> {
