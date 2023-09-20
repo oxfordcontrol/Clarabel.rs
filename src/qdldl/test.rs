@@ -32,23 +32,20 @@ fn inf_norm_diff<T: FloatT>(a: &[T], b: &[T]) -> T {
 #[test]
 fn test_invperm() {
     let perm = vec![3, 0, 2, 1];
-    let iperm = _invperm(&perm);
-    assert_eq!(iperm, vec![1, 3, 2, 0]);
+    assert!(_invperm(&perm).is_ok())
 }
 
 //test fail on bad permutation
 #[test]
-#[should_panic]
-fn test_invperm_bad_perm_panic1() {
+fn test_invperm_bad_perm1() {
     let perm = vec![3, 0, 2, 0]; //repeated index
-    _invperm(&perm);
+    assert!(_invperm(&perm).is_err())
 }
 
 #[test]
-#[should_panic]
-fn test_invperm_bad_perm_panic2() {
+fn test_invperm_bad_perm2() {
     let perm = vec![4, 0, 2, 1]; //index too big
-    _invperm(&perm);
+    assert!(_invperm(&perm).is_err())
 }
 
 #[test]
@@ -160,7 +157,7 @@ fn test_permute_symmetric() {
     }
 
     let perm: Vec<usize> = vec![2, 3, 0, 1];
-    let iperm = _invperm(&perm);
+    let iperm = _invperm(&perm).unwrap();
     let (P, _) = _permute_symmetric(&A, &iperm);
 
     assert_eq!(&P.colptr, &vec![0, 1, 3, 5, 8]);
@@ -206,7 +203,7 @@ fn test_solve_basic() {
         .build()
         .unwrap();
 
-    let mut factors = QDLDLFactorisation::new(&A, Some(opts));
+    let mut factors = QDLDLFactorisation::new(&A, Some(opts)).unwrap();
     let x = [1., -2., 3., -4.];
     let mut b = [20.0, -22.0, 32.0, -7.0];
     //solves in place
@@ -214,7 +211,7 @@ fn test_solve_basic() {
     assert!(inf_norm_diff(&x, &b) <= 1e-8);
 
     //now with all defaults, including amd
-    let mut factors = QDLDLFactorisation::new(&A, None);
+    let mut factors = QDLDLFactorisation::new(&A, None).unwrap();
     let x = [1., -2., 3., -4.];
     let mut b = [20.0, -22.0, 32.0, -7.0];
     //solves in place
@@ -226,7 +223,7 @@ fn test_solve_basic() {
         .perm(vec![3, 0, 2, 1])
         .build()
         .unwrap();
-    let mut factors = QDLDLFactorisation::new(&A, Some(opts));
+    let mut factors = QDLDLFactorisation::new(&A, Some(opts)).unwrap();
     let x = [1., -2., 3., -4.];
     let mut b = [20.0, -22.0, 32.0, -7.0];
     //solves in place
@@ -244,10 +241,10 @@ fn test_solve_logical() {
         .build()
         .unwrap();
 
-    let mut factors = QDLDLFactorisation::new(&A, Some(opts));
+    let mut factors = QDLDLFactorisation::new(&A, Some(opts)).unwrap();
     let mut b = [20.0, -22.0, 32.0, -7.0];
     //solves in place
-    factors.solve(&mut b);
+    factors.solve(&mut b); //should panic
 }
 
 #[test]
@@ -259,11 +256,65 @@ fn test_solve_logical_refactor() {
         .build()
         .unwrap();
 
-    let mut factors = QDLDLFactorisation::new(&A, Some(opts));
+    let mut factors = QDLDLFactorisation::new(&A, Some(opts)).unwrap();
     let x = [1., -2., 3., -4.];
     let mut b = [20.0, -22.0, 32.0, -7.0];
     //solves in place
-    factors.refactor();
+    assert!(factors.refactor().is_ok());
     factors.solve(&mut b);
     assert!(inf_norm_diff(&x, &b) <= 1e-8);
+}
+
+#[test]
+fn test_bad_numeric_pivot() {
+    //Disable regularization to force an exact zero pivot
+    let opts = QDLDLSettingsBuilder::default()
+        .regularize_enable(false)
+        .build()
+        .unwrap();
+
+    //set the first element of A to zero (top left)
+    let mut A = test_matrix_4x4();
+    A.nzval[0] = 0.;
+    assert!(QDLDLFactorisation::new(&A, Some(opts.clone())).is_err());
+
+    //set the final element of A to zero (top left)
+    let mut A = test_matrix_4x4();
+    *A.nzval.last_mut().unwrap() = 0.;
+    assert!(QDLDLFactorisation::new(&A, Some(opts)).is_err());
+}
+
+#[test]
+fn test_lower_triangular() {
+    //create a matrix with a logical zero on the diagonal
+    let opts = QDLDLSettingsBuilder::default()
+        .logical(true)
+        .build()
+        .unwrap();
+
+    let A = CscMatrix::from(&[
+        //
+        [1.0, 3.0, 5.0],
+        [2.0, 3.0, 6.0],
+        [1.0, 4.0, 7.0],
+    ]);
+    assert!(QDLDLFactorisation::new(&A, Some(opts)).is_err());
+}
+
+#[test]
+fn test_zero_column_error() {
+    //create a matrix with a logical zero on the diagonal
+    let opts = QDLDLSettingsBuilder::default()
+        .logical(true)
+        .build()
+        .unwrap();
+
+    let A = CscMatrix::from(&[
+        //
+        [1.0, 0.0, 5.0],
+        [0.0, 0.0, 6.0],
+        [1.0, 0.0, 7.0],
+    ]);
+
+    assert!(QDLDLFactorisation::new(&A, Some(opts)).is_err());
 }
