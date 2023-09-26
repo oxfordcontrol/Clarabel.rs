@@ -90,7 +90,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: --release -i python${{ env.PYTHON_VERSION }} --universal2 --out dist --features "python" 
+          args: --release -i python${{ env.PYTHON_VERSION }} --universal2-apple-darwin --out dist --features "python" 
 
       - name: Install and test built wheel - universal2
         run: |
