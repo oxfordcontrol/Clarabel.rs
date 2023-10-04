@@ -110,20 +110,20 @@ where
     // functions relating to unit vectors and cone initialization
     fn margins(&mut self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         let α: T;
-        let e: &[T];
+        let β: T;
 
         if z.is_empty() {
             α = T::max_value();
-            e = &[T::zero(); 0];
+            β = T::zero();
         } else {
             let Z = &mut self.data.workmat1;
             _svec_to_mat(Z, z);
             self.data.Eig.eigvals(Z).expect("Eigval error");
-            e = &self.data.Eig.λ;
+            let e = &self.data.Eig.λ;
             α = e.minimum();
+            β = e.iter().fold(T::zero(), |s, x| s + T::max(*x, T::zero())); //= sum(e[e.>0])
         }
 
-        let β = e.iter().fold(T::zero(), |s, x| s + T::max(*x, T::zero())); //= sum(e[e.>0])
         (α, β)
     }
 
