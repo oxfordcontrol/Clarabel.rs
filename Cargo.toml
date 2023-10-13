@@ -30,6 +30,8 @@ itertools      = "0.11"
 
 [features]
 
+default = ["faer-sparse"]  #EXPERIMENTAL
+
 # enables blas/lapack for SDP support, with blas/lapack src unspecified
 sdp = ["blas","lapack"]
 
@@ -49,6 +51,10 @@ julia = ["sdp", "dep:libc", "dep:num-derive", "dep:serde", "dep:serde_json"]
 # enable a blas/lapack source package 
 python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive"]
 
+#EXPERIMENTAL
+
+#compile with faer supernodal solver option
+faer-sparse    = ["dep:faer-sparse-experimental", "dep:faer-core", "dep:dyn-stack"]
 
 # -------------------------------
 # blas / lapack configuration
@@ -69,6 +75,24 @@ optional = true
 [dependencies.lapack-src]
 version = "0.9"
 optional = true 
+
+
+# EXPERIMENTAL faer sparse solver dependencies
+
+[dependencies.faer-sparse-experimental]
+version = "0.12"
+optional = true 
+path = "../faer-rs/faer-sparse-experimental"
+
+[dependencies.faer-core]
+version = "0.12"
+optional = true 
+path = "../faer-rs/faer-core"
+
+[dependencies.dyn-stack]
+version = "0.9.1"
+optional = true 
+
 
 
 # -------------------------------
@@ -103,6 +127,12 @@ path = "examples/rust/example_box.rs"
 name = "sdp"
 path = "examples/rust/example_sdp.rs"
 required-features = ["sdp"]
+
+[[example]]
+name = "qp_faer"
+path = "examples/rust/example_qp_faer.rs"
+required-features = ["faer-sparse"]
+
 
 
 
