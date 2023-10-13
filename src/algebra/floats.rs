@@ -10,6 +10,7 @@ use crate::algebra::dense::BlasFloatT;
 /// This trait defines a subset of bounds for `FloatT`, which is preferred
 /// throughout for use in the solver.  When the "sdp" feature is enabled,
 /// `FloatT` is additionally restricted to f32/f64 types supported by BLAS.
+/// #PJG: are repeated bounds needed here?
 pub trait CoreFloatT:
     'static
     + Send
@@ -40,34 +41,41 @@ impl<T> CoreFloatT for T where
 {
 }
 
-// if "sdp" is enabled, we must add an additional trait
-// trait bound to restrict compilation for f32/f64 types
-// since there is no BLAS support otherwise
-
-cfg_if::cfg_if! {
-    if #[cfg(not(feature="sdp"))] {
-    /// Main trait for floating point types used in the Clarabel solver.
-    ///
-    /// All floating point calculations in Clarabel are represented internally on values
-    /// implementing the `FloatT` trait, with implementations provided only for f32 and f64
-    /// native types when compiled with BLAS/LAPACK support for SDPs. If SDP support is not
-    /// enabled then it should be possible to compile Clarabel to support any any other
-    /// floating point type provided that it satisfies the trait bounds of `CoreFloatT`.
-    ///
-    /// `FloatT` relies on [`num_traits`](num_traits) for most of its constituent trait bounds.
-        pub trait FloatT: CoreFloatT {}
-    } else{
-        pub trait FloatT: CoreFloatT + BlasFloatT {}
-    }
-}
-
+// additional traits that add optional bounds to CoreFloatT
+// when optional dependencies are enabled
 cfg_if::cfg_if! {
     if #[cfg(feature="sdp")] {
-        impl<T> FloatT for T where T: CoreFloatT + BlasFloatT {}
-    } else{
-        impl<T> FloatT for T where T: CoreFloatT {}
+        pub trait MaybeBlasFloatT : BlasFloatT {}
+        impl<T> MaybeBlasFloatT for T where T: BlasFloatT {}
+    }
+    else {
+        pub trait MaybeBlasFloatT {}
+        impl<T> MaybeBlasFloatT for T {}
     }
 }
+
+cfg_if::cfg_if! {
+    if #[cfg(feature="faer-sparse")] {
+        pub trait MaybeFaerFloatT : faer_core::Entity {}
+        impl<T> MaybeFaerFloatT for T where T: faer_core::Entity  {}
+    }
+    else {
+        pub trait MaybeFaerFloatT {}
+        impl<T> MaybeFaerFloatT for T {}
+    }
+}
+
+/// Main trait for floating point types used in the Clarabel solver.
+///
+/// All floating point calculations in Clarabel are represented internally on values
+/// implementing the `FloatT` trait, with implementations provided only for f32 and f64
+/// native types when compiled with BLAS/LAPACK support for SDPs. If SDP support is not
+/// enabled then it should be possible to compile Clarabel to support any any other
+/// floating point type provided that it satisfies the trait bounds of `CoreFloatT`.
+///
+/// `FloatT` relies on [`num_traits`](num_traits) for most of its constituent trait bounds.
+pub trait FloatT: CoreFloatT + MaybeBlasFloatT + MaybeFaerFloatT {}
+impl<T> FloatT for T where T: CoreFloatT + MaybeBlasFloatT + MaybeFaerFloatT {}
 
 /// Trait for convering Rust primitives to [`FloatT`](crate::algebra::FloatT)
 ///
