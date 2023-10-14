@@ -4,7 +4,6 @@ Cargo.lock
 .vscode
 .env*
 /env
-notes*.txt
 /dist
 __pycache__
 *.so*
