@@ -90,7 +90,7 @@ optional = true
 path = "../faer-rs/faer-core"
 
 [dependencies.dyn-stack]
-version = "0.9.1"
+version = "0.10"
 optional = true 
 
 
@@ -128,11 +128,17 @@ name = "sdp"
 path = "examples/rust/example_sdp.rs"
 required-features = ["sdp"]
 
+#EXPERIMENTAL
+
 [[example]]
 name = "qp_faer"
 path = "examples/rust/example_qp_faer.rs"
 required-features = ["faer-sparse"]
 
+[[example]]
+name = "box_faer"
+path = "examples/rust/example_box_faer.rs"
+required-features = ["faer-sparse"]
 
 
 
