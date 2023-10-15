@@ -13,6 +13,8 @@ use faer_sparse_experimental::{
 };
 
 pub struct FaerDirectLDLSolver<T> {
+    col_ptr: Vec<i64>,
+    row_ind: Vec<i64>,
     symbolic: SymbolicCholesky<i64>,
     ld_vals: Vec<T>,
     work: GlobalPodBuffer,
@@ -35,6 +37,7 @@ where
         let row_ind: Vec<i64> = KKT.rowval.iter().map(|&x| x as i64).collect();
 
         let symbmat = SymbolicSparseColMatRef::new_checked(n, n, &col_ptr, None, &row_ind);
+
         let symbolic =
             factorize_symbolic(symbmat, Side::Upper, CholeskySymbolicParams::default()).unwrap();
         let ld_vals = vec![T::zero(); symbolic.len_values()];
@@ -58,6 +61,8 @@ where
         let work = GlobalPodBuffer::try_new(scratch_memory).unwrap();
 
         Self {
+            col_ptr,
+            row_ind,
             symbolic,
             ld_vals,
             work,
@@ -86,42 +91,46 @@ where
         // NB: faer solves in place
         x.copy_from(b);
 
-        // PJG: problem here - not clear what bounds are required on T
-        let tmp = SliceGroup::<T>::new(&self.ld_vals);
+        let ld_vals = SliceGroup::<T>::new(&*self.ld_vals);
+        let ldlt = LdltRef::new(&self.symbolic, ld_vals);
 
-        let ldlt = LdltRef::new(&self.symbolic, tmp);
-        // let rhs = MatMut::from_column_major_slice(x, x.len(), 1);
-        // ldlt.dense_solve_in_place_with_conj(
-        //     rhs,
-        //     Conj::No,
-        //     Parallelism::None,
-        //     PodStack::new(&mut self.work),
-        // );
+        let rhs = MatMut::from_column_major_slice(x, b.len(), 1);
+        ldlt.dense_solve_in_place_with_conj(
+            rhs,
+            Conj::No,
+            Parallelism::None,
+            PodStack::new(&mut self.work),
+        );
     }
 
     fn refactor(&mut self, kkt: &CscMatrix<T>) -> bool {
-        //let kkt_values = &kkt.nzval;
+        let kkt_values = &kkt.nzval;
 
-        //let a = SparseColMatRef::new(self.symbmat, SliceGroup::<T>::new(kkt_values));
+        let n = kkt.ncols();
 
-        //PJG: I don't want to recreate the regularizer here since I don't
-        //have direct access to the settings when refactoring.   Would be
-        //better if the regularizer was created once and then storeds with
-        //the struct.
-        // let regularizer = LdltRegularization {
-        //     dynamic_regularization_signs: Some(&self.Dsigns),
-        //     dynamic_regularization_delta: 1e-8,
-        //     dynamic_regularization_epsilon: 1e-13,
-        // };
+        let symbmat =
+            SymbolicSparseColMatRef::new_checked(n, n, &self.col_ptr, None, &self.row_ind);
 
-        // self.symbolic.factorize_numeric_ldlt(
-        //     SliceGroupMut::<T>::new(&mut self.ld_vals),
-        //     a,
-        //     Side::Upper,
-        //     regularizer,
-        //     Parallelism::None,
-        //     PodStack::new(&mut self.work),
-        // );
+        let a = SparseColMatRef::new(symbmat, SliceGroup::<T>::new(kkt_values));
+
+        // PJG: I don't want to recreate the regularizer here since I don't
+        // have direct access to the settings when refactoring.   Would be
+        // better if the regularizer was created once and then storeds with
+        // the struct.
+        let regularizer = LdltRegularization {
+            dynamic_regularization_signs: Some(&self.Dsigns),
+            dynamic_regularization_delta: (1e-8).as_T(),
+            dynamic_regularization_epsilon: (1e-13).as_T(),
+        };
+
+        self.symbolic.factorize_numeric_ldlt(
+            SliceGroupMut::<T>::new(&mut self.ld_vals),
+            a,
+            Side::Upper,
+            regularizer,
+            Parallelism::None,
+            PodStack::new(&mut self.work),
+        );
 
         true // assume success for experimental purposes
     }
