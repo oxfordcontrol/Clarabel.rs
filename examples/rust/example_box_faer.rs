@@ -3,7 +3,7 @@ use clarabel::algebra::*;
 use clarabel::solver::*;
 
 fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
-    let n = 20000;
+    let n = 200;
 
     let P = CscMatrix::identity(n);
 
@@ -29,10 +29,13 @@ fn main() {
         .direct_solve_method("faer-sparse".to_owned())
         .equilibrate_enable(true)
         .max_iter(50)
+        .verbose(true)
         .build()
         .unwrap();
 
     let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
 
     solver.solve();
+
+    solver.timers.unwrap().print();
 }

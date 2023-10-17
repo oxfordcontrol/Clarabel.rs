@@ -9,7 +9,8 @@ use crate::solver::core::CoreSettings;
 use dyn_stack::{GlobalPodBuffer, PodStack};
 use faer_core::{ComplexField, Conj, Entity, MatMut, Parallelism};
 use faer_sparse_experimental::{
-    cholesky::*, Side, SliceGroup, SliceGroupMut, SparseColMatRef, SymbolicSparseColMatRef,
+    cholesky::{supernodal::SupernodalLdltRef, *},
+    Side, SliceGroup, SliceGroupMut, SparseColMatRef, SymbolicSparseColMatRef,
 };
 
 pub struct FaerDirectLDLSolver<T> {
@@ -38,8 +39,12 @@ where
 
         let symbmat = SymbolicSparseColMatRef::new_checked(n, n, &col_ptr, None, &row_ind);
 
-        let symbolic =
-            factorize_symbolic(symbmat, Side::Upper, CholeskySymbolicParams::default()).unwrap();
+        let params = CholeskySymbolicParams {
+            //supernodal_flop_ratio_threshold: 00000000000.0, // always supernodal
+            ..Default::default()
+        };
+
+        let symbolic = factorize_symbolic(symbmat, Side::Upper, params).unwrap();
         let ld_vals = vec![T::zero(); symbolic.len_values()];
 
         //PJG: I don't really want to take a copy of the Dsigns here, but
@@ -48,12 +53,12 @@ where
 
         let regularizer: LdltRegularization<T> = LdltRegularization {
             dynamic_regularization_signs: Some(&Dsigns.to_vec()),
-            dynamic_regularization_delta: settings.dynamic_regularization_delta,
-            dynamic_regularization_epsilon: settings.dynamic_regularization_eps,
+            dynamic_regularization_delta: (2e-7).as_T(),
+            dynamic_regularization_epsilon: (1e-13).as_T(),
         };
 
         let scratch_memory = symbolic
-            .factorize_numeric_ldlt_req::<T>(false, Parallelism::None)
+            .factorize_numeric_ldlt_req::<T>(true, Parallelism::None)
             .unwrap()
             .try_or(symbolic.dense_solve_in_place_req::<T>(1).unwrap())
             .unwrap();
@@ -88,40 +93,51 @@ where
     }
 
     fn solve(&mut self, x: &mut [T], b: &[T]) {
+        //dbg!(b);
+
         // NB: faer solves in place
         x.copy_from(b);
 
         let ld_vals = SliceGroup::<T>::new(&*self.ld_vals);
         let ldlt = LdltRef::new(&self.symbolic, ld_vals);
 
-        let rhs = MatMut::from_column_major_slice(x, b.len(), 1);
+        let symbolic = &self.symbolic;
+
+        let rhs = MatMut::from_column_major_slice(&mut x[0..], b.len(), 1);
         ldlt.dense_solve_in_place_with_conj(
             rhs,
             Conj::No,
             Parallelism::None,
             PodStack::new(&mut self.work),
         );
+
+        //dbg!(x);
     }
 
     fn refactor(&mut self, kkt: &CscMatrix<T>) -> bool {
+        //dbg!(kkt);
+
         let kkt_values = &kkt.nzval;
 
         let n = kkt.ncols();
 
-        let symbmat =
-            SymbolicSparseColMatRef::new_checked(n, n, &self.col_ptr, None, &self.row_ind);
-
+        let symbmat = unsafe {
+            SymbolicSparseColMatRef::new_unchecked(n, n, &self.col_ptr, None, &self.row_ind)
+        };
         let a = SparseColMatRef::new(symbmat, SliceGroup::<T>::new(kkt_values));
 
         // PJG: I don't want to recreate the regularizer here since I don't
         // have direct access to the settings when refactoring.   Would be
-        // better if the regularizer was created once and then storeds with
+        // better if the regularizer was created once and then stored with
         // the struct.
         let regularizer = LdltRegularization {
             dynamic_regularization_signs: Some(&self.Dsigns),
-            dynamic_regularization_delta: (1e-8).as_T(),
+            dynamic_regularization_delta: (2e-7).as_T(),
             dynamic_regularization_epsilon: (1e-13).as_T(),
         };
+
+        //self.work.fill(0);
+        self.ld_vals.fill(T::zero());
 
         self.symbolic.factorize_numeric_ldlt(
             SliceGroupMut::<T>::new(&mut self.ld_vals),
@@ -131,6 +147,8 @@ where
             Parallelism::None,
             PodStack::new(&mut self.work),
         );
+
+        let ld_vals = SliceGroup::<T>::new(&*self.ld_vals);
 
         true // assume success for experimental purposes
     }
