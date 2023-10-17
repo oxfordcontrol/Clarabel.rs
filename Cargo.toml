@@ -80,12 +80,12 @@ optional = true
 # EXPERIMENTAL faer sparse solver dependencies
 
 [dependencies.faer-sparse-experimental]
-version = "0.12"
+version = "0.13"
 optional = true 
 path = "../faer-rs/faer-sparse-experimental"
 
 [dependencies.faer-core]
-version = "0.12"
+version = "0.13"
 optional = true 
 path = "../faer-rs/faer-core"
 
@@ -138,6 +138,16 @@ required-features = ["faer-sparse"]
 [[example]]
 name = "box_faer"
 path = "examples/rust/example_box_faer.rs"
+required-features = ["faer-sparse"]
+
+[[example]]
+name = "broken"
+path = "examples/rust/example_broken.rs"
+required-features = ["faer-sparse"]
+
+[[example]]
+name = "debug"
+path = "examples/rust/example_debug_rs.rs"
 required-features = ["faer-sparse"]
 
 
