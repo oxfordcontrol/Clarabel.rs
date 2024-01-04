@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use super::{cones::CompositeCone, CoreSettings};
 use crate::algebra::*;
 
@@ -12,4 +13,6 @@ pub trait KKTSolver<T: FloatT> {
         z: Option<&mut [T]>,
         settings: &CoreSettings<T>,
     ) -> bool;
+    fn update_P(&mut self, P: &CscMatrix<T>);
+    fn update_A(&mut self, A: &CscMatrix<T>);
 }

@@ -119,6 +119,7 @@ where
 
     // populate values from M using the self.colptr as indicator of
     // next fill location in each row.
+    #[allow(clippy::needless_range_loop)]
     pub(crate) fn fill_block(
         &mut self,
         M: &CscMatrix<T>,
@@ -128,29 +129,28 @@ where
         shape: MatrixShape,
     ) {
         for i in 0..M.n {
-            let z = zip(&M.rowval, &M.nzval);
             let start = M.colptr[i];
             let stop = M.colptr[i + 1];
 
-            for (j, (&Mrow, &Mval)) in z.take(stop).skip(start).enumerate() {
+            for j in start..stop {
                 let (col, row);
 
                 match shape {
                     MatrixShape::T => {
-                        col = Mrow + initcol;
+                        col = M.rowval[j] + initcol;
                         row = i + initrow;
                     }
                     MatrixShape::N => {
                         col = i + initcol;
-                        row = Mrow + initrow;
+                        row = M.rowval[j] + initrow;
                     }
                 };
 
                 let dest = self.colptr[col];
                 self.rowval[dest] = row;
-                self.nzval[dest] = Mval;
-                self.colptr[col] += 1;
+                self.nzval[dest] = M.nzval[j];
                 MtoKKT[j] = dest;
+                self.colptr[col] += 1;
             }
         }
     }

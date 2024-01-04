@@ -210,6 +210,22 @@ where
 
         Ok(())
     }
+    /// True if matrices if the same size and sparsity pattern
+    pub fn is_equal_sparsity(&self, other: &Self) -> bool {
+        self.size() == other.size() && self.colptr == other.colptr && self.rowval == other.rowval
+    }
+
+    /// Same as is_equal_sparsity, but returns an error indicating the reason
+    /// for failure if the matrices do not have equivalent sparsity patterns.
+    pub fn check_equal_sparsity(&self, other: &Self) -> Result<(), SparseFormatError> {
+        if self.size() != other.size() {
+            Err(SparseFormatError::IncompatibleDimension)
+        } else if self.colptr != other.colptr || self.rowval != other.rowval {
+            Err(SparseFormatError::SparsityMismatch)
+        } else {
+            Ok(())
+        }
+    }
 
     /// Select a subset of the rows of a sparse matrix
     ///
