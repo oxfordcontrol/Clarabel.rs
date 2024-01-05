@@ -1,5 +1,7 @@
 #![allow(non_snake_case)]
 
+use std::iter::zip;
+
 use clarabel::{algebra::*, solver::*};
 
 #[allow(clippy::type_complexity)]
@@ -83,6 +85,31 @@ fn test_update_P_vector_form() {
 }
 
 #[test]
+fn test_update_P_tuple() {
+    // original problem
+    let (P, q, A, b, cones, settings) = updating_test_data();
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    solver1.solve();
+
+    // revised original solver
+    let values = [3., 5.];
+    let index = [1, 2];
+    let Pdata = zip(&index, &values);
+    assert!(solver1.update_P(&Pdata).is_ok());
+    solver1.solve();
+
+    //new solver
+    let P2 = CscMatrix::from(&[
+        [4., 3.], //
+        [0., 5.], //
+    ]);
+    let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings);
+    solver2.solve();
+
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+}
+
+#[test]
 fn test_update_A_matrix_form() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
@@ -141,13 +168,36 @@ fn test_update_q() {
 
     // change 1 and re-solve
     let mut q2 = q.clone();
-    q2[0] = 1000.;
+    q2[1] = 1000.;
 
     // revised original solver
     assert!(solver1.update_q(&q2).is_ok());
     solver1.solve();
 
     //new solver
+    let mut solver2 = DefaultSolver::new(&P, &q2, &A, &b, &cones, settings);
+    solver2.solve();
+
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+}
+
+#[test]
+fn test_update_q_tuple() {
+    // original problem
+    let (P, q, A, b, cones, settings) = updating_test_data();
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    solver1.solve();
+
+    // revised original solver
+    let values = [1000.];
+    let index = [1];
+    let qdata = zip(&index, &values);
+    assert!(solver1.update_q(&qdata).is_ok());
+    solver1.solve();
+
+    //new solver
+    let mut q2 = q.clone();
+    q2[1] = 1000.;
     let mut solver2 = DefaultSolver::new(&P, &q2, &A, &b, &cones, settings);
     solver2.solve();
 
@@ -170,6 +220,28 @@ fn test_update_b() {
     solver1.solve();
 
     //new solver
+    let mut solver2 = DefaultSolver::new(&P, &q, &A, &b2, &cones, settings);
+    solver2.solve();
+
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+}
+
+#[test]
+fn test_update_b_tuple() {
+    // original problem
+    let (P, q, A, b, cones, settings) = updating_test_data();
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    solver1.solve();
+
+    // revised original solver
+    let values = [0., 0.];
+    let index = [1, 3];
+    let bdata = zip(&index, &values);
+    assert!(solver1.update_b(&bdata).is_ok());
+    solver1.solve();
+
+    //new solver
+    let b2 = vec![1., 0., 1., 0.];
     let mut solver2 = DefaultSolver::new(&P, &q, &A, &b2, &cones, settings);
     solver2.solve();
 

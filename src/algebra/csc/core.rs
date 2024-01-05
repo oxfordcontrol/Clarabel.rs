@@ -356,6 +356,21 @@ where
             Err(_) => None,
         }
     }
+
+    /// Returns the (row,col) coordinates of the given linear index.
+    ///
+    /// # Panics
+    /// Panics if the given index is out of bounds.
+    pub fn index_to_coord(&self, idx: usize) -> (usize, usize) {
+        assert!(idx < self.nnz());
+        println!("\n\n index to coord");
+        println!("idx = {}", idx);
+        println!("colptr = {:?}", self.colptr);
+        let row = self.rowval[idx];
+        let col = self.colptr.partition_point(|&c| idx + 1 > c) - 1;
+        println!("col = {}", col);
+        (row, col)
+    }
 }
 
 impl<T> ShapedMatrix for CscMatrix<T> {
@@ -477,6 +492,33 @@ fn test_csc_get_entry() {
     assert_eq!(A.get_entry((2, 3)), None);
     assert_eq!(A.get_entry((4, 3)), None);
     assert_eq!(A.get_entry((3, 4)), None);
+}
+
+#[test]
+fn test_csc_index_to_coord() {
+    let A = CscMatrix::from(&[
+        [0.0, 4.0, 0.0, 0.0, 12.0],
+        [1.0, 5.0, 0.0, 0.0, 0.0],
+        [0.0, 6.0, 0.0, 0.0, 13.0],
+        [2.0, 7.0, 10.0, 0.0, 0.0],
+        [0.0, 8.0, 11.0, 0.0, 14.0],
+        [3.0, 9.0, 0.0, 0.0, 0.0],
+    ]);
+
+    assert_eq!(A.index_to_coord(0), (1, 0));
+    assert_eq!(A.index_to_coord(1), (3, 0));
+    assert_eq!(A.index_to_coord(2), (5, 0));
+    assert_eq!(A.index_to_coord(3), (0, 1));
+    assert_eq!(A.index_to_coord(4), (1, 1));
+    assert_eq!(A.index_to_coord(5), (2, 1));
+    assert_eq!(A.index_to_coord(6), (3, 1));
+    assert_eq!(A.index_to_coord(7), (4, 1));
+    assert_eq!(A.index_to_coord(8), (5, 1));
+    assert_eq!(A.index_to_coord(9), (3, 2));
+    assert_eq!(A.index_to_coord(10), (4, 2));
+    assert_eq!(A.index_to_coord(11), (0, 4));
+    assert_eq!(A.index_to_coord(12), (2, 4));
+    assert_eq!(A.index_to_coord(13), (4, 4));
 }
 
 #[test]

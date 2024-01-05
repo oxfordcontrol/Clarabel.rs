@@ -1,7 +1,10 @@
 #![allow(non_snake_case)]
-use crate::algebra::*;
-
 use super::DefaultSolver;
+use crate::algebra::*;
+use core::iter::Zip;
+use core::slice::Iter;
+
+// Trait for updating P and A matrices
 
 pub trait MatrixProblemDataUpdate<T: FloatT> {
     fn update_matrix(
@@ -28,10 +31,9 @@ where
     }
 }
 
-impl<T, Data> MatrixProblemDataUpdate<T> for Data
+impl<T> MatrixProblemDataUpdate<T> for [T]
 where
     T: FloatT,
-    Data: AsRef<[T]>,
 {
     fn update_matrix(
         &self,
@@ -57,14 +59,62 @@ where
     }
 }
 
+impl<T: FloatT> MatrixProblemDataUpdate<T> for Vec<T> {
+    fn update_matrix(
+        &self,
+        M: &mut CscMatrix<T>,
+        lscale: &[T],
+        rscale: &[T],
+    ) -> Result<(), SparseFormatError> {
+        self.as_slice().update_matrix(M, lscale, rscale)
+    }
+}
+
+impl<T: FloatT> MatrixProblemDataUpdate<T> for [T; 0] {
+    fn update_matrix(
+        &self,
+        _M: &mut CscMatrix<T>,
+        _lscale: &[T],
+        _rscale: &[T],
+    ) -> Result<(), SparseFormatError> {
+        Ok(())
+    }
+}
+
+// Can't write a single impl for [T], Vec<T> and [T;0] above because
+// bounding by AsRef<[T]> is not specific enough to distinguish it from
+// the iterator case for partial updates implemented next.
+
+impl<'a, T> MatrixProblemDataUpdate<T> for Zip<Iter<'a, usize>, Iter<'a, T>>
+where
+    T: FloatT,
+{
+    fn update_matrix(
+        &self,
+        M: &mut CscMatrix<T>,
+        lscale: &[T],
+        rscale: &[T],
+    ) -> Result<(), SparseFormatError> {
+        for (&idx, &data) in self.clone() {
+            if idx >= M.nzval.len() {
+                return Err(SparseFormatError::IncompatibleDimension);
+            }
+            let (row, col) = M.index_to_coord(idx);
+            M.nzval[idx] = lscale[row] * rscale[col] * data;
+        }
+        Ok(())
+    }
+}
+
+// Trait for updating q and b vectors
+
 pub trait VectorProblemDataUpdate<T: FloatT> {
     fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError>;
 }
 
-impl<T, Data> VectorProblemDataUpdate<T> for Data
+impl<T> VectorProblemDataUpdate<T> for [T]
 where
     T: FloatT,
-    Data: AsRef<[T]>,
 {
     fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError> {
         let data = self.as_ref();
@@ -81,6 +131,37 @@ where
         //reapply original equilibration
         v.hadamard(scale);
 
+        Ok(())
+    }
+}
+
+impl<T: FloatT> VectorProblemDataUpdate<T> for Vec<T> {
+    fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError> {
+        self.as_slice().update_vector(v, scale)
+    }
+}
+
+impl<T: FloatT> VectorProblemDataUpdate<T> for [T; 0] {
+    fn update_vector(&self, _v: &mut [T], _scale: &[T]) -> Result<(), SparseFormatError> {
+        Ok(())
+    }
+}
+
+// Can't write a single impl for [T], Vec<T> and [T;0] above because
+// bounding by AsRef<[T]> is not specific enough to distinguish it from
+// the iterator case for partial updates implemented next.
+
+impl<'a, T> VectorProblemDataUpdate<T> for Zip<Iter<'a, usize>, Iter<'a, T>>
+where
+    T: FloatT,
+{
+    fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError> {
+        for (&idx, &data) in self.clone() {
+            if idx >= v.len() {
+                return Err(SparseFormatError::IncompatibleDimension);
+            }
+            v[idx] = data * scale[idx];
+        }
         Ok(())
     }
 }
@@ -116,7 +197,9 @@ where
     ///
     /// - a nonempty Vector, in which case the nonzero values of the original `P` are overwritten, preserving the sparsity pattern, or
     ///
-    /// - a SparseMatrixCSC, in which case the input must match the sparsity pattern of the upper triangular part of the original `P`.   
+    /// - a SparseMatrixCSC, in which case the input must match the sparsity pattern of the upper triangular part of the original `P`.
+    ///
+    /// - an iterator zip(&index,&values), specifying a selective update of values.
     ///
     /// - an empty vector, in which case no action is taken.
     ///
@@ -139,7 +222,9 @@ where
     ///
     /// - a nonempty Vector, in which case the nonzero values of the original `A` are overwritten, preserving the sparsity pattern, or
     ///
-    /// - a SparseMatrixCSC, in which case the input must match the sparsity pattern of the original `A`.   
+    /// - a SparseMatrixCSC, in which case the input must match the sparsity pattern of the original `A`.  
+    ///
+    /// - an iterator zip(&index,&values), specifying a selective update of values.
     ///
     /// - an empty vector, in which case no action is taken.
     ///
