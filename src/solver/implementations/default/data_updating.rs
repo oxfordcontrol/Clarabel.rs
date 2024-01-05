@@ -1,50 +1,87 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
-use crate::solver::{scale_A, scale_P, scale_b, scale_q};
-use std::convert::From;
 
 use super::DefaultSolver;
 
-// Enum type allowing for flexible user input of matrix data updates.
-
-pub enum MatrixUpdateDataSource<'a, T: FloatT> {
-    CscMatrix(&'a CscMatrix<T>),
-    Slice(&'a [T]),
+pub trait MatrixProblemDataUpdate<T: FloatT> {
+    fn update_matrix(
+        &self,
+        M: &mut CscMatrix<T>,
+        lscale: &[T],
+        rscale: &[T],
+    ) -> Result<(), SparseFormatError>;
 }
 
-impl<'a, T> From<&'a [T]> for MatrixUpdateDataSource<'a, T>
+impl<T> MatrixProblemDataUpdate<T> for CscMatrix<T>
 where
     T: FloatT,
 {
-    fn from(v: &'a [T]) -> Self {
-        MatrixUpdateDataSource::Slice(v)
+    fn update_matrix(
+        &self,
+        M: &mut CscMatrix<T>,
+        lscale: &[T],
+        rscale: &[T],
+    ) -> Result<(), SparseFormatError> {
+        self.check_equal_sparsity(M)?;
+        let v = &self.nzval;
+        v.update_matrix(M, lscale, rscale)
     }
 }
 
-impl<'a, T> From<&'a Vec<T>> for MatrixUpdateDataSource<'a, T>
+impl<T, Data> MatrixProblemDataUpdate<T> for Data
 where
     T: FloatT,
+    Data: AsRef<[T]>,
 {
-    fn from(v: &'a Vec<T>) -> Self {
-        MatrixUpdateDataSource::Slice(v)
+    fn update_matrix(
+        &self,
+        M: &mut CscMatrix<T>,
+        lscale: &[T],
+        rscale: &[T],
+    ) -> Result<(), SparseFormatError> {
+        let data = self.as_ref();
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        if data.len() != M.nzval.len() {
+            return Err(SparseFormatError::IncompatibleDimension);
+        }
+
+        M.nzval.copy_from_slice(data);
+
+        // reapply original equilibration
+        M.lrscale(lscale, rscale);
+
+        Ok(())
     }
 }
 
-impl<'a, T> From<&'a [T; 0]> for MatrixUpdateDataSource<'a, T>
-where
-    T: FloatT,
-{
-    fn from(v: &'a [T; 0]) -> Self {
-        MatrixUpdateDataSource::Slice(v)
-    }
+pub trait VectorProblemDataUpdate<T: FloatT> {
+    fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError>;
 }
 
-impl<'a, T> From<&'a CscMatrix<T>> for MatrixUpdateDataSource<'a, T>
+impl<T, Data> VectorProblemDataUpdate<T> for Data
 where
     T: FloatT,
+    Data: AsRef<[T]>,
 {
-    fn from(v: &'a CscMatrix<T>) -> Self {
-        MatrixUpdateDataSource::CscMatrix(v)
+    fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError> {
+        let data = self.as_ref();
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        if data.len() != v.len() {
+            return Err(SparseFormatError::IncompatibleDimension);
+        }
+
+        v.copy_from_slice(data);
+
+        //reapply original equilibration
+        v.hadamard(scale);
+
+        Ok(())
     }
 }
 
@@ -56,15 +93,16 @@ where
     /// See `update_P``, `update_q`, `update_A`, `update_b` for allowable inputs.
 
     pub fn update_data<
-        'a,
-        CscOrSliceP: Into<MatrixUpdateDataSource<'a, T>>,
-        CscOrSliceA: Into<MatrixUpdateDataSource<'a, T>>,
+        DataP: MatrixProblemDataUpdate<T>,
+        Dataq: VectorProblemDataUpdate<T>,
+        DataA: MatrixProblemDataUpdate<T>,
+        Datab: VectorProblemDataUpdate<T>,
     >(
         &mut self,
-        P: CscOrSliceP,
-        q: &[T],
-        A: CscOrSliceA,
-        b: &[T],
+        P: &DataP,
+        q: &Dataq,
+        A: &DataA,
+        b: &Datab,
     ) -> Result<(), SparseFormatError> {
         self.update_P(P)?;
         self.update_q(q)?;
@@ -82,35 +120,16 @@ where
     ///
     /// - an empty vector, in which case no action is taken.
     ///
-    pub fn update_P<'a, CscOrSlice: Into<MatrixUpdateDataSource<'a, T>>>(
+    pub fn update_P<Data: MatrixProblemDataUpdate<T>>(
         &mut self,
-        data: CscOrSlice,
+        data: &Data,
     ) -> Result<(), SparseFormatError> {
-        let data = data.into();
-        match data {
-            MatrixUpdateDataSource::CscMatrix(P) => {
-                P.check_equal_sparsity(&self.data.P)?;
-                self.update_P_slice(&P.nzval)
-            }
-            MatrixUpdateDataSource::Slice(v) => self.update_P_slice(v),
-        }
-    }
-
-    fn update_P_slice(&mut self, v: &[T]) -> Result<(), SparseFormatError> {
         self.check_presolve_disabled()?;
-        if v.is_empty() {
-            return Ok(());
-        }
-
-        if v.len() != self.data.P.nzval.len() {
-            return Err(SparseFormatError::IncompatibleDimension);
-        }
-
-        self.data.P.nzval.copy_from_slice(v);
-
-        // reapply original equilibration
-        scale_P(&mut self.data.P, &self.data.equilibration.d);
-
+        data.update_matrix(
+            &mut self.data.P,
+            &self.data.equilibration.d,
+            &self.data.equilibration.d,
+        )?;
         // overwrite KKT data
         self.kktsystem.update_P(&self.data.P);
         Ok(())
@@ -124,42 +143,18 @@ where
     ///
     /// - an empty vector, in which case no action is taken.
     ///
-    pub fn update_A<'a, CscOrVec: Into<MatrixUpdateDataSource<'a, T>>>(
+    pub fn update_A<Data: MatrixProblemDataUpdate<T>>(
         &mut self,
-        data: CscOrVec,
+        data: &Data,
     ) -> Result<(), SparseFormatError> {
-        let data = data.into();
-        match data {
-            MatrixUpdateDataSource::CscMatrix(A) => {
-                A.check_equal_sparsity(&self.data.A)?;
-                self.update_A_slice(&A.nzval)
-            }
-            MatrixUpdateDataSource::Slice(v) => self.update_A_slice(v),
-        }
-    }
-
-    fn update_A_slice(&mut self, v: &[T]) -> Result<(), SparseFormatError> {
         self.check_presolve_disabled()?;
-        if v.is_empty() {
-            return Ok(());
-        }
-
-        if v.len() != self.data.A.nzval.len() {
-            return Err(SparseFormatError::IncompatibleDimension);
-        }
-
-        self.data.A.nzval.copy_from_slice(v);
-
-        // reapply original equilibration
-        scale_A(
+        data.update_matrix(
             &mut self.data.A,
             &self.data.equilibration.e,
             &self.data.equilibration.d,
-        );
-
+        )?;
         // overwrite KKT data
         self.kktsystem.update_A(&self.data.A);
-
         Ok(())
     }
 
@@ -167,45 +162,33 @@ where
     ///
     //PJG: Error type is not ideal here.   Maybe need a generic user input
     //error type, which can conatin a SparseFormatError or a PresolveDisabled error
-    pub fn update_q(&mut self, q: &[T]) -> Result<(), SparseFormatError> {
+    pub fn update_q<Data: VectorProblemDataUpdate<T>>(
+        &mut self,
+        data: &Data,
+    ) -> Result<(), SparseFormatError> {
         self.check_presolve_disabled()?;
-        if q.is_empty() {
-            return Ok(());
-        }
+        let d = &self.data.equilibration.d;
+        let dinv = &self.data.equilibration.dinv;
+        data.update_vector(&mut self.data.q, d)?;
 
-        if q.len() != self.data.q.len() {
-            return Err(SparseFormatError::IncompatibleDimension);
-        }
-
-        self.data.q.copy_from_slice(q);
-
-        //recompute unscaled norm
-        self.data.normq = self.data.q.norm_inf();
-
-        //reapply original equilibration
-        scale_q(&mut self.data.q, &self.data.equilibration.d);
+        //recover unscaled norm
+        self.data.normq = self.data.q.norm_inf_scaled(dinv);
 
         Ok(())
     }
 
     /// Overwrites the `b` vector data in an existing solver object.  No action is taken if the input is empty.
-    pub fn update_b(&mut self, b: &[T]) -> Result<(), SparseFormatError> {
+    pub fn update_b<Data: VectorProblemDataUpdate<T>>(
+        &mut self,
+        data: &Data,
+    ) -> Result<(), SparseFormatError> {
         self.check_presolve_disabled()?;
-        if b.is_empty() {
-            return Ok(());
-        }
+        let e = &self.data.equilibration.e;
+        let einv = &self.data.equilibration.einv;
+        data.update_vector(&mut self.data.b, e)?;
 
-        if b.len() != self.data.b.len() {
-            return Err(SparseFormatError::IncompatibleDimension);
-        }
-
-        self.data.b.copy_from_slice(b);
-
-        //recompute unscaled norm
-        self.data.normb = self.data.b.norm_inf();
-
-        //reapply original equilibration
-        scale_b(&mut self.data.b, &self.data.equilibration.e);
+        //recover unscaled norm
+        self.data.normb = self.data.b.norm_inf_scaled(einv);
 
         Ok(())
     }

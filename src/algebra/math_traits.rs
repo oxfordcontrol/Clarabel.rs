@@ -105,15 +105,22 @@ pub trait VectorMath {
     /// 2-norm
     fn norm(&self) -> Self::T;
 
-    /// 2-norm of an elementwise scaling of `self` by `v`
-    fn norm_scaled(&self, v: &Self) -> Self::T;
-
     /// Infinity norm
     fn norm_inf(&self) -> Self::T;
 
     /// One norm
     fn norm_one(&self) -> Self::T;
 
+    /// 2-norm of an elementwise scaling of `self` by `v`
+    fn norm_scaled(&self, v: &Self) -> Self::T;
+
+    /// Inf-norm of an elementwise scaling of `self` by `v`
+    fn norm_inf_scaled(&self, v: &Self) -> Self::T;
+
+    /// Inf-norm of an elementwise scaling of `self` by `v`
+    fn norm_one_scaled(&self, v: &Self) -> Self::T;
+
+    // Inf-norm of vector difference
     fn norm_inf_diff(&self, b: &Self) -> Self::T;
 
     /// Minimum value in vector

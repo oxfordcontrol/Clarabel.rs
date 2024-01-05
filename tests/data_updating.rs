@@ -46,11 +46,11 @@ fn test_update_P_matrix_form() {
     //solver1.solve();
 
     // change P and re-solve
-    let mut P2 = P.clone();
+    let mut P2 = P.to_triu();
     P2.nzval[0] = 100.;
 
     // revised original solver
-    assert!(solver1.update_P(&P2.to_triu()).is_ok());
+    assert!(solver1.update_P(&P2).is_ok());
     solver1.solve();
 
     //new solver
@@ -68,11 +68,11 @@ fn test_update_P_vector_form() {
     solver1.solve();
 
     // change P and re-solve
-    let mut P2 = P.clone();
+    let mut P2 = P.to_triu();
     P2.nzval[0] = 100.;
 
     // revised original solver
-    assert!(solver1.update_P(&P2.to_triu().nzval).is_ok());
+    assert!(solver1.update_P(&P2.nzval).is_ok());
     solver1.solve();
 
     //new solver
@@ -198,6 +198,7 @@ fn test_update_noops() {
     solver.update_data(&[], &[], &[], &[]).unwrap();
     solver.update_data(&P2, &[], &A2, &[]).unwrap();
     solver.update_data(&P2.nzval, &[], &A2.nzval, &[]).unwrap();
+    solver.update_data(&P2, &[], &A2.nzval, &[]).unwrap(); //mixed formats
     solver.update_data(&[], &q2, &[], &b2).unwrap();
     solver.update_data(&P2, &q2, &[], &[]).unwrap();
     solver.update_data(&[], &[], &A2, &b2).unwrap();

@@ -197,29 +197,13 @@ fn scale_data<T: FloatT>(
 ) {
     match d {
         Some(d) => {
-            scale_P(P, d);
-            scale_A(A, e, d);
-            scale_q(q, d);
+            P.lrscale(d, d); // P[:,:] = Ds*P*Ds
+            A.lrscale(e, d);
+            q.hadamard(d);
         }
         None => {
             A.lscale(e); // A[:,:] = Es*A
         }
     }
-    scale_b(b, e);
-}
-
-pub(crate) fn scale_P<T: FloatT>(P: &mut CscMatrix<T>, d: &[T]) {
-    P.lrscale(d, d); // P[:,:] = Ds*P*Ds
-}
-
-pub(crate) fn scale_A<T: FloatT>(A: &mut CscMatrix<T>, e: &[T], d: &[T]) {
-    A.lrscale(e, d); // A[:,:] = Es*A
-}
-
-pub(crate) fn scale_q<T: FloatT>(q: &mut [T], d: &[T]) {
-    q.hadamard(d);
-}
-
-pub(crate) fn scale_b<T: FloatT>(b: &mut [T], e: &[T]) {
     b.hadamard(e);
 }
