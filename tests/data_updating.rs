@@ -160,6 +160,30 @@ fn test_update_A_vector_form() {
 }
 
 #[test]
+fn test_update_A_tuple_form() {
+    // original problem
+    let (P, q, A, b, cones, settings) = updating_test_data();
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    solver1.solve();
+
+    // revised original solver
+    let values = [0.5, -0.5];
+    let index = [1, 2];
+    let Adata = zip(&index, &values);
+    assert!(solver1.update_A(&Adata).is_ok());
+    solver1.solve();
+
+    //new solver
+    let mut A2 = A.clone();
+    A2.nzval[1] = 0.5;
+    A2.nzval[2] = -0.5;
+    let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings);
+    solver2.solve();
+
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+}
+
+#[test]
 fn test_update_q() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
@@ -265,12 +289,15 @@ fn test_update_noops() {
     let P2 = P.clone().to_triu();
     let A2 = A.clone();
     let b2 = b.clone();
+    let b2zip = zip(&[1, 3], &[0., 0.]);
     let q2 = q.clone();
 
     solver.update_data(&[], &[], &[], &[]).unwrap();
     solver.update_data(&P2, &[], &A2, &[]).unwrap();
     solver.update_data(&P2.nzval, &[], &A2.nzval, &[]).unwrap();
     solver.update_data(&P2, &[], &A2.nzval, &[]).unwrap(); //mixed formats
+    solver.update_data(&[], &q2, &[], &b2zip).unwrap(); //mixed formats
+    solver.update_data(&P2.nzval, &[], &A2, &b2zip).unwrap(); //mixed formats
     solver.update_data(&[], &q2, &[], &b2).unwrap();
     solver.update_data(&P2, &q2, &[], &[]).unwrap();
     solver.update_data(&[], &[], &A2, &b2).unwrap();

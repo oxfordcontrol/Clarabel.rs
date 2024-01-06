@@ -363,12 +363,8 @@ where
     /// Panics if the given index is out of bounds.
     pub fn index_to_coord(&self, idx: usize) -> (usize, usize) {
         assert!(idx < self.nnz());
-        println!("\n\n index to coord");
-        println!("idx = {}", idx);
-        println!("colptr = {:?}", self.colptr);
         let row = self.rowval[idx];
         let col = self.colptr.partition_point(|&c| idx + 1 > c) - 1;
-        println!("col = {}", col);
         (row, col)
     }
 }
