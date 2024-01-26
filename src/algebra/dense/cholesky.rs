@@ -57,6 +57,15 @@ where
 
         Ok(())
     }
+
+    fn logdet(&self) -> T {
+        let mut ld = T::zero();
+        let n = self.L.nrows();
+        for i in 0..n {
+            ld += T::ln(self.L[(i, i)]);
+        }
+        return ld + ld;
+    }
 }
 
 #[test]
@@ -78,4 +87,18 @@ fn test_cholesky() {
     M.mul(&eng.L, &eng.L.t(), 1.0, 0.0);
 
     assert!(M.data().norm_inf_diff(Scopy.data()) < 1e-8);
+}
+
+#[test]
+fn test_cholesky_logdet() {
+    #[rustfmt::skip]
+    let mut S = Matrix::from(
+        &[[ 8., -2., 4.],
+          [-2., 12., 2.],
+          [ 4.,  2., 6.]]);
+
+    let mut eng = CholeskyEngine::<f64>::new(3);
+    assert!(eng.cholesky(&mut S).is_ok());
+
+    assert!((eng.logdet() - 5.69035945432406).abs() < 1e-10);
 }
