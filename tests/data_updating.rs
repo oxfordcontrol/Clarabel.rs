@@ -302,3 +302,30 @@ fn test_update_noops() {
     solver.update_data(&P2, &q2, &[], &[]).unwrap();
     solver.update_data(&[], &[], &A2, &b2).unwrap();
 }
+
+#[test]
+fn test_fail_on_presolve_enable() {
+    // original problem
+    let (P, q, A, b, cones, mut settings) = updating_test_data();
+    settings.presolve_enable = true;
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    solver.solve();
+
+    // apply no-op updates to check that updates are rejected
+    assert!(matches!(
+        solver.update_P(&[]).err(),
+        Some(DataUpdateError::PresolveEnabled)
+    ));
+    assert!(matches!(
+        solver.update_A(&[]).err(),
+        Some(DataUpdateError::PresolveEnabled)
+    ));
+    assert!(matches!(
+        solver.update_b(&[]).err(),
+        Some(DataUpdateError::PresolveEnabled)
+    ));
+    assert!(matches!(
+        solver.update_q(&[]).err(),
+        Some(DataUpdateError::PresolveEnabled)
+    ));
+}

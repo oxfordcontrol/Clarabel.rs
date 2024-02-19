@@ -3,6 +3,16 @@ use super::DefaultSolver;
 use crate::algebra::*;
 use core::iter::Zip;
 use core::slice::Iter;
+use thiserror::Error;
+
+/// Error type returned by user data update utilities, e.g. [`check_format`](crate::algebra::CscMatrix::check_format) utility.
+#[derive(Error, Debug)]
+pub enum DataUpdateError {
+    #[error("Data updates are not allowed when presolve is enabled")]
+    PresolveEnabled,
+    #[error("Data formatting error")]
+    BadFormat(#[from] SparseFormatError),
+}
 
 // Trait for updating P and A matrices from various data types
 pub trait MatrixProblemDataUpdate<T: FloatT> {
@@ -37,7 +47,7 @@ where
         q: &Dataq,
         A: &DataA,
         b: &Datab,
-    ) -> Result<(), SparseFormatError> {
+    ) -> Result<(), DataUpdateError> {
         self.update_P(P)?;
         self.update_q(q)?;
         self.update_A(A)?;
@@ -59,7 +69,7 @@ where
     pub fn update_P<Data: MatrixProblemDataUpdate<T>>(
         &mut self,
         data: &Data,
-    ) -> Result<(), SparseFormatError> {
+    ) -> Result<(), DataUpdateError> {
         self.check_presolve_disabled()?;
         let d = &self.data.equilibration.d;
         data.update_matrix(&mut self.data.P, d, d)?;
@@ -81,7 +91,7 @@ where
     pub fn update_A<Data: MatrixProblemDataUpdate<T>>(
         &mut self,
         data: &Data,
-    ) -> Result<(), SparseFormatError> {
+    ) -> Result<(), DataUpdateError> {
         self.check_presolve_disabled()?;
         let d = &self.data.equilibration.d;
         let e = &self.data.equilibration.e;
@@ -92,13 +102,10 @@ where
     }
 
     /// Overwrites the `q` vector data in an existing solver object.  No action is taken if the input is empty.
-    ///
-    //PJG: Error type is not ideal here.   Maybe need a generic user input
-    //error type, which can conatin a SparseFormatError or a PresolveDisabled error
     pub fn update_q<Data: VectorProblemDataUpdate<T>>(
         &mut self,
         data: &Data,
-    ) -> Result<(), SparseFormatError> {
+    ) -> Result<(), DataUpdateError> {
         self.check_presolve_disabled()?;
         let d = &self.data.equilibration.d;
         let dinv = &self.data.equilibration.dinv;
@@ -114,7 +121,7 @@ where
     pub fn update_b<Data: VectorProblemDataUpdate<T>>(
         &mut self,
         data: &Data,
-    ) -> Result<(), SparseFormatError> {
+    ) -> Result<(), DataUpdateError> {
         self.check_presolve_disabled()?;
         let e = &self.data.equilibration.e;
         let einv = &self.data.equilibration.einv;
@@ -126,10 +133,9 @@ where
         Ok(())
     }
 
-    //PJG: This error type is incorrect.  Used in multiple places in this file
-    fn check_presolve_disabled(&self) -> Result<(), SparseFormatError> {
+    fn check_presolve_disabled(&self) -> Result<(), DataUpdateError> {
         if self.settings.presolve_enable {
-            Err(SparseFormatError::IncompatibleDimension)
+            Err(DataUpdateError::PresolveEnabled)
         } else {
             Ok(())
         }
