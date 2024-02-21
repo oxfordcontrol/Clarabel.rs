@@ -1,4 +1,6 @@
 #![allow(non_snake_case)]
+use itertools::izip;
+
 use super::*;
 use crate::algebra::*;
 use crate::solver::core::{
@@ -120,11 +122,20 @@ where
         for _ in 0..settings.equilibrate_max_iter {
             kkt_col_norms(P, A, dwork, ework);
 
-            dwork.scalarop(|x| limit_scaling(x, scale_min, scale_max));
-            ework.scalarop(|x| limit_scaling(x, scale_min, scale_max));
+            //zero rows or columns should not get scaled
+            dwork.scalarop(|x| if x == T::zero() { T::one() } else { x });
+            ework.scalarop(|x| if x == T::zero() { T::one() } else { x });
 
             dwork.rsqrt();
             ework.rsqrt();
+
+            // bound the cumulative scaling
+            for (dwork, &d) in izip!(dwork.iter_mut(), d.iter()) {
+                *dwork = T::clip(dwork, scale_min / d, scale_max / d);
+            }
+            for (ework, &e) in izip!(ework.iter_mut(), e.iter()) {
+                *ework = T::clip(ework, scale_min / e, scale_max / e);
+            }
 
             // Scale the problem data and update the
             // equilibration matrices
@@ -141,8 +152,8 @@ where
 
             if mean_col_norm_P != T::zero() && inf_norm_q != T::zero() {
                 let scale_cost = T::max(inf_norm_q, mean_col_norm_P);
-                let scale_cost = limit_scaling(scale_cost, scale_min, scale_max);
                 let ctmp = T::recip(scale_cost);
+                let ctmp = T::clip(&ctmp, scale_min / equil.c, scale_max / equil.c);
 
                 // scale the penalty terms and overall scaling
                 P.scale(ctmp);
@@ -152,7 +163,10 @@ where
         } //end Ruiz scaling loop
 
         // fix scalings in cones for which elementwise
-        // scaling can't be applied
+        // scaling can't be applied. Rectification should
+        //either do nothing or take a convex combination of
+        //scalings over a cone, so shouldn't need to check
+        //bounds on the scalings here
         if cones.rectify_equilibration(ework, e) {
             // only rescale again if some cones were rectified
             scale_data(P, A, q, b, None, ework);
@@ -178,13 +192,6 @@ fn kkt_col_norms<T: FloatT>(
     P.col_norms_sym(norm_LHS); // P can be triu
     A.col_norms_no_reset(norm_LHS); // incrementally from P norms
     A.row_norms(norm_RHS); // same as column norms of A'
-}
-
-fn limit_scaling<T>(s: T, minval: T, maxval: T) -> T
-where
-    T: FloatT + ScalarMath<T = T>,
-{
-    s.clip(minval, maxval, T::one(), maxval)
 }
 
 fn scale_data<T: FloatT>(

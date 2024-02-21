@@ -2,11 +2,11 @@ use super::{FloatT, ScalarMath};
 
 impl<T: FloatT> ScalarMath for T {
     type T = T;
-    fn clip(&self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> T {
+    fn clip(&self, min_thresh: T, max_thresh: T) -> T {
         if *self < min_thresh {
-            min_new
+            min_thresh
         } else if *self > max_thresh {
-            max_new
+            max_thresh
         } else {
             *self
         }

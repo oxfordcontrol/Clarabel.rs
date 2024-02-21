@@ -66,8 +66,8 @@ impl<T: FloatT> VectorMath for [T] {
         self
     }
 
-    fn clip(&mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> &mut Self {
-        self.scalarop(|x| x.clip(min_thresh, max_thresh, min_new, max_new))
+    fn clip(&mut self, min_thresh: T, max_thresh: T) -> &mut Self {
+        self.scalarop(|x| x.clip(min_thresh, max_thresh))
     }
 
     fn normalize(&mut self) -> T {
