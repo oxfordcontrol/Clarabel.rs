@@ -70,6 +70,7 @@ where
         if info.status.is_infeasible() {
             scaleinv = T::recip(variables.κ);
             self.obj_val = T::nan();
+            self.obj_val_dual = T::nan();
         } else {
             scaleinv = T::recip(variables.τ);
         }
