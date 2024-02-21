@@ -218,7 +218,7 @@ where
             // convergence check and printing
             // --------------
             self.info.update(
-                &self.data,
+                &mut self.data,
                 &self.variables,
                 &self.residuals,&timers);
 

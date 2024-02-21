@@ -22,8 +22,11 @@ pub struct DefaultProblemData<T> {
     pub m: usize,
     pub equilibration: DefaultEquilibrationData<T>,
 
-    pub normq: T,
-    pub normb: T,
+    // unscaled inf norms of linear terms.  Set to "None"
+    // during data updating to allow for multiple updates, and
+    // then recalculated during solve if needed
+    normq: Option<T>,
+    normb: Option<T>,
 
     pub presolver: Presolver<T>,
 }
@@ -65,8 +68,8 @@ where
 
         let equilibration = DefaultEquilibrationData::<T>::new(n, m);
 
-        let normq = q.norm_inf();
-        let normb = b.norm_inf();
+        let normq = Some(q.norm_inf());
+        let normb = Some(b.norm_inf());
 
         Self {
             P,
@@ -80,6 +83,36 @@ where
             normb,
             presolver,
         }
+    }
+
+    pub(crate) fn get_normq(&mut self) -> T {
+        if let Some(norm) = self.normq {
+            norm
+        } else {
+            let dinv = &self.equilibration.dinv;
+            let norm = self.q.norm_inf_scaled(&dinv);
+            self.normq = Some(norm);
+            norm
+        }
+    }
+
+    pub(crate) fn get_normb(&mut self) -> T {
+        if let Some(norm) = self.normb {
+            norm
+        } else {
+            let einv = &self.equilibration.einv;
+            let norm = self.b.norm_inf_scaled(&einv);
+            self.normb = Some(norm);
+            norm
+        }
+    }
+
+    pub(crate) fn clear_normq(&mut self) {
+        self.normq = None;
+    }
+
+    pub(crate) fn clear_normb(&mut self) {
+        self.normb = None;
     }
 }
 

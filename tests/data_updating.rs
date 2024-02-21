@@ -33,7 +33,7 @@ fn updating_test_data() -> (
 
     let settings = DefaultSettingsBuilder::default()
         .presolve_enable(false)
-        .equilibrate_enable(false)
+        .equilibrate_enable(true)
         .build()
         .unwrap();
 
@@ -59,7 +59,7 @@ fn test_update_P_matrix_form() {
     let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn test_update_P_vector_form() {
     let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn test_update_P_tuple() {
     let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn test_update_A_matrix_form() {
     let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]
@@ -156,7 +156,7 @@ fn test_update_A_vector_form() {
     let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]
@@ -180,7 +180,7 @@ fn test_update_A_tuple_form() {
     let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]
@@ -192,7 +192,7 @@ fn test_update_q() {
 
     // change 1 and re-solve
     let mut q2 = q.clone();
-    q2[1] = 1000.;
+    q2[1] = 10.;
 
     // revised original solver
     assert!(solver1.update_q(&q2).is_ok());
@@ -202,7 +202,7 @@ fn test_update_q() {
     let mut solver2 = DefaultSolver::new(&P, &q2, &A, &b, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]
@@ -213,7 +213,7 @@ fn test_update_q_tuple() {
     solver1.solve();
 
     // revised original solver
-    let values = [1000.];
+    let values = [10.];
     let index = [1];
     let qdata = zip(&index, &values);
     assert!(solver1.update_q(&qdata).is_ok());
@@ -221,11 +221,11 @@ fn test_update_q_tuple() {
 
     //new solver
     let mut q2 = q.clone();
-    q2[1] = 1000.;
+    q2[1] = 10.;
     let mut solver2 = DefaultSolver::new(&P, &q2, &A, &b, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]
@@ -247,7 +247,7 @@ fn test_update_b() {
     let mut solver2 = DefaultSolver::new(&P, &q, &A, &b2, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]
@@ -269,7 +269,7 @@ fn test_update_b_tuple() {
     let mut solver2 = DefaultSolver::new(&P, &q, &A, &b2, &cones, settings);
     solver2.solve();
 
-    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-6);
+    assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
 }
 
 #[test]

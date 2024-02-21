@@ -108,11 +108,10 @@ where
     ) -> Result<(), DataUpdateError> {
         self.check_presolve_disabled()?;
         let d = &self.data.equilibration.d;
-        let dinv = &self.data.equilibration.dinv;
         data.update_vector(&mut self.data.q, d)?;
 
-        //recover unscaled norm
-        self.data.normq = self.data.q.norm_inf_scaled(dinv);
+        // flush unscaled norm. Will be recalculated during solve
+        self.data.clear_normq();
 
         Ok(())
     }
@@ -124,11 +123,10 @@ where
     ) -> Result<(), DataUpdateError> {
         self.check_presolve_disabled()?;
         let e = &self.data.equilibration.e;
-        let einv = &self.data.equilibration.einv;
         data.update_vector(&mut self.data.b, e)?;
 
-        //recover unscaled norm
-        self.data.normb = self.data.b.norm_inf_scaled(einv);
+        // flush unscaled norm. Will be recalculated during solve
+        self.data.clear_normb();
 
         Ok(())
     }
