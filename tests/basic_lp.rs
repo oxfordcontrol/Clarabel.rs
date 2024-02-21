@@ -43,7 +43,8 @@ fn test_lp_feasible() {
     assert!(solver.solution.x.dist(&refsol) <= 1e-8);
 
     let refobj = -3.;
-    assert!(f64::abs(solver.info.cost_primal - refobj) <= 1e-8);
+    assert!(f64::abs(solver.solution.obj_val - refobj) <= 1e-8);
+    assert!(f64::abs(solver.solution.obj_val_dual - refobj) <= 1e-8);
 }
 
 #[test]
@@ -60,6 +61,8 @@ fn test_lp_primal_infeasible() {
     solver.solve();
 
     assert_eq!(solver.solution.status, SolverStatus::PrimalInfeasible);
+    assert!(solver.solution.obj_val.is_nan());
+    assert!(solver.solution.obj_val_dual.is_nan());
 }
 
 #[test]
@@ -76,6 +79,8 @@ fn test_lp_dual_infeasible() {
     solver.solve();
 
     assert_eq!(solver.solution.status, SolverStatus::DualInfeasible);
+    assert!(solver.solution.obj_val.is_nan());
+    assert!(solver.solution.obj_val_dual.is_nan());
 }
 
 #[test]
@@ -93,4 +98,6 @@ fn test_lp_dual_infeasible_ill_cond() {
     solver.solve();
 
     assert_eq!(solver.solution.status, SolverStatus::DualInfeasible);
+    assert!(solver.solution.obj_val.is_nan());
+    assert!(solver.solution.obj_val_dual.is_nan());
 }
