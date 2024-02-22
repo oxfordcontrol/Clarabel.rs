@@ -110,6 +110,7 @@ pub(crate) struct SolutionJLRS {
     pub s: VectorJLRS<f64>,
     pub status: u32, //0 indexed enum in RS/JL
     pub obj_val: f64,
+    pub obj_val_dual: f64,
     pub solve_time: f64,
     pub iterations: u32,
     pub r_prim: f64,
@@ -124,6 +125,7 @@ impl From<&DefaultSolution<f64>> for SolutionJLRS {
             s: VectorJLRS::<f64>::from(&sol.s),
             status: sol.status as u32,
             obj_val: sol.obj_val,
+            obj_val_dual: sol.obj_val_dual,
             solve_time: sol.solve_time,
             iterations: sol.iterations,
             r_prim: sol.r_prim,
