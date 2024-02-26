@@ -83,7 +83,7 @@ fn test_lp_dual_infeasible_ill_cond() {
     let (P, _c, mut A, b, cones) = basic_lp_data();
 
     A.nzval[0] = f64::EPSILON;
-    A.nzval[1] = -f64::EPSILON;
+    A.nzval[1] = 0.0;
     let c = vec![1., 0., 0.];
 
     let settings = DefaultSettings::default();
