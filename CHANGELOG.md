@@ -7,6 +7,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 Version numbering in this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).  We aim to keep the core solver functionality and minor releases in sync between the Rust/Python and Julia implementations.   Small fixes that affect one implementation only may result in the patch release versions differing.
 
 
+## [0.7.0] - 2024-26-02
+### Changed 
+
+- Solution output reports dual objective values.  Infeasible problems report NaN. Fixes [#67] (https://github.com/oxfordcontrol/Clarabel.rs/issues/67)
+- Solver now supports problems with a mix of PSD and nonsymmetric cones. Fixes [#66] (https://github.com/oxfordcontrol/Clarabel.rs/issues/66)
+- Added methods for updating problem data without reallocating memory.  Addresses [#59] (https://github.com/oxfordcontrol/Clarabel.rs/issues/59)
+- Bug fix enforcing scaling limits in equilibration.  Port of Julia fix [#151](https://github.com/oxfordcontrol/Clarabel.jl/pull/151)
+- Bug fix in infeasibility detection. Fixes [#65] (https://github.com/oxfordcontrol/Clarabel.rs/issues/65)
+
+
+
 ## [0.6.0] - 2023-20-09
 ### Changed 
 
@@ -99,6 +110,7 @@ offline against the Julia-based benchmark problem suite, but this will not appea
 - Ported all documentation to the common site [here](https://github.com/oxfordcontrol/ClarabelDocs)
 
 
+[0.7.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.4.1...v0.5.0
