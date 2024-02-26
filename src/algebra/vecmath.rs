@@ -66,8 +66,8 @@ impl<T: FloatT> VectorMath for [T] {
         self
     }
 
-    fn clip(&mut self, min_thresh: T, max_thresh: T, min_new: T, max_new: T) -> &mut Self {
-        self.scalarop(|x| x.clip(min_thresh, max_thresh, min_new, max_new))
+    fn clip(&mut self, min_thresh: T, max_thresh: T) -> &mut Self {
+        self.scalarop(|x| x.clip(min_thresh, max_thresh))
     }
 
     fn normalize(&mut self) -> T {
@@ -115,16 +115,6 @@ impl<T: FloatT> VectorMath for [T] {
         T::sqrt(self.sumsq())
     }
 
-    //scaled norm of elementwise produce self.*v
-    fn norm_scaled(&self, v: &[T]) -> T {
-        assert_eq!(self.len(), v.len());
-        let total = zip(self, v).fold(T::zero(), |acc, (&x, &y)| {
-            let prod = x * y;
-            acc + prod * prod
-        });
-        T::sqrt(total)
-    }
-
     // Returns infinity norm
     fn norm_inf(&self) -> T {
         let mut out = T::zero();
@@ -140,6 +130,27 @@ impl<T: FloatT> VectorMath for [T] {
     // Returns one norm
     fn norm_one(&self) -> T {
         self.iter().fold(T::zero(), |acc, v| acc + v.abs())
+    }
+
+    //two-norm of elementwise product self.*v
+    fn norm_scaled(&self, v: &[T]) -> T {
+        assert_eq!(self.len(), v.len());
+        let total = zip(self, v).fold(T::zero(), |acc, (&x, &y)| {
+            let prod = x * y;
+            acc + prod * prod
+        });
+        T::sqrt(total)
+    }
+
+    //inf-norm of elementwise product self.*v
+    fn norm_inf_scaled(&self, v: &Self) -> Self::T {
+        assert_eq!(self.len(), v.len());
+        zip(self, v).fold(T::zero(), |acc, (&x, &y)| T::max(acc, T::abs(x * y)))
+    }
+
+    //
+    fn norm_one_scaled(&self, v: &Self) -> Self::T {
+        zip(self, v).fold(T::zero(), |acc, (&x, &y)| acc + T::abs(x * y))
     }
 
     // max absolute difference (used for unit testing)

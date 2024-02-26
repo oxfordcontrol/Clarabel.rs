@@ -68,7 +68,8 @@ fn test_socp_feasible() {
     assert!(solver.solution.x.dist(&refsol) <= 1e-4);
 
     let refobj = -8.4590e-01;
-    assert!(f64::abs(solver.info.cost_primal - refobj) <= 1e-4);
+    assert!(f64::abs(solver.solution.obj_val - refobj) <= 1e-4);
+    assert!(f64::abs(solver.solution.obj_val_dual - refobj) <= 1e-4);
 }
 
 #[test]
@@ -85,4 +86,6 @@ fn test_socp_infeasible() {
     solver.solve();
 
     assert_eq!(solver.solution.status, SolverStatus::PrimalInfeasible);
+    assert!(solver.solution.obj_val.is_nan());
+    assert!(solver.solution.obj_val_dual.is_nan());
 }

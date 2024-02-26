@@ -266,4 +266,12 @@ where
 
         is_success
     }
+
+    pub(crate) fn update_P(&mut self, P: &CscMatrix<T>) {
+        self.kktsolver.update_P(P);
+    }
+
+    pub(crate) fn update_A(&mut self, A: &CscMatrix<T>) {
+        self.kktsolver.update_A(A);
+    }
 }

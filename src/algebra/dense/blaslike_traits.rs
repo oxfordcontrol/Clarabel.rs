@@ -16,6 +16,9 @@ pub(crate) trait FactorCholesky {
     // by modified in place.   The Cholesky factor is stored
     // in self.L
     fn cholesky(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
+
+    // computes log(det(X)) for the matrix X = LL^T
+    fn logdet(&self) -> Self::T;
 }
 
 pub(crate) trait FactorSVD {

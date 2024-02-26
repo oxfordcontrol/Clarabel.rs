@@ -10,8 +10,7 @@
 //!
 //! It is also possible to implement a custom solver by defining a collection
 //! of custom types that together implement all of the required core
-//! [traits](crate::solver::core::traits) for
-//! objects in Clarabel's core solver.
+//! [traits] for objects in Clarabel's core solver.
 
 pub(crate) const _INFINITY_DEFAULT: f64 = 1e20;
 // internal module structure

@@ -14,6 +14,7 @@ pub struct DefaultSolution<T> {
     pub s: Vec<T>,
     pub status: SolverStatus,
     pub obj_val: T,
+    pub obj_val_dual: T,
     pub solve_time: f64,
     pub iterations: u32,
     pub r_prim: T,
@@ -35,6 +36,7 @@ where
             s,
             status: SolverStatus::Unsolved,
             obj_val: T::nan(),
+            obj_val_dual: T::nan(),
             solve_time: 0f64,
             iterations: 0,
             r_prim: T::nan(),
@@ -59,6 +61,7 @@ where
     ) {
         self.status = info.status;
         self.obj_val = info.cost_primal;
+        self.obj_val_dual = info.cost_dual;
 
         // if we have an infeasible problem, normalize
         // using κ to get an infeasibility certificate.
@@ -67,6 +70,7 @@ where
         if info.status.is_infeasible() {
             scaleinv = T::recip(variables.κ);
             self.obj_val = T::nan();
+            self.obj_val_dual = T::nan();
         } else {
             scaleinv = T::recip(variables.τ);
         }

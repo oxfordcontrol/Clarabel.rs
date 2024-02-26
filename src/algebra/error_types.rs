@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-/// Error type returned by the [`check_format`](crate::algebra::CscMatrix::check_format) utility.
+/// Error type returned by sparse matrix user input checkers, e.g. [`check_format`](crate::algebra::CscMatrix::check_format) utility.
 #[derive(Error, Debug)]
 pub enum SparseFormatError {
     #[error("Matrix dimension fields and/or array lengths are incompatible")]
@@ -11,6 +11,8 @@ pub enum SparseFormatError {
     BadRowval,
     #[error("Bad column pointer values")]
     BadColptr,
+    #[error("sparsity pattern mismatch")]
+    SparsityMismatch,
 }
 
 /// Error type returned by BLAS-like dense factorization routines.  Errors

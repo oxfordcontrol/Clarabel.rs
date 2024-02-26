@@ -65,6 +65,7 @@ struct SolutionJLRS
     s::VectorJLRS{Float64}
     status::UInt32   #0 indexed enum in RS/JL
     obj_val::Float64
+    obj_val_dual::Float64
     solve_time::Float64
     iterations::UInt32
     r_prim::Float64
@@ -81,6 +82,7 @@ function DefaultSolution(sol::SolutionJLRS)
         Vector(sol.s),
         Clarabel.SolverStatus(sol.status),
         sol.obj_val,
+        sol.obj_val_dual,
         sol.solve_time,
         sol.iterations,
         sol.r_prim,

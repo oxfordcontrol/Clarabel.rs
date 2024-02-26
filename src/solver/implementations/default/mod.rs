@@ -3,6 +3,7 @@
 
 #![allow(non_snake_case)]
 
+mod data_updating;
 mod equilibration;
 mod info;
 mod info_print;
@@ -16,6 +17,7 @@ mod solver;
 mod variables;
 
 // export flattened
+pub use data_updating::*;
 pub use equilibration::*;
 pub use info::*;
 pub use info_print::*;

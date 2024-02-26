@@ -80,7 +80,7 @@ where
 
     fn update(
         &mut self,
-        data: &DefaultProblemData<T>,
+        data: &mut DefaultProblemData<T>,
         variables: &DefaultVariables<T>,
         residuals: &DefaultResiduals<T>,
         timers: &Timers,
@@ -88,6 +88,10 @@ where
         // optimality termination check should be computed w.r.t
         // the pre-homogenization x and z variables.
         let τinv = T::recip(variables.τ);
+
+        // unscaled linear term norms
+        let normb = data.get_normb();
+        let normq = data.get_normq();
 
         // shortcuts for the equilibration matrices
         let dinv = &data.equilibration.dinv;
@@ -102,23 +106,30 @@ where
         self.cost_primal = (residuals.dot_qx * τinv + xPx_τinvsq_over2) / cscale;
         self.cost_dual = (-residuals.dot_bz * τinv - xPx_τinvsq_over2) / cscale;
 
-        //primal and dual relative residuals.   Need to invert the equilibration
-        let normx = variables.x.norm_scaled(dinv) * τinv;
-        let normz = variables.z.norm_scaled(einv) * τinv;
-        let norms = variables.s.norm_scaled(einv) * τinv;
+        // variables norms, undoing the equilibration.  Do not unscale
+        // by τ yet because the infeasibility residuals are ratios of
+        // terms that have no affine parts anyway
+        let mut normx = variables.x.norm_scaled(dinv);
+        let mut normz = variables.z.norm_scaled(einv);
+        let mut norms = variables.s.norm_scaled(einv);
 
-        // primal and dual residuals.   Need to invert the equilibration
-        self.res_primal =
-            residuals.rz.norm_scaled(einv) * τinv / T::max(T::one(), data.normb + normx + norms);
-        self.res_dual =
-            residuals.rx.norm_scaled(dinv) * τinv / T::max(T::one(), data.normq + normx + normz);
-
-        // primal and dual infeasibility residuals.   Need to invert the equilibration
+        // primal and dual infeasibility residuals.
         self.res_primal_inf = residuals.rx_inf.norm_scaled(dinv) / T::max(T::one(), normz);
         self.res_dual_inf = T::max(
             residuals.Px.norm_scaled(dinv) / T::max(T::one(), normx),
             residuals.rz_inf.norm_scaled(einv) / T::max(T::one(), normx + norms),
         );
+
+        // now back out the τ scaling so we can normalize the unscaled primal / dual errors
+        normx *= τinv;
+        normz *= τinv;
+        norms *= τinv;
+
+        // primal and dual relative residuals.
+        self.res_primal =
+            residuals.rz.norm_scaled(einv) * τinv / T::max(T::one(), normb + normx + norms);
+        self.res_dual =
+            residuals.rx.norm_scaled(dinv) * τinv / T::max(T::one(), normq + normx + normz);
 
         // absolute and relative gaps
         self.gap_abs = T::abs(self.cost_primal - self.cost_dual);

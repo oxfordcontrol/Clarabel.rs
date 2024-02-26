@@ -85,12 +85,10 @@ fn test_hadamard() {
 fn test_clip() {
     let min_thresh = 0.1;
     let max_thresh = 10.;
-    let min_new = 0.5;
-    let max_new = 5.;
     let mut x = vec![0.01, 0.1, 1., 10., 100.];
-    x.clip(min_thresh, max_thresh, min_new, max_new);
+    x.clip(min_thresh, max_thresh);
 
-    assert_eq!(x, vec![0.5, 0.1, 1., 10., 5.]);
+    assert_eq!(x, vec![0.1, 0.1, 1., 10., 10.]);
 }
 
 #[test]

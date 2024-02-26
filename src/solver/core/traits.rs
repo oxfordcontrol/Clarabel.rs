@@ -182,7 +182,13 @@ where
     fn finalize(&mut self, residuals: &Self::R, settings: &Self::SE, timers: &mut Timers);
 
     /// Update solver progress information
-    fn update(&mut self, data: &Self::D, variables: &Self::V, residuals: &Self::R, timers: &Timers);
+    fn update(
+        &mut self,
+        data: &mut Self::D,
+        variables: &Self::V,
+        residuals: &Self::R,
+        timers: &Timers,
+    );
 
     /// Return `true` if termination conditions have been reached.
     fn check_termination(&mut self, residuals: &Self::R, settings: &Self::SE, iter: u32) -> bool;

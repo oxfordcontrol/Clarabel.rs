@@ -10,16 +10,8 @@ pub trait ScalarMath {
     type T: FloatT;
     /// Applies a threshold value.   
     ///
-    /// If `s < min_thresh`, it is assigned the new value `min_new`.  
-    ///
-    /// If `s > max_thresh`, it assigned the new value `max_new`.
-    fn clip(
-        &self,
-        min_thresh: Self::T,
-        max_thresh: Self::T,
-        min_new: Self::T,
-        max_new: Self::T,
-    ) -> Self::T;
+    /// Restricts the value to be at least `min_thresh` and at most `max_thresh`.
+    fn clip(&self, min_thresh: Self::T, max_thresh: Self::T) -> Self::T;
 
     /// Safe calculation for log barriers.
     ///
@@ -70,13 +62,7 @@ pub trait VectorMath {
     fn hadamard(&mut self, y: &Self) -> &mut Self;
 
     /// Vector version of [clip](crate::algebra::ScalarMath::clip)
-    fn clip(
-        &mut self,
-        min_thresh: Self::T,
-        max_thresh: Self::T,
-        min_new: Self::T,
-        max_new: Self::T,
-    ) -> &mut Self;
+    fn clip(&mut self, min_thresh: Self::T, max_thresh: Self::T) -> &mut Self;
 
     /// Normalize, returning the norm.  Do nothing if norm == 0.  
     fn normalize(&mut self) -> Self::T;
@@ -105,15 +91,22 @@ pub trait VectorMath {
     /// 2-norm
     fn norm(&self) -> Self::T;
 
-    /// 2-norm of an elementwise scaling of `self` by `v`
-    fn norm_scaled(&self, v: &Self) -> Self::T;
-
     /// Infinity norm
     fn norm_inf(&self) -> Self::T;
 
     /// One norm
     fn norm_one(&self) -> Self::T;
 
+    /// 2-norm of an elementwise scaling of `self` by `v`
+    fn norm_scaled(&self, v: &Self) -> Self::T;
+
+    /// Inf-norm of an elementwise scaling of `self` by `v`
+    fn norm_inf_scaled(&self, v: &Self) -> Self::T;
+
+    /// Inf-norm of an elementwise scaling of `self` by `v`
+    fn norm_one_scaled(&self, v: &Self) -> Self::T;
+
+    // Inf-norm of vector difference
     fn norm_inf_diff(&self, b: &Self) -> Self::T;
 
     /// Minimum value in vector

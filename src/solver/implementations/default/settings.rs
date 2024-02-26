@@ -68,10 +68,10 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "10")]
     pub equilibrate_max_iter: u32,
 
-    #[builder(default = "(1e-4).as_T()")]
+    #[builder(default = "(1e-5).as_T()")]
     pub equilibrate_min_scaling: T,
 
-    #[builder(default = "(1e+4).as_T()")]
+    #[builder(default = "(1e+5).as_T()")]
     pub equilibrate_max_scaling: T,
 
     // Step size settings
