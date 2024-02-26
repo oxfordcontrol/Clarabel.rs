@@ -46,6 +46,8 @@ pub struct PyDefaultSolution {
     #[pyo3(get)]
     pub obj_val: f64,
     #[pyo3(get)]
+    pub obj_val_dual: f64,
+    #[pyo3(get)]
     pub solve_time: f64,
     #[pyo3(get)]
     pub iterations: u32,
@@ -66,6 +68,7 @@ impl PyDefaultSolution {
             s,
             z,
             obj_val: result.obj_val,
+            obj_val_dual: result.obj_val_dual,
             status,
             solve_time: result.solve_time,
             iterations: result.iterations,
