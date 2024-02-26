@@ -91,6 +91,7 @@ fn test_qp_univariate() {
 
     assert!(f64::abs(solver.solution.x[0]) <= 1e-6);
     assert!(f64::abs(solver.solution.obj_val) <= 1e-6);
+    assert!(f64::abs(solver.solution.obj_val_dual) <= 1e-6);
 }
 
 #[test]
@@ -109,7 +110,8 @@ fn test_qp_feasible() {
     assert!(solver.solution.x.dist(&refsol) <= 1e-6);
 
     let refobj = 1.8800000298331538;
-    assert!(f64::abs(solver.info.cost_primal - refobj) <= 1e-6);
+    assert!(f64::abs(solver.solution.obj_val - refobj) <= 1e-6);
+    assert!(f64::abs(solver.solution.obj_val_dual - refobj) <= 1e-6);
 }
 
 #[test]
@@ -126,6 +128,8 @@ fn test_qp_primal_infeasible() {
     solver.solve();
 
     assert_eq!(solver.solution.status, SolverStatus::PrimalInfeasible);
+    assert!(solver.solution.obj_val.is_nan());
+    assert!(solver.solution.obj_val_dual.is_nan());
 }
 
 #[test]
@@ -139,6 +143,8 @@ fn test_qp_dual_infeasible() {
     solver.solve();
 
     assert_eq!(solver.solution.status, SolverStatus::DualInfeasible);
+    assert!(solver.solution.obj_val.is_nan());
+    assert!(solver.solution.obj_val_dual.is_nan());
 }
 
 #[test]
@@ -164,4 +170,6 @@ fn test_qp_dual_infeasible_ill_cond() {
     solver.solve();
 
     assert_eq!(solver.solution.status, SolverStatus::DualInfeasible);
+    assert!(solver.solution.obj_val.is_nan());
+    assert!(solver.solution.obj_val_dual.is_nan());
 }
