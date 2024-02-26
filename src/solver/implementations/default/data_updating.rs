@@ -166,7 +166,7 @@ where
         lscale: &[T],
         rscale: &[T],
     ) -> Result<(), SparseFormatError> {
-        let data = self.as_ref();
+        let data = self;
         if data.is_empty() {
             return Ok(());
         }
@@ -236,7 +236,7 @@ where
     T: FloatT,
 {
     fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError> {
-        let data = self.as_ref();
+        let data = self;
         if data.is_empty() {
             return Ok(());
         }

@@ -92,7 +92,7 @@ where
             norm
         } else {
             let dinv = &self.equilibration.dinv;
-            let norm = self.q.norm_inf_scaled(&dinv);
+            let norm = self.q.norm_inf_scaled(dinv);
             self.normq = Some(norm);
             norm
         }
@@ -103,7 +103,7 @@ where
             norm
         } else {
             let einv = &self.equilibration.einv;
-            let norm = self.b.norm_inf_scaled(&einv);
+            let norm = self.b.norm_inf_scaled(einv);
             self.normb = Some(norm);
             norm
         }
