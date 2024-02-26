@@ -169,6 +169,14 @@ where
 
         is_success
     }
+
+    fn update_P(&mut self, P: &CscMatrix<T>) {
+        _update_values(&mut self.ldlsolver, &mut self.KKT, &self.map.P, &P.nzval);
+    }
+
+    fn update_A(&mut self, A: &CscMatrix<T>) {
+        _update_values(&mut self.ldlsolver, &mut self.KKT, &self.map.A, &A.nzval);
+    }
 }
 
 impl<T> DirectLDLKKTSolver<T>
