@@ -9,8 +9,8 @@ use crate::{
 // ------------------------------------
 
 pub struct PSDConeData<T> {
-    cholS: CholeskyEngine<T>,
-    cholZ: CholeskyEngine<T>,
+    chol1: CholeskyEngine<T>,
+    chol2: CholeskyEngine<T>,
     SVD: SVDEngine<T>,
     Eig: EigEngine<T>,
     λ: Vec<T>,
@@ -36,8 +36,8 @@ where
         let Bm = triangular_number(n);
 
         Self {
-            cholS: CholeskyEngine::<T>::new(n),
-            cholZ: CholeskyEngine::<T>::new(n),
+            chol1: CholeskyEngine::<T>::new(n),
+            chol2: CholeskyEngine::<T>::new(n),
             SVD: SVDEngine::<T>::new((n, n)),
             Eig: EigEngine::<T>::new(n),
 
@@ -166,9 +166,9 @@ where
         _svec_to_mat(Z, z);
 
         //compute Cholesky factors
-        f.cholS.cholesky(S).expect("Cholesky error"); //PJG: could rethrow error here
-        f.cholZ.cholesky(Z).expect("Cholesky error");
-        let (L1, L2) = (&f.cholS.L, &f.cholZ.L);
+        f.chol1.cholesky(S).expect("Cholesky error"); //PJG: could rethrow error here
+        f.chol2.cholesky(Z).expect("Cholesky error");
+        let (L1, L2) = (&f.chol1.L, &f.chol2.L);
 
         // SVD of L2'*L1,
         let tmp = &mut f.workmat1;
@@ -282,14 +282,30 @@ where
         (αz, αs)
     }
 
-    fn compute_barrier(&mut self, _z: &[T], _s: &[T], _dz: &[T], _ds: &[T], _α: T) -> T {
-        // We should return this, but in a smarter way.
-        // This is not yet implemented, but would only
-        // be required for problems mixing PSD and
-        // asymmetric cones
-        //
-        // return -log(det(s)) - log(det(z))
-        unimplemented!("Mixed PSD and Exponential/Power cones are not yet supported");
+    fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
+        let mut barrier = T::zero();
+        barrier -= self.logdet_barrier(z, dz, α);
+        barrier -= self.logdet_barrier(s, ds, α);
+        return barrier;
+    }
+}
+
+impl<T> PSDTriangleCone<T>
+where
+    T: FloatT,
+{
+    fn logdet_barrier(&mut self, x: &[T], dx: &[T], α: T) -> T
+    where
+        T: FloatT,
+    {
+        let (Q, q) = (&mut self.data.workmat1, &mut self.data.workvec);
+        q.waxpby(T::one(), x, α, dx);
+        _svec_to_mat(Q, q);
+
+        match self.data.chol1.cholesky(Q) {
+            Ok(_) => self.data.chol1.logdet(),
+            Err(_) => T::infinity(),
+        }
     }
 }
 
