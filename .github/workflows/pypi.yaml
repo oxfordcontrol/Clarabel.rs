@@ -182,8 +182,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Publish to PyPi
         env:
-          TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
-          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
           pip install --upgrade twine
           twine upload --skip-existing --repository ${{ env.PYPI_TARGET  }} *
