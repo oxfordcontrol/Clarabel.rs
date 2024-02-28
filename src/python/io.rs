@@ -10,7 +10,7 @@ macro_rules! make_python_stdio {
             fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
                 let cstr = std::ffi::CString::new(buf).unwrap();
                 unsafe {
-                    $pyfunc(cstr.as_ptr() as *const i8);
+                    $pyfunc(cstr.as_ptr() as *const std::os::raw::c_char);
                 }
                 Ok(buf.len())
             }
