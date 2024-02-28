@@ -11,6 +11,7 @@
 mod cones_py;
 mod cscmatrix_py;
 mod impl_default_py;
+pub(crate) mod io;
 mod module_py;
 pub(crate) mod pyblas;
 

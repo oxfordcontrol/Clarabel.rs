@@ -61,6 +61,7 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 pub mod algebra;
 pub mod qdldl;
 pub mod solver;
+pub(crate) mod stdio;
 pub mod timers;
 
 #[cfg(feature = "python")]
