@@ -8,12 +8,25 @@ use std::os::raw::c_char;
 
 macro_rules! make_python_stdio {
     ($rawtypename:ident, $typename:ident, $pyfunc:ident, $pymodname:literal) => {
-        pub(crate) struct $rawtypename {}
+        pub(crate) struct $rawtypename {
+            pub cbuffer: Vec<u8>,
+        }
+        impl $rawtypename {
+            pub(crate) fn new() -> Self {
+                Self {
+                    cbuffer: Vec::new(),
+                }
+            }
+        }
         impl Write for $rawtypename {
             fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-                let cstr = CString::new(buf).unwrap();
+                //clear internal buffer and then overwrite with the
+                //new buffer and a null terminator
+                self.cbuffer.clear();
+                self.cbuffer.extend_from_slice(buf);
+                self.cbuffer.push(0);
                 unsafe {
-                    $pyfunc(cstr.as_ptr() as *const c_char);
+                    $pyfunc(self.cbuffer.as_ptr() as *const c_char);
                 }
                 Ok(buf.len())
             }
@@ -40,7 +53,7 @@ macro_rules! make_python_stdio {
         impl $typename {
             pub(crate) fn new() -> Self {
                 Self {
-                    inner: LineWriter::new($rawtypename {}),
+                    inner: LineWriter::new($rawtypename::new()),
                 }
             }
         }
