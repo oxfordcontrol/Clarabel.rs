@@ -121,7 +121,7 @@ pub struct Solver<D, V, R, K, C, I, SO, SE> {
 
 fn _print_banner(is_verbose: bool) -> std::io::Result<()> {
     if !is_verbose {
-        ()
+        return std::io::Result::Ok(());
     }
 
     let mut out = stdio::stdout();
