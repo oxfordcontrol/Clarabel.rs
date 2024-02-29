@@ -286,7 +286,7 @@ where
         let mut barrier = T::zero();
         barrier -= self.logdet_barrier(z, dz, α);
         barrier -= self.logdet_barrier(s, ds, α);
-        return barrier;
+        barrier
     }
 }
 

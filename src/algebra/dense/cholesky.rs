@@ -64,7 +64,7 @@ where
         for i in 0..n {
             ld += T::ln(self.L[(i, i)]);
         }
-        return ld + ld;
+        ld + ld
     }
 }
 

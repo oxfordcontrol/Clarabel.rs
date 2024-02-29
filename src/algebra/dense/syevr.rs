@@ -74,7 +74,7 @@ where
 
         // standard BLAS ?symevr arguments for computing
         // a full set of eigenvalues.
-        let jobz = jobz; // 'N' for values, 'V' for vecs/values
+        //let jobz = jobz; // 'N' for values, 'V' for vecs/values
         let range = b'A'; // compute all eigenvalues
         let uplo = MatrixTriangle::Triu.as_blas_char(); // we always assume triu form
         let n = An.try_into().unwrap();
