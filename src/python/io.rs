@@ -1,25 +1,26 @@
 // Provides a Writer to allow for redirection of stdout and stderr streams
-// to the ones configured for Python
+// to the ones configured for Python.
 
 use pyo3::ffi::{PyObject_CallMethod, PySys_GetObject, PySys_WriteStderr, PySys_WriteStdout};
 use std::ffi::CString;
+use std::io::{LineWriter, Write};
 use std::os::raw::c_char;
 
 macro_rules! make_python_stdio {
-    ($name:ident, $pyfunc:ident, $modname:literal) => {
-        pub(crate) struct $name {}
-        impl std::io::Write for $name {
+    ($rawtypename:ident, $typename:ident, $pyfunc:ident, $pymodname:literal) => {
+        pub(crate) struct $rawtypename {}
+        impl Write for $rawtypename {
             fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-                let cstr = std::ffi::CString::new(buf).unwrap();
+                let cstr = CString::new(buf).unwrap();
                 unsafe {
                     $pyfunc(cstr.as_ptr() as *const c_char);
                 }
                 Ok(buf.len())
             }
             fn flush(&mut self) -> std::io::Result<()> {
-                // call the python sys.stdout.flush()
+                // call the python flush() on sys.$pymodname
                 unsafe {
-                    let stdout_str = CString::new($modname).unwrap();
+                    let stdout_str = CString::new($pymodname).unwrap();
                     let stdout_obj = PySys_GetObject(stdout_str.as_ptr() as *const c_char);
                     let flush_str = CString::new("flush").unwrap();
                     PyObject_CallMethod(
@@ -31,16 +32,47 @@ macro_rules! make_python_stdio {
                 Ok(())
             }
         }
+
+        pub(crate) struct $typename {
+            inner: LineWriter<$rawtypename>,
+        }
+
+        impl $typename {
+            pub(crate) fn new() -> Self {
+                Self {
+                    inner: LineWriter::new($rawtypename {}),
+                }
+            }
+        }
+
+        impl Write for $typename {
+            fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+                self.inner.write(buf)
+            }
+            fn flush(&mut self) -> std::io::Result<()> {
+                self.inner.flush()
+            }
+        }
     };
 }
-make_python_stdio!(PythonStdout, PySys_WriteStdout, "__stdout__");
-make_python_stdio!(PythonStderr, PySys_WriteStderr, "__stderr__");
+make_python_stdio!(
+    PythonStdoutRaw,
+    PythonStdout,
+    PySys_WriteStdout,
+    "__stdout__"
+);
+make_python_stdio!(
+    PythonStderrRaw,
+    PythonStderr,
+    PySys_WriteStderr,
+    "__stderr__"
+);
 
 pub(crate) fn stdout() -> PythonStdout {
-    PythonStdout {}
+    PythonStdout::new()
 }
 
 #[allow(dead_code)]
 pub(crate) fn stderr() -> PythonStderr {
-    PythonStderr {}
+    PythonStderr::new()
 }
