@@ -166,8 +166,15 @@ where
         _svec_to_mat(Z, z);
 
         //compute Cholesky factors
-        f.chol1.cholesky(S).expect("Cholesky error"); //PJG: could rethrow error here
-        f.chol2.cholesky(Z).expect("Cholesky error");
+        let c1 = f.chol1.cholesky(S);
+        let c2 = f.chol2.cholesky(Z);
+
+        // bail if the cholesky factorization fails
+        // PJG: Need proper Result return type here
+        if c1.is_err() || c2.is_err() {
+            return false;
+        }
+
         let (L1, L2) = (&f.chol1.L, &f.chol2.L);
 
         // SVD of L2'*L1,
