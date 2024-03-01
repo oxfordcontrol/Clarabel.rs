@@ -8,11 +8,11 @@ use std::os::raw::c_char;
 
 macro_rules! make_python_stdio {
     ($rawtypename:ident, $typename:ident, $pyfunc:ident, $pymodname:literal) => {
-        pub(crate) struct $rawtypename {
-            pub cbuffer: Vec<u8>,
+        struct $rawtypename {
+            cbuffer: Vec<u8>,
         }
         impl $rawtypename {
-            pub(crate) fn new() -> Self {
+            fn new() -> Self {
                 Self {
                     cbuffer: Vec::new(),
                 }
