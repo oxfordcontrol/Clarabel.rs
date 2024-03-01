@@ -2,9 +2,7 @@ use self::internal::*;
 use super::cones::Cone;
 use super::traits::*;
 use crate::algebra::*;
-use crate::stdio;
 use crate::timers::*;
-use std::io::Write;
 
 // ---------------------------------
 // Solver status type
@@ -119,35 +117,19 @@ pub struct Solver<D, V, R, K, C, I, SO, SE> {
     pub timers: Option<Timers>,
 }
 
-fn _print_banner(is_verbose: bool) -> std::io::Result<()> {
+fn _print_banner(is_verbose: bool) {
     if !is_verbose {
-        return std::io::Result::Ok(());
+        return;
     }
 
-    let mut out = stdio::stdout();
-
-    writeln!(
-        out,
-        "-------------------------------------------------------------"
-    )?;
-    writeln!(
-        out,
+    println!("-------------------------------------------------------------");
+    println!(
         "           Clarabel.rs v{}  -  Clever Acronym              \n",
         crate::VERSION
-    )?;
-    writeln!(
-        out,
-        "                   (c) Paul Goulart                          "
-    )?;
-    writeln!(
-        out,
-        "                University of Oxford, 2022                   "
-    )?;
-    writeln!(
-        out,
-        "-------------------------------------------------------------"
-    )?;
-    std::io::Result::Ok(())
+    );
+    println!("                   (c) Paul Goulart                          ");
+    println!("                University of Oxford, 2022                   ");
+    println!("-------------------------------------------------------------");
 }
 
 // ---------------------------------
@@ -194,9 +176,9 @@ where
         // solver release info, solver config
         // problem dimensions, cone types etc
         notimeit! {timers; {
-            _print_banner(self.settings.core().verbose).unwrap();
-            self.info.print_configuration(&self.settings, &self.data, &self.cones).unwrap();
-            self.info.print_status_header(&self.settings).unwrap();
+            _print_banner(self.settings.core().verbose);
+            self.info.print_configuration(&self.settings, &self.data, &self.cones);
+            self.info.print_status_header(&self.settings);
         }}
 
         self.info.reset(&mut timers);
@@ -241,7 +223,7 @@ where
                 &self.residuals,&timers);
 
             notimeit!{timers; {
-                self.info.print_status(&self.settings).unwrap();
+                self.info.print_status(&self.settings);
             }}
 
             let isdone = self.info.check_termination(&self.residuals, &self.settings, iter);
@@ -371,7 +353,7 @@ where
         // to recapture the scalars and print one last line
         if α == T::zero() {
             self.info.save_scalars(μ, α, σ, iter);
-            notimeit! {timers; {self.info.print_status(&self.settings).unwrap();}}
+            notimeit! {timers; {self.info.print_status(&self.settings);}}
         }
 
         //store final solution, timing etc
@@ -381,7 +363,7 @@ where
         self.solution
             .finalize(&self.data, &self.variables, &self.info);
 
-        self.info.print_footer(&self.settings).unwrap();
+        self.info.print_footer(&self.settings);
 
         //stow the timers back into Option in the solver struct
         self.timers.replace(timers);
