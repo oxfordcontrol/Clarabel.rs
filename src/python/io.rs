@@ -1,8 +1,8 @@
 // Provides a Writer to allow for redirection of stdout and stderr streams
 // to the ones configured for Python.
 
-use pyo3::ffi::{PyObject_CallMethod, PySys_GetObject, PySys_WriteStderr, PySys_WriteStdout};
-use std::ffi::CString;
+use pyo3::ffi::{PySys_WriteStderr, PySys_WriteStdout};
+use pyo3::prelude::*;
 use std::io::{LineWriter, Write};
 use std::os::raw::c_char;
 
@@ -25,27 +25,24 @@ macro_rules! make_python_stdio {
                 self.cbuffer.clear();
                 self.cbuffer.extend_from_slice(buf);
                 self.cbuffer.push(0);
-                unsafe {
+                Python::with_gil(|_py| unsafe {
                     $pyfunc(self.cbuffer.as_ptr() as *const c_char);
-                }
+                });
                 Ok(buf.len())
             }
             fn flush(&mut self) -> std::io::Result<()> {
                 // call the python flush() on sys.$pymodname
-                unsafe {
-                    let stdout_str = CString::new($pymodname).unwrap();
-                    let stdout_obj = PySys_GetObject(stdout_str.as_ptr() as *const c_char);
-                    let flush_str = CString::new("flush").unwrap();
-                    PyObject_CallMethod(
-                        stdout_obj,
-                        flush_str.as_ptr() as *const c_char,
-                        std::ptr::null(),
-                    );
-                }
-                Ok(())
+                Python::with_gil(|py| -> std::io::Result<()> {
+                    py.run(
+                        std::concat!("import sys; sys.", $pymodname, ".flush()"),
+                        None,
+                        None,
+                    )
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+                    Ok(())
+                })
             }
         }
-
         pub(crate) struct $typename {
             inner: LineWriter<$rawtypename>,
         }
@@ -68,18 +65,8 @@ macro_rules! make_python_stdio {
         }
     };
 }
-make_python_stdio!(
-    PythonStdoutRaw,
-    PythonStdout,
-    PySys_WriteStdout,
-    "__stdout__"
-);
-make_python_stdio!(
-    PythonStderrRaw,
-    PythonStderr,
-    PySys_WriteStderr,
-    "__stderr__"
-);
+make_python_stdio!(PythonStdoutRaw, PythonStdout, PySys_WriteStdout, "stdout");
+make_python_stdio!(PythonStderrRaw, PythonStderr, PySys_WriteStderr, "stderr");
 
 pub(crate) fn stdout() -> PythonStdout {
     PythonStdout::new()
