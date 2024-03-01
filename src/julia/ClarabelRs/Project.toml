@@ -1,7 +1,7 @@
 name = "ClarabelRs"
 uuid = "a0c58a0a-712c-48b7-9fd4-64369ecb2011"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
-version = "0.7.0"
+version = "0.7.1"
 
 [deps]
 Clarabel = "61c947e1-3e6d-4ee4-985a-eec8c727bd6e"
@@ -11,4 +11,4 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
-Clarabel = "0.7.0"
+Clarabel = "0.7.1"

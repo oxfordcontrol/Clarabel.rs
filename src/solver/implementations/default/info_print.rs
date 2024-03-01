@@ -1,7 +1,9 @@
+use crate::stdio;
 use crate::{
     algebra::*,
     solver::core::cones::{SupportedConeAsTag, SupportedConeTag},
 };
+use std::io::Write;
 
 use super::*;
 use crate::solver::core::{
@@ -33,100 +35,116 @@ where
         settings: &DefaultSettings<T>,
         data: &DefaultProblemData<T>,
         cones: &CompositeCone<T>,
-    ) {
+    ) -> std::io::Result<()> {
         if !settings.verbose {
-            return;
+            return std::io::Result::Ok(())
         }
+
+        let mut out = stdio::stdout();
 
         if data.presolver.is_reduced() {
-            println!(
+            writeln!(out, 
                 "\npresolve: removed {} constraints",
                 data.presolver.count_reduced()
-            );
+            )?;
         }
 
-        println!("\nproblem:");
-        println!("  variables     = {}", data.n);
-        println!("  constraints   = {}", data.m);
-        println!("  nnz(P)        = {}", data.P.nnz());
-        println!("  nnz(A)        = {}", data.A.nnz());
-        println!("  cones (total) = {}", cones.len());
+        writeln!(out, "\nproblem:")?;
+        writeln!(out, "  variables     = {}", data.n)?;
+        writeln!(out, "  constraints   = {}", data.m)?;
+        writeln!(out, "  nnz(P)        = {}", data.P.nnz())?;
+        writeln!(out, "  nnz(A)        = {}", data.A.nnz())?;
+        writeln!(out, "  cones (total) = {}", cones.len())?;
 
         //All dims here are dummies since we just care about the cone type
-        _print_conedims_by_type(cones, SupportedConeTag::ZeroCone);
-        _print_conedims_by_type(cones, SupportedConeTag::NonnegativeCone);
-        _print_conedims_by_type(cones, SupportedConeTag::SecondOrderCone);
-        _print_conedims_by_type(cones, SupportedConeTag::ExponentialCone);
-        _print_conedims_by_type(cones, SupportedConeTag::PowerCone);
-        _print_conedims_by_type(cones, SupportedConeTag::GenPowerCone);
+        _print_conedims_by_type(cones, SupportedConeTag::ZeroCone)?;
+        _print_conedims_by_type(cones, SupportedConeTag::NonnegativeCone)?;
+        _print_conedims_by_type(cones, SupportedConeTag::SecondOrderCone)?;
+        _print_conedims_by_type(cones, SupportedConeTag::ExponentialCone)?;
+        _print_conedims_by_type(cones, SupportedConeTag::PowerCone)?;
+        _print_conedims_by_type(cones, SupportedConeTag::GenPowerCone)?;
         #[cfg(feature = "sdp")]
-        _print_conedims_by_type(cones, SupportedConeTag::PSDTriangleCone);
+        _print_conedims_by_type(cones, SupportedConeTag::PSDTriangleCone)?;
 
-        println!();
-        _print_settings(settings);
-        println!();
+        writeln!(out, )?;
+        _print_settings(settings)?;
+        writeln!(out, )?;
+
+        std::io::Result::Ok(())
     }
 
-    fn print_status_header(&self, settings: &DefaultSettings<T>) {
+    fn print_status_header(&self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
         if !settings.verbose {
-            return;
+            return std::io::Result::Ok(())
         }
+
+        let mut out = stdio::stdout();
 
         //print a subheader for the iterations info
-        print!("iter    ");
-        print!("pcost        ");
-        print!("dcost       ");
-        print!("gap       ");
-        print!("pres      ");
-        print!("dres      ");
-        print!("k/t       ");
-        print!(" μ       ");
-        print!("step      ");
-        println!();
-        println!(
+        write!(out, "iter    ")?;
+        write!(out, "pcost        ")?;
+        write!(out, "dcost       ")?;
+        write!(out, "gap       ")?;
+        write!(out, "pres      ")?;
+        write!(out, "dres      ")?;
+        write!(out, "k/t       ")?;
+        write!(out, " μ       ")?;
+        write!(out, "step      ")?;
+        writeln!(out, )?;
+        writeln!(out, 
             "---------------------------------------------------------------------------------------------"
-        );
+        )?;
+        stdio::stdout().flush()?;
+        std::io::Result::Ok(())
     }
 
-    fn print_status(&self, settings: &DefaultSettings<T>) {
+    fn print_status(&self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
         if !settings.verbose {
-            return;
+            return std::io::Result::Ok(());
         }
 
-        print!("{:>3}  ", self.iterations);
-        print!("{}  ", expformat!("{:+8.4e}", self.cost_primal));
-        print!("{}  ", expformat!("{:+8.4e}", self.cost_dual));
+        let mut out = stdio::stdout();
+
+        write!(out, "{:>3}  ", self.iterations)?;
+        write!(out, "{}  ", expformat!("{:+8.4e}", self.cost_primal))?;
+        write!(out, "{}  ", expformat!("{:+8.4e}", self.cost_dual))?;
         let gapprint = T::min(self.gap_abs, self.gap_rel);
-        print!("{}  ", expformat!("{:6.2e}", gapprint));
-        print!("{}  ", expformat!("{:6.2e}", self.res_primal));
-        print!("{}  ", expformat!("{:6.2e}", self.res_dual));
-        print!("{}  ", expformat!("{:6.2e}", self.ktratio));
-        print!("{}  ", expformat!("{:6.2e}", self.μ));
+        write!(out, "{}  ", expformat!("{:6.2e}", gapprint))?;
+        write!(out, "{}  ", expformat!("{:6.2e}", self.res_primal))?;
+        write!(out, "{}  ", expformat!("{:6.2e}", self.res_dual))?;
+        write!(out, "{}  ", expformat!("{:6.2e}", self.ktratio))?;
+        write!(out, "{}  ", expformat!("{:6.2e}", self.μ))?;
 
         if self.iterations > 0 {
-            print!("{}  ", expformat!("{:>.2e}", self.step_length));
+            write!(out, "{}  ", expformat!("{:>.2e}", self.step_length))?;
         } else {
-            print!(" ------   "); //info.step_length
+            write!(out, " ------   ")?; //info.step_length
         }
 
-        println!();
+        writeln!(out, )?;
+
+        std::io::Result::Ok(())
     }
 
-    fn print_footer(&self, settings: &DefaultSettings<T>) {
+    fn print_footer(&self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
         if !settings.verbose {
-            return;
+            return std::io::Result::Ok(());
         }
 
-        println!(
+        let mut out = stdio::stdout();
+
+        writeln!(out, 
             "---------------------------------------------------------------------------------------------"
-        );
+        )?;
 
-        println!("Terminated with status = {}", self.status);
+        writeln!(out, "Terminated with status = {}", self.status)?;
 
-        println!(
+        writeln!(out, 
             "solve time = {:?}",
             Duration::from_secs_f64(self.solve_time)
-        );
+        )?;
+
+        std::io::Result::Ok(())
     }
 }
 
@@ -137,17 +155,18 @@ fn _bool_on_off(v: bool) -> &'static str {
     }
 }
 
-fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
+fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<()>{
     let set = settings;
+    let mut out = stdio::stdout();
 
-    println!("settings:");
+    writeln!(out, "settings:")?;
 
     if set.direct_kkt_solver {
-        println!(
+        writeln!(out, 
             "  linear algebra: direct / {}, precision: {} bit",
             set.direct_solve_method,
             _get_precision_string::<T>()
-        );
+        )?;
     }
 
     let time_lim_str = {
@@ -157,65 +176,69 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) {
             format!("{:?}", set.time_limit)
         }
     };
-    println!(
+    writeln!(out, 
         "  max iter = {}, time limit = {},  max step = {:.3}",
         set.max_iter, time_lim_str, set.max_step_fraction
-    );
+    )?;
 
-    println!(
+    writeln!(out, 
         "  tol_feas = {:.1e}, tol_gap_abs = {:.1e}, tol_gap_rel = {:.1e},",
         set.tol_feas, set.tol_gap_abs, set.tol_gap_rel
-    );
+    )?;
 
-    println!(
+    writeln!(out, 
         "  static reg : {}, ϵ1 = {:.1e}, ϵ2 = {:.1e}",
         _bool_on_off(set.static_regularization_enable),
         set.static_regularization_constant,
         set.static_regularization_proportional,
-    );
+    )?;
 
-    println!(
+    writeln!(out, 
         "  dynamic reg: {}, ϵ = {:.1e}, δ = {:.1e}",
         _bool_on_off(set.dynamic_regularization_enable),
         set.dynamic_regularization_eps,
         set.dynamic_regularization_delta
-    );
+    )?;
 
-    println!(
+    writeln!(out, 
         "  iter refine: {}, reltol = {:.1e}, abstol = {:.1e},",
         _bool_on_off(set.iterative_refinement_enable),
         set.iterative_refinement_reltol,
         set.iterative_refinement_abstol
-    );
+    )?;
 
-    println!(
+    writeln!(out, 
         "               max iter = {}, stop ratio = {:.1}",
         set.iterative_refinement_max_iter, set.iterative_refinement_stop_ratio
-    );
+    )?;
 
-    println!(
+    writeln!(out, 
         "  equilibrate: {}, min_scale = {:.1e}, max_scale = {:.1e}",
         _bool_on_off(set.equilibrate_enable),
         set.equilibrate_min_scaling,
         set.equilibrate_max_scaling
-    );
+    )?;
 
-    println!("               max iter = {}", set.equilibrate_max_iter,);
+    writeln!(out, "               max iter = {}", set.equilibrate_max_iter,)?;
+
+    std::io::Result::Ok(())
 }
 
 fn _get_precision_string<T: FloatT>() -> String {
     (::std::mem::size_of::<T>() * 8).to_string()
 }
 
-fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetag: SupportedConeTag) {
+fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetag: SupportedConeTag) -> std::io::Result<()> {
     let maxlistlen = 5;
 
     let count = cones.get_type_count(conetag);
 
     //skip if there are none of this type
     if count == 0 {
-        return;
+        return std::io::Result::Ok(())
     }
+
+    let mut out = stdio::stdout();
 
     // how many of this type of cone?
     let name = conetag.as_str();
@@ -230,27 +253,29 @@ fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetag: Support
             nvars.push(cone.numel());
         }
     }
-    print!("    : {} = {}, ", name, count);
+    write!(out, "    : {} = {}, ", name, count)?;
 
     if count == 1 {
-        print!(" numel = {}", nvars[0]);
+        write!(out, " numel = {}", nvars[0])?;
     } else if count <= maxlistlen {
         //print them all
-        print!(" numel = (");
+        write!(out, " numel = (")?;
         for nvar in nvars.iter().take(nvars.len() - 1) {
-            print!("{},", nvar);
+            write!(out, "{},", nvar)?;
         }
-        print!("{})", nvars[nvars.len() - 1]);
+        write!(out, "{})", nvars[nvars.len() - 1])?;
     } else {
         // print first (maxlistlen-1) and the final one
-        print!(" numel = (");
+        write!(out, " numel = (")?;
         for nvar in nvars.iter().take(maxlistlen - 1) {
-            print!("{},", nvar);
+            write!(out, "{},", nvar)?;
         }
-        print!("...,{})", nvars[nvars.len() - 1]);
+        write!(out, "...,{})", nvars[nvars.len() - 1])?;
     }
 
-    println!();
+    writeln!(out, )?;
+
+    std::io::Result::Ok(())
 }
 
 // convert a string in LowerExp display format into one that

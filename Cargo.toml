@@ -1,6 +1,6 @@
 [package]
 name = "clarabel"
-version = "0.7.0"
+version = "0.7.1"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 rust-version = "1.60"
@@ -137,7 +137,7 @@ version = "0.2"
 
 [dependencies.pyo3]
 optional = true
-version = "0.17.2"
+version = "0.20"
 # "extension-module" tells pyo3 we want to build an extension module (skips linking against libpython.so)
 # "abi3-py37" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.7
 features = ["extension-module", "abi3-py37"]
