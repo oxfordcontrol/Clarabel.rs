@@ -406,11 +406,10 @@ impl PyDefaultSolver {
         let verbose = self.inner.settings.core().verbose;
 
         self.inner.settings.core_mut().verbose = true;
-        self.inner.info.print_configuration(
-            &self.inner.settings,
-            &self.inner.data,
-            &self.inner.cones,
-        );
+        self.inner
+            .info
+            .print_configuration(&self.inner.settings, &self.inner.data, &self.inner.cones)
+            .unwrap();
 
         // revert back to user option
         self.inner.settings.core_mut().verbose = verbose;

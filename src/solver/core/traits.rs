@@ -153,17 +153,22 @@ where
 
     /// Print the solver configuration, e.g. settings etc.
     /// This function is called once at the start of the solve.
-    fn print_configuration(&self, settings: &Self::SE, data: &Self::D, cones: &Self::C);
+    fn print_configuration(
+        &self,
+        settings: &Self::SE,
+        data: &Self::D,
+        cones: &Self::C,
+    ) -> std::io::Result<()>;
 
     /// Print a header to appear at the top of progress information.
-    fn print_status_header(&self, settings: &Self::SE);
+    fn print_status_header(&self, settings: &Self::SE) -> std::io::Result<()>;
 
     /// Print solver progress information.   Called once per iteration.
-    fn print_status(&self, settings: &Self::SE);
+    fn print_status(&self, settings: &Self::SE) -> std::io::Result<()>;
 
     /// Print solver final status and other exit information.   Called at
     /// solver termination.
-    fn print_footer(&self, settings: &Self::SE);
+    fn print_footer(&self, settings: &Self::SE) -> std::io::Result<()>;
 }
 
 /// Internal information for the solver to monitor progress and check for termination.
