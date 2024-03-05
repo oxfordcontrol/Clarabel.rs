@@ -101,7 +101,7 @@ jobs:
           python examples/python/example_sdp.py 
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist
@@ -135,7 +135,7 @@ jobs:
           python examples/python/example_sdp.py 
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheels
           path: dist
