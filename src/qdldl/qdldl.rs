@@ -195,12 +195,12 @@ fn _qdldl_new<T: FloatT>(
         iperm = _invperm(&_perm)?;
         perm = _perm;
     } else {
-        (perm, iperm) = _get_amd_ordering(Ain, opts.amd_dense_scale);
+        (perm, iperm) = get_amd_ordering(Ain, opts.amd_dense_scale);
     }
 
     //permute to (another) upper triangular matrix and store the
     //index mapping the input's entries to the permutation's entries
-    let (A, AtoPAPt) = _permute_symmetric(Ain, &iperm);
+    let (A, AtoPAPt) = permute_symmetric_triu(Ain, &iperm);
 
     // handle the (possibly permuted) vector of
     // diagonal D signs if one was specified.  Otherwise
@@ -726,7 +726,14 @@ fn _ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
 // Given a sparse symmetric matrix `A` (with only upper triangular entries), return
 // permuted sparse symmetric matrix `P` (also only upper triangular) given the
 // inverse permutation vector `iperm`."
-fn _permute_symmetric<T: FloatT>(A: &CscMatrix<T>, iperm: &[usize]) -> (CscMatrix<T>, Vec<usize>) {
+
+// PJG: comments here are a mess because 'P' is referring both to the permutation
+// matrix and the permutation of A
+
+pub(crate) fn permute_symmetric_triu<T: FloatT>(
+    A: &CscMatrix<T>,
+    iperm: &[usize],
+) -> (CscMatrix<T>, Vec<usize>) {
     // perform a number of argument checks
     let (_m, n) = A.size();
     let mut P = CscMatrix::<T>::spalloc((n, n), A.nnz());
@@ -822,7 +829,7 @@ fn _permute_symmetric_inner<T: FloatT>(
     }
 }
 
-fn _get_amd_ordering<T: FloatT>(
+pub(crate) fn get_amd_ordering<T: FloatT>(
     A: &CscMatrix<T>,
     amd_dense_scale: f64,
 ) -> (Vec<usize>, Vec<usize>) {

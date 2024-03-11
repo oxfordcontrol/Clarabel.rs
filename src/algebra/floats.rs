@@ -56,8 +56,8 @@ cfg_if::cfg_if! {
 
 cfg_if::cfg_if! {
     if #[cfg(feature="faer-sparse")] {
-        pub trait MaybeFaerFloatT : faer_core::SimpleEntity + faer_core::ComplexField<Real=Self> {}
-        impl<T> MaybeFaerFloatT for T where T: faer_core::SimpleEntity + faer_core::ComplexField<Real=Self> {}
+        pub trait MaybeFaerFloatT : faer::SimpleEntity + faer::ComplexField<Real=Self> {}
+        impl<T> MaybeFaerFloatT for T where T: faer::SimpleEntity + faer::ComplexField<Real=Self> {}
     }
     else {
         pub trait MaybeFaerFloatT {}
