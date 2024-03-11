@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 #[cfg(feature = "faer-sparse")]
-use super::ldlsolvers::faer_sparse::*;
+use super::ldlsolvers::faer_ldl::*;
 use super::ldlsolvers::qdldl::*;
 use super::*;
 use crate::solver::core::kktsolvers::KKTSolver;
