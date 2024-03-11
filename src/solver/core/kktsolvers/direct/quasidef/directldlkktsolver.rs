@@ -348,7 +348,7 @@ where
             ldlptr = |M, D, S| Box::new(QDLDLDirectLDLSolver::<T>::new(M, D, S));
         }
         #[cfg(feature = "faer-sparse")]
-        "faer-sparse" => {
+        "faer" => {
             kktshape = FaerDirectLDLSolver::<T>::required_matrix_shape();
             ldlptr = |M, D, S| Box::new(FaerDirectLDLSolver::<T>::new(M, D, S));
         }
