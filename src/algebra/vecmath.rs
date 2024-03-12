@@ -79,8 +79,12 @@ impl<T: FloatT> VectorMath for [T] {
         norm
     }
 
+    //PJG: dot, dot_shifted and sum could be rewritten with a common accumulator function
+    //and a common base base parameter
     fn dot(&self, y: &[T]) -> T {
-        zip(self, y).fold(T::zero(), |acc, (&x, &y)| acc + x * y)
+        let iter = zip(self, y);
+        let op = |(&x, &y)| x * y;
+        accumulate_pairwise(iter, op)
     }
 
     fn dot_shifted(z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
@@ -88,22 +92,24 @@ impl<T: FloatT> VectorMath for [T] {
         assert_eq!(z.len(), dz.len());
         assert_eq!(s.len(), ds.len());
 
-        let mut out = T::zero();
-        for (&s, &ds, &z, &dz) in izip!(s, ds, z, dz) {
+        let iter = izip!(s, ds, z, dz);
+        let op = |(&s, &ds, &z, &dz)| {
             let si = s + α * ds;
             let zi = z + α * dz;
-            out += si * zi;
-        }
-        out
+            si * zi
+        };
+        accumulate_pairwise(iter, op)
     }
 
     fn dist(&self, y: &Self) -> T {
-        let dist2 = zip(self, y).fold(T::zero(), |acc, (&x, &y)| acc + T::powi(x - y, 2));
+        let iter = zip(self, y);
+        let op = |(&x, &y)| T::powi(x - y, 2);
+        let dist2 = accumulate_pairwise(iter, op);
         T::sqrt(dist2)
     }
 
     fn sum(&self) -> T {
-        self.iter().fold(T::zero(), |acc, &x| acc + x)
+        accumulate_pairwise(self.iter(), |&x| x)
     }
 
     fn sumsq(&self) -> T {
@@ -129,16 +135,21 @@ impl<T: FloatT> VectorMath for [T] {
 
     // Returns one norm
     fn norm_one(&self) -> T {
-        self.iter().fold(T::zero(), |acc, v| acc + v.abs())
+        accumulate_pairwise(self.iter(), |&x| x.abs())
     }
 
+    //PJG: use generic accumulator here
     //two-norm of elementwise product self.*v
     fn norm_scaled(&self, v: &[T]) -> T {
         assert_eq!(self.len(), v.len());
-        let total = zip(self, v).fold(T::zero(), |acc, (&x, &y)| {
+
+        let iter = zip(self, v);
+        let op = |(&x, &y)| {
             let prod = x * y;
-            acc + prod * prod
-        });
+            prod * prod
+        };
+
+        let total = accumulate_pairwise(iter, op);
         T::sqrt(total)
     }
 
@@ -150,7 +161,9 @@ impl<T: FloatT> VectorMath for [T] {
 
     //
     fn norm_one_scaled(&self, v: &Self) -> Self::T {
-        zip(self, v).fold(T::zero(), |acc, (&x, &y)| acc + T::abs(x * y))
+        let iter = zip(self, v);
+        let op = |(&x, &y)| T::abs(x * y);
+        accumulate_pairwise(iter, op)
     }
 
     // max absolute difference (used for unit testing)
@@ -170,7 +183,7 @@ impl<T: FloatT> VectorMath for [T] {
         let mean = if self.is_empty() {
             T::zero()
         } else {
-            let num = self.iter().fold(T::zero(), |r, &s| r + s);
+            let num = self.sum();
             let den = T::from_usize(self.len()).unwrap();
             num / den
         };
@@ -196,5 +209,126 @@ impl<T: FloatT> VectorMath for [T] {
             *w = a * (*x) + b * (*y);
         }
         self
+    }
+}
+
+// ---------------------------------------------------------------------
+// generic pairwise accumulator utility for sums, dot products etc
+
+fn accumulate_pairwise<T, I, A, F>(x: I, op: F) -> T
+where
+    T: FloatT,
+    I: IntoIterator<Item = A> + Clone,
+    I::IntoIter: ExactSizeIterator,
+    F: Fn(A) -> T,
+{
+    const BASE_CASE_DIM: usize = 16;
+
+    let n = x.clone().into_iter().len();
+    return if n == 0 {
+        T::zero()
+    } else {
+        accumulate_pairwise_inner(x, &op, 0, n)
+    };
+
+    fn accumulate_pairwise_inner<T, I, A, F>(x: I, op: &F, i1: usize, n: usize) -> T
+    where
+        T: FloatT,
+        I: IntoIterator<Item = A> + Clone,
+        I::IntoIter: ExactSizeIterator,
+        F: Fn(A) -> T,
+    {
+        if n < BASE_CASE_DIM {
+            return x
+                .into_iter()
+                .skip(i1)
+                .take(n)
+                .fold(T::zero(), |acc, x| acc + op(x));
+        } else {
+            let n2 = n / 2;
+            println!("n2 = {}", n2);
+            return accumulate_pairwise_inner(x.clone(), op, i1, n2)
+                + accumulate_pairwise_inner(x, op, i1 + n2, n - n2);
+        }
+    }
+}
+
+#[test]
+fn test_dot_product() {
+    let x = vec![1., 2., 3., 4.];
+    let y = vec![4., 5., 6., 7.];
+    assert_eq!(x.dot(&y), 60.);
+}
+
+#[test]
+fn test_mean() {
+    let x = vec![1., 2., 3., 4., 5.];
+    assert_eq!(x.mean(), 3.);
+    assert_eq!(x[0..1].mean(), 1.);
+    assert_eq!(x[0..0].mean(), 0.);
+
+    //taking the mean of a huge number of f32s is inaccurate for
+    //naive summation, but the pairwise method should still work
+    let n = 10000000usize;
+    let x = vec![1.5f32; n];
+    let mean = x.mean();
+    assert_eq!(mean, 1.5f32);
+
+    //example should be such that naive summation would
+    //have been inaccurate.  'mean' this way is ~1.72
+    let mean = x.iter().fold(0.0, |acc, &z| acc + z) / (n as f32);
+    assert!((mean - 1.5f32).abs() > 0.2f32);
+}
+
+#[test]
+fn test_sum() {
+    let maxlen = 128 * 7 + 1; //awkward length to test base case
+    let x: Vec<f64> = (1..=maxlen).map(|x| x as f64).collect();
+
+    for i in 0..=x.len() {
+        let z = &x[0..i];
+        let sum1 = z.iter().fold(0.0, |acc, &z| acc + z);
+        let sum2 = z.sum();
+        assert_eq!(sum1, sum2);
+    }
+}
+
+#[test]
+fn test_dot() {
+    let maxlen = 128 * 7 + 1; //awkward length to test base case
+    let x: Vec<f64> = (1..=maxlen).map(|x| x as f64).collect();
+    let y: Vec<f64> = (1..=maxlen)
+        .map(|y| (y as f64 - 3.0) / 2.0 as f64)
+        .collect();
+
+    for i in 0..=x.len() {
+        let xt = &x[0..i];
+        let yt = &y[0..i];
+        let dot1 = zip(xt, yt).fold(0.0, |acc, (&x, &y)| acc + x * y);
+        let dot2 = xt.dot(yt);
+        assert_eq!(dot1, dot2);
+    }
+}
+
+#[test]
+fn test_dot_shifted() {
+    let maxlen = 128 * 7 + 1; //awkward length to test base case
+    let z: Vec<f64> = (1..=maxlen).map(|z| z as f64).collect();
+    let s: Vec<f64> = (1..=maxlen)
+        .map(|s| (s as f64 - 3.0) / 2.0 as f64)
+        .collect();
+
+    let dz = vec![1.0; z.len()];
+    let ds = vec![0.5; s.len()];
+    let α = 0.5;
+
+    for i in 0..=z.len() {
+        let zt = &z[0..i];
+        let st = &s[0..i];
+        let dzt = &dz[0..i];
+        let dst = &ds[0..i];
+        let dot1 = <[f64] as VectorMath>::dot_shifted(zt, st, dzt, dst, α);
+        let dot2 = zt.dot(st) + α * zt.dot(dst) + α * st.dot(dzt) + α * α * dzt.dot(dst);
+        assert_eq!(dot1, dot2);
     }
 }
