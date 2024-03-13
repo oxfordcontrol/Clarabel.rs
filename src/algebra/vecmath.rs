@@ -215,16 +215,15 @@ impl<T: FloatT> VectorMath for [T] {
 // ---------------------------------------------------------------------
 // generic pairwise accumulator utility for sums, dot products etc
 
+const BASE_CASE_DIM: usize = 64;
+
 fn accumulate_pairwise<T, I, A, F>(x: I, op: F) -> T
 where
     T: FloatT,
-    I: IntoIterator<Item = A> + Clone,
-    I::IntoIter: ExactSizeIterator,
+    I: Iterator<Item = A> + Clone + ExactSizeIterator,
     F: Fn(A) -> T,
 {
-    const BASE_CASE_DIM: usize = 16;
-
-    let n = x.clone().into_iter().len();
+    let n = x.len();
     return if n == 0 {
         T::zero()
     } else {
@@ -234,8 +233,7 @@ where
     fn accumulate_pairwise_inner<T, I, A, F>(x: I, op: &F, i1: usize, n: usize) -> T
     where
         T: FloatT,
-        I: IntoIterator<Item = A> + Clone,
-        I::IntoIter: ExactSizeIterator,
+        I: Iterator<Item = A> + Clone + ExactSizeIterator,
         F: Fn(A) -> T,
     {
         if n < BASE_CASE_DIM {
@@ -246,7 +244,7 @@ where
                 .fold(T::zero(), |acc, x| acc + op(x));
         } else {
             let n2 = n / 2;
-            println!("n2 = {}", n2);
+
             return accumulate_pairwise_inner(x.clone(), op, i1, n2)
                 + accumulate_pairwise_inner(x, op, i1 + n2, n - n2);
         }
