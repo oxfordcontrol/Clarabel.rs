@@ -1,5 +1,4 @@
 use super::*;
-use crate::algebra::{CscMatrix, FloatT};
 extern crate amd;
 
 #[cfg(test)]

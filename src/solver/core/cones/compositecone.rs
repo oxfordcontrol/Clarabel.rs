@@ -1,6 +1,5 @@
 use super::*;
 use crate::algebra::triangular_number;
-use crate::solver::CoreSettings;
 use std::collections::HashMap;
 use std::iter::zip;
 use std::ops::Range;

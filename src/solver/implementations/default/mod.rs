@@ -20,7 +20,6 @@ mod variables;
 pub use data_updating::*;
 pub use equilibration::*;
 pub use info::*;
-pub use info_print::*;
 pub use kktsystem::*;
 pub use presolver::*;
 pub use problemdata::*;
