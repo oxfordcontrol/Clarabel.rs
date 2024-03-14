@@ -217,6 +217,10 @@ impl<T: FloatT> VectorMath for [T] {
 // roughly follows: Pierre Blanchard, Nicholas J Higham, Théo Mary. A Class of Fast and
 // Accurate Summation Algorithms. SIAM Journal on Scientific Computing, 2020
 
+// Reducing Floating Point Error in Dot Product Using the Superblock Family of Algorithms
+// Anthony M. Castaldo, R. Clint Whaley, and Anthony T. Chronopoulos
+// SIAM Journal on Scientific Computing 2009 31:2, 1156-1174
+
 const SUM_BLOCKING_SIZE: usize = 16;
 const PAIRWISE_BRANCHING_SIZE: usize = SUM_BLOCKING_SIZE * SUM_BLOCKING_SIZE;
 
@@ -262,7 +266,7 @@ where
     }
 }
 
-fn accumulate<T, I, A, F>(x: I, op: F) -> T
+fn kahan<T, I, A, F>(x: I, op: F) -> T
 where
     T: FloatT,
     I: Iterator<Item = A> + Clone + ExactSizeIterator,
@@ -275,6 +279,28 @@ where
         let y = op(xi) + e;
         s = z + y;
         e = (z - s) + y;
+    }
+    s + e
+}
+
+//kahan bubuska
+fn accumulate<T, I, A, F>(x: I, op: F) -> T
+where
+    T: FloatT,
+    I: Iterator<Item = A> + Clone + ExactSizeIterator,
+    F: Fn(A) -> T,
+{
+    let mut s = T::zero();
+    let mut e = T::zero();
+    for xi in x {
+        let z = op(xi);
+        let t = s + z;
+        if s.abs() >= z.abs() {
+            e += (s - t) + z;
+        } else {
+            e += (z - t) + s;
+        }
+        s = t;
     }
     s + e
 }
