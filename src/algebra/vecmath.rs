@@ -1,5 +1,5 @@
 use super::{FloatT, ScalarMath, VectorMath};
-use itertools::izip;
+use itertools::{izip, Itertools};
 use std::iter::zip;
 
 impl<T: FloatT> VectorMath for [T] {
@@ -180,14 +180,13 @@ impl<T: FloatT> VectorMath for [T] {
     }
 
     fn mean(&self) -> T {
-        let mean = if self.is_empty() {
+        if self.is_empty() {
             T::zero()
         } else {
             let num = self.sum();
             let den = T::from_usize(self.len()).unwrap();
             num / den
-        };
-        mean
+        }
     }
 
     fn is_finite(&self) -> bool {
@@ -215,7 +214,8 @@ impl<T: FloatT> VectorMath for [T] {
 // ---------------------------------------------------------------------
 // generic pairwise accumulator utility for sums, dot products etc
 
-const BASE_CASE_DIM: usize = 64;
+const TREE_BLOCK_SIZE: usize = 256;
+const BLOCKED_SUM_CHUNKS: usize = 16; //should be sqrt of above
 
 fn accumulate_pairwise<T, I, A, F>(x: I, op: F) -> T
 where
@@ -236,17 +236,18 @@ where
         I: Iterator<Item = A> + Clone + ExactSizeIterator,
         F: Fn(A) -> T,
     {
-        if n < BASE_CASE_DIM {
-            return x
-                .into_iter()
-                .skip(i1)
-                .take(n)
-                .fold(T::zero(), |acc, x| acc + op(x));
+        if n < TREE_BLOCK_SIZE {
+            // compute now a "blocked sum"
+            let mut out = T::zero();
+            for y in &x.skip(i1).take(n).chunks(BLOCKED_SUM_CHUNKS) {
+                out = y.fold(out, |acc, x| acc + op(x));
+            }
+            out
         } else {
             let n2 = n / 2;
 
-            return accumulate_pairwise_inner(x.clone(), op, i1, n2)
-                + accumulate_pairwise_inner(x, op, i1 + n2, n - n2);
+            accumulate_pairwise_inner(x.clone(), op, i1, n2)
+                + accumulate_pairwise_inner(x, op, i1 + n2, n - n2)
         }
     }
 }
@@ -280,7 +281,7 @@ fn test_mean() {
 
 #[test]
 fn test_sum() {
-    let maxlen = 128 * 7 + 1; //awkward length to test base case
+    let maxlen = 256 * 7 + 1; //awkward length to test base case
     let x: Vec<f64> = (1..=maxlen).map(|x| x as f64).collect();
 
     for i in 0..=x.len() {
@@ -293,7 +294,7 @@ fn test_sum() {
 
 #[test]
 fn test_dot() {
-    let maxlen = 128 * 7 + 1; //awkward length to test base case
+    let maxlen = 256 * 7 + 1; //awkward length to test base case
     let x: Vec<f64> = (1..=maxlen).map(|x| x as f64).collect();
     let y: Vec<f64> = (1..=maxlen)
         .map(|y| (y as f64 - 3.0) / 2.0 as f64)
@@ -310,7 +311,7 @@ fn test_dot() {
 
 #[test]
 fn test_dot_shifted() {
-    let maxlen = 128 * 7 + 1; //awkward length to test base case
+    let maxlen = 256 * 7 + 1; //awkward length to test base case
     let z: Vec<f64> = (1..=maxlen).map(|z| z as f64).collect();
     let s: Vec<f64> = (1..=maxlen)
         .map(|s| (s as f64 - 3.0) / 2.0 as f64)
