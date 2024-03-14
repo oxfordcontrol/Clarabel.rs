@@ -84,7 +84,7 @@ impl<T: FloatT> VectorMath for [T] {
     fn dot(&self, y: &[T]) -> T {
         let iter = zip(self, y);
         let op = |(&x, &y)| x * y;
-        accumulate_pairwise(iter, op)
+        accumulate(iter, op)
     }
 
     fn dot_shifted(z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
@@ -98,18 +98,18 @@ impl<T: FloatT> VectorMath for [T] {
             let zi = z + α * dz;
             si * zi
         };
-        accumulate_pairwise(iter, op)
+        accumulate(iter, op)
     }
 
     fn dist(&self, y: &Self) -> T {
         let iter = zip(self, y);
         let op = |(&x, &y)| T::powi(x - y, 2);
-        let dist2 = accumulate_pairwise(iter, op);
+        let dist2 = accumulate(iter, op);
         T::sqrt(dist2)
     }
 
     fn sum(&self) -> T {
-        accumulate_pairwise(self.iter(), |&x| x)
+        accumulate(self.iter(), |&x| x)
     }
 
     fn sumsq(&self) -> T {
@@ -135,7 +135,7 @@ impl<T: FloatT> VectorMath for [T] {
 
     // Returns one norm
     fn norm_one(&self) -> T {
-        accumulate_pairwise(self.iter(), |&x| x.abs())
+        accumulate(self.iter(), |&x| x.abs())
     }
 
     //PJG: use generic accumulator here
@@ -149,7 +149,7 @@ impl<T: FloatT> VectorMath for [T] {
             prod * prod
         };
 
-        let total = accumulate_pairwise(iter, op);
+        let total = accumulate(iter, op);
         T::sqrt(total)
     }
 
@@ -163,7 +163,7 @@ impl<T: FloatT> VectorMath for [T] {
     fn norm_one_scaled(&self, v: &Self) -> Self::T {
         let iter = zip(self, v);
         let op = |(&x, &y)| T::abs(x * y);
-        accumulate_pairwise(iter, op)
+        accumulate(iter, op)
     }
 
     // max absolute difference (used for unit testing)
@@ -214,10 +214,13 @@ impl<T: FloatT> VectorMath for [T] {
 // ---------------------------------------------------------------------
 // generic pairwise accumulator utility for sums, dot products etc
 
-const TREE_BLOCK_SIZE: usize = 256;
-const BLOCKED_SUM_CHUNKS: usize = 16; //should be sqrt of above
+// roughly follows: Pierre Blanchard, Nicholas J Higham, Théo Mary. A Class of Fast and
+// Accurate Summation Algorithms. SIAM Journal on Scientific Computing, 2020
 
-fn accumulate_pairwise<T, I, A, F>(x: I, op: F) -> T
+const SUM_BLOCKING_SIZE: usize = 16;
+const PAIRWISE_BRANCHING_SIZE: usize = SUM_BLOCKING_SIZE * SUM_BLOCKING_SIZE;
+
+fn pairwisesum<T, I, A, F>(x: I, op: F) -> T
 where
     T: FloatT,
     I: Iterator<Item = A> + Clone + ExactSizeIterator,
@@ -227,29 +230,53 @@ where
     return if n == 0 {
         T::zero()
     } else {
-        accumulate_pairwise_inner(x, &op, 0, n)
+        _pairwise_blocksum(x, &op, 0, n)
     };
 
-    fn accumulate_pairwise_inner<T, I, A, F>(x: I, op: &F, i1: usize, n: usize) -> T
+    fn _blocksum<T, I, A, F>(x: I, op: &F, i1: usize, n: usize) -> T
     where
         T: FloatT,
         I: Iterator<Item = A> + Clone + ExactSizeIterator,
         F: Fn(A) -> T,
     {
-        if n < TREE_BLOCK_SIZE {
-            // compute now a "blocked sum"
-            let mut out = T::zero();
-            for y in &x.skip(i1).take(n).chunks(BLOCKED_SUM_CHUNKS) {
-                out = y.fold(out, |acc, x| acc + op(x));
-            }
-            out
+        // compute now a "blocked sum"
+        let mut out = T::zero();
+        for y in &x.skip(i1).take(n).chunks(SUM_BLOCKING_SIZE) {
+            out = y.fold(out, |acc, x| acc + op(x));
+        }
+        out
+    }
+
+    fn _pairwise_blocksum<T, I, A, F>(x: I, op: &F, i1: usize, n: usize) -> T
+    where
+        T: FloatT,
+        I: Iterator<Item = A> + Clone + ExactSizeIterator,
+        F: Fn(A) -> T,
+    {
+        if n < PAIRWISE_BRANCHING_SIZE {
+            _blocksum(x, op, i1, n)
         } else {
             let n2 = n / 2;
-
-            accumulate_pairwise_inner(x.clone(), op, i1, n2)
-                + accumulate_pairwise_inner(x, op, i1 + n2, n - n2)
+            _pairwise_blocksum(x.clone(), op, i1, n2) + _pairwise_blocksum(x, op, i1 + n2, n - n2)
         }
     }
+}
+
+fn accumulate<T, I, A, F>(x: I, op: F) -> T
+where
+    T: FloatT,
+    I: Iterator<Item = A> + Clone + ExactSizeIterator,
+    F: Fn(A) -> T,
+{
+    let mut s = T::zero();
+    let mut e = T::zero();
+    for xi in x {
+        let z = s;
+        let y = op(xi) + e;
+        s = z + y;
+        e = (z - s) + y;
+    }
+    s + e
 }
 
 #[test]
