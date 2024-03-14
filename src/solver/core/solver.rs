@@ -391,7 +391,6 @@ where
 // Encapsulate the internal helpers trait in a private module
 // so it doesn't get exported
 mod internal {
-    use super::super::cones::Cone;
     use super::super::traits::*;
     use super::*;
 

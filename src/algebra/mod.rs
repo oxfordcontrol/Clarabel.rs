@@ -21,16 +21,12 @@ mod reshaped;
 mod scalarmath;
 mod symmetric;
 mod vecmath;
-pub use adjoint::*;
 pub use error_types::*;
 pub use floats::*;
 pub use math_traits::*;
 pub use matrix_traits::*;
 pub use matrix_types::*;
-pub use reshaped::*;
 pub(crate) use scalarmath::*;
-pub use symmetric::*;
-pub use vecmath::*;
 
 // matrix implementations
 mod csc;

@@ -1,8 +1,5 @@
 use super::*;
-use crate::{
-    algebra::*,
-    solver::{core::ScalingStrategy, CoreSettings},
-};
+use crate::algebra::*;
 
 // -------------------------------------
 // Power Cone

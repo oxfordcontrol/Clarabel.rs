@@ -7,6 +7,7 @@ use crate::algebra::MatrixShape;
 pub(crate) trait ShapedMatrix {
     fn nrows(&self) -> usize;
     fn ncols(&self) -> usize;
+    #[allow(dead_code)] //PJG: not currently used anywhere
     fn shape(&self) -> MatrixShape;
     fn size(&self) -> (usize, usize) {
         (self.nrows(), self.ncols())
@@ -20,6 +21,7 @@ pub(crate) trait ShapedMatrix {
 //is implemented on Matrix, Adjoint and ReshapedMatrix to allow for indexing
 //of values in any of those format.   This follows the Julia naming convention
 //for similar types.
+#[allow(dead_code)] //PJG: not currently used anywhere
 pub(crate) trait DenseMatrix: ShapedMatrix + Index<(usize, usize)> {
     type T;
     fn index_linear(&self, idx: (usize, usize)) -> usize;

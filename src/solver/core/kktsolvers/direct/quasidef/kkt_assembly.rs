@@ -2,7 +2,6 @@
 
 use super::datamaps::*;
 use crate::algebra::*;
-use crate::solver::core::cones::CompositeCone;
 use crate::solver::core::cones::*;
 use num_traits::Zero;
 

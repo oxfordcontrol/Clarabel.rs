@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 
-use super::FloatT;
 use crate::algebra::*;
 use std::ops::{Index, IndexMut};
 

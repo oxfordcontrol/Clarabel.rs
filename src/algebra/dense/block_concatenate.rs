@@ -1,6 +1,5 @@
 #![allow(non_snake_case)]
 use crate::algebra::{BlockConcatenate, FloatT, Matrix, ShapedMatrix};
-use std::iter::Extend;
 
 impl<T> BlockConcatenate for Matrix<T>
 where

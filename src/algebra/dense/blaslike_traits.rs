@@ -6,6 +6,7 @@ pub(crate) trait FactorEigen {
     // computes eigenvalues only (full set)
     fn eigvals(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
     // computes eigenvalues and vectors (full set)
+    #[allow(dead_code)] //PJG: not currently used anywhere
     fn eigen(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
 }
 
@@ -50,11 +51,13 @@ pub(crate) trait MultiplyGEMM {
         MATA: DenseMatrix<T = Self::T>;
 }
 
+#[allow(dead_code)] //PJG: not currently used anywhere
 pub(crate) trait MultiplyGEMV {
     type T;
     fn gemv(&self, x: &[Self::T], y: &mut [Self::T], α: Self::T, β: Self::T);
 }
 
+#[allow(dead_code)] //PJG: not currently used anywhere
 pub(crate) trait MultiplySYMV {
     type T;
     fn symv(&self, x: &[Self::T], y: &mut [Self::T], α: Self::T, β: Self::T);
