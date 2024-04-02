@@ -67,7 +67,7 @@ where
         let degree = cones.iter().map(|c| c.degree()).sum();
 
         //ranges for the subvectors associated with each cone,
-        //and the rangse for with the corresponding entries
+        //and the ranges for the corresponding entries
         //in the Hs sparse block
 
         let rng_cones = _make_rng_cones(&cones);
@@ -125,19 +125,6 @@ where
         }
     }
     rngs
-}
-
-fn _make_headidx<T>(headidx: &mut [usize], cones: &[SupportedCone<T>])
-where
-    T: FloatT,
-{
-    if !cones.is_empty() {
-        // index of first element in each cone
-        headidx[0] = 0;
-        for i in 2..headidx.len() {
-            headidx[i] = headidx[i - 1] + cones[i - 1].numel();
-        }
-    }
 }
 
 impl<T> CompositeCone<T>
