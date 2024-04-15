@@ -307,34 +307,33 @@ where
         αmax: T,
     ) -> (T, T) {
         let mut α = αmax;
+        let all_symmetric = self.is_symmetric();
+
+        let mut innerfcn = |α: T, symcond: bool| -> T {
+            let mut α = α;
+            for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
+                if cone.is_symmetric() == symcond {
+                    continue;
+                }
+                let (dzi, dsi) = (&dz[rng.clone()], &ds[rng.clone()]);
+                let (zi, si) = (&z[rng.clone()], &s[rng.clone()]);
+                let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si, settings, α);
+                α = T::min(α, T::min(nextαz, nextαs));
+            }
+            α
+        };
 
         // Force symmetric cones first.
-        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
-            if !cone.is_symmetric() {
-                continue;
-            }
-            let (dzi, dsi) = (&dz[rng.clone()], &ds[rng.clone()]);
-            let (zi, si) = (&z[rng.clone()], &s[rng.clone()]);
-            let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si, settings, α);
-            α = T::min(α, T::min(nextαz, nextαs));
-        }
+        α = innerfcn(α, true);
 
         // if we have any nonsymmetric cones, then back off from full steps slightly
         // so that centrality checks and logarithms don't fail right at the boundaries
-
-        if !self.is_symmetric() {
+        if !all_symmetric {
             α = T::min(settings.max_step_fraction, α);
         }
+
         // Force asymmetric cones last.
-        for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
-            if cone.is_symmetric() {
-                continue;
-            }
-            let (dzi, dsi) = (&dz[rng.clone()], &ds[rng.clone()]);
-            let (zi, si) = (&z[rng.clone()], &s[rng.clone()]);
-            let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si, settings, α);
-            α = T::min(α, T::min(nextαz, nextαs));
-        }
+        α = innerfcn(α, false);
 
         (α, α)
     }
