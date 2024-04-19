@@ -7,7 +7,7 @@ use itertools::izip;
 use std::iter::zip;
 
 /// Standard-form solver type implementing the [`Solution`](crate::solver::core::traits::Solution) trait
-
+#[derive(Debug)]
 pub struct DefaultSolution<T> {
     pub x: Vec<T>,
     pub z: Vec<T>,
