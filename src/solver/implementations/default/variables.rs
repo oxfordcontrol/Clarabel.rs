@@ -47,10 +47,6 @@ where
 
         Self { x, s, z, τ, κ }
     }
-
-    pub(crate) fn dims(&self) -> (usize, usize) {
-        return (self.x.len(), self.s.len());
-    }
 }
 
 impl<T> Variables<T> for DefaultVariables<T>
@@ -255,5 +251,40 @@ where
         // zero to catch any elements in the zero cone
         // that need to be forced to zero
         cones.scaled_unit_shift(z, T::zero(), pd);
+    }
+}
+
+impl<T> DefaultVariables<T>
+where
+    T: FloatT,
+{
+    pub(crate) fn unscale(&mut self, data: &DefaultProblemData<T>, is_infeasible: bool) {
+        // if we have an infeasible problem, normalize
+        // using κ to get an infeasibility certificate.
+        // Otherwise use τ to get an unscaled solution.
+        let scaleinv = {
+            if is_infeasible {
+                T::recip(self.κ)
+            } else {
+                T::recip(self.τ)
+            }
+        };
+
+        // also undo the equilibration
+        let d = &data.equilibration.d;
+        let (e, einv) = (&data.equilibration.e, &data.equilibration.einv);
+        let cscale = data.equilibration.c;
+
+        // PJG: traversing twice here
+        self.x.hadamard(d).scale(scaleinv);
+        self.z.hadamard(e).scale(scaleinv / cscale);
+        self.s.hadamard(einv).scale(scaleinv);
+
+        self.τ *= scaleinv;
+        self.κ *= scaleinv;
+    }
+
+    pub(crate) fn dims(&self) -> (usize, usize) {
+        return (self.x.len(), self.s.len());
     }
 }

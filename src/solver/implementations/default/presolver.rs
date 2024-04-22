@@ -13,20 +13,14 @@ pub(crate) struct PresolverRowReductionIndex {
     // vector of length = original RHS.   Entries are false
     // for those rows that should be eliminated before solve
     pub keep_logical: Vec<bool>,
-
-    // vector of length = reduced RHS, taking values
-    // that map reduced b back to their original index
-    // This is just findall(keep_logical) and is held for
-    // efficient solution repopulation
-    pub keep_index: Vec<usize>,
 }
 
 /// Presolver data for the standard solver implementation
 
 #[derive(Debug)]
 pub struct Presolver<T> {
-    // possibly reduced internal copy of user cone specification
-    pub(crate) cone_specs: Vec<SupportedConeT<T>>,
+    // original cones of the problem
+    pub(crate) init_cones: Vec<SupportedConeT<T>>,
 
     //record of reduced constraints for NN cones with inf bounds
     pub(crate) reduce_map: Option<PresolverRowReductionIndex>,
@@ -49,25 +43,19 @@ where
     pub fn new(
         _A: &CscMatrix<T>,
         b: &[T],
-        cone_specs: &[SupportedConeT<T>],
+        cones: &[SupportedConeT<T>],
         settings: &DefaultSettings<T>,
     ) -> Self {
         let infbound = crate::solver::get_infinity();
 
-        // make copy of cone_specs to protect from user interference
-        let mut cone_specs = cone_specs.to_vec();
+        // make copy of cones to protect from user interference
+        let mut init_cones = cones.to_vec();
         let mfull = b.len();
 
-        let (reduce_map, mreduced) = {
-            if settings.presolve_enable {
-                reduce_cones(&mut cone_specs, b, infbound.as_T())
-            } else {
-                (None, mfull)
-            }
-        };
+        let (reduce_map, mreduced) = make_reduction_map(cones, b, infbound.as_T());
 
         Self {
-            cone_specs,
+            init_cones,
             reduce_map,
             mfull,
             mreduced,
@@ -81,10 +69,82 @@ where
     pub fn count_reduced(&self) -> usize {
         self.mfull - self.mreduced
     }
+
+    pub(crate) fn presolve(
+        &self,
+        A: &CscMatrix<T>,
+        b: &[T],
+        cones: &[SupportedConeT<T>],
+    ) -> (CscMatrix<T>, Vec<T>, Vec<SupportedConeT<T>>) {
+        let (A_new, b_new) = self.reduce_A_b(A, b);
+        let cones_new = self.reduce_cones(cones);
+
+        (A_new, b_new, cones_new)
+    }
+
+    fn reduce_A_b(&self, A: &CscMatrix<T>, b: &[T]) -> (CscMatrix<T>, Vec<T>) {
+        assert!(self.reduce_map.is_some());
+        let map = self.reduce_map.as_ref().unwrap();
+
+        let A = A.select_rows(&map.keep_logical);
+        let b = b.select(&map.keep_logical);
+
+        (A, b)
+    }
+
+    fn reduce_cones(&self, cones: &[SupportedConeT<T>]) -> Vec<SupportedConeT<T>> {
+        assert!(self.reduce_map.is_some());
+        let map = self.reduce_map.as_ref().unwrap();
+
+        // assume that we will end up with the same
+        // number of cones, despite small possibility
+        // that some will be completely eliminated
+
+        let mut cones_new = Vec::with_capacity(cones.len());
+        let mut keep_iter = map.keep_logical.iter();
+
+        for cone in cones {
+            let numel_cone = cone.nvars();
+            let markers = keep_iter.by_ref().take(numel_cone);
+
+            if matches!(cone, SupportedConeT::NonnegativeConeT(_)) {
+                let nkeep = markers.filter(|&b| *b).count();
+                if nkeep > 0 {
+                    cones_new.push(SupportedConeT::NonnegativeConeT(nkeep));
+                }
+            } else {
+                cones_new.push(cone.clone());
+            }
+        }
+
+        return cones_new;
+    }
+
+    pub(crate) fn reverse_presolve(
+        &self,
+        solution: &mut DefaultSolution<T>,
+        variables: &DefaultVariables<T>,
+    ) {
+        solution.x.copy_from(&variables.x);
+
+        let map = self.reduce_map.as_ref().unwrap();
+        let mut ctr = 0;
+
+        for (idx, &keep) in map.keep_logical.iter().enumerate() {
+            if keep {
+                solution.s[idx] = variables.s[ctr];
+                solution.z[idx] = variables.z[ctr];
+                ctr += 1;
+            } else {
+                solution.s[idx] = self.infbound.as_T();
+                solution.z[idx] = T::zero();
+            }
+        }
+    }
 }
 
-fn reduce_cones<T>(
-    cone_specs: &mut [SupportedConeT<T>],
+fn make_reduction_map<T>(
+    cones: &[SupportedConeT<T>],
     b: &[T],
     infbound: T,
 ) -> (Option<PresolverRowReductionIndex>, usize)
@@ -95,60 +155,39 @@ where
     let mut keep_logical = vec![true; b.len()];
     let mut mreduced = b.len();
 
+    // only try to reduce nn cones.  Make a slight contraction
+    // so that we are firmly "less than" here
+    let infbound = (T::one() - T::epsilon() * (10.).as_T()) * infbound;
+
     // we loop through b and remove any entries that are both infinite
     // and in a nonnegative cone
 
-    let mut is_reduced = false;
-    let mut bptr = 0; // index into the b vector
+    let mut idx = 0; // index into the b vector
 
-    for cone in cone_specs.iter_mut() {
+    for cone in cones.iter() {
         let numel_cone = cone.nvars();
 
-        // only try to reduce nn cones.  Make a slight contraction
-        // so that we are firmly "less than" here
-        let infbound = (T::one() - T::epsilon() * (10.).as_T()) * infbound;
-
         if matches!(cone, SupportedConeT::NonnegativeConeT(_)) {
-            let mut num_finite = 0;
-            for i in bptr..(bptr + numel_cone) {
-                if b[i] < infbound {
-                    num_finite += 1;
-                } else {
-                    keep_logical[i] = false;
+            for _ in 0..numel_cone {
+                if b[idx] > infbound {
+                    keep_logical[idx] = false;
                     mreduced -= 1;
                 }
+                idx += 1;
             }
-            if num_finite < numel_cone {
-                // contract the cone to a smaller size
-                *cone = SupportedConeT::NonnegativeConeT(num_finite);
-                is_reduced = true;
-            }
+        } else {
+            // skip this cone
+            idx += numel_cone;
         }
-
-        bptr += numel_cone;
     }
 
     let outoption = {
-        if is_reduced {
-            let keep_index = findall(&keep_logical);
-            Some(PresolverRowReductionIndex {
-                keep_logical,
-                keep_index,
-            })
+        if mreduced < b.len() {
+            Some(PresolverRowReductionIndex { keep_logical })
         } else {
             None
         }
     };
 
     (outoption, mreduced)
-}
-
-fn findall(keep_logical: &[bool]) -> Vec<usize> {
-    let map = keep_logical
-        .iter()
-        .enumerate()
-        .filter(|(_, &r)| r)
-        .map(|(index, _)| index)
-        .collect::<Vec<_>>();
-    map
 }

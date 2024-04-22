@@ -218,9 +218,16 @@ pub trait Solution<T: FloatT> {
     type D: ProblemData<T>;
     type V: Variables<T>;
     type I: Info<T>;
+    type SE: Settings<T>;
 
     /// Compute solution from the Variables at solver termination
-    fn finalize(&mut self, data: &Self::D, variables: &Self::V, info: &Self::I);
+    fn finalize(
+        &mut self,
+        data: &Self::D,
+        variables: &mut Self::V,
+        info: &Self::I,
+        settings: &Self::SE,
+    );
 }
 
 /// Settings for a conic optimization problem.

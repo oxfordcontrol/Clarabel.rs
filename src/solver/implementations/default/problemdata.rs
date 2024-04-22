@@ -30,6 +30,7 @@ pub struct DefaultProblemData<T> {
     pub q: Vec<T>,
     pub A: CscMatrix<T>,
     pub b: Vec<T>,
+    pub cones: Vec<SupportedConeT<T>>,
     pub n: usize,
     pub m: usize,
     pub equilibration: DefaultEquilibrationData<T>,
@@ -50,63 +51,71 @@ where
 {
     pub fn new(
         P: &CscMatrix<T>,
-        q: &[T],
+        q: &Vec<T>,
         A: &CscMatrix<T>,
-        b: &[T],
-        cones: &[SupportedConeT<T>],
+        b: &Vec<T>,
+        cones: &Vec<SupportedConeT<T>>,
         settings: &DefaultSettings<T>,
     ) -> Self {
         // some caution is required to ensure we take a minimal,
         // but nonzero, number of data copies during presolve steps
 
-        let mut P_new: Option<_> = None;
-        let mut q_new: Option<_> = None;
-        let mut A_new: Option<_> = None;
-        let mut b_new: Option<_> = None;
-        let mut cones_new: Option<_> = None;
+        let mut P_new: Option<CscMatrix<T>> = None;
+        let mut q_new: Option<Vec<T>> = None;
+        let mut A_new: Option<CscMatrix<T>> = None;
+        let mut b_new: Option<Vec<T>> = None;
+        let mut cones_new: Option<Vec<SupportedConeT<T>>> = None;
 
         if !P.is_triu() {
             P_new = Some(P.to_triu());
-            P = P_new.as_ref().unwrap();
         }
 
         // presolve : return nothing if disabled or no reduction
         // --------------------------------------
         let presolver = try_presolver(&A, &b, &cones, &settings);
 
-        if let Some(presolver) = presolver {
-            let (Some(A_new), Some(b_new), Some(cones_new)) = presolver.presolve(&A, &b, &cones);
-            (A, b, cones) = (
-                A_new.as_ref().unwrap(),
-                b_new.as_ref().unwrap(),
-                cones_new.as_ref().unwrap(),
-            )
+        if let Some(ref presolver) = presolver {
+            let (_A_new, _b_new, _cones_new) = presolver.presolve(&A, &b, &cones);
+            (A_new, b_new, cones_new) = (Some(_A_new), Some(_b_new), Some(_cones_new));
         }
 
         // chordal decomposition : return nothing if disabled or no decomp
         // --------------------------------------
-        let chordal_info = try_chordal_info(&A, &b, &cones, &settings);
+        let mut chordal_info = try_chordal_info(&A, &b, &cones, &settings);
 
-        if let Some(chordal_info) = chordal_info {
-            let foo = into_options!(chordal_info.decomp_augment(&P, &q, &A, &b, &settings));
+        if let Some(ref mut chordal_info) = chordal_info {
+            let (_P_new, _q_new, _A_new, _b_new, _cones_new) = chordal_info.decomp_augment(
+                &P_new.as_ref().unwrap_or_else(|| &P),
+                &q_new.as_ref().unwrap_or_else(|| &q),
+                &A_new.as_ref().unwrap_or_else(|| &A),
+                &b_new.as_ref().unwrap_or_else(|| &b),
+                &settings,
+            );
+            (P_new, q_new, A_new, b_new, cones_new) = (
+                Some(_P_new),
+                Some(_q_new),
+                Some(_A_new),
+                Some(_b_new),
+                Some(_cones_new),
+            );
         }
 
-        //  now make sure we have a clean copy of everything if we
+        // now make sure we have a clean copy of everything if we
         // haven't made one already.   Necessary since we will scale
-        //  scale the internal copy and don't want to step on the user
+        // the internal copy and don't want to step on the user
 
         let P_new = P_new.unwrap_or_else(|| P.clone());
-        let q_new = q_new.unwrap_or_else(|| q.to_vec());
+        let q_new = q_new.unwrap_or_else(|| q.clone());
         let A_new = A_new.unwrap_or_else(|| A.clone());
-        let b_new = b_new.unwrap_or_else(|| b.to_vec());
+        let mut b_new = b_new.unwrap_or_else(|| b.clone());
         let cones_new = cones_new.unwrap_or_else(|| cones.clone());
 
         //cap entries in b at INFINITY.  This is important
         //for inf values that were not in a reduced cone
         //this is not considered part of the "presolve", so
         //can always happen regardless of user settings
-        let infbound = presolver.infbound.as_T();
-        b.scalarop(|x| T::min(x, infbound));
+        let infbound = crate::solver::get_infinity().as_T();
+        b_new.scalarop(|x| T::min(x, infbound));
 
         // this ensures m is the *reduced* size m
         let (m, n) = A_new.size();
@@ -121,6 +130,7 @@ where
             q: q_new,
             A: A_new,
             b: b_new,
+            cones: cones_new,
             n,
             m,
             equilibration,

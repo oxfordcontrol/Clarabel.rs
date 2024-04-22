@@ -42,11 +42,11 @@ where
 
         let mut out = stdio::stdout();
 
-        if data.presolver.is_reduced() {
+        if let Some(ref presolver) = data.presolver {
             writeln!(
                 out,
                 "\npresolve: removed {} constraints",
-                data.presolver.count_reduced()
+                presolver.count_reduced()
             )?;
         }
 

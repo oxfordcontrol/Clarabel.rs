@@ -4,7 +4,7 @@ mod reverse_standard;
 use super::chordal_info::ChordalInfo;
 use crate::{
     algebra::*,
-    solver::{CoreSettings, DefaultVariables, SupportedConeT},
+    solver::{DefaultSettings, DefaultVariables, SupportedConeT},
 };
 
 impl<T> ChordalInfo<T>
@@ -17,7 +17,7 @@ where
         q: &[T],
         A: &CscMatrix<T>,
         b: &[T],
-        settings: &CoreSettings<T>,
+        settings: &DefaultSettings<T>,
     ) -> (
         CscMatrix<T>,
         Vec<T>,
@@ -35,9 +35,9 @@ where
 
     pub(crate) fn decomp_reverse(
         &self,
-        old_vars: DefaultVariables<T>,
+        old_vars: &DefaultVariables<T>,
         old_cones: &[SupportedConeT<T>],
-        settings: CoreSettings<T>,
+        settings: &DefaultSettings<T>,
     ) -> DefaultVariables<T>
     where
         T: FloatT,

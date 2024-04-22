@@ -176,7 +176,7 @@ where
     K: KKTSystem<T, D = D, V = V, C = C, SE = SE>,
     C: Cone<T>,
     I: Info<T, D = D, V = V, R = R, C = C, SE = SE>,
-    SO: Solution<T, D = D, V = V, I = I>,
+    SO: Solution<T, D = D, V = V, I = I, SE = SE>,
     SE: Settings<T>,
 {
     fn solve(&mut self) {
@@ -379,7 +379,7 @@ where
             .finalize(&self.residuals, &self.settings, &mut timers);
 
         self.solution
-            .finalize(&self.data, &self.variables, &self.info);
+            .finalize(&self.data, &mut self.variables, &self.info, &self.settings);
 
         self.info.print_footer(&self.settings).unwrap();
 
