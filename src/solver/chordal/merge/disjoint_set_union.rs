@@ -22,16 +22,17 @@ impl DisjointSetUnion {
             return;
         }
 
-        let rankr = self.ranks[r];
-        let ranks = self.ranks[s];
-
-        if rankr > ranks {
-            self.parents[s] = r;
-        } else if rankr < ranks {
-            self.parents[r] = s;
-        } else {
-            self.parents[r] = s;
-            self.ranks[s] += 1;
+        match self.ranks[r].cmp(&self.ranks[s]) {
+            std::cmp::Ordering::Greater => {
+                self.parents[s] = r;
+            }
+            std::cmp::Ordering::Less => {
+                self.parents[r] = s;
+            }
+            std::cmp::Ordering::Equal => {
+                self.parents[r] = s;
+                self.ranks[s] += 1;
+            }
         }
     }
 
@@ -56,15 +57,15 @@ fn test_union() {
     dsu.union(0, 1);
     dsu.union(2, 3);
     dsu.union(1, 2);
-    assert_eq!(dsu.in_same_set(0, 2), true);
-    assert_eq!(dsu.in_same_set(1, 3), true);
-    assert_eq!(dsu.in_same_set(0, 3), true);
-    assert_eq!(dsu.in_same_set(4, 2), false);
+    assert!(dsu.in_same_set(0, 2));
+    assert!(dsu.in_same_set(1, 3));
+    assert!(dsu.in_same_set(0, 3));
+    assert!(!dsu.in_same_set(4, 2));
 
     // entry union with itself
     let mut dsu = DisjointSetUnion::new(5);
     dsu.union(0, 0);
-    assert_eq!(dsu.in_same_set(0, 0), true);
+    assert!(dsu.in_same_set(0, 0));
 
     // Test union with larger set
     let mut dsu = DisjointSetUnion::new(10);
@@ -76,9 +77,9 @@ fn test_union() {
     dsu.union(7, 8);
     dsu.union(4, 6);
     dsu.union(3, 8);
-    assert_eq!(dsu.in_same_set(0, 6), true);
-    assert_eq!(dsu.in_same_set(2, 7), true);
-    assert_eq!(dsu.in_same_set(3, 4), true);
+    assert!(dsu.in_same_set(0, 6));
+    assert!(dsu.in_same_set(2, 7));
+    assert!(dsu.in_same_set(3, 4));
 }
 
 #[test]
@@ -86,12 +87,12 @@ fn test_in_same_set() {
     // Test elements in the same set
     let mut dsu = DisjointSetUnion::new(5);
     dsu.union(0, 1);
-    assert_eq!(dsu.in_same_set(0, 1), true);
-    assert_eq!(dsu.in_same_set(1, 0), true);
+    assert!(dsu.in_same_set(0, 1));
+    assert!(dsu.in_same_set(1, 0));
 
     // Test elements not in the same set
-    assert_eq!(dsu.in_same_set(0, 2), false);
-    assert_eq!(dsu.in_same_set(3, 4), false);
+    assert!(!dsu.in_same_set(0, 2));
+    assert!(!dsu.in_same_set(3, 4));
 }
 
 #[test]

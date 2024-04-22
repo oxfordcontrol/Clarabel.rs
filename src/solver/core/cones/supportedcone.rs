@@ -239,7 +239,7 @@ impl<'a, T> ConeRanges<'a, T> for [SupportedConeT<T>] {
 
 #[test]
 fn test_cone_ranges() {
-    let cones = vec![
+    let cones = [
         SupportedConeT::NonnegativeConeT::<f64>(3),
         SupportedConeT::NonnegativeConeT::<f64>(0),
         SupportedConeT::SecondOrderConeT::<f64>(4),

@@ -44,7 +44,7 @@ impl CliqueGraphMergeStrategy {
             edges: CscMatrix::zeros((0, 0)),
             p: Vec::new(),
             adjacency_table: HashMap::new(),
-            edge_weight: EdgeWeightMethod::CUBIC, //PJG: make settable
+            edge_weight: EdgeWeightMethod::Cubic, //PJG: make settable
         }
     }
 }
@@ -106,10 +106,10 @@ impl MergeStrategy for CliqueGraphMergeStrategy {
             }
         }
 
-        return None;
+        None
     }
 
-    fn evaluate(&mut self, t: &SuperNodeTree, cand: (usize, usize)) -> bool {
+    fn evaluate(&mut self, _t: &SuperNodeTree, cand: (usize, usize)) -> bool {
         let (c1, c2) = cand;
 
         let do_merge = self.edges.get_entry((c1, c2)).unwrap() >= 0;
@@ -163,7 +163,7 @@ impl MergeStrategy for CliqueGraphMergeStrategy {
                 let neighbor = &t.snode[n_ind];
                 let row = max(c_1_ind, n_ind);
                 let col = min(c_1_ind, n_ind);
-                let val = edge_metric(c_1, &neighbor, self.edge_weight);
+                let val = edge_metric(c_1, neighbor, self.edge_weight);
                 edges.set_entry((row, col), val);
             }
         }
@@ -173,7 +173,7 @@ impl MergeStrategy for CliqueGraphMergeStrategy {
             let neighbor = &t.snode[n_ind];
             let row = max(c_1_ind, n_ind);
             let col = min(c_1_ind, n_ind);
-            let val = edge_metric(c_1, &neighbor, self.edge_weight);
+            let val = edge_metric(c_1, neighbor, self.edge_weight);
             edges.set_entry((row, col), val);
         }
 
@@ -303,7 +303,7 @@ fn compute_reduced_clique_graph(
 
         // Compute the separator graph (see Habib, Stacho - Reduced clique graphs of chordal graphs)
         // to analyse connectivity.  We represent the separator graph H by a hashtable
-        let H = separator_graph(&clique_indices, &separator, &snode);
+        let H = separator_graph(&clique_indices, separator, snode);
 
         // find the connected components of H
         let components = find_components(&H, &clique_indices);
@@ -324,7 +324,7 @@ fn compute_reduced_clique_graph(
         }
     }
 
-    return (rows, cols);
+    (rows, cols)
 }
 
 // Find the separator graph H given a separator and the relevant index-subset of cliques.
@@ -345,13 +345,13 @@ fn separator_graph(
             let ca = &clique_ind[i];
             let cb = &clique_ind[j];
             // if intersect_dim(snd[ca], snd[cb]) > length(separator)
-            if !inter_equal(&snd[*ca], &snd[*cb], &separator) {
-                if H.contains_key(&ca) {
+            if !inter_equal(&snd[*ca], &snd[*cb], separator) {
+                if H.contains_key(ca) {
                     H.get_mut(ca).unwrap().push(*cb);
                 } else {
                     H.insert(*ca, vec![*cb]);
                 }
-                if H.contains_key(&cb) {
+                if H.contains_key(cb) {
                     //PJG: this line seems wrong?
                     H.get_mut(cb).unwrap().push(*ca);
                 } else {
@@ -362,11 +362,11 @@ fn separator_graph(
     }
     // add unconnected cliques
     for v in clique_ind.iter() {
-        if !H.contains_key(&v) {
+        if !H.contains_key(v) {
             H.insert(*v, Vec::new());
         }
     }
-    return H;
+    H
 }
 
 // Find connected components in undirected separator graph represented by `H`.
@@ -378,19 +378,19 @@ fn find_components(H: &HashMap<usize, Vec<usize>>, clique_ind: &[usize]) -> Vec<
 
     let mut components = Vec::<VertexSet>::new();
     for v in clique_ind {
-        if *visited.get(v).unwrap() == false {
+        if !(*visited.get(v).unwrap()) {
             let mut component = VertexSet::new();
             DFS_hashtable(&mut component, *v, &mut visited, H);
             components.push(component);
         }
     }
-    return components;
+    components
 }
 
 // Check whether the `pair` of cliques are in different `components`.
 fn is_unconnected(pair: (usize, usize), components: &[VertexSet]) -> bool {
     let component_ind = components.iter().position(|x| x.contains(&pair.0)).unwrap();
-    return !components[component_ind].contains(&pair.1);
+    !components[component_ind].contains(&pair.1)
 }
 
 // Depth first search on a HashMap `H`.
@@ -403,8 +403,8 @@ fn DFS_hashtable<'a>(
     visited.insert(v, true);
     component.insert(v);
     for n in H.get(&v).unwrap().iter() {
-        if *visited.get(n).unwrap() == false {
-            DFS_hashtable(component, *n, visited, &H);
+        if !(*visited.get(n).unwrap()) {
+            DFS_hashtable(component, *n, visited, H);
         }
     }
 }
@@ -448,7 +448,7 @@ fn inter_equal(s1: &VertexSet, s2: &VertexSet, s3: &VertexSet) -> bool {
             return false;
         }
     }
-    return dim == len_s3;
+    dim == len_s3
 }
 
 // Given a list of edges, return an adjacency hash-table `table` with nodes from 1 to `num_vertices`.
@@ -467,8 +467,7 @@ fn compute_adjacency_table(
     let c = &edges.colptr;
 
     for col in 0..num_vertices {
-        for i in c[col]..c[col + 1] {
-            let row = r[i];
+        for &row in &r[c[col]..c[col + 1]] {
             table.get_mut(&row).unwrap().insert(col);
             table.get_mut(&col).unwrap().insert(row);
         }
@@ -498,7 +497,7 @@ fn ispermissible(
             return false;
         }
     }
-    return true;
+    true
 }
 
 // Find the matrix indices (i, j) of the first maximum element among the elements stored in A.nzval
@@ -517,7 +516,7 @@ fn max_elem(A: &CscMatrix<isize>) -> (usize, usize) {
             break;
         }
     }
-    return (row, col);
+    (row, col)
 }
 
 fn edge_from_index(A: &CscMatrix<isize>, ind: usize) -> (usize, usize) {
@@ -539,7 +538,7 @@ fn edge_from_index(A: &CscMatrix<isize>, ind: usize) -> (usize, usize) {
             break;
         }
     }
-    return (row, col);
+    (row, col)
 }
 
 fn clique_intersections(E: &mut CscMatrix<isize>, snd: &[VertexSet]) {
@@ -669,7 +668,7 @@ fn assign_children(
 
 fn find_neighbors(edges: &CscMatrix<isize>, c: usize) -> Vec<usize> {
     let mut neighbors = Vec::<usize>::new();
-    let (m, n) = edges.size();
+    let (_, n) = edges.size();
     // find all nonzero columns in row c up to column c
     if c > 0 {
         for col in 0..(c - 1) {
@@ -682,7 +681,7 @@ fn find_neighbors(edges: &CscMatrix<isize>, c: usize) -> Vec<usize> {
     // find all nonzero entries in column c below c
     if c < (n - 1) {
         let rows = &edges.rowval[edges.colptr[c]..edges.colptr[c + 1] - 1];
-        if edges.colptr[c] <= edges.colptr[c + 1] - 1 {
+        if edges.colptr[c] < edges.colptr[c + 1] {
             neighbors.extend(rows);
         }
     }
@@ -740,7 +739,7 @@ fn compute_weights(
         let c_2 = &snode[cols[k]];
         weights[k] = edge_metric(c_1, c_2, edge_weight);
     }
-    return weights;
+    weights
 }
 
 // Given two cliques `c_a` and `c_b` return a value for their edge weight.
@@ -753,7 +752,7 @@ fn edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod) 
     let n_m = union_dim(c_a, c_b) as isize;
 
     match edge_weight {
-        EdgeWeightMethod::CUBIC => n_1.pow(3) + n_2.pow(3) - n_m.pow(3),
+        EdgeWeightMethod::Cubic => n_1.pow(3) + n_2.pow(3) - n_m.pow(3),
     }
 }
 
@@ -768,7 +767,7 @@ fn _edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod)
     let n_m = triangular_number(union_dim(c_a, c_b)) as isize;
 
     match edge_weight {
-        EdgeWeightMethod::CUBIC => n_1.pow(3) + n_2.pow(3) - n_m.pow(3),
+        EdgeWeightMethod::Cubic => n_1.pow(3) + n_2.pow(3) - n_m.pow(3),
     }
 }
 

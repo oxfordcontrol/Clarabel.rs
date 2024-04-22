@@ -34,7 +34,8 @@ impl MergeStrategy for ParentChildMergeStrategy {
     // Traverse tree `t` in descending topological order and return parent and clique (root has highest order).
     fn traverse(&mut self, t: &SuperNodeTree) -> Option<(usize, usize)> {
         let c = t.snode_post[self.clique_index];
-        return Some((t.snode_parent[c], c));
+
+        Some((t.snode_parent[c], c))
     }
 
     fn evaluate(&mut self, t: &SuperNodeTree, cand: (usize, usize)) -> bool {
@@ -44,8 +45,8 @@ impl MergeStrategy for ParentChildMergeStrategy {
 
         let (parent, child) = cand;
 
-        let (dim_parent_snode, dim_parent_sep) = clique_dim(&t, parent);
-        let (dim_clique_snode, dim_clique_sep) = clique_dim(&t, child);
+        let (dim_parent_snode, dim_parent_sep) = clique_dim(t, parent);
+        let (dim_clique_snode, dim_clique_sep) = clique_dim(t, child);
 
         let fill = fill_in(
             dim_clique_snode,
@@ -55,12 +56,12 @@ impl MergeStrategy for ParentChildMergeStrategy {
         );
         let max_snode = std::cmp::max(dim_clique_snode, dim_parent_snode);
 
-        return fill <= self.t_fill || max_snode <= self.t_size;
+        fill <= self.t_fill || max_snode <= self.t_size
     }
 
     fn merge_two_cliques(&self, t: &mut SuperNodeTree, cand: (usize, usize)) {
         // determine which clique is the parent
-        let (p, ch) = determine_parent(&t, cand.0, cand.1);
+        let (p, ch) = determine_parent(t, cand.0, cand.1);
 
         // merge child's vertex sets into parent's vertex set
         // PJG: problem from here.   Same double borrow issue as in clique graph
@@ -80,7 +81,7 @@ impl MergeStrategy for ParentChildMergeStrategy {
         t.snode_children[ch].clear();
 
         // decrement number of cliques in tree
-        t.n_cliques -= 1
+        t.n_cliques -= 1;
     }
 
     fn update_strategy(&mut self, _t: &SuperNodeTree, _cand: (usize, usize), _do_merge: bool) {
@@ -116,9 +117,9 @@ impl MergeStrategy for ParentChildMergeStrategy {
 
 fn determine_parent(t: &SuperNodeTree, c1: usize, c2: usize) -> (usize, usize) {
     if t.snode_children[c1].contains(&c2) {
-        return (c1, c2);
+        (c1, c2)
     } else {
-        return (c2, c1);
+        (c2, c1)
     }
 }
 

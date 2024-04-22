@@ -26,7 +26,7 @@ where
         F: FnMut(&T) -> bool,
     {
         self.enumerate()
-            .filter(|(_, item)| f(&item))
+            .filter(|(_, item)| f(item))
             .map(|(index, _)| index)
             .collect::<Vec<_>>()
     }
@@ -38,6 +38,7 @@ pub(crate) fn permute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
     zip(p, x).for_each(|(p, x)| *x = b[*p]);
 }
 
+#[allow(dead_code)]
 pub(crate) fn ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
     zip(p, b).for_each(|(p, b)| x[*p] = *b);
 }
@@ -47,7 +48,7 @@ pub(crate) fn ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
 
 #[test]
 fn test_position_all() {
-    let test = vec![3, 1, 0, 5, 9];
+    let test = [3, 1, 0, 5, 9];
     let idx = test.iter().position_all(|&v| *v > 2);
     assert_eq!(idx, vec![0, 3, 4]);
 
@@ -55,6 +56,7 @@ fn test_position_all() {
     assert_eq!(idx, vec![]);
 }
 
+#[test]
 fn test_permute() {
     let mut x = vec![0; 5];
     let b = [6, 7, 8, 9, 10];

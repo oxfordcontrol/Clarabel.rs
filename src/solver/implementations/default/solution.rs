@@ -3,11 +3,9 @@ use crate::{
     algebra::*,
     solver::core::{traits::Solution, SolverStatus},
 };
-use itertools::izip;
-use std::iter::zip;
 
 /// Standard-form solver type implementing the [`Solution`](crate::solver::core::traits::Solution) trait
-
+#[derive(Debug)]
 pub struct DefaultSolution<T> {
     pub x: Vec<T>,
     pub z: Vec<T>,
@@ -25,7 +23,7 @@ impl<T> DefaultSolution<T>
 where
     T: FloatT,
 {
-    pub fn new(m: usize, n: usize) -> Self {
+    pub fn new(n: usize, m: usize) -> Self {
         let x = vec![T::zero(); n];
         let z = vec![T::zero(); m];
         let s = vec![T::zero(); m];
@@ -83,14 +81,11 @@ where
 
         // unwind the chordal decomp and presolve, in the
         // reverse of the order in which they were applied
-        let tmp = {
-            if let Some(ref chordal_info) = data.chordal_info {
-                Some(chordal_info.decomp_reverse(&variables, &data.cones, settings))
-            } else {
-                None
-            }
-        };
-        let variables = tmp.as_ref().unwrap_or_else(|| variables);
+        let tmp = data
+            .chordal_info
+            .as_ref()
+            .map(|chordal_info| chordal_info.decomp_reverse(variables, &data.cones, settings));
+        let variables = tmp.as_ref().unwrap_or(variables);
 
         if let Some(ref presolver) = data.presolver {
             presolver.reverse_presolve(self, variables);

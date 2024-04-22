@@ -10,14 +10,6 @@ use crate::solver::core::{
 };
 use crate::solver::SupportedConeT;
 
-// convert every element of a tuple into an Option
-macro_rules! into_options {
-        () => { () };
-        ($x:expr $(, $rest:expr)* ) => {
-            (Some($x), $(Some($rest)),*)
-        };
-}
-
 // ---------------
 // Data type for default problem format
 // ---------------
@@ -41,8 +33,8 @@ pub struct DefaultProblemData<T> {
     normq: Option<T>,
     normb: Option<T>,
 
-    pub presolver: Option<Presolver<T>>,
-    pub chordal_info: Option<ChordalInfo<T>>,
+    pub(crate) presolver: Option<Presolver<T>>,
+    pub(crate) chordal_info: Option<ChordalInfo<T>>,
 }
 
 impl<T> DefaultProblemData<T>
@@ -51,10 +43,10 @@ where
 {
     pub fn new(
         P: &CscMatrix<T>,
-        q: &Vec<T>,
+        q: &[T],
         A: &CscMatrix<T>,
-        b: &Vec<T>,
-        cones: &Vec<SupportedConeT<T>>,
+        b: &[T],
+        cones: &[SupportedConeT<T>],
         settings: &DefaultSettings<T>,
     ) -> Self {
         // some caution is required to ensure we take a minimal,
@@ -72,24 +64,24 @@ where
 
         // presolve : return nothing if disabled or no reduction
         // --------------------------------------
-        let presolver = try_presolver(&A, &b, &cones, &settings);
+        let presolver = try_presolver(A, b, cones, settings);
 
         if let Some(ref presolver) = presolver {
-            let (_A_new, _b_new, _cones_new) = presolver.presolve(&A, &b, &cones);
+            let (_A_new, _b_new, _cones_new) = presolver.presolve(A, b, cones);
             (A_new, b_new, cones_new) = (Some(_A_new), Some(_b_new), Some(_cones_new));
         }
 
         // chordal decomposition : return nothing if disabled or no decomp
         // --------------------------------------
-        let mut chordal_info = try_chordal_info(&A, &b, &cones, &settings);
+        let mut chordal_info = try_chordal_info(A, b, cones, settings);
 
         if let Some(ref mut chordal_info) = chordal_info {
             let (_P_new, _q_new, _A_new, _b_new, _cones_new) = chordal_info.decomp_augment(
-                &P_new.as_ref().unwrap_or_else(|| &P),
-                &q_new.as_ref().unwrap_or_else(|| &q),
-                &A_new.as_ref().unwrap_or_else(|| &A),
-                &b_new.as_ref().unwrap_or_else(|| &b),
-                &settings,
+                P_new.as_ref().unwrap_or(P),
+                unwrap_and_slice_or_else(&q_new, || q),
+                A_new.as_ref().unwrap_or(A),
+                unwrap_and_slice_or_else(&b_new, || b),
+                settings,
             );
             (P_new, q_new, A_new, b_new, cones_new) = (
                 Some(_P_new),
@@ -105,10 +97,10 @@ where
         // the internal copy and don't want to step on the user
 
         let P_new = P_new.unwrap_or_else(|| P.clone());
-        let q_new = q_new.unwrap_or_else(|| q.clone());
+        let q_new = q_new.unwrap_or_else(|| q.to_vec());
         let A_new = A_new.unwrap_or_else(|| A.clone());
-        let mut b_new = b_new.unwrap_or_else(|| b.clone());
-        let cones_new = cones_new.unwrap_or_else(|| cones.clone());
+        let mut b_new = b_new.unwrap_or_else(|| b.to_vec());
+        let cones_new = cones_new.unwrap_or_else(|| cones.to_vec());
 
         //cap entries in b at INFINITY.  This is important
         //for inf values that were not in a reduced cone
@@ -330,7 +322,7 @@ where
         return None;
     }
 
-    return Some(chordal_info);
+    Some(chordal_info)
 }
 
 fn try_presolver<T>(
@@ -352,5 +344,21 @@ where
         return None;
     }
 
-    return Some(presolver);
+    Some(presolver)
+}
+
+// -- utility function that tries to unwrap and slice a vector, or return
+// an alternative.   Necessary since the Options for q and b are &Vec, but
+// the user supplied data is a slice &[T]
+
+pub fn unwrap_and_slice_or_else<'a, T, F>(opt: &'a Option<Vec<T>>, f: F) -> &'a [T]
+where
+    F: FnOnce() -> &'a [T],
+    T: FloatT,
+{
+    if opt.is_some() {
+        opt.as_ref().unwrap().as_slice()
+    } else {
+        f()
+    }
 }

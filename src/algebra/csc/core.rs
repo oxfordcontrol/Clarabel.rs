@@ -3,10 +3,7 @@
 use num_traits::Num;
 
 use crate::algebra::{Adjoint, MatrixShape, ShapedMatrix, SparseFormatError, Symmetric};
-use std::{
-    cmp::max,
-    iter::{repeat, zip},
-};
+use std::iter::{repeat, zip};
 
 /// Sparse matrix in standard Compressed Sparse Column (CSC) format
 ///

@@ -112,7 +112,7 @@ where
         let mut nextrow = 0;
         let mut nextcol = 0;
         for mat in mats {
-            M.fill_block(&mat, &mut dummymap, nextrow, nextcol, MatrixShape::N);
+            M.fill_block(mat, &mut dummymap, nextrow, nextcol, MatrixShape::N);
             nextrow += mat.nrows();
             nextcol += mat.ncols();
         }
@@ -148,7 +148,7 @@ where
         let mut currentcol = 0;
         for i in 0..mats[0].len() {
             for blockrow in mats {
-                M.colcount_block(&blockrow[i], currentcol, MatrixShape::N);
+                M.colcount_block(blockrow[i], currentcol, MatrixShape::N);
             }
             currentcol += mats[0][i].ncols();
         }
@@ -165,7 +165,7 @@ where
             let mut currentrow = 0;
             for blockrow in mats {
                 M.fill_block(
-                    &blockrow[i],
+                    blockrow[i],
                     &mut dummymap,
                     currentrow,
                     currentcol,
@@ -178,7 +178,7 @@ where
 
         M.backshift_colptrs();
 
-        Ok((M))
+        Ok(M)
     }
 }
 

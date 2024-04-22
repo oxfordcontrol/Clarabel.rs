@@ -31,9 +31,9 @@ impl<T: FloatT> MatrixMath for CscMatrix<T> {
     // PJG: add unit test
     fn col_sums(&self, sums: &mut [Self::T]) {
         assert_eq!(self.n, sums.len());
-        for col in 0..self.n {
+        for (col, sum) in sums.iter_mut().enumerate() {
             let rng = self.colptr[col]..self.colptr[col + 1];
-            sums[col] = self.nzval[rng].sum();
+            *sum = self.nzval[rng].sum();
         }
     }
 

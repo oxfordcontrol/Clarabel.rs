@@ -7,8 +7,8 @@ impl<T: FloatT> MatrixMath for Matrix<T> {
     // PJG: add unit test
     fn col_sums(&self, sums: &mut [Self::T]) {
         assert_eq!(self.n, sums.len());
-        for col in 0..self.n {
-            sums[col] = self.col_slice(col).sum();
+        for (col, sum) in sums.iter_mut().enumerate() {
+            *sum = self.col_slice(col).sum();
         }
     }
 

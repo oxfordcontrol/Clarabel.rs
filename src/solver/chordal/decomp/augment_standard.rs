@@ -16,6 +16,7 @@ impl<T> ChordalInfo<T>
 where
     T: FloatT,
 {
+    #[allow(clippy::type_complexity)]
     pub(crate) fn decomp_augment_standard(
         &mut self,
         P: &CscMatrix<T>,
@@ -37,7 +38,7 @@ where
 
         let (H, cones_new) = self.find_standard_H_and_cones();
 
-        let P_new = CscMatrix::blockdiag(&[&P, &CscMatrix::<T>::zeros((H.n, H.n))]).unwrap();
+        let P_new = CscMatrix::blockdiag(&[P, &CscMatrix::<T>::zeros((H.n, H.n))]).unwrap();
 
         let mut q_new = vec![T::zero(); q.len() + H.n];
         q_new[0..q.len()].copy_from(q);
@@ -46,7 +47,7 @@ where
         negI.negate();
         let Z = CscMatrix::zeros((H.n, A.n));
 
-        let A_new = CscMatrix::hvcat(&[&[&A, &H], &[&Z, &negI]]).unwrap();
+        let A_new = CscMatrix::hvcat(&[&[A, &H], &[&Z, &negI]]).unwrap();
 
         let mut b_new = vec![T::zero(); b.len() + H.n];
         b_new[0..b.len()].copy_from(b);
@@ -91,7 +92,7 @@ where
                     row,
                 );
             } else {
-                decompose_with_cone(&mut H_I, &mut cones_new, &cone, row);
+                decompose_with_cone(&mut H_I, &mut cones_new, cone, row);
             }
 
             row += cone.nvars();
@@ -110,12 +111,12 @@ where
             vec![T::one(); lenH],
         );
 
-        return (H, cones_new);
+        (H, cones_new)
     }
 
     fn find_H_col_dimension(&self) -> usize {
         let (cols, _) = self.get_decomposed_dim_and_overlaps();
-        return cols;
+        cols
     }
 }
 

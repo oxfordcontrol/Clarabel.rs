@@ -7,7 +7,7 @@ use crate::solver::utils::PositionAll;
 use crate::solver::DefaultVariables;
 use crate::{
     algebra::*,
-    solver::SupportedConeT::{self, *},
+    solver::SupportedConeT::{self},
 };
 use std::iter::zip;
 
@@ -19,10 +19,10 @@ where
         &self,
         new_vars: &mut DefaultVariables<T>,
         old_vars: &DefaultVariables<T>,
-        old_cones: &[SupportedConeT<T>],
+        _old_cones: &[SupportedConeT<T>],
     ) {
         let H = &self.H.as_ref().unwrap();
-        let (n, m) = new_vars.dims();
+        let (_, m) = new_vars.dims();
 
         H.gemv(&mut new_vars.s, &old_vars.s[m..], T::one(), T::zero());
         H.gemv(&mut new_vars.z, &old_vars.z[m..], T::one(), T::zero());
@@ -31,7 +31,7 @@ where
         //  each overlap by dividing by the number of blocks that overlap
         // in a particular entry, i.e. number of 1s in each row of H
 
-        let (rows, nnzs) = number_of_overlaps_in_rows(&H);
+        let (rows, nnzs) = number_of_overlaps_in_rows(H);
 
         for (ri, nnz) in zip(rows, nnzs) {
             new_vars.z[ri] /= nnz;
@@ -52,5 +52,5 @@ where
     //n_overlaps <- n_overlaps[ri]
     let n_overlaps: Vec<T> = ri.iter().map(|&i| n_overlaps[i]).collect();
 
-    return (ri, n_overlaps);
+    (ri, n_overlaps)
 }

@@ -46,7 +46,7 @@ impl SuperNodeTree {
         let mut post = vec![0; parent.len()];
         post_order(&mut post, &parent, &mut children, parent.len());
 
-        let degree = higher_degree(&L);
+        let degree = higher_degree(L);
         let (snode, snode_parent) = find_supernodes(&parent, &post, &degree);
 
         let mut snode_children = children_from_parent(&snode_parent);
@@ -87,11 +87,11 @@ impl SuperNodeTree {
         self.snode_post[i]
     }
 
-    pub(crate) fn get_snode<'a>(&'a self, i: usize) -> &'a VertexSet {
+    pub(crate) fn get_snode(&self, i: usize) -> &VertexSet {
         &self.snode[self.snode_post[i]]
     }
 
-    pub(crate) fn get_separators<'a>(&'a self, i: usize) -> &'a VertexSet {
+    pub(crate) fn get_separators(&self, i: usize) -> &VertexSet {
         &self.separators[self.snode_post[i]]
     }
 
@@ -153,8 +153,8 @@ where
 {
     let mut parent = vec![NO_PARENT; L.n];
     // loop over vertices of graph
-    for i in 0..L.n {
-        parent[i] = find_parent_direct(L, i);
+    for (i, par) in parent.iter_mut().enumerate() {
+        *par = find_parent_direct(L, i);
     }
     parent
 }
@@ -167,7 +167,7 @@ where
         return NO_PARENT;
     }
 
-    return L.rowval[L.colptr[v]];
+    L.rowval[L.colptr[v]]
 }
 
 fn find_separators<T>(L: &CscMatrix<T>, snode: &[VertexSet]) -> Vec<VertexSet>
@@ -178,7 +178,7 @@ where
 
     for (sn, sep) in zip(snode, separators.iter_mut()) {
         let vrep = *sn.iter().min().unwrap();
-        let adjplus = find_higher_order_neighbors(&L, vrep);
+        let adjplus = find_higher_order_neighbors(L, vrep);
 
         for neighbor in adjplus {
             if !sn.contains(neighbor) {
@@ -189,7 +189,7 @@ where
     separators
 }
 
-fn find_higher_order_neighbors<'a, T>(L: &'a CscMatrix<T>, v: usize) -> &'a [usize] {
+fn find_higher_order_neighbors<T>(L: &CscMatrix<T>, v: usize) -> &[usize] {
     &L.rowval[L.colptr[v]..(L.colptr[v + 1] - 1)]
 }
 
@@ -232,8 +232,8 @@ pub(crate) fn post_order(
     // PJG: possible index error here.  Tried to fix it.
     let mut i = nc - 1;
 
-    while !stack.is_empty() {
-        let v = stack.pop().unwrap(); //not empty in loop
+    while let Some(v) = stack.pop() {
+        //not empty in loop
         order[v] = i;
         i -= 1;
 
@@ -253,7 +253,7 @@ fn find_supernodes(
 ) -> (Vec<VertexSet>, Vec<usize>) {
     let mut snode = new_vertex_sets(parent.len());
 
-    let (snode_parent, snode_index) = pothen_sun(&parent, &post, &degree);
+    let (snode_parent, snode_index) = pothen_sun(parent, post, degree);
 
     for (i, &f) in snode_index.iter().enumerate() {
         if f < 0 {
@@ -306,22 +306,21 @@ fn pothen_sun(parent: &[usize], post: &[usize], degree: &[usize]) -> (Vec<usize>
                     let tmp = snode_index[v] as usize;
                     snode_index[tmp] -= 1;
                 }
+            } else if snode_index[v] < 0 {
+                snode_parent[v] = v;
             } else {
-                if snode_index[v] < 0 {
-                    snode_parent[v] = v;
-                } else {
-                    snode_parent[snode_index[v] as usize] = snode_index[v] as usize;
-                }
+                snode_parent[snode_index[v] as usize] = snode_index[v] as usize;
             }
         }
 
         // k: rep vertex of the snd that v belongs to
-        let k: isize;
-        if snode_index[v] < 0 {
-            k = v as isize;
-        } else {
-            k = snode_index[v];
-        }
+        let k: isize = {
+            if snode_index[v] < 0 {
+                v as isize
+            } else {
+                snode_index[v]
+            }
+        };
         // loop over v's children
         let v_children = &children[v];
 
@@ -361,7 +360,7 @@ fn pothen_sun(parent: &[usize], post: &[usize], degree: &[usize]) -> (Vec<usize>
         }
     }
 
-    return (snode_parent, snode_index);
+    (snode_parent, snode_index)
 }
 
 fn new_vertex_sets(n: usize) -> Vec<VertexSet> {

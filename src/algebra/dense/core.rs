@@ -332,14 +332,14 @@ fn test_matrix_istriu() {
         [0., 2., 0.], 
         [0., 0., 1.]]); 
 
-    assert_eq!(A.is_triu(),true);
+    assert!(A.is_triu());
 
     let A = Matrix::from(&[
         [1., 2., 3.], 
         [0., 2., 0.], 
         [1., 0., 1.]]); 
 
-    assert_eq!(A.is_triu(),false);
+    assert!(!A.is_triu());
 }
 
 #[test]

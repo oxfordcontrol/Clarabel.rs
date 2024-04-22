@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 mod augment_standard;
 mod reverse_standard;
 
@@ -11,6 +13,7 @@ impl<T> ChordalInfo<T>
 where
     T: FloatT,
 {
+    #[allow(clippy::type_complexity)]
     pub(crate) fn decomp_augment(
         &mut self,
         P: &CscMatrix<T>,
@@ -47,7 +50,7 @@ where
         assert_eq!(settings.chordal_decomposition_compact, self.H.is_none());
         assert_eq!(
             settings.chordal_decomposition_compact,
-            !self.cone_maps.is_none()
+            self.cone_maps.is_some()
         );
 
         // here `old_cones' are the ones that were used internally
@@ -65,7 +68,7 @@ where
             todo!()
             //self.decomp_reverse_compact(&mut new_vars, &old_vars, &old_cones);
         } else {
-            self.decomp_reverse_standard(&mut new_vars, &old_vars, &old_cones);
+            self.decomp_reverse_standard(&mut new_vars, old_vars, old_cones);
         }
 
         if settings.chordal_decomposition_complete_dual {
@@ -73,6 +76,6 @@ where
             //chordal_info.psd_completion(&mut new_vars);
         }
 
-        return new_vars;
+        new_vars
     }
 }

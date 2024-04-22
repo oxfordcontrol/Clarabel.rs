@@ -63,7 +63,7 @@ pub(crate) trait MergeStrategy {
 // PJG: make a settable option
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum EdgeWeightMethod {
-    CUBIC = 1,
+    Cubic = 1,
 }
 
 // utilities

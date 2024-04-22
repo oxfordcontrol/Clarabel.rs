@@ -1,5 +1,4 @@
 #![allow(non_snake_case)]
-use std::ops::Index;
 
 use crate::algebra::{
     hvcat_dim_check, BlockConcatenate, DenseMatrix, FloatT, Matrix, MatrixConcatenationError,
@@ -49,12 +48,12 @@ where
 
         let mut data = Vec::with_capacity(nrows * ncols);
 
-        for blockcol in 0..mats[0].len() {
+        for blockcolidx in 0..mats[0].len() {
             //every matrix in each block-column should have the same
             //number of columns
-            for col in 0..mats[blockcol][0].ncols() {
-                for blockrow in 0..mats.len() {
-                    let block = mats[blockrow][blockcol];
+            for col in 0..mats[blockcolidx][0].ncols() {
+                for blockrow in mats {
+                    let block = blockrow[blockcolidx];
                     data.extend(block.col_slice(col));
                 }
             }

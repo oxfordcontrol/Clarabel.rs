@@ -20,8 +20,9 @@ use super::SparsityPattern;
 // Chordal Decomposition Information
 // -------------------------------------
 pub(crate) struct ConeMapEntry {
-    pub orig_index: usize,
-    pub tree_and_clique: Option<(usize, usize)>,
+    // PJG: reserved for future compact transform
+    pub _orig_index: usize,
+    pub _tree_and_clique: Option<(usize, usize)>,
 }
 
 pub(crate) struct ChordalInfo<T> {
@@ -65,10 +66,10 @@ where
         };
 
         chordal_info.find_sparsity_patterns(
-            &A,
-            &b,
-            &cones,
-            &settings.chordal_decomposition_merge_method.as_str(),
+            A,
+            b,
+            cones,
+            settings.chordal_decomposition_merge_method.as_str(),
         );
 
         // Only copy the generating cones if we have decomposition,
@@ -77,7 +78,7 @@ where
             chordal_info.init_cones = cones.to_vec();
         }
 
-        return chordal_info;
+        chordal_info
     }
 
     fn find_sparsity_patterns(
@@ -90,20 +91,17 @@ where
         let rng_cones = cones.rng_cones_iter();
 
         // aggregate sparsity pattern across the rows of [A;b]
-        let mut nz_mask = find_aggregate_sparsity_mask(&A, &b);
+        let mut nz_mask = find_aggregate_sparsity_mask(A, b);
 
         // find the sparsity patterns of the PSD cones
         for (coneidx, (cone, rowrange)) in zip(cones, rng_cones).enumerate() {
-            match cone {
-                PSDTriangleConeT(dim) => {
-                    self.analyse_psdtriangle_sparsity_pattern(
-                        &mut nz_mask[rowrange],
-                        *dim,
-                        coneidx,
-                        merge_method,
-                    );
-                }
-                _ => {} //skip
+            if let PSDTriangleConeT(dim) = cone {
+                self.analyse_psdtriangle_sparsity_pattern(
+                    &mut nz_mask[rowrange],
+                    *dim,
+                    coneidx,
+                    merge_method,
+                );
             }
         }
     }
@@ -125,9 +123,9 @@ where
             return; //dense / decomposable
         }
 
-        let (L, ordering) = find_graph(&nz_mask);
+        let (L, ordering) = find_graph(nz_mask);
 
-        let spattern = SparsityPattern::new(L, ordering, coneidx, &merge_method);
+        let spattern = SparsityPattern::new(L, ordering, coneidx, merge_method);
 
         if spattern.sntree.n_cliques == 1 {
             return; // not decomposed, or everything re-merged
@@ -158,7 +156,7 @@ where
 
         // subtract npatterns to avoid double counting the
         // original decomposed cones
-        return self.init_cone_count() - npatterns + ncliques;
+        self.init_cone_count() - npatterns + ncliques
     }
 
     /*
@@ -244,7 +242,7 @@ fn find_graph(nz_mask: &[bool]) -> (CscMatrix<f64>, Vec<usize>) {
     // this takes care of the case that QDLDL returns an unconnected adjacency matrix L
     connect_graph(&mut L);
 
-    return (L, ordering);
+    (L, ordering)
 }
 
 fn connect_graph<T: FloatT>(L: &mut CscMatrix<T>) {
@@ -256,8 +254,8 @@ fn connect_graph<T: FloatT>(L: &mut CscMatrix<T>) {
         let col_ptr = &L.colptr;
 
         let mut connected = false;
-        for k in col_ptr[j]..col_ptr[j + 1] {
-            if row_val[k] > j {
+        for &row in &row_val[col_ptr[j]..col_ptr[j + 1]] {
+            if row > j {
                 connected = true;
                 break;
             }

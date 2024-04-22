@@ -12,7 +12,7 @@ impl NoMergeStrategy {
 
 impl MergeStrategy for NoMergeStrategy {
     fn initialise(&mut self, _t: &mut SuperNodeTree) {
-        return;
+        //no-op
     }
 
     fn is_done(&self) -> bool {
@@ -36,6 +36,6 @@ impl MergeStrategy for NoMergeStrategy {
     }
 
     fn post_process_merge(&mut self, _t: &mut SuperNodeTree) {
-        return;
+        //no-op
     }
 }

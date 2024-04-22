@@ -20,7 +20,8 @@ pub(crate) struct PresolverRowReductionIndex {
 #[derive(Debug)]
 pub struct Presolver<T> {
     // original cones of the problem
-    pub(crate) init_cones: Vec<SupportedConeT<T>>,
+    // PJG: not currently used.  Here for future presolver
+    pub(crate) _init_cones: Vec<SupportedConeT<T>>,
 
     //record of reduced constraints for NN cones with inf bounds
     pub(crate) reduce_map: Option<PresolverRowReductionIndex>,
@@ -44,18 +45,18 @@ where
         _A: &CscMatrix<T>,
         b: &[T],
         cones: &[SupportedConeT<T>],
-        settings: &DefaultSettings<T>,
+        _settings: &DefaultSettings<T>,
     ) -> Self {
         let infbound = crate::solver::get_infinity();
 
         // make copy of cones to protect from user interference
-        let mut init_cones = cones.to_vec();
+        let init_cones = cones.to_vec();
         let mfull = b.len();
 
         let (reduce_map, mreduced) = make_reduction_map(cones, b, infbound.as_T());
 
         Self {
-            init_cones,
+            _init_cones: init_cones,
             reduce_map,
             mfull,
             mreduced,
@@ -117,7 +118,7 @@ where
             }
         }
 
-        return cones_new;
+        cones_new
     }
 
     pub(crate) fn reverse_presolve(

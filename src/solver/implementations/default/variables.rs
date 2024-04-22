@@ -285,6 +285,6 @@ where
     }
 
     pub(crate) fn dims(&self) -> (usize, usize) {
-        return (self.x.len(), self.s.len());
+        (self.x.len(), self.s.len())
     }
 }
