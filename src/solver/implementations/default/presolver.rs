@@ -7,6 +7,7 @@ use crate::solver::SupportedConeT;
 // Data type for default problem presolver
 // ---------------
 
+// PJG: updates required here
 #[derive(Debug)]
 pub(crate) struct PresolverRowReductionIndex {
     // vector of length = original RHS.   Entries are false

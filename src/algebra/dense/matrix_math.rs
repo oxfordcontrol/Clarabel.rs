@@ -4,13 +4,24 @@ use crate::algebra::{FloatT, Matrix, MatrixMath, VectorMath};
 impl<T: FloatT> MatrixMath for Matrix<T> {
     type T = T;
 
-    //scalar mut operations
-    fn scale(&mut self, c: T) {
-        self.data.scale(c);
+    // PJG: add unit test
+    fn col_sums(&self, sums: &mut [Self::T]) {
+        assert_eq!(self.n, sums.len());
+        for col in 0..self.n {
+            sums[col] = self.col_slice(col).sum();
+        }
     }
 
-    fn negate(&mut self) {
-        self.data.negate();
+    // PJG: add unit test
+    fn row_sums(&self, sums: &mut [Self::T]) {
+        assert_eq!(self.m, sums.len());
+        sums.fill(T::zero());
+        for col in 0..self.n {
+            let slice = self.col_slice(col);
+            for (row, &v) in slice.iter().enumerate() {
+                sums[row] += v;
+            }
+        }
     }
 
     fn col_norms(&self, norms: &mut [T]) {
@@ -51,6 +62,15 @@ impl<T: FloatT> MatrixMath for Matrix<T> {
                 norms[r] = T::max(norms[r], T::abs(self[(r, c)]))
             }
         }
+    }
+
+    //scalar mut operations
+    fn scale(&mut self, c: T) {
+        self.data.scale(c);
+    }
+
+    fn negate(&mut self) {
+        self.data.negate();
     }
 
     fn lscale(&mut self, l: &[T]) {

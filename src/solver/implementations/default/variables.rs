@@ -47,6 +47,10 @@ where
 
         Self { x, s, z, τ, κ }
     }
+
+    pub(crate) fn dims(&self) -> (usize, usize) {
+        return (self.x.len(), self.s.len());
+    }
 }
 
 impl<T> Variables<T> for DefaultVariables<T>

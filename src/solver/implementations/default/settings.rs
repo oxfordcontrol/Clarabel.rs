@@ -127,6 +127,16 @@ pub struct DefaultSettings<T: FloatT> {
     // preprocessing
     #[builder(default = "true")]
     pub presolve_enable: bool,
+
+    // chordal decomposition  //PJG: compile on SDP options only
+    #[builder(default = "true")]
+    pub chordal_decomposition_enable: bool,
+    #[builder(default = r#""parent_child".to_string()"#)] //PJG fix defaults
+    pub chordal_decomposition_merge_method: String,
+    #[builder(default = "true")]
+    pub chordal_decomposition_compact: bool,
+    #[builder(default = "true")]
+    pub chordal_decomposition_complete_dual: bool,
 }
 
 impl<T> Default for DefaultSettings<T>

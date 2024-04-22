@@ -1,6 +1,12 @@
 use thiserror::Error;
 
-/// Error type returned by sparse matrix user input checkers, e.g. [`check_format`](crate::algebra::CscMatrix::check_format) utility.
+/// Error type returned by matrix concatenation operations.
+#[derive(Error, Debug)]
+pub enum MatrixConcatenationError {
+    #[error("Incompatible dimensions")]
+    IncompatibleDimension,
+}
+
 #[derive(Error, Debug)]
 pub enum SparseFormatError {
     #[error("Matrix dimension fields and/or array lengths are incompatible")]

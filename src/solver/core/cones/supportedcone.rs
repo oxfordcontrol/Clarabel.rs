@@ -193,3 +193,61 @@ impl SupportedConeTag {
         }
     }
 }
+
+// ----------------------------------------------
+// Iterator for the range of indices of the cone
+
+//PJG: type names are not satisfactory.   Try to combine
+//with the internal cone generators.
+
+pub(crate) struct RangeSupportedConesIterator<'a, T> {
+    cones: &'a [SupportedConeT<T>],
+    index: usize,
+    start: usize,
+}
+
+impl<'a, T> Iterator for RangeSupportedConesIterator<'a, T> {
+    type Item = std::ops::Range<usize>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.cones.len() {
+            let cone = &self.cones[self.index];
+            let stop = self.start + cone.nvars();
+            let range = self.start..stop;
+            self.index += 1;
+            self.start = stop;
+            Some(range)
+        } else {
+            None
+        }
+    }
+}
+
+pub(crate) trait ConeRanges<'a, T> {
+    fn rng_cones_iter(&'a self) -> RangeSupportedConesIterator<'a, T>;
+}
+
+impl<'a, T> ConeRanges<'a, T> for [SupportedConeT<T>] {
+    fn rng_cones_iter(&'a self) -> RangeSupportedConesIterator<'a, T> {
+        RangeSupportedConesIterator::<'a, T> {
+            cones: self,
+            index: 0,
+            start: 0,
+        }
+    }
+}
+
+#[test]
+fn test_cone_ranges() {
+    let cones = vec![
+        SupportedConeT::NonnegativeConeT::<f64>(3),
+        SupportedConeT::NonnegativeConeT::<f64>(0),
+        SupportedConeT::SecondOrderConeT::<f64>(4),
+    ];
+
+    let rngs: Vec<std::ops::Range<usize>> = vec![0..3, 3..3, 3..7];
+
+    for (rng, conerng) in std::iter::zip(rngs.iter(), cones.rng_cones_iter()) {
+        assert_eq!(*rng, conerng);
+    }
+}

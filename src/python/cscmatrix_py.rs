@@ -1,4 +1,4 @@
-#![allow(unused)]
+#![allow(unused)] //PJG:can this now be removed?
 #![allow(non_snake_case)]
 
 use crate::algebra::CscMatrix;

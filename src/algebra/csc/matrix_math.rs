@@ -28,13 +28,22 @@ impl<T: FloatT> SymMatrixVectorMultiply for Symmetric<'_, CscMatrix<T>> {
 impl<T: FloatT> MatrixMath for CscMatrix<T> {
     type T = T;
 
-    //scalar mut operations
-    fn scale(&mut self, c: T) {
-        self.nzval.scale(c);
+    // PJG: add unit test
+    fn col_sums(&self, sums: &mut [Self::T]) {
+        assert_eq!(self.n, sums.len());
+        for col in 0..self.n {
+            let rng = self.colptr[col]..self.colptr[col + 1];
+            sums[col] = self.nzval[rng].sum();
+        }
     }
 
-    fn negate(&mut self) {
-        self.nzval.negate();
+    // PJG: add unit test
+    fn row_sums(&self, sums: &mut [Self::T]) {
+        assert_eq!(self.m, sums.len());
+        sums.fill(T::zero());
+        for (&row, &val) in zip(&self.rowval, &self.nzval) {
+            sums[row] += val;
+        }
     }
 
     fn col_norms(&self, norms: &mut [T]) {
@@ -84,6 +93,15 @@ impl<T: FloatT> MatrixMath for CscMatrix<T> {
         for (row, val) in zip(&self.rowval, &self.nzval) {
             norms[*row] = T::max(norms[*row], T::abs(*val));
         }
+    }
+
+    //scalar mut operations
+    fn scale(&mut self, c: T) {
+        self.nzval.scale(c);
+    }
+
+    fn negate(&mut self) {
+        self.nzval.negate();
     }
 
     fn lscale(&mut self, l: &[T]) {

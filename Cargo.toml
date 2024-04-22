@@ -31,7 +31,8 @@ itertools      = "0.11"
 [features]
 
 # enables blas/lapack for SDP support, with blas/lapack src unspecified
-sdp = ["blas","lapack"]
+# also enable packages required for chordal decomposition 
+sdp = ["blas","lapack", "indexmap"]
 
 # explicit configuration options for different blas flavours
 sdp-accelerate = ["sdp", "blas-src/accelerate", "lapack-src/accelerate"]
@@ -51,7 +52,7 @@ python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive"]
 
 
 # -------------------------------
-# blas / lapack configuration
+# SDP configuration
 # -------------------------------
 
 [dependencies.blas]
@@ -69,6 +70,10 @@ optional = true
 [dependencies.lapack-src]
 version = "0.9"
 optional = true 
+
+[dependencies.indexmap]
+version = "2.2"
+optional = true
 
 
 # -------------------------------

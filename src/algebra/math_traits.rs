@@ -153,6 +153,14 @@ pub(crate) trait SymMatrixVectorMultiply {
 pub trait MatrixMath {
     type T: FloatT;
 
+    /// Compute columnwise sums on a matrix and
+    /// assign the results to the vector `sums`
+    fn col_sums(&self, sums: &mut [Self::T]);
+
+    /// Compute columnwise sums on a matrix and
+    /// assign the results to the vector `sums`
+    fn row_sums(&self, sums: &mut [Self::T]);
+
     /// Compute columnwise infinity norm operations on
     /// a matrix and assign the results to the vector `norms`
     fn col_norms(&self, norms: &mut [Self::T]);

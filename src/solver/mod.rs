@@ -14,6 +14,7 @@
 
 pub(crate) const _INFINITY_DEFAULT: f64 = 1e20;
 // internal module structure
+pub(crate) mod chordal; // PJG disable this if no SDP
 pub(crate) mod core;
 pub mod implementations;
 pub(crate) mod utils;
@@ -34,7 +35,7 @@ pub use crate::solver::core::{IPSolver, SolverStatus};
 pub use crate::solver::core::traits;
 pub use crate::solver::core::CoreSettings;
 
-//If we have implemtations for multple alternative
+//If we had implementations for multple alternative
 //problem formats, they would live here.   Since we
 //only have default, it is exposed at the top level
 //in the use statements directly below instead.
