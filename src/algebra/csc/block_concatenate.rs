@@ -153,6 +153,8 @@ where
             currentcol += mats[0][i].ncols();
         }
 
+        M.colcount_to_colptr();
+
         //PJG: create fake data maps showing where the
         //entries go.   Probably this should be an Option
         //instead, but that requires rewriting some of the

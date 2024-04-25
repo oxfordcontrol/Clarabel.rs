@@ -374,12 +374,16 @@ where
             notimeit! {timers; {self.info.print_status(&self.settings).unwrap();}}
         }
 
-        //store final solution, timing etc
-        self.info
-            .finalize(&self.residuals, &self.settings, &mut timers);
+        timeit! {timers => "finalize"; {
+            //check for "almost" convergence case and then extract solution
+            self.info.post_process(&self.residuals, &self.settings);
+            self.solution
+                .post_process(&self.data, &mut self.variables, &self.info, &self.settings);
 
-        self.solution
-            .finalize(&self.data, &mut self.variables, &self.info, &self.settings);
+            //halt timers
+            self.info.finalize(&mut timers);
+            self.solution.finalize( &self.info);
+        }}
 
         self.info.print_footer(&self.settings).unwrap();
 

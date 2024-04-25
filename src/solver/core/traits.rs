@@ -183,8 +183,11 @@ where
     /// Reset internal data, particularly solve timers.
     fn reset(&mut self, timers: &mut Timers);
 
+    /// Final convergence checks, e.g. for "almost" convergence cases
+    fn post_process(&mut self, residuals: &Self::R, settings: &Self::SE);
+
     /// Compute final values before solver termination
-    fn finalize(&mut self, residuals: &Self::R, settings: &Self::SE, timers: &mut Timers);
+    fn finalize(&mut self, timers: &mut Timers);
 
     /// Update solver progress information
     fn update(
@@ -221,13 +224,16 @@ pub trait Solution<T: FloatT> {
     type SE: Settings<T>;
 
     /// Compute solution from the Variables at solver termination
-    fn finalize(
+    fn post_process(
         &mut self,
         data: &Self::D,
         variables: &mut Self::V,
         info: &Self::I,
         settings: &Self::SE,
     );
+
+    /// finalize the solution, e.g. extract final timing from info
+    fn finalize(&mut self, info: &Self::I);
 }
 
 /// Settings for a conic optimization problem.

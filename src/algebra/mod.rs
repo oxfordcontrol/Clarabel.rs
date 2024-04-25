@@ -20,6 +20,7 @@ mod matrix_types;
 mod reshaped;
 mod scalarmath;
 mod symmetric;
+mod utils;
 mod vecmath;
 pub use error_types::*;
 pub use floats::*;
@@ -27,10 +28,17 @@ pub use math_traits::*;
 pub use matrix_traits::*;
 pub use matrix_types::*;
 pub(crate) use scalarmath::*;
+pub(crate) use utils::*;
 
 // matrix implementations
 mod csc;
 pub use csc::*;
+
+// sparse vectors implementations (for chordal decomp only)
+#[cfg(feature = "sdp")]
+mod sparsevector;
+#[cfg(feature = "sdp")]
+pub(crate) use sparsevector::*;
 
 mod densesym3x3;
 pub(crate) use densesym3x3::*;

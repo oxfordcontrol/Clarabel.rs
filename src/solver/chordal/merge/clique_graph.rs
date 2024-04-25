@@ -1,11 +1,9 @@
 #![allow(non_snake_case)]
 
 use super::*;
+use crate::algebra::*;
 use crate::solver::chordal::*;
-use crate::solver::utils::permute;
-use crate::{algebra::*, solver::utils::PositionAll};
-use num_traits::Num;
-use std::cmp::{max, min};
+use std::cmp::{max, min, Reverse};
 use std::collections::HashMap;
 use std::iter::zip;
 
@@ -93,8 +91,7 @@ impl MergeStrategy for CliqueGraphMergeStrategy {
 
         // sort the weights in edges.nzval to find the permutation p
         let slicep = &mut p[0..self.edges.nzval.len()];
-        sortperm(slicep, &self.edges.nzval);
-        slicep.reverse();
+        sortperm_rev(slicep, &self.edges.nzval);
 
         // try edges with decreasing weight and check if the edge is permissible
         // PJG: potentially returns nothing?
@@ -153,9 +150,7 @@ impl MergeStrategy for CliqueGraphMergeStrategy {
         for e in neighbors.iter() {
             new_neighbors.shift_remove(e);
         }
-        for e in c_1.iter() {
-            new_neighbors.shift_remove(e);
-        }
+        new_neighbors.shift_remove(&c_1_ind);
 
         // recalculate edge values of all of c_1's neighbors
         for &n_ind in neighbors {
@@ -210,7 +205,7 @@ impl MergeStrategy for CliqueGraphMergeStrategy {
         // does not make sense. Therefore just number the non-empty supernodes in t.snd
 
         t.snode_post = t.snode.iter().position_all(|&x| !x.is_empty());
-        t.snode_parent = vec![INACTIVE_NODE, t.snode.len()];
+        t.snode_parent = vec![INACTIVE_NODE; t.snode.len()];
 
         // recompute a clique tree from the clique graph
         if t.n_cliques > 1 {
@@ -232,6 +227,7 @@ impl CliqueGraphMergeStrategy {
         // a clique tree is a maximum weight spanning tree of the clique graph, where the edge weight is the
         // cardinality of the intersection between two cliques compute intersection value for each edge
         // in the clique graph
+
         clique_intersections(&mut self.edges, &t.snode);
 
         // find a maximum weight spanning tree of the clique graph using Kruskal's algorithm
@@ -292,7 +288,7 @@ fn compute_reduced_clique_graph(
     snode: &[VertexSet],
 ) -> (Vec<usize>, Vec<usize>) {
     // loop over separators by decreasing cardinality
-    separators.sort_by(|a, b| a.len().cmp(&b.len()).reverse());
+    separators.sort_by_key(|b| Reverse(b.len()));
 
     let mut rows = Vec::new();
     let mut cols = Vec::new();
@@ -352,7 +348,6 @@ fn separator_graph(
                     H.insert(*ca, vec![*cb]);
                 }
                 if H.contains_key(cb) {
-                    //PJG: this line seems wrong?
                     H.get_mut(cb).unwrap().push(*ca);
                 } else {
                     H.insert(*cb, vec![*ca]);
@@ -510,7 +505,7 @@ fn max_elem(A: &CscMatrix<isize>) -> (usize, usize) {
 
     let mut col = 0;
     for c in 0..n {
-        let col_indices = A.colptr[c]..A.colptr[c + 1] - 1;
+        let col_indices = A.colptr[c]..A.colptr[c + 1];
         if col_indices.contains(&ind) {
             col = c;
             break;
@@ -593,8 +588,7 @@ fn kruskal(E: &mut CscMatrix<isize>, num_cliques: usize) {
 
     // sort the weights and edges from maximum to minimum value
     let mut p = vec![0; V0.len()];
-    sortperm(&mut p, &V0);
-    p.reverse();
+    sortperm_rev(&mut p, &V0);
 
     let mut I = vec![0; p.len()];
     let mut J = vec![0; p.len()];
@@ -605,7 +599,7 @@ fn kruskal(E: &mut CscMatrix<isize>, num_cliques: usize) {
 
     // iterate through edges (I -- J) with decreasing weight
     for (k, (row, col)) in zip(I, J).enumerate() {
-        if connected_c.in_same_set(row, col) {
+        if !connected_c.in_same_set(row, col) {
             connected_c.union(row, col);
             // indicate an edge in the MST with a negative value in E (all other values are >= 0)
             E.nzval[p[k]] = -1;
@@ -643,7 +637,7 @@ fn determine_parent_cliques(
     }
 
     // recursively assign children to cliques along the MST defined by E
-    assign_children(snode_parent, snode_children, c, E)
+    assign_children(snode_parent, snode_children, c, E);
 }
 
 fn assign_children(
@@ -654,6 +648,7 @@ fn assign_children(
 ) {
     // determine neighbors
     let neighbors = find_neighbors(edges, c);
+
     for n in neighbors {
         // conditions that there is a edge in the MST and that n is not the parent of c
         if edges.get_entry((max(c, n), min(c, n))).unwrap_or(0) == -1 && snode_parent[c] != n {
@@ -671,16 +666,16 @@ fn find_neighbors(edges: &CscMatrix<isize>, c: usize) -> Vec<usize> {
     let (_, n) = edges.size();
     // find all nonzero columns in row c up to column c
     if c > 0 {
-        for col in 0..(c - 1) {
-            let val = edges.get_entry((c, col)).unwrap_or(0) as usize;
+        for col in 0..c {
+            let val = edges.get_entry((c, col)).unwrap_or(0);
             if val != 0 {
-                neighbors.push(val);
+                neighbors.push(col);
             }
         }
     }
     // find all nonzero entries in column c below c
     if c < (n - 1) {
-        let rows = &edges.rowval[edges.colptr[c]..edges.colptr[c + 1] - 1];
+        let rows = &edges.rowval[edges.colptr[c]..edges.colptr[c + 1]];
         if edges.colptr[c] < edges.colptr[c + 1] {
             neighbors.extend(rows);
         }
@@ -769,13 +764,4 @@ fn _edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod)
     match edge_weight {
         EdgeWeightMethod::Cubic => n_1.pow(3) + n_2.pow(3) - n_m.pow(3),
     }
-}
-
-// PJG: this is a generic vector utility.  Probably doesn't
-// belong here.   Maybe should be a vector trait
-fn findmax<T: Num + Copy + Ord>(v: &[T]) -> Option<usize> {
-    v.iter()
-        .enumerate()
-        .max_by_key(|(_, &value)| value)
-        .map(|(idx, _)| idx)
 }

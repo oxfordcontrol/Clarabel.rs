@@ -3,7 +3,7 @@
 use std::{iter::zip, marker::PhantomData};
 
 use super::VertexSet;
-use crate::{algebra::*, solver::utils::PositionAll};
+use crate::algebra::*;
 
 // this value used to mark root notes, i.e. ones with no parent
 pub(crate) const NO_PARENT: usize = std::usize::MAX;
@@ -12,7 +12,7 @@ pub(crate) const NO_PARENT: usize = std::usize::MAX;
 pub(crate) const INACTIVE_NODE: usize = std::usize::MAX - 1;
 
 // A structure to represent and analyse the sparsity pattern of an LDL factor matrix L.
-
+#[derive(Debug)]
 pub(crate) struct SuperNodeTree {
     // vertices of supernodes stored in one array (also called residuals)
     pub snode: Vec<VertexSet>,
@@ -51,6 +51,7 @@ impl SuperNodeTree {
 
         let mut snode_children = children_from_parent(&snode_parent);
         let mut snode_post = vec![0; snode_parent.len()];
+
         post_order(
             &mut snode_post,
             &snode_parent,
@@ -114,8 +115,11 @@ impl SuperNodeTree {
         let c = self.snode_post[i];
         let set1 = &self.snode[c];
         let set2 = &self.separators[c];
+
         let mut out = VertexSet::with_capacity(set1.len() + set2.len());
-        set1.union(set2).map(|&v| out.insert(v));
+        set1.union(set2).for_each(|&v| {
+            out.insert(v);
+        });
         out
     }
 
@@ -129,13 +133,61 @@ impl SuperNodeTree {
         (dim, overlaps)
     }
 
-    pub(crate) fn reorder_snode_consecutively(&mut self, ordering: &[usize]) {
-        unimplemented!()
+    // Takes a SuperNodeTree and reorders the vertices in each supernode (and separator) to have consecutive order.
+
+    // The reordering is needed to achieve equal column structure for the psd completion of the dual variable `Y`.
+    // This also modifies `ordering` which maps the vertices in the `sntree` back to the actual location in the
+    // not reordered data, i.e. the primal constraint variable `S` and dual variables `Y`.
+
+    pub(crate) fn reorder_snode_consecutively(&mut self, ordering: &mut [usize]) {
+        // determine permutation vector p and permute the vertices in each snd
+        let mut p = vec![0; self.post.len()];
+
+        let mut k = 0;
+
+        for &i in self.snode_post.iter() {
+            let snode = &mut self.snode[i];
+            let n = snode.len();
+            for (j, &v) in snode.iter().enumerate() {
+                p[j + k] = v;
+            }
+            p[k..(k + n)].sort();
+
+            // assign k..(k+n) to the OrderedSet snode,
+            // dropping the previous values
+            snode.clear();
+            snode.extend(k..(k + n));
+
+            k += n;
+        }
+
+        // permute the separators as well
+        let p_inv = invperm(&p);
+
+        for sp in self.separators.iter_mut() {
+            // use here the permutation vector p as scratch before flushing
+            // the separator set and repopulating.  Assumes that the permutation
+            // will be at least as long as the largest separator set
+
+            assert!(p.len() >= sp.len());
+            let tmp = &mut p[0..sp.len()];
+            for (i, &x) in sp.iter().enumerate() {
+                tmp[i] = p_inv[x];
+            }
+            sp.clear();
+            sp.extend(tmp.iter());
+        }
+
+        // because I used 'p' as scratch space, I will
+        // ipermute using pinv rather than permute using p
+        let tmp = ordering.to_vec(); //allocate a copy
+        ipermute(ordering, &tmp, &p_inv);
     }
 
     pub(crate) fn calculate_block_dimensions(&mut self) {
         let n = self.n_cliques;
         let mut nblk = vec![0; n];
+
         for i in 0..n {
             let c = self.snode_post[i];
             nblk[i] = self.separators[c].len() + self.snode[c].len();
@@ -190,14 +242,14 @@ where
 }
 
 fn find_higher_order_neighbors<T>(L: &CscMatrix<T>, v: usize) -> &[usize] {
-    &L.rowval[L.colptr[v]..(L.colptr[v + 1] - 1)]
+    &L.rowval[L.colptr[v]..(L.colptr[v + 1])]
 }
 
 fn higher_degree<T>(L: &CscMatrix<T>) -> Vec<usize>
 where
     T: FloatT,
 {
-    let mut degree = vec![0, L.ncols()];
+    let mut degree = vec![0usize; L.ncols()];
     for v in 0..(L.n - 1) {
         degree[v] = L.colptr[v + 1] - L.colptr[v];
     }
@@ -220,7 +272,7 @@ pub(crate) fn post_order(
     children: &mut [VertexSet],
     nc: usize,
 ) {
-    let mut order = vec![nc + 1; parent.len()];
+    let mut order = vec![nc + 1; parent.len()]; //PJG: ??? difference here
 
     let root = parent.iter().position(|&x| x == NO_PARENT).unwrap(); //should always be a root
 
@@ -228,9 +280,10 @@ pub(crate) fn post_order(
     stack.push(root);
 
     post.resize(parent.len(), 0);
+    post.iter_mut().enumerate().for_each(|(i, p)| *p = i);
 
     // PJG: possible index error here.  Tried to fix it.
-    let mut i = nc - 1;
+    let mut i = nc;
 
     while let Some(v) = stack.pop() {
         //not empty in loop
@@ -243,6 +296,12 @@ pub(crate) fn post_order(
         // with the COSMO implementation for reference
         children[v].sort();
         stack.extend(children[v].iter());
+    }
+
+    post.sort_by(|&x, &y| order[x].cmp(&order[y]));
+
+    if nc != parent.len() {
+        post.truncate(nc);
     }
 }
 
@@ -262,7 +321,7 @@ fn find_supernodes(
             snode[f as usize].insert(i);
         }
     }
-
+    snode.retain(|x| !x.is_empty());
     (snode, snode_parent)
 }
 

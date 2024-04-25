@@ -6,6 +6,7 @@ use crate::solver::chordal::*;
 // Struct to hold clique and sparsity data for a constraint
 // ---------------------------
 
+#[derive(Debug)]
 pub(crate) struct SparsityPattern {
     pub(crate) sntree: SuperNodeTree,
     pub(crate) ordering: Vec<usize>,
@@ -16,7 +17,7 @@ impl SparsityPattern {
     // constructor for sparsity pattern
     pub(crate) fn new<T: FloatT>(
         L: CscMatrix<T>,
-        ordering: Vec<usize>,
+        mut ordering: Vec<usize>,
         orig_index: usize,
         merge_method: &str,
     ) -> Self {
@@ -43,7 +44,7 @@ impl SparsityPattern {
 
         // reorder vertices in supernodes to have consecutive order
         // necessary for equal column structure for psd completion
-        sntree.reorder_snode_consecutively(&ordering);
+        sntree.reorder_snode_consecutively(&mut ordering);
 
         // for each clique determine the number of entries of the block
         // represented by that clique

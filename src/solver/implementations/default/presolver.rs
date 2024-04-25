@@ -165,7 +165,7 @@ where
 
     let mut idx = 0; // index into the b vector
 
-    for cone in cones.iter() {
+    for cone in cones {
         let numel_cone = cone.nvars();
 
         if matches!(cone, SupportedConeT::NonnegativeConeT(_)) {

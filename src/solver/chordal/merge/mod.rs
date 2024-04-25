@@ -2,12 +2,11 @@ mod clique_graph;
 mod disjoint_set_union;
 mod nomerge;
 mod parent_child;
+use crate::solver::chordal::*;
 pub(crate) use clique_graph::*;
 pub(crate) use disjoint_set_union::*;
 pub(crate) use nomerge::*;
 pub(crate) use parent_child::*;
-
-use crate::solver::chordal::*;
 
 // All merge strategies must implement the following trait.
 
@@ -93,27 +92,5 @@ fn set_union_into_indexed(sets: &mut [VertexSet], c1: usize, c2: usize) {
 
     for &el in source {
         target.insert(el);
-    }
-}
-
-fn sortperm<T>(p: &mut [usize], v: &[T])
-where
-    T: Sized + num_traits::Num + Ord + Copy,
-{
-    for i in 0..p.len() {
-        p[i] = i;
-    }
-    p.sort_by_key(|&k| v[k]);
-}
-
-#[test]
-fn test_sortperm() {
-    let mut p = vec![0usize; 5];
-    let v: Vec<isize> = vec![10, 4, -3, 8, -5];
-    let vsorted: Vec<isize> = vec![-5, -3, 4, 8, 10];
-    sortperm(&mut p, &v);
-
-    for i in 0..v.len() {
-        assert_eq!(v[p[i]], vsorted[i]);
     }
 }

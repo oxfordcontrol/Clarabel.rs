@@ -29,10 +29,7 @@ where
         CscMatrix<T>,
         Vec<T>,
         Vec<SupportedConeT<T>>,
-    )
-    where
-        T: FloatT,
-    {
+    ) {
         // allocate H and new decomposed cones.  H will be stored
         // in chordal_info and is required for the reversal step
 
@@ -166,7 +163,7 @@ fn add_subblock_map(H_I: &mut Vec<usize>, clique_vertices: &[usize], row_start: 
     let v = clique_vertices;
 
     for j in 0..v.len() {
-        for i in 1..=j {
+        for i in 0..=j {
             let row = coord_to_upper_triangular_index((v[i], v[j]));
             H_I.push(row_start + row);
         }

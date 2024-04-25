@@ -1,8 +1,9 @@
 #![allow(non_snake_case)]
 
-use num_traits::Num;
-
+use crate::algebra::permute;
+use crate::algebra::utils::sortperm_by;
 use crate::algebra::{Adjoint, MatrixShape, ShapedMatrix, SparseFormatError, Symmetric};
+use num_traits::Num;
 use std::iter::{repeat, zip};
 
 /// Sparse matrix in standard Compressed Sparse Column (CSC) format
@@ -82,7 +83,7 @@ where
         let n = rows.iter().map(|r| r.len()).next().unwrap_or(0);
 
         assert!(rows.iter().all(|r| r.len() == n));
-        let nnz = rows.iter().flatten().filter(|&&v| v != T::zero()).count();
+        let nnz = rows.iter().flatten().filter(|&v| *v != T::zero()).count();
 
         let mut colptr = Vec::with_capacity(n + 1);
         let mut rowval = Vec::with_capacity(nnz);
@@ -142,28 +143,37 @@ where
     ///
     /// # Panics
     /// Makes rudimentary dimensional compatibility checks and panics on
-    /// failure.   Data should be provided as equal length vectors (I,J,V).
-    /// The entries should be provided in column-major order, and the
-    /// the constructor does __not__ check that this condition is satisfied.
+    /// failure.   Data can be provided unsorted, but all (row,col) pairs
+    /// must be unique.   
     ///
 
     pub fn new_from_triplets(m: usize, n: usize, I: Vec<usize>, J: Vec<usize>, V: Vec<T>) -> Self {
         assert_eq!(I.len(), J.len());
         assert_eq!(I.len(), V.len());
 
-        let colptr = vec![0; n + 1];
-        let mut M = CscMatrix {
-            m,
-            n,
-            colptr,
-            rowval: I,
-            nzval: V,
-        };
+        let mut M = CscMatrix::spalloc((m, n), V.len());
 
-        for c in J {
+        let mut p = vec![0; V.len()];
+
+        // use M.rowptr as temporary workspace
+        M.rowval.iter_mut().enumerate().for_each(|(i, p)| *p = i);
+
+        // sort by column, then by row
+        sortperm_by(&mut p, &M.rowval, |&a, &b| {
+            J[a].cmp(&J[b]).then(I[a].cmp(&I[b]))
+        });
+
+        // map data into the matrix in sorted order
+        permute(&mut M.rowval, &I, &p);
+        permute(&mut M.nzval, &V, &p);
+
+        // assemble the column counts
+        for &c in J.iter() {
             M.colptr[c] += 1;
         }
+
         M.colcount_to_colptr();
+
         M
     }
 
@@ -704,6 +714,14 @@ fn test_triplets() {
     assert_eq!(V, vals);
 
     // construct from triplets and compare
+    let B: CscMatrix = CscMatrix::new_from_triplets(3, 4, rows, cols, vals);
+    assert_eq!(A, B);
+
+    // same thing, but with data in the wrong order
+    let cols = vec![2, 0, 2, 0, 3];
+    let rows = vec![2, 2, 1, 0, 0];
+    let vals = vec![4., 2., 3., 1., 5.];
+
     let B: CscMatrix = CscMatrix::new_from_triplets(3, 4, rows, cols, vals);
 
     assert_eq!(A, B);

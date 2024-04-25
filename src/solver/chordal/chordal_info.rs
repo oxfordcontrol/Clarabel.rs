@@ -19,12 +19,13 @@ use super::SparsityPattern;
 // -------------------------------------
 // Chordal Decomposition Information
 // -------------------------------------
+#[derive(Debug)]
 pub(crate) struct ConeMapEntry {
     // PJG: reserved for future compact transform
-    pub _orig_index: usize,
-    pub _tree_and_clique: Option<(usize, usize)>,
+    pub orig_index: usize,
+    pub tree_and_clique: Option<(usize, usize)>,
 }
-
+#[derive(Debug)]
 pub(crate) struct ChordalInfo<T> {
     // sketch of the original problem
     pub init_dims: (usize, usize), // (n,m) dimensions of the original problem
@@ -214,6 +215,7 @@ fn find_graph(nz_mask: &[bool]) -> (CscMatrix<f64>, Vec<usize>) {
 
     // check final row/col to get matrix dimension
     let (m, n) = upper_triangular_index_to_coord(nz_mask.len() - 1);
+    let (m, n) = (m + 1, n + 1);
     assert_eq!(m, n);
 
     for (linearidx, &isnonzero) in nz_mask.iter().enumerate() {

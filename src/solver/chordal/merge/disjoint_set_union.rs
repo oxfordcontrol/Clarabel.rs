@@ -1,6 +1,7 @@
 // disjoint set union type for clique graph merge
 // See: https://www.cs.princeton.edu/~wayne/kleinberg-tardos/pdf/UnionFind-2x2.pdf
 
+#[derive(Debug)]
 pub(crate) struct DisjointSetUnion {
     parents: Vec<usize>,
     ranks: Vec<usize>,

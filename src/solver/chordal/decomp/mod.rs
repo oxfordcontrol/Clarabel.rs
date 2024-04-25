@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 
+mod augment_compact;
 mod augment_standard;
+mod reverse_compact;
 mod reverse_standard;
 
 use super::chordal_info::ChordalInfo;
@@ -29,8 +31,7 @@ where
         Vec<SupportedConeT<T>>,
     ) {
         if settings.chordal_decomposition_compact {
-            todo!()
-            //self.decomp_augment_compact(&P, &q, &A, &b);
+            self.decomp_augment_compact(P, q, A, b)
         } else {
             self.decomp_augment_standard(P, q, A, b)
         }
@@ -65,8 +66,7 @@ where
 
         // reassemble the original variables s and z
         if settings.chordal_decomposition_compact {
-            todo!()
-            //self.decomp_reverse_compact(&mut new_vars, &old_vars, &old_cones);
+            self.decomp_reverse_compact(&mut new_vars, old_vars, old_cones);
         } else {
             self.decomp_reverse_standard(&mut new_vars, old_vars, old_cones);
         }

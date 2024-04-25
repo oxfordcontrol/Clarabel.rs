@@ -3,7 +3,6 @@
 // -----------------------------------
 
 use crate::solver::chordal::ChordalInfo;
-use crate::solver::utils::PositionAll;
 use crate::solver::DefaultVariables;
 use crate::{
     algebra::*,
@@ -39,7 +38,6 @@ where
     }
 }
 
-//PJG: super confused about output types here
 fn number_of_overlaps_in_rows<T>(A: &CscMatrix<T>) -> (Vec<usize>, Vec<T>)
 where
     T: FloatT,

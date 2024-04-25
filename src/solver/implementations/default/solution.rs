@@ -52,7 +52,7 @@ where
     type I = DefaultInfo<T>;
     type SE = DefaultSettings<T>;
 
-    fn finalize(
+    fn post_process(
         &mut self,
         data: &DefaultProblemData<T>,
         variables: &mut DefaultVariables<T>,
@@ -71,7 +71,6 @@ where
         }
 
         self.iterations = info.iterations;
-        self.solve_time = info.solve_time;
         self.r_prim = info.res_primal;
         self.r_dual = info.res_dual;
 
@@ -94,5 +93,9 @@ where
             self.z.copy_from(&variables.z);
             self.s.copy_from(&variables.s);
         }
+    }
+
+    fn finalize(&mut self, info: &DefaultInfo<T>) {
+        self.solve_time = info.solve_time;
     }
 }

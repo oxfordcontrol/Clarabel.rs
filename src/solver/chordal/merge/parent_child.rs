@@ -34,7 +34,6 @@ impl MergeStrategy for ParentChildMergeStrategy {
     // Traverse tree `t` in descending topological order and return parent and clique (root has highest order).
     fn traverse(&mut self, t: &SuperNodeTree) -> Option<(usize, usize)> {
         let c = t.snode_post[self.clique_index];
-
         Some((t.snode_parent[c], c))
     }
 
@@ -64,7 +63,6 @@ impl MergeStrategy for ParentChildMergeStrategy {
         let (p, ch) = determine_parent(t, cand.0, cand.1);
 
         // merge child's vertex sets into parent's vertex set
-        // PJG: problem from here.   Same double borrow issue as in clique graph
         set_union_into_indexed(&mut t.snode, p, ch);
         t.snode[ch].clear();
         t.separators[ch].clear();
@@ -85,8 +83,8 @@ impl MergeStrategy for ParentChildMergeStrategy {
     }
 
     fn update_strategy(&mut self, _t: &SuperNodeTree, _cand: (usize, usize), _do_merge: bool) {
-        // try to merge last node of order 1, then stop
-        if self.clique_index == 1 {
+        // try to merge last node of order 0, then stop
+        if self.clique_index == 0 {
             self.stop = true
         }
         // otherwise decrement node index

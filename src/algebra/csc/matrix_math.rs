@@ -169,8 +169,8 @@ fn _csc_symv_safe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T)
 // A as rowval and colptr arrays that are consistent with its dimension.
 // A bounds checked version is provided above.
 //
-// This `unsafe`d version is preferred the multiplication K*x, with K
-// the symmetric KKT matrix, is used heavily in iterative refinement of
+// This `unsafe`d version is preferred to the multiplication K*x, with K
+// the symmetric KKT matrix, and is used heavily in iterative refinement of
 // direct linear solves.
 #[allow(non_snake_case)]
 fn _csc_symv_unsafe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
@@ -184,11 +184,8 @@ fn _csc_symv_unsafe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: 
             let first = *A.colptr.get_unchecked(col);
             let last = *A.colptr.get_unchecked(col + 1);
 
-            for j in first..last {
-                let row = *A.rowval.get_unchecked(j);
-                let Aij = *A.nzval.get_unchecked(j);
+            for (&row, &Aij) in zip(&A.rowval[first..last], &A.nzval[first..last]) {
                 *y.get_unchecked_mut(row) += a * Aij * xcol;
-
                 if row != col {
                     //don't double up on the diagonal
                     *y.get_unchecked_mut(col) += a * Aij * (*x.get_unchecked(row));
