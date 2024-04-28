@@ -15,9 +15,6 @@ cfg_if::cfg_if! {
     }
 }
 
-
-
-
 pub trait BlasFloatT: 
     private::BlasFloatSealed 
     + XsyevrScalar 

@@ -34,12 +34,6 @@ pub(crate) use utils::*;
 mod csc;
 pub use csc::*;
 
-// sparse vectors implementations (for chordal decomp only)
-#[cfg(feature = "sdp")]
-mod sparsevector;
-#[cfg(feature = "sdp")]
-pub(crate) use sparsevector::*;
-
 mod densesym3x3;
 pub(crate) use densesym3x3::*;
 
@@ -47,6 +41,11 @@ pub(crate) use densesym3x3::*;
 mod dense;
 #[cfg(feature = "sdp")]
 pub use dense::*;
+// sparse vectors implementations (for chordal decomp only)
+#[cfg(feature = "sdp")]
+mod sparsevector;
+#[cfg(feature = "sdp")]
+pub(crate) use sparsevector::*;
 
 //configure tests of internals
 #[cfg(test)]
