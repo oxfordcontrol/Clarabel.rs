@@ -71,6 +71,10 @@ where
     }
 }
 
+//PJG: there is a lot of redundancy in the following implementation
+//since it is directly on matrix, but many of the operations should 
+//equally apply to ReshapedMatrix and Adjoint.  
+
 impl<T> Matrix<T>
 where
     T: FloatT,
@@ -110,10 +114,6 @@ where
         self
     }
 
-    pub fn data_mut(&mut self) -> &mut [T] {
-        &mut self.data
-    }
-
     pub fn t(&self) -> Adjoint<'_, Self> {
         Adjoint { src: self }
     }
@@ -122,6 +122,13 @@ where
     pub fn sym(&self) -> Symmetric<'_, Self> {
         debug_assert!(self.is_triu());
         Symmetric { src: self }
+    }
+
+    /// Resize a matrix, preserving or expanding allocated
+    /// space.   Values are not flushed but may be garbage.
+    pub fn resize(&mut self, size: (usize, usize)) {
+        (self.m, self.n) = size;
+        self.data.resize(self.m * self.n, T::zero());
     }
 
     /// Set A = (A + A') / 2.  Assumes A is real
@@ -159,6 +166,38 @@ where
         }
         true
     }
+
+    /// self.subsagn(rows,cols,B) sets self[rows,cols] = B
+    pub(crate) fn subsasgn<'a, RI, CI, MAT>(&mut self, rows: RI, cols: CI, source: &MAT)
+    where
+        RI: IntoIterator<Item = &'a usize> + Copy,
+        CI: IntoIterator<Item = &'a usize>,
+        MAT: DenseMatrix<T = T, Output = T>,
+    {
+        for (j, &col) in cols.into_iter().enumerate() {
+            for (i, &row) in rows.into_iter().enumerate() {
+                self[(row, col)] = source[(i, j)];
+            }
+        }
+    }
+
+    /// self.subsref(B,rows,cols) sets self = B[rows,cols]
+    pub(crate) fn subsref<'a, RI, CI, MAT>(
+        &mut self,
+        source: &MAT,
+        rows: RI,
+        cols: CI,
+    ) where
+        RI: IntoIterator<Item = &'a usize> + Copy,
+        CI: IntoIterator<Item = &'a usize>,
+        MAT: DenseMatrix<T = T, Output = T>,
+    {
+        for (j, &col) in cols.into_iter().enumerate() {
+            for (i, &row) in rows.into_iter().enumerate() {
+                self[(i, j)] = source[(row, col)];
+            }
+        }
+    }
 }
 
 impl<T> DenseMatrix for Matrix<T>
@@ -174,6 +213,17 @@ where
     }
 }
 
+impl<T> DenseMatrixMut for Matrix<T>
+where
+    T: FloatT,
+{
+    fn data_mut(&mut self) -> &mut [T] {
+        &mut self.data
+    }
+}
+
+
+
 impl<'a, T> DenseMatrix for ReshapedMatrix<'a, T>
 where
     T: FloatT,
@@ -186,6 +236,30 @@ where
         self.data
     }
 }
+
+impl<'a, T> DenseMatrix for ReshapedMatrixMut<'a, T>
+where
+    T: FloatT,
+{
+    type T = T;
+    fn index_linear(&self, idx: (usize, usize)) -> usize {
+        idx.0 + self.m * idx.1
+    }
+    fn data(&self) -> &[T] {
+        self.data
+    }
+}
+
+impl<'a, T> DenseMatrixMut for ReshapedMatrixMut<'a, T>
+where
+    T: FloatT,
+{
+    fn data_mut(&mut self) -> &mut [T] {
+        self.data
+    }
+}
+
+
 
 impl<'a, T> DenseMatrix for Adjoint<'a, Matrix<T>>
 where
@@ -219,6 +293,7 @@ where
     fn data(&self) -> &[T] {
         &self.src.data
     }
+
 }
 
 impl<'a, T> ReshapedMatrix<'a, T>
@@ -228,13 +303,15 @@ where
     pub fn from_slice(data: &'a [T], m: usize, n: usize) -> Self {
         Self { data, m, n }
     }
+}
 
-    #[allow(dead_code)]
-    pub fn reshape(&mut self, size: (usize, usize)) -> &Self {
-        assert!(size.0 * size.1 == self.m * self.n);
-        self.m = size.0;
-        self.n = size.1;
-        self
+impl<'a, T> ReshapedMatrixMut<'a, T>
+where
+    T: FloatT,
+{
+
+    pub fn from_slice_mut(data: &'a mut [T], m: usize, n: usize) -> Self {
+        Self { data, m, n }
     }
 }
 
@@ -245,6 +322,16 @@ where
     fn index_mut(&mut self, idx: (usize, usize)) -> &mut Self::Output {
         let lidx = self.index_linear(idx);
         &mut self.data[lidx]
+    }
+}
+
+impl<'a, T> IndexMut<(usize, usize)> for ReshapedMatrixMut<'a, T>
+where
+    T: FloatT,
+{
+    fn index_mut(&mut self, idx: (usize, usize)) -> &mut Self::Output {
+        let lidx = self.index_linear(idx);
+        &mut self.data_mut()[lidx]
     }
 }
 
@@ -260,6 +347,7 @@ macro_rules! impl_mat_index {
 }
 impl_mat_index!(Matrix<T>);
 impl_mat_index!(ReshapedMatrix<'_, T>);
+impl_mat_index!(ReshapedMatrixMut<'_, T>);
 impl_mat_index!(Adjoint<'_, Matrix<T>>);
 impl_mat_index!(Symmetric<'_, Matrix<T>>);
 
@@ -323,6 +411,41 @@ where
     Ok(())
 }
 
+pub(crate) fn svec_to_mat<T: FloatT>(M: &mut Matrix<T>, x: &[T]) {
+    let mut idx = 0;
+    for col in 0..M.ncols() {
+        for row in 0..=col {
+            if row == col {
+                M[(row, col)] = x[idx];
+            } else {
+                M[(row, col)] = x[idx] * T::FRAC_1_SQRT_2();
+                M[(col, row)] = x[idx] * T::FRAC_1_SQRT_2();
+            }
+            idx += 1;
+        }
+    }
+}
+
+//PJG : Perhaps implementation for Symmetric type would be faster
+pub(crate) fn mat_to_svec<MAT, T: FloatT>(x: &mut [T], M: &MAT)
+where
+    MAT: DenseMatrix<T = T, Output = T>,
+{
+    let mut idx = 0;
+    for col in 0..M.ncols() {
+        for row in 0..=col {
+            x[idx] = {
+                if row == col {
+                    M[(row, col)]
+                } else {
+                    (M[(row, col)] + M[(col, row)]) * T::FRAC_1_SQRT_2()
+                }
+            };
+            idx += 1;
+        }
+    }
+}
+
 #[test]
 #[rustfmt::skip]
 fn test_matrix_istriu() {
@@ -363,4 +486,86 @@ fn test_matrix_from_slice_of_arrays() {
 
     assert_eq!(A, B);
     assert_eq!(A, C);
+}
+
+#[test]
+fn test_svec_conversions() {
+    let n = 3;
+
+    let X = Matrix::from(&[
+        [1., 3., -2.], //
+        [3., -4., 7.], //
+        [-2., 7., 5.], //
+    ]);
+
+    let Y = Matrix::from(&[
+        [2., 5., -4.],  //
+        [5., 6., 2.],   //
+        [-4., 2., -3.], //
+    ]);
+
+    let mut Z = Matrix::zeros((3, 3));
+
+    let mut x = vec![0.; triangular_number(n)];
+    let mut y = vec![0.; triangular_number(n)];
+
+    // check inner product identity
+    mat_to_svec(&mut x, &X);
+    mat_to_svec(&mut y, &Y);
+
+    assert!(f64::abs(x.dot(&y) - X.data().dot(Y.data())) < 1e-12);
+
+    // check round trip
+    mat_to_svec(&mut x, &X);
+    svec_to_mat(&mut Z, &x);
+    assert!(X.data().norm_inf_diff(Z.data()) < 1e-12);
+}
+
+#[test]
+fn test_matrix_subsref() {
+    let A = Matrix::from(&[
+        [1., 4., 7.], //
+        [2., 5., 8.], //
+        [3., 6., 9.],
+    ]);
+
+    let Aperm = Matrix::from(&[
+        [8., 5., 2.], //
+        [7., 4., 1.],
+        [9., 6., 3.],
+    ]);
+
+    let Ared = Matrix::from(&[
+        [8., 2.], //
+        [9., 3.],
+    ]);
+
+    let Ared2 = Matrix::from(&[
+        [6., 4.], //
+        [9., 7.],
+    ]);
+
+    let Aexpanded = Matrix::from(&[
+        [8., 0., 2.], //
+        [0., 0., 0.], //
+        [9., 0., 3.],
+    ]);
+
+    let mut B = Matrix::zeros((3, 3));
+    let rows: Vec<usize> = vec![1, 0, 2];
+    let cols: Vec<usize> = vec![2, 1, 0];
+    B.subsref(&A, &rows, &cols);
+
+    assert_eq!(B, Aperm);
+
+    let mut C = Matrix::zeros((2, 2));
+    let rows: Vec<usize> = vec![1, 2];
+    let cols: Vec<usize> = vec![2, 0];
+    C.subsref(&A.t(), &rows, &cols);
+
+    assert_eq!(C, Ared2);
+
+    let mut D = Matrix::zeros((3, 3));
+    D.subsasgn(&[0, 2], &[0, 2], &Ared);
+    assert_eq!(D, Aexpanded);
 }

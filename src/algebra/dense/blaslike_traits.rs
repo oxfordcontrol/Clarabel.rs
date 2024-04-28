@@ -13,10 +13,14 @@ pub(crate) trait FactorEigen {
 pub(crate) trait FactorCholesky {
     type T;
     // computes the Cholesky decomposition.  Only the upper
-    // part of the input A will be referenced, and A will
-    // by modified in place.   The Cholesky factor is stored
-    // in self.L
-    fn cholesky(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
+    // part of the input A will be referenced. The Cholesky factor
+    // is stored in self.L
+    fn factor(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
+
+    // Solve AX = B, where B is matrix with (possibly) multiple columns.
+    // Uses previously computed factor from the `factor` function.
+    // B is modified in place and stores X after call.
+    fn solve(&mut self, B: &mut Matrix<Self::T>);
 
     // computes log(det(X)) for the matrix X = LL^T
     fn logdet(&self) -> Self::T;
@@ -26,7 +30,13 @@ pub(crate) trait FactorSVD {
     type T;
     // compute "economy size" SVD.  Values in A are overwritten
     // as internal working space.
-    fn svd(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
+    fn factor(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
+
+    // Solve AX = B, where B is matrix with (possibly) multiple columns.
+    // Uses previously computed SVD factors.   Computes a solution using
+    // the pseudoinverse of A when A is rank deficient / non-square.
+    // B is modified in place and stores X after call.
+    fn solve(&mut self, B: &mut Matrix<Self::T>);
 }
 
 pub(crate) trait MultiplySYRK {
@@ -49,6 +59,17 @@ pub(crate) trait MultiplyGEMM {
     where
         MATB: DenseMatrix<T = Self::T>,
         MATA: DenseMatrix<T = Self::T>;
+}
+
+// Solve AX = B.  A will be corrupted post solution, and B will be
+// overwritten with the solution X.
+#[allow(dead_code)] //PJG: not currently used anywhere
+pub(crate) trait SolveLU<T> {
+    fn lusolve(
+        &mut self,
+        A: &mut Matrix<T>,
+        B: &mut Matrix<T>,
+    ) -> Result<(), DenseFactorizationError>;
 }
 
 #[allow(dead_code)] //PJG: not currently used anywhere

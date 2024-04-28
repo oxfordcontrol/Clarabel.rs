@@ -114,7 +114,7 @@ where
             β = T::zero();
         } else {
             let Z = &mut self.data.workmat1;
-            _svec_to_mat(Z, z);
+            svec_to_mat(Z, z);
             self.data.Eig.eigvals(Z).expect("Eigval error");
             let e = &self.data.Eig.λ;
             α = e.minimum();
@@ -159,12 +159,12 @@ where
 
         let f = &mut self.data;
         let (S, Z) = (&mut f.workmat1, &mut f.workmat2);
-        _svec_to_mat(S, s);
-        _svec_to_mat(Z, z);
+        svec_to_mat(S, s);
+        svec_to_mat(Z, z);
 
         //compute Cholesky factors
-        let c1 = f.chol1.cholesky(S);
-        let c2 = f.chol2.cholesky(Z);
+        let c1 = f.chol1.factor(S);
+        let c2 = f.chol2.factor(Z);
 
         // bail if the cholesky factorization fails
         // PJG: Need proper Result return type here
@@ -177,7 +177,7 @@ where
         // SVD of L2'*L1,
         let tmp = &mut f.workmat1;
         tmp.mul(&L2.t(), L1, T::one(), T::zero());
-        f.SVD.svd(tmp).expect("SVD error");
+        f.SVD.factor(tmp).expect("SVD error");
 
         // assemble λ (diagonal), R and Rinv.
         f.λ.copy_from(&f.SVD.s);
@@ -202,7 +202,7 @@ where
         for i in 0..f.B.ncols() {
             let M = ReshapedMatrix::from_slice(f.kronRR.col_slice(i), f.R.nrows(), f.R.nrows());
             let b = f.B.col_slice_mut(i);
-            _mat_to_svec(b, &M);
+            mat_to_svec(b, &M);
         }
 
         // compute Hs = triu(B*B')
@@ -304,9 +304,9 @@ where
     {
         let (Q, q) = (&mut self.data.workmat1, &mut self.data.workvec);
         q.waxpby(T::one(), x, α, dx);
-        _svec_to_mat(Q, q);
+        svec_to_mat(Q, q);
 
-        match self.data.chol1.cholesky(Q) {
+        match self.data.chol1.factor(Q) {
             Ok(_) => self.data.chol1.logdet(),
             Err(_) => T::infinity(),
         }
@@ -326,8 +326,8 @@ where
         let X = &mut self.data.workmat1;
         let Z = &mut self.data.workmat2;
 
-        _svec_to_mat(X, x);
-        _svec_to_mat(Z, z);
+        svec_to_mat(X, x);
+        svec_to_mat(Z, z);
 
         let λ = &self.data.λ;
         let two: T = (2.).as_T();
@@ -336,7 +336,7 @@ where
                 X[(i, j)] = (two * Z[(i, j)]) / (λ[i] + λ[j]);
             }
         }
-        _mat_to_svec(x, X);
+        mat_to_svec(x, X);
     }
 
     fn mul_W(&mut self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
@@ -383,8 +383,8 @@ fn _mul_Wx_inner<T>(
     T: FloatT,
 {
     let (X, Y, tmp) = (workmat1, workmat2, workmat3);
-    _svec_to_mat(X, x);
-    _svec_to_mat(Y, y);
+    svec_to_mat(X, x);
+    svec_to_mat(Y, y);
 
     match is_transpose {
         MatrixShape::T => {
@@ -400,7 +400,7 @@ fn _mul_Wx_inner<T>(
             Y.mul(tmp, Rx, α, β);
         }
     }
-    _mat_to_svec(y, Y);
+    mat_to_svec(y, Y);
 }
 
 // ---------------------------------------------
@@ -417,14 +417,14 @@ where
             &mut self.data.workmat2,
             &mut self.data.workmat3,
         );
-        _svec_to_mat(Y, y);
-        _svec_to_mat(Z, z);
+        svec_to_mat(Y, y);
+        svec_to_mat(Z, z);
 
         // X .= (Y*Z + Z*Y)/2
         // NB: works b/c Y and Z are both symmetric
         X.data_mut().set(T::zero()); //X.sym() will assert is_triu
         X.syr2k(Y, Z, (0.5).as_T(), T::zero());
-        _mat_to_svec(x, &X.sym());
+        mat_to_svec(x, &X.sym());
     }
 
     fn inv_circ_op(&mut self, _x: &mut [T], _y: &[T], _z: &[T]) {
@@ -456,7 +456,7 @@ where
         if d.is_empty() {
             T::max_value()
         } else {
-            _svec_to_mat(workΔ, d);
+            svec_to_mat(workΔ, d);
             workΔ.lrscale(Λisqrt, Λisqrt);
             engine.eigvals(workΔ).expect("Eigval error");
             engine.λ.minimum()
@@ -468,73 +468,4 @@ where
     } else {
         αmax
     }
-}
-
-fn _svec_to_mat<T: FloatT>(M: &mut Matrix<T>, x: &[T]) {
-    let mut idx = 0;
-    for col in 0..M.ncols() {
-        for row in 0..=col {
-            if row == col {
-                M[(row, col)] = x[idx];
-            } else {
-                M[(row, col)] = x[idx] * T::FRAC_1_SQRT_2();
-                M[(col, row)] = x[idx] * T::FRAC_1_SQRT_2();
-            }
-            idx += 1;
-        }
-    }
-}
-
-//PJG : Perhaps implementation for Symmetric type would be faster
-fn _mat_to_svec<MAT, T: FloatT>(x: &mut [T], M: &MAT)
-where
-    MAT: DenseMatrix<T = T, Output = T>,
-{
-    let mut idx = 0;
-    for col in 0..M.ncols() {
-        for row in 0..=col {
-            x[idx] = {
-                if row == col {
-                    M[(row, col)]
-                } else {
-                    (M[(row, col)] + M[(col, row)]) * T::FRAC_1_SQRT_2()
-                }
-            };
-            idx += 1;
-        }
-    }
-}
-
-#[test]
-
-fn test_svec_conversions() {
-    let n = 3;
-
-    let X = Matrix::from(&[
-        [1., 3., -2.], //
-        [3., -4., 7.], //
-        [-2., 7., 5.], //
-    ]);
-
-    let Y = Matrix::from(&[
-        [2., 5., -4.],  //
-        [5., 6., 2.],   //
-        [-4., 2., -3.], //
-    ]);
-
-    let mut Z = Matrix::zeros((3, 3));
-
-    let mut x = vec![0.; triangular_number(n)];
-    let mut y = vec![0.; triangular_number(n)];
-
-    // check inner product identity
-    _mat_to_svec(&mut x, &X);
-    _mat_to_svec(&mut y, &Y);
-
-    assert!(f64::abs(x.dot(&y) - X.data().dot(Y.data())) < 1e-12);
-
-    // check round trip
-    _mat_to_svec(&mut x, &X);
-    _svec_to_mat(&mut Z, &x);
-    assert!(X.data().norm_inf_diff(Z.data()) < 1e-12);
 }

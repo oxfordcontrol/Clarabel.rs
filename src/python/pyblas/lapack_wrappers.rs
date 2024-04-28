@@ -120,6 +120,50 @@ pub unsafe fn spotrf(uplo: u8, n: i32, a: &mut [f32], lda: i32, info: &mut i32) 
     (PYLAPACK.spotrf_)(&(uplo as c_char), &n, a.as_mut_ptr(), &lda, info)
 }
 
+pub unsafe fn dpotrs(
+    uplo: u8,
+    n: i32,
+    nrhs: i32,
+    a: &[f64],
+    lda: i32,
+    b: &mut [f64],
+    ldb: i32,
+    info: &mut i32,
+) {
+    (PYLAPACK.dpotrs_)(
+        &(uplo as c_char),
+        &n,
+        &nrhs,
+        a.as_ptr(),
+        &lda,
+        b.as_mut_ptr(),
+        &ldb,
+        info,
+    )
+}
+
+pub unsafe fn spotrs(
+    uplo: u8,
+    n: i32,
+    nrhs: i32,
+    a: &[f32],
+    lda: i32,
+    b: &mut [f32],
+    ldb: i32,
+    info: &mut i32,
+) {
+    (PYLAPACK.spotrs_)(
+        &(uplo as c_char),
+        &n,
+        &nrhs,
+        a.as_ptr(),
+        &lda,
+        b.as_mut_ptr(),
+        &ldb,
+        info,
+    )
+}
+
 pub unsafe fn dgesdd(
     jobz: u8,
     m: i32,
@@ -253,5 +297,49 @@ pub unsafe fn sgesvd(
         work.as_mut_ptr(),
         &lwork,
         info,
+    )
+}
+
+pub unsafe fn dgesv(
+    n: i32,
+    nrhs: i32,
+    a: &mut [f64],
+    lda: i32,
+    ipiv: &mut [i32],
+    b: &mut [f64],
+    ldb: i32,
+    info: &mut i32,
+) {
+    (PYLAPACK.dgesv_)(
+        &n,
+        &nrhs,
+        a.as_mut_ptr(),
+        &lda,
+        ipiv.as_mut_ptr(),
+        b.as_mut_ptr(),
+        &ldb,
+        info.as_mut_ptr(),
+    )
+}
+
+pub unsafe fn sgesv(
+    n: i32,
+    nrhs: i32,
+    a: &mut [f32],
+    lda: i32,
+    ipiv: &mut [i32],
+    b: &mut [f32],
+    ldb: i32,
+    info: &mut i32,
+) {
+    (PYLAPACK.sgesv_)(
+        &n,
+        &nrhs,
+        a.as_mut_ptr(),
+        &lda,
+        ipiv.as_mut_ptr(),
+        b.as_mut_ptr(),
+        &ldb,
+        info.as_mut_ptr(),
     )
 }

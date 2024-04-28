@@ -1,9 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{
-    DenseFactorizationError, FactorCholesky, FloatT, Matrix, MatrixTriangle, ShapedMatrix,
-    VectorMath,
-};
+use crate::algebra::*;
 
 pub(crate) struct CholeskyEngine<T> {
     /// lower triangular factor (stored as square dense)
@@ -18,6 +15,10 @@ where
         let L = Matrix::<T>::zeros((n, n));
         Self { L }
     }
+
+    pub fn resize(&mut self, n: usize) {
+        self.L.resize((n, n));
+    }
 }
 
 impl<T> FactorCholesky for CholeskyEngine<T>
@@ -25,16 +26,30 @@ where
     T: FloatT,
 {
     type T = T;
-    fn cholesky(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError> {
+    fn factor(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError> {
         if A.size() != self.L.size() {
             return Err(DenseFactorizationError::IncompatibleDimension);
         }
 
+        // ?potrf factors in place, so first copy A onto
+        // our internal factor matrix L.  We reference the
+        // upper triangle of A, but want a lower triangular
+        // result.  LAPACK factors triu inputs to U^TU, and
+        // tril inputs to LL^T, so first copy the triu part
+        // of A into tril of L before we factor it
+        let At = A.t();
+        let n = self.L.nrows();
+        for j in 0..n {
+            for i in j..n {
+                self.L[(i, j)] = At[(i, j)];
+            }
+        }
+
         // standard BLAS ?potrf arguments for computing
         // cholesky decomposition
-        let uplo = MatrixTriangle::Triu.as_blas_char(); // only look at triu of A
-        let An = A.nrows().try_into().unwrap();
-        let a = A.data_mut();
+        let uplo = MatrixTriangle::Tril.as_blas_char();
+        let An = self.L.nrows().try_into().unwrap();
+        let a = self.L.data_mut();
         let lda = An;
         let info = &mut 0_i32; // output info
 
@@ -45,17 +60,30 @@ where
         }
 
         // A will now have L^T in its upper triangle.
-        let At = A.t();
-        self.L.data_mut().set(T::zero());
-
-        let n = self.L.nrows();
-        for j in 0..n {
-            for i in j..n {
-                self.L[(i, j)] = At[(i, j)];
-            }
-        }
 
         Ok(())
+    }
+
+    fn solve(&mut self, B: &mut Matrix<Self::T>) {
+        // standard BLAS ?potrs arguments for computing
+        // post factorization triangular solve
+
+        // Tril here since we transposed A into L before
+        // factoring it
+        let uplo = MatrixTriangle::Tril.as_blas_char();
+
+        let nrhs = B.ncols().try_into().unwrap();
+        let An = self.L.nrows().try_into().unwrap();
+        let a = &self.L.data;
+        let lda = An;
+        let Bn = B.nrows().try_into().unwrap();
+        let b = B.data_mut();
+        let ldb = Bn;
+        let info = &mut 0_i32; // output info
+
+        T::xpotrs(uplo, An, nrhs, a, lda, b, ldb, info);
+
+        assert_eq!(*info, 0);
     }
 
     fn logdet(&self) -> T {
@@ -81,12 +109,28 @@ fn test_cholesky() {
     let Scopy = S.clone(); //S is corrupted after factorization
 
     let mut eng = CholeskyEngine::<f64>::new(3);
-    assert!(eng.cholesky(&mut S).is_ok());
+    assert!(eng.factor(&mut S).is_ok());
 
     let mut M = Matrix::<f64>::zeros((3, 3));
     M.mul(&eng.L, &eng.L.t(), 1.0, 0.0);
 
     assert!(M.data().norm_inf_diff(Scopy.data()) < 1e-8);
+
+    // now try to solve with multiple RHS
+    let X = Matrix::from(&[
+        [1., 2.], //
+        [3., 4.], //
+        [5., 6.],
+    ]);
+    let mut B = Matrix::from(&[
+        [22., 32.], //
+        [44., 56.], //
+        [40., 52.],
+    ]);
+
+    eng.solve(&mut B);
+
+    assert!(B.data.norm_inf_diff(X.data()) <= 1e-14);
 }
 
 #[test]
@@ -98,7 +142,7 @@ fn test_cholesky_logdet() {
           [ 4.,  2., 6.]]);
 
     let mut eng = CholeskyEngine::<f64>::new(3);
-    assert!(eng.cholesky(&mut S).is_ok());
+    assert!(eng.factor(&mut S).is_ok());
 
     assert!((eng.logdet() - 5.69035945432406).abs() < 1e-10);
 }

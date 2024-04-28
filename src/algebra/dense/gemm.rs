@@ -1,10 +1,11 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{DenseMatrix, FloatT, Matrix, MatrixShape, MultiplyGEMM, ShapedMatrix};
+use crate::algebra::*;
 
-impl<T> MultiplyGEMM for Matrix<T>
+impl<T, MAT> MultiplyGEMM for MAT
 where
     T: FloatT,
+    MAT: DenseMatrixMut<T = T>,
 {
     type T = T;
     // implements self = C = αA*B + βC

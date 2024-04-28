@@ -6,10 +6,14 @@ pub struct PyLapackPointers {
     pub ssyevr_: SSYEVR,
     pub dpotrf_: DPOTRF,
     pub spotrf_: SPOTRF,
+    pub dpotrs_: DPOTRS,
+    pub spotrs_: SPOTRS,
     pub dgesdd_: DGESDD,
     pub sgesdd_: SGESDD,
     pub dgesvd_: DGESVD,
     pub sgesvd_: SGESVD,
+    pub dgesv_: DGESV,
+    pub sgesv_: SGESV,
 }
 
 type DSYEVR = extern "C" fn(
@@ -73,6 +77,28 @@ type SPOTRF = extern "C" fn(
     n: *const c_int,
     A: *mut f32,
     lda: *const c_int,
+    info: *mut c_int,
+);
+
+type DPOTRS = extern "C" fn(
+    uplo: *const c_char,
+    n: *const c_int,
+    nrhs: *const c_int,
+    A: *const f64,
+    lda: *const c_int,
+    B: *mut f64,
+    ldb: *const c_int,
+    info: *mut c_int,
+);
+
+type SPOTRS = extern "C" fn(
+    uplo: *const c_char,
+    n: *const c_int,
+    nrhs: *const c_int,
+    A: *const f32,
+    lda: *const c_int,
+    B: *mut f32,
+    ldb: *const c_int,
     info: *mut c_int,
 );
 
@@ -141,5 +167,27 @@ type SGESVD = extern "C" fn(
     ldvt: *const c_int,
     work: *mut f32,
     lwork: *const c_int,
+    info: *mut c_int,
+);
+
+type DGESV = extern "C" fn(
+    n: *const c_int,
+    nrhs: *const c_int,
+    A: *mut f64,
+    lda: *const c_int,
+    ipiv: *mut c_int,
+    B: *mut f64,
+    ldb: *const c_int,
+    info: *mut c_int,
+);
+
+type SGESV = extern "C" fn(
+    n: *const c_int,
+    nrhs: *const c_int,
+    A: *mut f32,
+    lda: *const c_int,
+    ipiv: *mut c_int,
+    B: *mut f32,
+    ldb: *const c_int,
     info: *mut c_int,
 );

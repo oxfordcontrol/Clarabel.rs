@@ -2,6 +2,7 @@
 
 mod augment_compact;
 mod augment_standard;
+mod psd_completion;
 mod reverse_compact;
 mod reverse_standard;
 
@@ -72,8 +73,7 @@ where
         }
 
         if settings.chordal_decomposition_complete_dual {
-            todo!()
-            //chordal_info.psd_completion(&mut new_vars);
+            self.psd_completion(&mut new_vars);
         }
 
         new_vars

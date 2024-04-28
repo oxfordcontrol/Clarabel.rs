@@ -20,12 +20,16 @@ pub(crate) trait ShapedMatrix {
 
 //NB: the concrete dense type is just called "Matrix".  The "DenseMatrix" trait
 //is implemented on Matrix, Adjoint and ReshapedMatrix to allow for indexing
-//of values in any of those format.   This follows the Julia naming convention
+//of values in any of those formats.   This follows the Julia naming convention
 //for similar types.
 pub(crate) trait DenseMatrix: ShapedMatrix + Index<(usize, usize)> {
     type T;
     fn index_linear(&self, idx: (usize, usize)) -> usize;
     fn data(&self) -> &[Self::T];
+}
+
+pub(crate) trait DenseMatrixMut: DenseMatrix {
+    fn data_mut(&mut self) -> &mut [<Self as DenseMatrix>::T];
 }
 
 /// PJG: replace panics here with Error types.  Add documentation

@@ -1,5 +1,5 @@
 #![allow(non_snake_case)]
-use crate::algebra::{DenseMatrix, FloatT, Matrix, ShapedMatrix};
+use crate::algebra::*;
 
 impl<T> Matrix<T>
 where

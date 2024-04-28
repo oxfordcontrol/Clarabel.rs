@@ -13,10 +13,13 @@ mod syevr;
 pub(crate) use syevr::*;
 mod svd;
 pub(crate) use svd::*;
+// mod lu;
+// pub(crate) use lu::*;
 
 mod gemm;
 mod gemv;
 mod kron;
+
 mod symv;
 mod syr2k;
 mod syrk;

@@ -1,8 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{
-    DenseFactorizationError, FactorEigen, FloatT, Matrix, MatrixTriangle, ShapedMatrix,
-};
+use crate::algebra::*;
 
 pub(crate) struct EigEngine<T> {
     /// Computed eigenvalues in ascending order

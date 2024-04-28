@@ -1,8 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{
-    DenseMatrix, FloatT, Matrix, MatrixShape, MatrixTriangle, MultiplySYR2K, ShapedMatrix,
-};
+use crate::algebra::*;
 
 impl<T> MultiplySYR2K for Matrix<T>
 where
