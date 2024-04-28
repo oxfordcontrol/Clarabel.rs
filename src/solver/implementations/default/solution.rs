@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 use super::*;
 use crate::{
     algebra::*,
@@ -80,10 +82,12 @@ where
 
         // unwind the chordal decomp and presolve, in the
         // reverse of the order in which they were applied
+        #[cfg(feature = "sdp")]
         let tmp = data
             .chordal_info
             .as_ref()
             .map(|chordal_info| chordal_info.decomp_reverse(variables, &data.cones, settings));
+        #[cfg(feature = "sdp")]
         let variables = tmp.as_ref().unwrap_or(variables);
 
         if let Some(ref presolver) = data.presolver {

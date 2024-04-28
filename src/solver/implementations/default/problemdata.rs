@@ -3,12 +3,14 @@ use itertools::izip;
 
 use super::*;
 use crate::algebra::*;
-use crate::solver::chordal::ChordalInfo;
 use crate::solver::core::{
     cones::{CompositeCone, Cone},
     traits::ProblemData,
 };
 use crate::solver::SupportedConeT;
+
+#[cfg(feature = "sdp")]
+use crate::solver::chordal::ChordalInfo;
 
 // ---------------
 // Data type for default problem format
@@ -34,6 +36,8 @@ pub struct DefaultProblemData<T> {
     normb: Option<T>,
 
     pub(crate) presolver: Option<Presolver<T>>,
+
+    #[cfg(feature = "sdp")]
     pub(crate) chordal_info: Option<ChordalInfo<T>>,
 }
 
@@ -53,6 +57,7 @@ where
         // but nonzero, number of data copies during presolve steps
 
         let mut P_new: Option<CscMatrix<T>> = None;
+        #[allow(unused_mut)] // mut q_new only needed with chordal
         let mut q_new: Option<Vec<T>> = None;
         let mut A_new: Option<CscMatrix<T>> = None;
         let mut b_new: Option<Vec<T>> = None;
@@ -73,8 +78,9 @@ where
 
         // chordal decomposition : return nothing if disabled or no decomp
         // --------------------------------------
+        #[cfg(feature = "sdp")]
         let mut chordal_info = try_chordal_info(A, b, cones, settings);
-
+        #[cfg(feature = "sdp")]
         if let Some(ref mut chordal_info) = chordal_info {
             let (_P_new, _q_new, _A_new, _b_new, _cones_new) = chordal_info.decomp_augment(
                 P_new.as_ref().unwrap_or(P),
@@ -129,6 +135,7 @@ where
             normq,
             normb,
             presolver,
+            #[cfg(feature = "sdp")]
             chordal_info,
         }
     }
@@ -294,6 +301,7 @@ fn scale_data<T: FloatT>(
     b.hadamard(e);
 }
 
+#[cfg(feature = "sdp")]
 fn try_chordal_info<T>(
     A: &CscMatrix<T>,
     b: &[T],

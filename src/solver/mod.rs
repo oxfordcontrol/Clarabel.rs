@@ -14,10 +14,13 @@
 
 pub(crate) const _INFINITY_DEFAULT: f64 = 1e20;
 // internal module structure
-pub(crate) mod chordal; // PJG disable this if no SDP
 pub(crate) mod core;
 pub mod implementations;
 pub(crate) mod utils;
+
+// chordal decomposition only if SDPs are enabled
+#[cfg(feature = "sdp")]
+pub(crate) mod chordal; // PJG disable this if no SDP
 
 //Here we expose only part of the solver internals
 //and rearrange public modules a bit to give a more
