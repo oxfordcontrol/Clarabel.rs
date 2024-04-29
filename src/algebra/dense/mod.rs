@@ -1,6 +1,8 @@
 mod core;
 pub use self::core::*;
 mod block_concatenate;
+mod borrowed;
+pub use self::borrowed::*;
 mod kron;
 mod matrix_math;
 

@@ -153,7 +153,7 @@ where
         let (sinv, workC) = work.split_at_mut(k);
 
         // C <- U^T * B
-        let mut C = ReshapedMatrixMut::from_slice_mut(workC, k, nrhs);
+        let mut C = BorrowedMatrixMut::from_slice_mut(workC, k, nrhs);
         C.mul(&self.U.t(), B, T::one(), T::zero());
 
         // C <- Σ^-1 * C

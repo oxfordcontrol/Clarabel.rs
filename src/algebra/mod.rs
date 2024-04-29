@@ -17,7 +17,6 @@ mod floats;
 mod math_traits;
 mod matrix_traits;
 mod matrix_types;
-mod reshaped;
 mod scalarmath;
 mod symmetric;
 mod utils;

@@ -19,7 +19,7 @@ pub(crate) trait ShapedMatrix {
 }
 
 //NB: the concrete dense type is just called "Matrix".  The "DenseMatrix" trait
-//is implemented on Matrix, Adjoint and ReshapedMatrix to allow for indexing
+//is implemented on Matrix, Adjoint and BorrowedMatrix types to allow for indexing
 //of values in any of those formats.   This follows the Julia naming convention
 //for similar types.
 pub(crate) trait DenseMatrix: ShapedMatrix + Index<(usize, usize)> {

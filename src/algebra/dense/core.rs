@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
+use super::borrowed::*;
 use std::ops::{Index, IndexMut};
 
 /// Dense matrix in column major format
@@ -71,9 +72,6 @@ where
     }
 }
 
-//PJG: there is a lot of redundancy in the following implementation
-//since it is directly on matrix, but many of the operations should 
-//equally apply to ReshapedMatrix and Adjoint.  
 
 impl<T> Matrix<T>
 where
@@ -224,7 +222,7 @@ where
 
 
 
-impl<'a, T> DenseMatrix for ReshapedMatrix<'a, T>
+impl<'a, T> DenseMatrix for BorrowedMatrix<'a, T>
 where
     T: FloatT,
 {
@@ -237,7 +235,7 @@ where
     }
 }
 
-impl<'a, T> DenseMatrix for ReshapedMatrixMut<'a, T>
+impl<'a, T> DenseMatrix for BorrowedMatrixMut<'a, T>
 where
     T: FloatT,
 {
@@ -250,7 +248,7 @@ where
     }
 }
 
-impl<'a, T> DenseMatrixMut for ReshapedMatrixMut<'a, T>
+impl<'a, T> DenseMatrixMut for BorrowedMatrixMut<'a, T>
 where
     T: FloatT,
 {
@@ -296,24 +294,6 @@ where
 
 }
 
-impl<'a, T> ReshapedMatrix<'a, T>
-where
-    T: FloatT,
-{
-    pub fn from_slice(data: &'a [T], m: usize, n: usize) -> Self {
-        Self { data, m, n }
-    }
-}
-
-impl<'a, T> ReshapedMatrixMut<'a, T>
-where
-    T: FloatT,
-{
-
-    pub fn from_slice_mut(data: &'a mut [T], m: usize, n: usize) -> Self {
-        Self { data, m, n }
-    }
-}
 
 impl<T> IndexMut<(usize, usize)> for Matrix<T>
 where
@@ -325,7 +305,7 @@ where
     }
 }
 
-impl<'a, T> IndexMut<(usize, usize)> for ReshapedMatrixMut<'a, T>
+impl<'a, T> IndexMut<(usize, usize)> for BorrowedMatrixMut<'a, T>
 where
     T: FloatT,
 {
@@ -346,8 +326,8 @@ macro_rules! impl_mat_index {
     };
 }
 impl_mat_index!(Matrix<T>);
-impl_mat_index!(ReshapedMatrix<'_, T>);
-impl_mat_index!(ReshapedMatrixMut<'_, T>);
+impl_mat_index!(BorrowedMatrix<'_, T>);
+impl_mat_index!(BorrowedMatrixMut<'_, T>);
 impl_mat_index!(Adjoint<'_, Matrix<T>>);
 impl_mat_index!(Symmetric<'_, Matrix<T>>);
 

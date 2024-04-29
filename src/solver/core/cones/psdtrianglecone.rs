@@ -200,7 +200,7 @@ where
 
         // B .= Q'*kRR, where Q' is the svec operator
         for i in 0..f.B.ncols() {
-            let M = ReshapedMatrix::from_slice(f.kronRR.col_slice(i), f.R.nrows(), f.R.nrows());
+            let M = BorrowedMatrix::from_slice(f.kronRR.col_slice(i), f.R.nrows(), f.R.nrows());
             let b = f.B.col_slice_mut(i);
             mat_to_svec(b, &M);
         }
