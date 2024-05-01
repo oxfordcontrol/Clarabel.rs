@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
-use super::borrowed::*;
-use std::ops::{Index, IndexMut};
+use num_traits::Num;
 
 /// Dense matrix in column major format
 ///
@@ -21,16 +20,6 @@ use std::ops::{Index, IndexMut};
 ///  );
 ///
 /// ```
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Matrix<T = f64> {
-    /// number of rows
-    pub m: usize,
-    ///number of columns
-    pub n: usize,
-    /// vector of data in column major formmat
-    pub data: Vec<T>,
-}
 
 /// Creates a Matrix from a slice of arrays.
 ///
@@ -68,19 +57,20 @@ where
             }
         }
 
-        Matrix::<T> { m, n, data }
+        Self::new((m,n), data)
     }
 }
 
+
+// Constructors for dense matrices with owned data 
 
 impl<T> Matrix<T>
 where
     T: FloatT,
 {
     pub fn zeros(size: (usize, usize)) -> Self {
-        let (m, n) = size;
-        let data = vec![T::zero(); m * n];
-        Self { m, n, data }
+        let data = vec![T::zero(); size.0 * size.1];
+        Self::new(size, data)
     }
 
     pub fn identity(n: usize) -> Self {
@@ -89,27 +79,40 @@ where
         mat
     }
 
-    pub fn set_identity(&mut self) {
-        assert!(self.m == self.n);
-        self.data_mut().set(T::zero());
-        for i in 0..self.n {
-            self[(i, i)] = T::one();
-        }
-    }
-
     pub fn new(size: (usize, usize), data: Vec<T>) -> Self {
-        let (m, n) = size;
-        assert!(m * n == data.len());
-        Self { m, n, data }
+        assert!(size.0 * size.1 == data.len());
+        Self{size, data, phantom: std::marker::PhantomData}
     }
 
     pub fn new_from_slice(size: (usize, usize), src: &[T]) -> Self {
         Self::new(size, src.to_vec())
     }
 
-    pub fn copy_from_slice(&mut self, src: &[T]) -> &mut Self {
-        self.data.copy_from_slice(src);
-        self
+    /// Resize a matrix, preserving or expanding allocated
+    /// space.   Values are not flushed but may be garbage.
+    pub fn resize(&mut self, size: (usize, usize)) {
+        self.size = size;
+        self.data.resize(size.0 * size.1, T::zero());
+    }
+}
+
+// Methods that required mutable access to the matrix
+
+impl<S,T> DenseStorageMatrix<S,T>
+where
+    S: AsMut<[T]> + AsRef<[T]>,
+    T: Sized + Num + Copy,
+{
+    pub fn set_identity(&mut self) {
+        assert!(self.is_square());
+        self.data_mut().fill(T::zero());
+        for i in 0..self.ncols() {
+            self[(i, i)] = T::one();
+        }
+    }
+
+    pub fn copy_from_slice(&mut self, src: &[T]) {
+        self.data_mut().copy_from_slice(src);
     }
 
     pub fn t(&self) -> Adjoint<'_, Self> {
@@ -120,38 +123,6 @@ where
     pub fn sym(&self) -> Symmetric<'_, Self> {
         debug_assert!(self.is_triu());
         Symmetric { src: self }
-    }
-
-    /// Resize a matrix, preserving or expanding allocated
-    /// space.   Values are not flushed but may be garbage.
-    pub fn resize(&mut self, size: (usize, usize)) {
-        (self.m, self.n) = size;
-        self.data.resize(self.m * self.n, T::zero());
-    }
-
-    /// Set A = (A + A') / 2.  Assumes A is real
-    pub fn symmetric_part(&mut self) -> &mut Self {
-        assert!(self.is_square());
-        let half: T = (0.5_f64).as_T();
-
-        for r in 0..self.m {
-            for c in 0..r {
-                let val = half * (self[(r, c)] + self[(c, r)]);
-                self[(c, r)] = val;
-                self[(r, c)] = val;
-            }
-        }
-        self
-    }
-
-    pub fn col_slice(&self, col: usize) -> &[T] {
-        assert!(col < self.n);
-        &self.data[(col * self.m)..(col + 1) * self.m]
-    }
-
-    pub fn col_slice_mut(&mut self, col: usize) -> &mut [T] {
-        assert!(col < self.n);
-        &mut self.data[(col * self.m)..(col + 1) * self.m]
     }
 
     pub fn is_triu(&self) -> bool {
@@ -170,7 +141,7 @@ where
     where
         RI: IntoIterator<Item = &'a usize> + Copy,
         CI: IntoIterator<Item = &'a usize>,
-        MAT: DenseMatrix<T = T, Output = T>,
+        MAT: DenseMatrix<T,Output = T>,
     {
         for (j, &col) in cols.into_iter().enumerate() {
             for (i, &row) in rows.into_iter().enumerate() {
@@ -188,7 +159,7 @@ where
     ) where
         RI: IntoIterator<Item = &'a usize> + Copy,
         CI: IntoIterator<Item = &'a usize>,
-        MAT: DenseMatrix<T = T, Output = T>,
+        MAT: DenseMatrix<T,Output = T>,
     {
         for (j, &col) in cols.into_iter().enumerate() {
             for (i, &row) in rows.into_iter().enumerate() {
@@ -198,233 +169,29 @@ where
     }
 }
 
-impl<T> DenseMatrix for Matrix<T>
-where
-    T: FloatT,
-{
-    type T = T;
-    fn index_linear(&self, idx: (usize, usize)) -> usize {
-        idx.0 + self.m * idx.1
-    }
-    fn data(&self) -> &[T] {
-        &self.data
-    }
-}
-
-impl<T> DenseMatrixMut for Matrix<T>
-where
-    T: FloatT,
-{
-    fn data_mut(&mut self) -> &mut [T] {
-        &mut self.data
-    }
-}
 
 
-
-impl<'a, T> DenseMatrix for BorrowedMatrix<'a, T>
-where
-    T: FloatT,
-{
-    type T = T;
-    fn index_linear(&self, idx: (usize, usize)) -> usize {
-        idx.0 + self.m * idx.1
-    }
-    fn data(&self) -> &[T] {
-        self.data
-    }
-}
-
-impl<'a, T> DenseMatrix for BorrowedMatrixMut<'a, T>
-where
-    T: FloatT,
-{
-    type T = T;
-    fn index_linear(&self, idx: (usize, usize)) -> usize {
-        idx.0 + self.m * idx.1
-    }
-    fn data(&self) -> &[T] {
-        self.data
-    }
-}
-
-impl<'a, T> DenseMatrixMut for BorrowedMatrixMut<'a, T>
-where
-    T: FloatT,
-{
-    fn data_mut(&mut self) -> &mut [T] {
-        self.data
-    }
-}
-
-
-
-impl<'a, T> DenseMatrix for Adjoint<'a, Matrix<T>>
-where
-    T: FloatT,
-{
-    type T = T;
-    #[inline]
-    fn index_linear(&self, idx: (usize, usize)) -> usize {
-        self.src.index_linear((idx.1, idx.0))
-    }
-    fn data(&self) -> &[T] {
-        &self.src.data
-    }
-}
-
-impl<'a, T> DenseMatrix for Symmetric<'a, Matrix<T>>
-where
-    T: FloatT,
-{
-    type T = T;
-    #[inline]
-    fn index_linear(&self, idx: (usize, usize)) -> usize {
-        if idx.0 <= idx.1 {
-            //triu part
-            self.src.index_linear((idx.0, idx.1))
-        } else {
-            //tril part uses triu entry
-            self.src.index_linear((idx.1, idx.0))
-        }
-    }
-    fn data(&self) -> &[T] {
-        &self.src.data
-    }
-
-}
-
-
-impl<T> IndexMut<(usize, usize)> for Matrix<T>
-where
-    T: FloatT,
-{
-    fn index_mut(&mut self, idx: (usize, usize)) -> &mut Self::Output {
-        let lidx = self.index_linear(idx);
-        &mut self.data[lidx]
-    }
-}
-
-impl<'a, T> IndexMut<(usize, usize)> for BorrowedMatrixMut<'a, T>
-where
-    T: FloatT,
-{
-    fn index_mut(&mut self, idx: (usize, usize)) -> &mut Self::Output {
-        let lidx = self.index_linear(idx);
-        &mut self.data_mut()[lidx]
-    }
-}
-
-macro_rules! impl_mat_index {
-    ($mat:ty) => {
-        impl<T: FloatT> Index<(usize, usize)> for $mat {
-            type Output = T;
-            fn index(&self, idx: (usize, usize)) -> &Self::Output {
-                &self.data()[self.index_linear(idx)]
-            }
-        }
-    };
-}
-impl_mat_index!(Matrix<T>);
-impl_mat_index!(BorrowedMatrix<'_, T>);
-impl_mat_index!(BorrowedMatrixMut<'_, T>);
-impl_mat_index!(Adjoint<'_, Matrix<T>>);
-impl_mat_index!(Symmetric<'_, Matrix<T>>);
-
-impl<T> ShapedMatrix for Matrix<T>
-where
-    T: FloatT,
-{
-    fn nrows(&self) -> usize {
-        self.m
-    }
-    fn ncols(&self) -> usize {
-        self.n
-    }
-    fn shape(&self) -> MatrixShape {
-        MatrixShape::N
-    }
-}
-
-impl<T> Symmetric<'_, Matrix<T>>
-where
-    T: FloatT,
-{
-    pub(crate) fn pack_triu(&self, v: &mut [T]) {
-        let n = self.ncols();
-        let numel = triangular_number(n);
-        assert!(v.len() == numel);
-
-        let mut k = 0;
-        for col in 0..self.ncols() {
-            for row in 0..=col {
-                v[k] = self.src[(row, col)];
-                k += 1;
-            }
-        }
-    }
-}
 
 impl<T> std::fmt::Display for Matrix<T>
 where
     T: FloatT,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        _display_matrix(self, f)
-    }
-}
-
-fn _display_matrix<M>(m: &M, f: &mut std::fmt::Formatter) -> std::fmt::Result
-where
-    M: DenseMatrix,
-    M::Output: FloatT,
-{
-    writeln!(f)?;
-    for i in 0..m.nrows() {
-        write!(f, "[ ")?;
-        for j in 0..m.ncols() {
-            write!(f, " {:?}", m[(i, j)])?;
-        }
-        writeln!(f, "]")?;
-    }
-    writeln!(f)?;
-    Ok(())
-}
-
-pub(crate) fn svec_to_mat<T: FloatT>(M: &mut Matrix<T>, x: &[T]) {
-    let mut idx = 0;
-    for col in 0..M.ncols() {
-        for row in 0..=col {
-            if row == col {
-                M[(row, col)] = x[idx];
-            } else {
-                M[(row, col)] = x[idx] * T::FRAC_1_SQRT_2();
-                M[(col, row)] = x[idx] * T::FRAC_1_SQRT_2();
+        writeln!(f)?;
+        for i in 0..self.nrows() {
+            write!(f, "[ ")?;
+            for j in 0..self.ncols() {
+                write!(f, " {:?}", self[(i, j)])?;
             }
-            idx += 1;
+            writeln!(f, "]")?;
         }
+        writeln!(f)?;
+        Ok(())
     }
 }
 
-//PJG : Perhaps implementation for Symmetric type would be faster
-pub(crate) fn mat_to_svec<MAT, T: FloatT>(x: &mut [T], M: &MAT)
-where
-    MAT: DenseMatrix<T = T, Output = T>,
-{
-    let mut idx = 0;
-    for col in 0..M.ncols() {
-        for row in 0..=col {
-            x[idx] = {
-                if row == col {
-                    M[(row, col)]
-                } else {
-                    (M[(row, col)] + M[(col, row)]) * T::FRAC_1_SQRT_2()
-                }
-            };
-            idx += 1;
-        }
-    }
-}
+
+
 
 #[test]
 #[rustfmt::skip]
@@ -458,7 +225,7 @@ fn test_matrix_from_slice_of_arrays() {
         [3., 0.], 
         [0., 4.]]); 
 
-    let C: Matrix = (&[
+    let C: Matrix<f64> = (&[
         [1., 2.], 
         [3., 0.], 
         [0., 4.],

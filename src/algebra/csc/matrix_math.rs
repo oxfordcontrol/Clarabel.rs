@@ -1,35 +1,26 @@
 use crate::algebra::*;
 use std::iter::zip;
 
-impl<T: FloatT> MatrixVectorMultiply for CscMatrix<T> {
-    type T = T;
-
+impl<T: FloatT> MatrixVectorMultiply<T> for CscMatrix<T> {
     fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T) {
         _csc_axpby_N(self, y, x, a, b);
     }
 }
 
-impl<T: FloatT> MatrixVectorMultiply for Adjoint<'_, CscMatrix<T>> {
-    type T = T;
-
+impl<T: FloatT> MatrixVectorMultiply<T> for Adjoint<'_, CscMatrix<T>> {
     fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T) {
         _csc_axpby_T(self.src, y, x, a, b);
     }
 }
 
-impl<T: FloatT> SymMatrixVectorMultiply for Symmetric<'_, CscMatrix<T>> {
-    type T = T;
-
+impl<T: FloatT> SymMatrixVectorMultiply<T> for Symmetric<'_, CscMatrix<T>> {
     fn symv(&self, y: &mut [T], x: &[T], a: T, b: T) {
         _csc_symv_unsafe(self.src, y, x, a, b);
     }
 }
 
-impl<T: FloatT> MatrixMath for CscMatrix<T> {
-    type T = T;
-
-    // PJG: add unit test
-    fn col_sums(&self, sums: &mut [Self::T]) {
+impl<T: FloatT> MatrixMath<T> for CscMatrix<T> {
+    fn col_sums(&self, sums: &mut [T]) {
         assert_eq!(self.n, sums.len());
         for (col, sum) in sums.iter_mut().enumerate() {
             let rng = self.colptr[col]..self.colptr[col + 1];
@@ -37,8 +28,7 @@ impl<T: FloatT> MatrixMath for CscMatrix<T> {
         }
     }
 
-    // PJG: add unit test
-    fn row_sums(&self, sums: &mut [Self::T]) {
+    fn row_sums(&self, sums: &mut [T]) {
         assert_eq!(self.m, sums.len());
         sums.fill(T::zero());
         for (&row, &val) in zip(&self.rowval, &self.nzval) {
@@ -95,6 +85,12 @@ impl<T: FloatT> MatrixMath for CscMatrix<T> {
         }
     }
 
+    fn quad_form(&self, y: &[T], x: &[T]) -> T {
+        _csc_quad_form(self, y, x)
+    }
+}
+
+impl<T: FloatT> MatrixMathMut<T> for CscMatrix<T> {
     //scalar mut operations
     fn scale(&mut self, c: T) {
         self.nzval.scale(c);
@@ -132,10 +128,6 @@ impl<T: FloatT> MatrixMath for CscMatrix<T> {
                 *val *= l[*row] * ri;
             }
         }
-    }
-
-    fn quad_form(&self, y: &[T], x: &[T]) -> T {
-        _csc_quad_form(self, y, x)
     }
 }
 

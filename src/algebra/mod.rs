@@ -11,14 +11,12 @@
 // first import and flatten the solver's collection
 // of core numeric types and matrix / vector traits.
 
-mod adjoint;
 mod error_types;
 mod floats;
 mod math_traits;
 mod matrix_traits;
 mod matrix_types;
 mod scalarmath;
-mod symmetric;
 mod utils;
 mod vecmath;
 pub use error_types::*;

@@ -1,8 +1,7 @@
 use super::{FloatT, ScalarMath};
 
 impl<T: FloatT> ScalarMath for T {
-    type T = T;
-    fn clip(&self, min_thresh: T, max_thresh: T) -> T {
+    fn clip(&self, min_thresh: Self, max_thresh: Self) -> Self {
         if *self < min_thresh {
             min_thresh
         } else if *self > max_thresh {
@@ -12,9 +11,9 @@ impl<T: FloatT> ScalarMath for T {
         }
     }
 
-    fn logsafe(&self) -> T {
-        if *self <= T::zero() {
-            -T::infinity()
+    fn logsafe(&self) -> Self {
+        if *self <= Self::zero() {
+            -Self::infinity()
         } else {
             self.ln()
         }

@@ -143,8 +143,7 @@ where
     ///
     /// # Panics
     /// Makes rudimentary dimensional compatibility checks and panics on
-    /// failure.   Data can be provided unsorted, but all (row,col) pairs
-    /// must be unique.   
+    /// failure.   Data can be provided unsorted.   Repeated values are added.
     ///
 
     pub fn new_from_triplets(m: usize, n: usize, I: Vec<usize>, J: Vec<usize>, V: Vec<T>) -> Self {
@@ -171,6 +170,35 @@ where
         for &c in J.iter() {
             M.colptr[c] += 1;
         }
+
+        // make a second pass to consolidate repeated entries
+        // within each column
+        let mut readidx = 0;
+        let mut writeidx = 0;
+
+        for col in 0..n {
+            let nentries = M.colptr[col]; //entries in this column
+            for j in 0..nentries {
+                // non-repeated or first entry in column
+                if j == 0 || M.rowval[readidx] != M.rowval[readidx - 1] {
+                    if writeidx != readidx {
+                        M.rowval[writeidx] = M.rowval[readidx];
+                        M.nzval[writeidx] = M.nzval[readidx];
+                    }
+                    writeidx += 1;
+                    readidx += 1;
+                }
+                // repeated row entry with value to be consolidated
+                else {
+                    M.nzval[writeidx - 1] = M.nzval[writeidx - 1] + M.nzval[readidx];
+                    M.colptr[col] -= 1;
+                    readidx += 1;
+                }
+            }
+        }
+
+        M.rowval.resize(writeidx, 0);
+        M.nzval.resize(writeidx, T::zero());
 
         M.colcount_to_colptr();
 
@@ -724,6 +752,22 @@ fn test_triplets() {
 
     let B: CscMatrix = CscMatrix::new_from_triplets(3, 4, rows, cols, vals);
 
+    assert_eq!(A, B);
+
+    // case with repeated entries, unsorted
+
+    let A: CscMatrix<isize> = (&[
+        [0, 0, 0],   //
+        [-20, 0, 0], //
+        [-20, -20, 0],
+    ])
+        .into();
+
+    let rows = vec![1, 2, 2, 1, 2, 2];
+    let cols = vec![0, 0, 1, 0, 0, 1];
+    let vals = vec![-10, -10, -10, -10, -10, -10];
+
+    let B = CscMatrix::new_from_triplets(3, 3, rows, cols, vals);
     assert_eq!(A, B);
 }
 

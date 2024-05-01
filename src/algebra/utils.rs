@@ -6,10 +6,9 @@
 // which serves as a vectorized version of the std::iter::position
 // returning indices of *all* elements satisfying a predicate
 
+use num_traits::Num;
 use std::cmp::Ordering;
 use std::iter::zip;
-
-use num_traits::Num;
 
 pub(crate) trait PositionAll<T>: Iterator<Item = T> {
     fn position_all<F>(&mut self, predicate: F) -> Vec<usize>
@@ -43,7 +42,6 @@ pub(crate) fn ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
     zip(p, b).for_each(|(p, b)| x[*p] = *b);
 }
 
-// PJG: add units tests for permutations here
 // Construct an inverse permutation from a permutation
 pub(crate) fn invperm(p: &[usize]) -> Vec<usize> {
     let mut b = vec![0; p.len()];

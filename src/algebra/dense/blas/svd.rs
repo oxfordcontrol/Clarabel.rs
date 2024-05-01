@@ -61,12 +61,14 @@ where
     }
 }
 
-impl<T> FactorSVD for SVDEngine<T>
+impl<T> FactorSVD<T> for SVDEngine<T>
 where
     T: FloatT,
 {
-    type T = T;
-    fn factor(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError> {
+    fn factor<S>(&mut self, A: &mut DenseStorageMatrix<S, T>) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
         let (m, n) = A.size();
 
         if self.U.nrows() != m || self.Vt.ncols() != n {
@@ -121,7 +123,10 @@ where
         Ok(())
     }
 
-    fn solve(&mut self, B: &mut Matrix<Self::T>) {
+    fn solve<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
         // get the dimensions for the SVD factors
         let m = self.U.nrows();
         let n = self.Vt.ncols();

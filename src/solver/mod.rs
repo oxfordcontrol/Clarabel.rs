@@ -20,7 +20,7 @@ pub(crate) mod utils;
 
 // chordal decomposition only if SDPs are enabled
 #[cfg(feature = "sdp")]
-pub(crate) mod chordal; // PJG disable this if no SDP
+pub(crate) mod chordal;
 
 //Here we expose only part of the solver internals
 //and rearrange public modules a bit to give a more

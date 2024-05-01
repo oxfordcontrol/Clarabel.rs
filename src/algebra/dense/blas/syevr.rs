@@ -35,15 +35,23 @@ where
     }
 }
 
-impl<T> FactorEigen for EigEngine<T>
+impl<T> FactorEigen<T> for EigEngine<T>
 where
     T: FloatT,
 {
-    type T = T;
-    fn eigvals(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError> {
+    fn eigvals<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
         self.syevr(A, b'N')
     }
-    fn eigen(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError> {
+    fn eigen<S>(&mut self, A: &mut DenseStorageMatrix<S, T>) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
         self.syevr(A, b'V')
     }
 }
@@ -52,7 +60,14 @@ impl<T> EigEngine<T>
 where
     T: FloatT,
 {
-    fn syevr(&mut self, A: &mut Matrix<T>, jobz: u8) -> Result<(), DenseFactorizationError> {
+    fn syevr<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+        jobz: u8,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
         if !A.is_square() || A.nrows() != self.λ.len() {
             return Err(DenseFactorizationError::IncompatibleDimension);
         }

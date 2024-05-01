@@ -1,64 +1,86 @@
 #![allow(non_snake_case)]
-use crate::algebra::{DenseFactorizationError, DenseMatrix, Matrix};
+use crate::algebra::*;
 
-pub(crate) trait FactorEigen {
-    type T;
+pub(crate) trait FactorEigen<T> {
     // computes eigenvalues only (full set)
-    fn eigvals(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
+    fn eigvals<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>;
     // computes eigenvalues and vectors (full set)
     #[allow(dead_code)] //PJG: not currently used anywhere
-    fn eigen(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
+    fn eigen<S>(&mut self, A: &mut DenseStorageMatrix<S, T>) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>;
 }
 
-pub(crate) trait FactorCholesky {
-    type T;
+pub(crate) trait FactorCholesky<T> {
     // computes the Cholesky decomposition.  Only the upper
     // part of the input A will be referenced. The Cholesky factor
     // is stored in self.L
-    fn factor(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
+    fn factor<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>;
 
     // Solve AX = B, where B is matrix with (possibly) multiple columns.
     // Uses previously computed factor from the `factor` function.
     // B is modified in place and stores X after call.
-    fn solve(&mut self, B: &mut Matrix<Self::T>);
+    fn solve<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
+    where
+        S: AsMut<[T]> + AsRef<[T]>;
 
     // computes log(det(X)) for the matrix X = LL^T
-    fn logdet(&self) -> Self::T;
+    fn logdet(&self) -> T;
 }
 
-pub(crate) trait FactorSVD {
-    type T;
+pub(crate) trait FactorSVD<T> {
     // compute "economy size" SVD.  Values in A are overwritten
     // as internal working space.
-    fn factor(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError>;
+    fn factor<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>;
 
     // Solve AX = B, where B is matrix with (possibly) multiple columns.
     // Uses previously computed SVD factors.   Computes a solution using
     // the pseudoinverse of A when A is rank deficient / non-square.
     // B is modified in place and stores X after call.
-    fn solve(&mut self, B: &mut Matrix<Self::T>);
-}
-
-pub(crate) trait MultiplySYRK {
-    type T;
-    fn syrk<MATA>(&mut self, A: &MATA, α: Self::T, β: Self::T) -> &Self
+    fn solve<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
     where
-        MATA: DenseMatrix<T = Self::T>;
+        S: AsMut<[T]> + AsRef<[T]>;
 }
 
-pub(crate) trait MultiplySYR2K {
-    type T;
-    fn syr2k(
-        &mut self, A: &Matrix<Self::T>, B: &Matrix<Self::T>, α: Self::T, β: Self::T
-    ) -> &Self;
+pub(crate) trait MultiplySYRK<T> {
+    fn syrk<MATA>(&mut self, A: &MATA, α: T, β: T)
+    where
+        MATA: DenseMatrix<T>;
 }
 
-pub(crate) trait MultiplyGEMM {
+pub(crate) trait MultiplySYR2K<T> {
+    fn syr2k<S1, S2>(
+        &mut self,
+        A: &DenseStorageMatrix<S1, T>,
+        B: &DenseStorageMatrix<S2, T>,
+        α: T,
+        β: T,
+    ) where
+        S1: AsRef<[T]>,
+        S2: AsRef<[T]>;
+}
+
+pub(crate) trait MultiplyGEMM<T> {
     type T;
     fn mul<MATA, MATB>(&mut self, A: &MATA, B: &MATB, α: Self::T, β: Self::T) -> &Self
     where
-        MATB: DenseMatrix<T = Self::T>,
-        MATA: DenseMatrix<T = Self::T>;
+        MATB: DenseMatrix<T>,
+        MATA: DenseMatrix<T>;
 }
 
 // Solve AX = B.  A will be corrupted post solution, and B will be

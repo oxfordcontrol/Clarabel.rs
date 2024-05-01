@@ -67,17 +67,15 @@ where
         let (Aa_m, Aa_n, n_overlaps) = self.find_A_dimension(A);
 
         // allocate sparse components for the augmented A
-        //PJG: double check all of the indices here for 0-indexing problems
         let Aa_nnz = A.nnz() + 2 * n_overlaps;
-        let mut Aa_I = vec![99; Aa_nnz]; //PJG: 99 is a placeholder for debugging
+        let mut Aa_I = vec![usize::MAX; Aa_nnz]; //usize::MAX forces a panic if not overwritten
         let mut Aa_J = extra_columns(Aa_nnz, A.nnz(), A.n);
         let mut Aa_V = alternating_sequence::<T>(Aa_nnz, A.nnz());
         findnz(&mut Aa_J, &mut Aa_V, A);
 
         // allocate sparse components for the augmented b
-        // PJG: don't understand point of this sparse vector
         let bs = SparseVector::new(b);
-        let mut ba_I = vec![98; bs.nzval.len()]; //PJG: 98 is a placeholder for debugging
+        let mut ba_I = vec![usize::MAX; bs.nzval.len()]; //usize::MAX forces a panic if not overwritten
 
         // preallocate the decomposed cones and the mapping
         // from decomposed cones back to the originals
@@ -97,7 +95,7 @@ where
         let mut overlap_ptr = A.nnz(); // index to next row for +1, -1 overlap entries
 
         for (coneidx, (cone, row_range)) in zip(cones, row_ranges).enumerate() {
-            if !patterns_iter.len() != 0 && patterns_iter.peek().unwrap().orig_index == coneidx {
+            if patterns_iter.len() != 0 && patterns_iter.peek().unwrap().orig_index == coneidx {
                 assert!(matches!(cone, SupportedConeT::PSDTriangleConeT(_)));
                 (row_ptr, overlap_ptr) = add_entries_with_sparsity_pattern(
                     &mut Aa_I,
@@ -155,10 +153,6 @@ where
     }
 }
 
-// PJG: there was a different sparse matrix allocation metho implemented here
-// in the Julia code.   need to check whether that is actually better and
-// whether failures are possible with current method and repeated entries
-
 // Handles all cones that are not decomposed by a sparsity pattern
 fn add_entries_with_cone<T>(
     Aa_I: &mut [usize],
@@ -176,14 +170,13 @@ where
     T: FloatT,
 {
     let n = A.n;
+    let offset = (row_ptr as isize) - (row_range.start as isize);
 
     // populate b
-    let offset = row_ptr - row_range.start;
-
     let row_range_col = get_rows_vec(b, row_range.clone());
-    if !row_range_col.is_empty() {
+    if let Some(row_range_col) = row_range_col {
         for k in row_range_col {
-            ba_I[k] = b.nzind[k] + offset;
+            ba_I[k] = b.nzind[k].checked_add_signed(offset).unwrap();
         }
     }
 
@@ -191,9 +184,9 @@ where
     for col in 0..n {
         // indices that store the rows in column col in A
         let row_range_col = get_rows_mat(A, col, row_range.clone());
-        if !row_range_col.is_empty() {
+        if let Some(row_range_col) = row_range_col {
             for k in row_range_col {
-                Aa_I[k] = A.rowval[k] + offset;
+                Aa_I[k] = A.rowval[k].checked_add_signed(offset).unwrap();
             }
         }
     }
@@ -288,12 +281,15 @@ where
         }
 
         // Loop over all the columns and shift the rows in A_I and b_I according to the clique structure
+        // Here we just convert to empty ranges rather than trying to carry Option<Range>> all the way
+        // down the call stack.   Done for consistency with COSMO
+
         for col in 0..n {
-            let row_range_col = get_rows_mat(A, col, row_range.clone());
+            let row_range_col = get_rows_mat(A, col, row_range.clone()).unwrap_or(0..0);
 
             let row_range_b = {
                 if col == 0 {
-                    get_rows_vec(b, row_range.clone())
+                    get_rows_vec(b, row_range.clone()).unwrap_or(0..0)
                 } else {
                     0..0
                 }
@@ -325,8 +321,7 @@ where
             orig_index: spattern.orig_index,
             tree_and_clique: Some((spattern_index, i)),
         });
-
-        row_ptr += triangular_number(cone_dim)
+        row_ptr += triangular_number(cone_dim);
     }
 
     (row_ptr, overlap_ptr)
@@ -426,31 +421,20 @@ fn get_row_index(
         return None;
     }
 
-    let k_shift = row_range.start + k; // PJG: was additional "-1" here in Julia
+    let k_shift = row_range.start + k;
 
     // determine upper set boundary of where the row could be
-    let u = min(row_range_col.end, row_range_col.start + k_shift); //PJG: and -1 here too
+    let u = min(row_range_col.end, row_range_col.start + k_shift + 1);
 
     // find index of first entry >= k, starting in the interval [l, u]
     // if no, entry is >= k, r should be > u
-    //r = searchsortedfirst(rowval, k_shift, row_range_col.start, u, Base.Order.Forward)
 
-    let r = {
-        let l = row_range_col.start;
-        let x = k_shift;
-        let a = &rowval;
-        if x > a[min(u, a.len() - 1)] {
-            u + 1
-        } else if x <= a[l] {
-            l
-        } else {
-            a[l..u].partition_point(|&y| y < x) + l
-        }
-    };
+    let l = row_range_col.start;
+    let r = rowval[l..u].partition_point(|&y| y < k_shift) + l;
 
     // if no r s.t. rowval[r] = k_shift was found, that means that the
     // (i, j)th entry represents an edded edge (zero) from clique merging
-    if r > u || rowval[r] != k_shift {
+    if r >= u || rowval[r] != k_shift {
         None
     } else {
         Some(r)
@@ -522,56 +506,41 @@ fn clique_rows_map(row_start: usize, sntree: &SuperNodeTree) -> HashMap<usize, R
     out
 }
 
-fn get_rows_subset(rows: &[usize], row_range: Range<usize>) -> Range<usize> {
+fn get_rows_subset(rows: &[usize], row_range: Range<usize>) -> Option<Range<usize>> {
     if rows.is_empty() || row_range.is_empty() {
-        return 0..0;
+        return None;
     }
 
     if *rows.last().unwrap() < row_range.start {
-        return 0..0;
+        return None;
     }
 
     if *rows.first().unwrap() >= row_range.end {
-        return 0..0;
+        return None;
     }
 
     let s = rows.partition_point(|&i| i < row_range.start);
     let e = rows.partition_point(|&i| i < row_range.end);
 
-    s..e
+    Some(s..e)
 }
 
-fn get_rows_vec<T>(b: &SparseVector<T>, row_range: Range<usize>) -> Range<usize>
+fn get_rows_vec<T>(b: &SparseVector<T>, row_range: Range<usize>) -> Option<Range<usize>>
 where
     T: FloatT,
 {
-    // PJG: this function totally rewritten and simplified, possibly with new bugs.
-    // Needs thorough checking and maybe unit testing.   Possibly rewrite Julia to
-    // match, but only once really confident that this is correct
-
     get_rows_subset(&b.nzind, row_range)
 }
 
-fn get_rows_mat<T>(A: &CscMatrix<T>, col: usize, row_range: Range<usize>) -> Range<usize>
+fn get_rows_mat<T>(A: &CscMatrix<T>, col: usize, row_range: Range<usize>) -> Option<Range<usize>>
 where
     T: FloatT,
 {
-    // PJG: this function has been rewritten and simplified w.r.t Julia version
-    // Also, this is now essentially the same function as get_rows_vec, and should
-    // be merged together if it works.
-
     let colrange = A.colptr[col]..(A.colptr[col + 1]);
-
-    // create a view into the row values of column col
     let rows = &A.rowval[colrange.clone()];
-
     let se = get_rows_subset(rows, row_range);
 
-    if se.clone().eq(0..0) {
-        return 0..0;
-    }
-
-    (colrange.start + se.start)..(colrange.start + se.end)
+    se.map(|se| (colrange.start + se.start)..(colrange.start + se.end))
 }
 
 // Returns the appropriate amount of memory for `A.nzval`, including, starting from `n_start`,

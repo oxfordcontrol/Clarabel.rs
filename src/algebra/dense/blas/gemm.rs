@@ -2,17 +2,17 @@
 
 use crate::algebra::*;
 
-impl<T, MAT> MultiplyGEMM for MAT
+impl<S, T> MultiplyGEMM<T> for DenseStorageMatrix<S, T>
 where
     T: FloatT,
-    MAT: DenseMatrixMut<T = T>,
+    S: AsRef<[T]> + AsMut<[T]>,
 {
     type T = T;
     // implements self = C = αA*B + βC
     fn mul<MATA, MATB>(&mut self, A: &MATA, B: &MATB, α: T, β: T) -> &Self
     where
-        MATA: DenseMatrix<T = T>,
-        MATB: DenseMatrix<T = T>,
+        MATA: DenseMatrix<T>,
+        MATB: DenseMatrix<T>,
     {
         assert!(A.ncols() == B.nrows() && self.nrows() == A.nrows() && self.ncols() == B.ncols());
 

@@ -1,10 +1,11 @@
-mod core;
-pub use self::core::*;
 mod block_concatenate;
 mod borrowed;
-pub use self::borrowed::*;
+mod core;
 mod kron;
 mod matrix_math;
+pub(crate) use self::matrix_math::*;
+mod types;
+pub use self::types::*;
 
 mod blaslike_traits;
 pub(crate) use blaslike_traits::*;

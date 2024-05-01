@@ -80,7 +80,7 @@ where
         let mut row = 0;
 
         for (coneidx, cone) in cones.iter().enumerate() {
-            if !patterns_iter.len() != 0 && patterns_iter.peek().unwrap().orig_index == coneidx {
+            if patterns_iter.len() != 0 && patterns_iter.peek().unwrap().orig_index == coneidx {
                 assert!(matches!(cone, SupportedConeT::PSDTriangleConeT(_)));
                 decompose_with_sparsity_pattern(
                     &mut H_I,
@@ -95,10 +95,6 @@ where
             row += cone.nvars();
         }
 
-        //PJG: I need the row and column dimension of H here.
-        //A lot of inconsistency in interfaces about whether
-        // dimensions are to be provided as tuples.   See
-        // both new and new_from_triples for the former case
         let Hdims = (row, lenH); //one entry per column
         let H = CscMatrix::<T>::new_from_triplets(
             Hdims.0,

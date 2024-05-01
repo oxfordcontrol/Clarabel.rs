@@ -2,7 +2,7 @@
 
 use std::iter::zip;
 
-// PJG import here fpr ConeRanges is weird.   Why is it
+// PJG import here for ConeRanges is weird.   Why is it
 // not coming with SupportedConeT?
 use crate::{
     algebra::*,
@@ -21,7 +21,6 @@ use super::SparsityPattern;
 // -------------------------------------
 #[derive(Debug)]
 pub(crate) struct ConeMapEntry {
-    // PJG: reserved for future compact transform
     pub orig_index: usize,
     pub tree_and_clique: Option<(usize, usize)>,
 }

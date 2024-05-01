@@ -94,7 +94,7 @@ impl MergeStrategy for CliqueGraphMergeStrategy {
         sortperm_rev(slicep, &self.edges.nzval);
 
         // try edges with decreasing weight and check if the edge is permissible
-        // PJG: potentially returns nothing?
+        // PJG: potentially returns nothing in Julia version?
         for k in 1..self.edges.nzval.len() {
             let edge = edge_from_index(&self.edges, p[k]);
 
@@ -483,8 +483,6 @@ fn ispermissible(
     let common_neighbors = adjacency_table[&c_1].intersection(&adjacency_table[&c_2]);
 
     // N.B. This is allocating and could be made more efficient
-    // PJG: this needs some kind of test, since I don't know
-    // how "eq" works here, i.e. does it care about order?
     for &neighbor in common_neighbors {
         let int1 = snode[c_1].intersection(&snode[neighbor]);
         let int2 = snode[c_2].intersection(&snode[neighbor]);
@@ -515,25 +513,7 @@ fn max_elem(A: &CscMatrix<isize>) -> (usize, usize) {
 }
 
 fn edge_from_index(A: &CscMatrix<isize>, ind: usize) -> (usize, usize) {
-    //PJG: I think this is just finding row/col from a sparse
-    //linear index, and I already have a function that does this
-    //implemented elsewhere maybe.   Is it index_to_coord?
-    //maybe it also exists in Julia versions.... yes it does,
-    //implemented for data updating
-
-    // find the edge for that value
-    let row = A.rowval[ind];
-    let n = A.ncols();
-    let mut col = 0;
-
-    for c in 0..n {
-        let col_indices = A.colptr[c]..A.colptr[c + 1];
-        if col_indices.contains(&ind) {
-            col = c;
-            break;
-        }
-    }
-    (row, col)
+    A.index_to_coord(ind)
 }
 
 fn clique_intersections(E: &mut CscMatrix<isize>, snd: &[VertexSet]) {

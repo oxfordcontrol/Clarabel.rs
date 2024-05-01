@@ -13,9 +13,10 @@ use std::io::Write;
 /// Status of solver at termination
 
 #[repr(u32)]
-#[derive(PartialEq, Eq, Clone, Debug, Copy)]
+#[derive(PartialEq, Eq, Clone, Debug, Copy, Default)]
 pub enum SolverStatus {
     /// Problem is not solved (solver hasn't run).
+    #[default]
     Unsolved,
     /// Solver terminated with a solution.
     Solved,
@@ -86,12 +87,6 @@ enum StrategyCheckpoint {
 impl std::fmt::Display for SolverStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{:?}", self)
-    }
-}
-
-impl Default for SolverStatus {
-    fn default() -> Self {
-        SolverStatus::Unsolved
     }
 }
 

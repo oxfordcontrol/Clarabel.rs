@@ -5,36 +5,38 @@ use crate::algebra::{
     ShapedMatrix,
 };
 
+// PJG: Should allow for borrowed data in the
+// inputs here
 impl<T> BlockConcatenate for Matrix<T>
 where
     T: FloatT,
 {
     fn hcat(A: &Self, B: &Self) -> Self {
         //first check for compatible row dimensions
-        assert_eq!(A.m, B.m);
+        assert_eq!(A.nrows(), B.nrows());
 
         //dimensions for C = [A B];
-        let m = A.m; //rows
-        let n = A.n + B.n; //cols s
+        let m = A.nrows(); //rows
+        let n = A.ncols() + B.ncols(); //cols s
         let mut data = A.data.clone();
         data.extend(&B.data);
-        Self { m, n, data }
+        Self::new((m, n), data)
     }
 
     fn vcat(A: &Self, B: &Self) -> Self {
         //first check for compatible column dimensions
-        assert_eq!(A.n, B.n);
+        assert_eq!(A.ncols(), B.ncols());
 
         //dimensions for C = [A; B];
-        let m = A.m + B.m; //rows C
-        let n = A.n; //cols C
+        let m = A.nrows() + B.nrows(); //rows C
+        let n = A.ncols(); //cols C
         let mut data = Vec::with_capacity(m * n);
 
         for col in 0..A.ncols() {
             data.extend(A.col_slice(col));
             data.extend(B.col_slice(col));
         }
-        Self { m, n, data }
+        Self::new((m, n), data)
     }
 
     fn hvcat(mats: &[&[&Self]]) -> Result<Self, MatrixConcatenationError> {

@@ -21,12 +21,14 @@ where
     }
 }
 
-impl<T> FactorCholesky for CholeskyEngine<T>
+impl<T> FactorCholesky<T> for CholeskyEngine<T>
 where
     T: FloatT,
 {
-    type T = T;
-    fn factor(&mut self, A: &mut Matrix<Self::T>) -> Result<(), DenseFactorizationError> {
+    fn factor<S>(&mut self, A: &mut DenseStorageMatrix<S, T>) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
         if A.size() != self.L.size() {
             return Err(DenseFactorizationError::IncompatibleDimension);
         }
@@ -64,7 +66,10 @@ where
         Ok(())
     }
 
-    fn solve(&mut self, B: &mut Matrix<Self::T>) {
+    fn solve<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
         // standard BLAS ?potrs arguments for computing
         // post factorization triangular solve
 

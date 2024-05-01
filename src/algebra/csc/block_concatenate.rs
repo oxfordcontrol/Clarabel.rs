@@ -5,9 +5,9 @@ use std::cmp::max;
 
 use crate::algebra::{BlockConcatenate, CscMatrix, FloatT, MatrixShape};
 
-// PJG: hcat and vcat should return option and should probably
+// PJG: hcat and vcat could return option and should probably
 // just call the internal hvcat function.   Needs examples, unit
-// tests and make this a public interface
+// tests and maybe make this a public interface
 
 impl<T> BlockConcatenate for CscMatrix<T>
 where
@@ -70,8 +70,10 @@ where
     /// Errors if given data of incompatible dimensions
     ///
     ///
-    //PJG: This should allow transposes as well.   In dire need of example
-    //and units tests
+    //PJG: This might be modifiable to allow Adjoint and Symmetric
+    //inputs as well.
+
+    // In dire need of example and units tests
 
     fn blockdiag(mats: &[&Self]) -> Result<Self, MatrixConcatenationError> {
         if mats.is_empty() {

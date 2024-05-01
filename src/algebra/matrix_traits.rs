@@ -1,35 +1,20 @@
 #![allow(non_snake_case)]
 
-use std::ops::Index;
-
 use crate::algebra::MatrixConcatenationError;
 use crate::algebra::MatrixShape;
 
 pub(crate) trait ShapedMatrix {
-    fn nrows(&self) -> usize;
-    fn ncols(&self) -> usize;
-    #[allow(dead_code)] //PJG: not currently used anywhere
     fn shape(&self) -> MatrixShape;
-    fn size(&self) -> (usize, usize) {
-        (self.nrows(), self.ncols())
+    fn size(&self) -> (usize, usize);
+    fn nrows(&self) -> usize {
+        self.size().0
+    }
+    fn ncols(&self) -> usize {
+        self.size().1
     }
     fn is_square(&self) -> bool {
         self.nrows() == self.ncols()
     }
-}
-
-//NB: the concrete dense type is just called "Matrix".  The "DenseMatrix" trait
-//is implemented on Matrix, Adjoint and BorrowedMatrix types to allow for indexing
-//of values in any of those formats.   This follows the Julia naming convention
-//for similar types.
-pub(crate) trait DenseMatrix: ShapedMatrix + Index<(usize, usize)> {
-    type T;
-    fn index_linear(&self, idx: (usize, usize)) -> usize;
-    fn data(&self) -> &[Self::T];
-}
-
-pub(crate) trait DenseMatrixMut: DenseMatrix {
-    fn data_mut(&mut self) -> &mut [<Self as DenseMatrix>::T];
 }
 
 /// PJG: replace panics here with Error types.  Add documentation

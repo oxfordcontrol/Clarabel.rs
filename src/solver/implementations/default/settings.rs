@@ -128,13 +128,17 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub presolve_enable: bool,
 
-    // chordal decomposition  //PJG: compile on SDP options only
+    // chordal decomposition
+    #[cfg(feature = "sdp")]
     #[builder(default = "true")]
     pub chordal_decomposition_enable: bool,
-    #[builder(default = r#""parent_child".to_string()"#)] //PJG fix defaults
+    #[cfg(feature = "sdp")]
+    #[builder(default = r#""clique_graph".to_string()"#)]
     pub chordal_decomposition_merge_method: String,
+    #[cfg(feature = "sdp")]
     #[builder(default = "true")]
     pub chordal_decomposition_compact: bool,
+    #[cfg(feature = "sdp")]
     #[builder(default = "true")]
     pub chordal_decomposition_complete_dual: bool,
 }

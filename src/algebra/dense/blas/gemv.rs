@@ -4,6 +4,7 @@ use crate::algebra::{
     Adjoint, DenseMatrix, FloatT, Matrix, MatrixShape, MultiplyGEMV, ShapedMatrix,
 };
 
+// PJG: This needs to be over generic storage
 impl<T> MultiplyGEMV for Matrix<T>
 where
     T: FloatT,

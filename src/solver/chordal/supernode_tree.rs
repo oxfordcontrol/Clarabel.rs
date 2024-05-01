@@ -1,9 +1,7 @@
 #![allow(non_snake_case)]
-#![allow(unused)] //PJG: temporary
-use std::{iter::zip, marker::PhantomData};
-
 use super::VertexSet;
 use crate::algebra::*;
+use std::iter::zip;
 
 // this value used to mark root notes, i.e. ones with no parent
 pub(crate) const NO_PARENT: usize = std::usize::MAX;
@@ -24,8 +22,6 @@ pub(crate) struct SuperNodeTree {
     pub snode_children: Vec<VertexSet>,
     // post ordering of the vertices in elim tree σ(j) = v
     pub post: Vec<usize>,
-    // parent of each vertex in the elimination tree
-    pub parent: Vec<usize>,
     // vertices of clique seperators
     pub separators: Vec<VertexSet>,
 
@@ -77,13 +73,13 @@ impl SuperNodeTree {
             snode_parent,
             snode_children,
             post,
-            parent,
             separators,
             nblk,
             n_cliques,
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn get_post_order(&self, i: usize) -> usize {
         self.snode_post[i]
     }
@@ -272,7 +268,7 @@ pub(crate) fn post_order(
     children: &mut [VertexSet],
     nc: usize,
 ) {
-    let mut order = vec![nc + 1; parent.len()]; //PJG: ??? difference here
+    let mut order = vec![nc + 1; parent.len()];
 
     let root = parent.iter().position(|&x| x == NO_PARENT).unwrap(); //should always be a root
 
@@ -282,7 +278,6 @@ pub(crate) fn post_order(
     post.resize(parent.len(), 0);
     post.iter_mut().enumerate().for_each(|(i, p)| *p = i);
 
-    // PJG: possible index error here.  Tried to fix it.
     let mut i = nc;
 
     while let Some(v) = stack.pop() {
@@ -329,8 +324,8 @@ fn pothen_sun(parent: &[usize], post: &[usize], degree: &[usize]) -> (Vec<usize>
     let n = parent.len();
 
     // if snode_index[v] < 0 then v is a rep vertex, otherwise v ∈ supernode[snode_index[v]]
-    // PJG: snode_index is never actually used as an index into anything, so maybe
-    // ok to keep it as Rust isize.   It is `parent` that has the problem with indexing
+    // NB: snode_index is never actually used as an index into anything, so
+    // ok to keep it as Rust isize.
 
     let mut snode_index = vec![-1isize; n];
     let mut snode_parent = vec![NO_PARENT; n];
