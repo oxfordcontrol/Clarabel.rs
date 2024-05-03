@@ -3,23 +3,28 @@
 
 module TestClarabelRs
 
-import ClarabelRs, Clarabel
+import ClarabelRs, Clarabel, JuMP
 using MathOptInterface
 using Test
 
 const MOI = MathOptInterface
 
 T = Float64
-optimizer = ClarabelRs.Optimizer()
-MOI.set(optimizer,MOI.Silent(),false)
+optimizer =  JuMP.optimizer_with_attributes(
+            Clarabel.Optimizer, 
+            "chordal_decomposition_enable" => true, 
+            "chordal_decomposition_merge_method" => :clique_merge,
+            "chordal_decomposition_compact" => true,
+            "chordal_decomposition_complete_dual" => true,
+       );
 
-BRIDGED = MOI.Bridges.full_bridge_optimizer(
-    MOI.Utilities.CachingOptimizer(
-        MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}()),
-        optimizer,
-    ),
-    T,
+const BRIDGED = MOI.instantiate(
+    optimizer,
+    with_bridge_type = Float64,
 )
+
+#
+
 
 # See the docstring of MOI.Test.Config for other arguments.
 MYCONFIG = MOI.Test.Config(
