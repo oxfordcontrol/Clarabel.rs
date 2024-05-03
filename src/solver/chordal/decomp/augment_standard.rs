@@ -67,7 +67,7 @@ where
         let mut H_I = Vec::with_capacity(lenH);
 
         // ncones from decomposition, plus one for an additional equality constraint
-        let mut cones_new = Vec::<SupportedConeT<T>>::with_capacity(self.post_cone_count() + 1);
+        let mut cones_new = Vec::<SupportedConeT<T>>::with_capacity(self.final_cone_count() + 1);
 
         // +1 cone count above is for this equality constraint
         let (_, m) = self.init_dims;

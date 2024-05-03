@@ -127,9 +127,16 @@ fn _print_banner(is_verbose: bool) -> std::io::Result<()> {
     )?;
     writeln!(
         out,
-        "           Clarabel.rs v{}  -  Clever Acronym              \n",
+        "           Clarabel.rs v{}  -  Clever Acronym                ",
         crate::VERSION
     )?;
+    #[cfg(debug_assertions)]
+    writeln!(
+        out,
+        "                  *** debug build ***                        ",
+    )?;
+    #[cfg(not(debug_assertions))]
+    writeln!(out, "")?;
     writeln!(
         out,
         "                   (c) Paul Goulart                          "

@@ -140,23 +140,58 @@ where
     }
 
     // total number of cones we started with
-    fn init_cone_count(&self) -> usize {
+    pub(crate) fn init_cone_count(&self) -> usize {
         self.init_cones.len()
     }
 
-    // Determine the total number of sets `num_total` after decomposition
-    // and the number of new psd cones `num_new_psd_cones`.
-    pub(crate) fn post_cone_count(&self) -> usize {
+    // total number of cones we started with
+    pub(crate) fn init_psd_cone_count(&self) -> usize {
+        self.init_cones
+            .iter()
+            .filter(|c| matches!(c, SupportedConeT::PSDTriangleConeT(_)))
+            .count()
+    }
+
+    pub(crate) fn final_cone_count(&self) -> usize {
+        self.init_cone_count() + self.final_psd_cones_added()
+    }
+
+    pub(crate) fn final_psd_cone_count(&self) -> usize {
+        self.init_psd_cone_count() + self.final_psd_cones_added()
+    }
+
+    pub(crate) fn premerge_psd_cone_count(&self) -> usize {
+        self.init_psd_cone_count() + self.premerge_psd_cones_added()
+    }
+
+    pub(crate) fn decomposable_cone_count(&self) -> usize {
+        self.spatterns.len()
+    }
+
+    pub(crate) fn final_psd_cones_added(&self) -> usize {
         // sum the number of cliques in each spattern
-        let npatterns = self.spatterns.len();
         let ncliques = self
             .spatterns
             .iter()
             .fold(0, |acc, pattern| acc + pattern.sntree.n_cliques);
+        let ndecomposable = self.decomposable_cone_count();
 
         // subtract npatterns to avoid double counting the
         // original decomposed cones
-        self.init_cone_count() - npatterns + ncliques
+        ncliques - ndecomposable
+    }
+
+    pub(crate) fn premerge_psd_cones_added(&self) -> usize {
+        // sum the number of cliques in each spattern
+        let ncones = self
+            .spatterns
+            .iter()
+            .fold(0, |acc, pattern| acc + pattern.sntree.snode.len());
+        let ndecomposable = self.decomposable_cone_count();
+
+        // subtract npatterns to avoid double counting the
+        // original decomposed cones
+        ncones - ndecomposable
     }
 
     /*

@@ -318,7 +318,7 @@ pub unsafe fn dgesv(
         ipiv.as_mut_ptr(),
         b.as_mut_ptr(),
         &ldb,
-        info.as_mut_ptr(),
+        info,
     )
 }
 
@@ -340,6 +340,6 @@ pub unsafe fn sgesv(
         ipiv.as_mut_ptr(),
         b.as_mut_ptr(),
         &ldb,
-        info.as_mut_ptr(),
+        info,
     )
 }

@@ -283,6 +283,7 @@ where
         self.κ *= scaleinv;
     }
 
+    #[cfg_attr(not(sdp), allow(dead_code))]
     pub(crate) fn dims(&self) -> (usize, usize) {
         (self.x.len(), self.s.len())
     }

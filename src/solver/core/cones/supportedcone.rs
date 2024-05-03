@@ -200,12 +200,14 @@ impl SupportedConeTag {
 //PJG: type names are not satisfactory.   Try to combine
 //with the internal cone generators.
 
+#[cfg_attr(not(sdp), allow(dead_code))]
 pub(crate) struct RangeSupportedConesIterator<'a, T> {
     cones: &'a [SupportedConeT<T>],
     index: usize,
     start: usize,
 }
 
+#[cfg_attr(not(sdp), allow(dead_code))]
 impl<'a, T> Iterator for RangeSupportedConesIterator<'a, T> {
     type Item = std::ops::Range<usize>;
 
@@ -222,11 +224,12 @@ impl<'a, T> Iterator for RangeSupportedConesIterator<'a, T> {
         }
     }
 }
-
+#[cfg_attr(not(sdp), allow(dead_code))]
 pub(crate) trait ConeRanges<'a, T> {
     fn rng_cones_iter(&'a self) -> RangeSupportedConesIterator<'a, T>;
 }
 
+#[cfg_attr(not(sdp), allow(dead_code))]
 impl<'a, T> ConeRanges<'a, T> for [SupportedConeT<T>] {
     fn rng_cones_iter(&'a self) -> RangeSupportedConesIterator<'a, T> {
         RangeSupportedConesIterator::<'a, T> {

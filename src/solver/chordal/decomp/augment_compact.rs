@@ -79,7 +79,7 @@ where
 
         // preallocate the decomposed cones and the mapping
         // from decomposed cones back to the originals
-        let n_decomposed = self.post_cone_count();
+        let n_decomposed = self.final_cone_count();
         let mut cones_new = Vec::with_capacity(n_decomposed);
         let mut cone_maps = Vec::with_capacity(n_decomposed);
 

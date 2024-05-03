@@ -24,6 +24,7 @@ pub(crate) fn triangular_number(k: usize) -> usize {
     (k * (k + 1)) >> 1
 }
 
+#[cfg_attr(not(sdp), allow(dead_code))]
 pub(crate) fn triangular_index(k: usize) -> usize {
     // 0-based index into a packed triangle. Same as:
     // triangular number(k+1) - 1 = (((k+1) * (k+2)) >> 1) - 1
@@ -32,6 +33,7 @@ pub(crate) fn triangular_index(k: usize) -> usize {
 
 // given an index into the upper triangular part of a matrix, return
 // its row and column position
+#[cfg_attr(not(sdp), allow(dead_code))]
 pub(crate) fn upper_triangular_index_to_coord(linearidx: usize) -> (usize, usize) {
     if linearidx == 0 {
         return (0, 0);
@@ -45,6 +47,7 @@ pub(crate) fn upper_triangular_index_to_coord(linearidx: usize) -> (usize, usize
 
 // given a row and column position, return the index into the upper
 // triangular part of the matrix
+#[cfg_attr(not(sdp), allow(dead_code))]
 pub(crate) fn coord_to_upper_triangular_index(coord: (usize, usize)) -> usize {
     if coord == (0, 0) {
         return 0;
@@ -62,6 +65,7 @@ pub(crate) fn coord_to_upper_triangular_index(coord: (usize, usize)) -> usize {
 // here: https://github.com/rust-lang/rust/issues/116226
 // For now, implement a simple truncation method, which works
 // for inputs < 2^53 or so (otherwise possibly off-by-one).
+#[cfg_attr(not(sdp), allow(dead_code))]
 fn isqrt(v: usize) -> usize {
     (v as f64).sqrt() as usize
 }

@@ -3,6 +3,7 @@
 use crate::algebra::MatrixConcatenationError;
 use crate::algebra::MatrixShape;
 
+#[cfg_attr(not(sdp), allow(dead_code))]
 pub(crate) trait ShapedMatrix {
     fn shape(&self) -> MatrixShape;
     fn size(&self) -> (usize, usize);

@@ -1,3 +1,6 @@
+#[cfg(feature = "sdp")]
+use crate::solver::chordal::ChordalInfo;
+
 use crate::stdio;
 use crate::{
     algebra::*,
@@ -48,6 +51,11 @@ where
                 "\npresolve: removed {} constraints",
                 presolver.count_reduced()
             )?;
+        }
+
+        #[cfg(feature = "sdp")]
+        if let Some(ref chordal_info) = data.chordal_info {
+            print_chordal_decomposition(chordal_info, settings)?;
         }
 
         writeln!(out, "\nproblem:")?;
@@ -233,6 +241,54 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<
         out,
         "               max iter = {}",
         set.equilibrate_max_iter,
+    )?;
+
+    std::io::Result::Ok(())
+}
+
+#[cfg(feature = "sdp")]
+fn print_chordal_decomposition<T: FloatT>(
+    chordal_info: &ChordalInfo<T>,
+    settings: &DefaultSettings<T>,
+) -> std::io::Result<()> {
+    let mut out = stdio::stdout();
+
+    writeln!(out, "\nchordal decomposition:")?;
+    writeln!(
+        out,
+        "  compact format = {}, dual completion = {}",
+        _bool_on_off(settings.chordal_decomposition_compact),
+        _bool_on_off(settings.chordal_decomposition_complete_dual)
+    )?;
+
+    writeln!(
+        out,
+        "  merge method = {}",
+        settings.chordal_decomposition_merge_method
+    )?;
+
+    writeln!(
+        out,
+        "  PSD cones initial             = {}",
+        chordal_info.init_psd_cone_count()
+    )?;
+
+    writeln!(
+        out,
+        "  PSD cones decomposable        = {}",
+        chordal_info.decomposable_cone_count()
+    )?;
+
+    writeln!(
+        out,
+        "  PSD cones after decomposition = {}",
+        chordal_info.premerge_psd_cone_count()
+    )?;
+
+    writeln!(
+        out,
+        "  PSD cones after merges        = {}",
+        chordal_info.final_psd_cone_count()
     )?;
 
     std::io::Result::Ok(())
