@@ -722,7 +722,7 @@ fn compute_weights(
 
 // Given two cliques `c_a` and `c_b` return a value for their edge weight.
 
-fn edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod) -> isize {
+fn _edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod) -> isize {
     let n_1 = c_a.len() as isize;
     let n_2 = c_b.len() as isize;
 
@@ -737,7 +737,7 @@ fn edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod) 
 // PJG: this function appears to give better performance, but deactived
 // since I want to agree with COSMO results for testing
 
-fn _edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod) -> isize {
+fn edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod) -> isize {
     let n_1 = triangular_number(c_a.len()) as isize;
     let n_2 = triangular_number(c_b.len()) as isize;
 
