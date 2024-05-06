@@ -616,7 +616,7 @@ fn determine_parent_cliques(
         }
     }
 
-    // recursively assign children to cliques along the MST defined by E
+    // assign children to cliques along the MST defined by E
     assign_children(snode_parent, snode_children, c, E);
 }
 
@@ -626,15 +626,18 @@ fn assign_children(
     c: usize,
     edges: &CscMatrix<isize>,
 ) {
-    // determine neighbors
-    let neighbors = find_neighbors(edges, c);
+    let mut stack = vec![c];
 
-    for n in neighbors {
-        // conditions that there is a edge in the MST and that n is not the parent of c
-        if edges.get_entry((max(c, n), min(c, n))).unwrap_or(0) == -1 && snode_parent[c] != n {
-            snode_parent[n] = c;
-            snode_children[c].insert(n);
-            assign_children(snode_parent, snode_children, n, edges);
+    while let Some(c) = stack.pop() {
+        let neighbors = find_neighbors(edges, c);
+
+        for n in neighbors {
+            // conditions that there is a edge in the MST and that n is not the parent of c
+            if edges.get_entry((max(c, n), min(c, n))).unwrap_or(0) == -1 && snode_parent[c] != n {
+                snode_parent[n] = c;
+                snode_children[c].insert(n);
+                stack.push(n);
+            }
         }
     }
 }
