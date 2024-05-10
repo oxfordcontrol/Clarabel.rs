@@ -1,29 +1,30 @@
 #![allow(non_snake_case)]
 
 use crate::algebra::{
-    Adjoint, DenseMatrix, FloatT, Matrix, MatrixShape, MultiplyGEMV, ShapedMatrix,
+    Adjoint, DenseMatrix, DenseStorageMatrix, FloatT, Matrix, MatrixShape, MultiplyGEMV,
+    ShapedMatrix,
 };
 
 // PJG: This needs to be over generic storage
-impl<T> MultiplyGEMV for Matrix<T>
+impl<S, T> MultiplyGEMV<T> for DenseStorageMatrix<S, T>
 where
     T: FloatT,
+    S: AsRef<[T]>,
 {
-    type T = T;
     // implements y = αA*x + βy
-    fn gemv(&self, x: &[Self::T], y: &mut [Self::T], α: Self::T, β: Self::T) {
+    fn gemv(&self, x: &[T], y: &mut [T], α: T, β: T) {
         let (m, n) = self.size();
         Matrix::<T>::_gemv(self.shape(), m, n, α, self.data(), x, β, y);
     }
 }
 
-impl<'a, T> MultiplyGEMV for Adjoint<'a, Matrix<T>>
+impl<'a, S, T> MultiplyGEMV<T> for Adjoint<'a, DenseStorageMatrix<S, T>>
 where
     T: FloatT,
+    S: AsRef<[T]>,
 {
-    type T = T;
     // implements y = αA'*x + βy
-    fn gemv(&self, x: &[Self::T], y: &mut [Self::T], α: Self::T, β: Self::T) {
+    fn gemv(&self, x: &[T], y: &mut [T], α: T, β: T) {
         let (m, n) = self.src.size(); //NB: size of A, not A'
         Matrix::<T>::_gemv(self.shape(), m, n, α, self.data(), x, β, y);
     }

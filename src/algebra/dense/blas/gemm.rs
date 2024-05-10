@@ -7,7 +7,6 @@ where
     T: FloatT,
     S: AsRef<[T]> + AsMut<[T]>,
 {
-    type T = T;
     // implements self = C = αA*B + βC
     fn mul<MATA, MATB>(&mut self, A: &MATA, B: &MATB, α: T, β: T) -> &Self
     where

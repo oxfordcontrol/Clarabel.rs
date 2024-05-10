@@ -75,9 +75,13 @@ pub(crate) trait MultiplySYR2K<T> {
         S2: AsRef<[T]>;
 }
 
+//PJG: problem here since DenseMatrix<T> is implemented by symmetric types,
+//but this should really only be implemented if MATA and MATB are either
+//DenseStorageMatrix or Adjoint<DenseStorageMatrix>.   Possibly solveable
+//by adding a new trait for DenseMatrix that is not implemented by symmetric,
+//something like DenseMaybeAdjointMatrix<T>?
 pub(crate) trait MultiplyGEMM<T> {
-    type T;
-    fn mul<MATA, MATB>(&mut self, A: &MATA, B: &MATB, α: Self::T, β: Self::T) -> &Self
+    fn mul<MATA, MATB>(&mut self, A: &MATA, B: &MATB, α: T, β: T) -> &Self
     where
         MATB: DenseMatrix<T>,
         MATA: DenseMatrix<T>;
@@ -95,9 +99,8 @@ pub(crate) trait SolveLU<T> {
 }
 
 #[allow(dead_code)] //PJG: not currently used anywhere
-pub(crate) trait MultiplyGEMV {
-    type T;
-    fn gemv(&self, x: &[Self::T], y: &mut [Self::T], α: Self::T, β: Self::T);
+pub(crate) trait MultiplyGEMV<T> {
+    fn gemv(&self, x: &[T], y: &mut [T], α: T, β: T);
 }
 
 #[allow(dead_code)] //PJG: not currently used anywhere

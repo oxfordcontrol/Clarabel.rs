@@ -21,7 +21,6 @@ use std::cmp::{max, min};
 use std::ops::Range;
 use std::{collections::HashMap, iter::zip};
 
-// PJG: this type not defined in Julia.   Add it there after porting
 type BlockOverlapTriplet = (usize, usize, bool);
 
 impl<T> ChordalInfo<T>
