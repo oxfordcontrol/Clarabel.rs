@@ -14,8 +14,6 @@ pub struct PSDConeData<T> {
     Λisqrt: Vec<T>,
     R: Matrix<T>,
     Rinv: Matrix<T>,
-    kronRR: Matrix<T>,
-    B: Matrix<T>,
     Hs: Matrix<T>,
 
     //workspace for various internal uses
@@ -42,8 +40,6 @@ where
             Λisqrt: vec![T::zero(); n],
             R: Matrix::zeros((n, n)),
             Rinv: Matrix::zeros((n, n)),
-            kronRR: Matrix::zeros((n * n, n * n)),
-            B: Matrix::zeros((Bm, n * n)),
             Hs: Matrix::zeros((Bm, Bm)),
 
             //workspace for various internal uses
@@ -191,22 +187,12 @@ where
         f.Rinv.mul(&f.SVD.U.t(), &L2.t(), T::one(), T::zero());
         f.Rinv.lscale(&f.Λisqrt);
 
-        // we should compute here the upper triangular part
-        // of the matrix Q* (RR^T) ⨂ (RR^T) * P.  The operator
-        // P is a matrix that transforms a packed triangle to
-        // a vectorized full matrix.
+        // compute R*R^T (upper triangular part only)
+        let RRt = &mut f.workmat1;
+        RRt.data_mut().set(T::zero());
+        RRt.syrk(&f.R, T::one(), T::zero());
 
-        f.kronRR.kron(&f.R, &f.R);
-
-        // B .= Q'*kRR, where Q' is the svec operator
-        for i in 0..f.B.ncols() {
-            let M = BorrowedMatrix::from_slice(f.kronRR.col_slice(i), f.R.nrows(), f.R.nrows());
-            let b = f.B.col_slice_mut(i);
-            mat_to_svec(b, &M);
-        }
-
-        // compute Hs = triu(B*B')
-        f.Hs.syrk(&f.B, T::one(), T::zero());
+        skron(&mut f.Hs, &RRt.sym());
 
         true //PJG: Should return result, with "?" operators above
     }
@@ -254,7 +240,7 @@ where
         let engine = &mut self.data.Eig;
 
         // d = Δz̃ = WΔz
-        _mul_Wx_inner(
+        mul_Wx_inner(
             MatrixShape::N,
             d,
             dz,
@@ -266,10 +252,10 @@ where
             &mut self.data.workmat3,
         );
         let workΔ = &mut self.data.workmat1;
-        let αz = _step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
+        let αz = step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
 
         // d = Δs̃ = W^{-T}Δs
-        _mul_Wx_inner(
+        mul_Wx_inner(
             MatrixShape::T,
             d,
             ds,
@@ -281,7 +267,7 @@ where
             &mut self.data.workmat3,
         );
         let workΔ = &mut self.data.workmat1;
-        let αs = _step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
+        let αs = step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
 
         (αz, αs)
     }
@@ -340,7 +326,7 @@ where
     }
 
     fn mul_W(&mut self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
-        _mul_Wx_inner(
+        mul_Wx_inner(
             is_transpose,
             y,
             x,
@@ -354,7 +340,7 @@ where
     }
 
     fn mul_Winv(&mut self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
-        _mul_Wx_inner(
+        mul_Wx_inner(
             is_transpose,
             y,
             x,
@@ -369,7 +355,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn _mul_Wx_inner<T>(
+fn mul_Wx_inner<T>(
     is_transpose: MatrixShape,
     y: &mut [T],
     x: &[T],
@@ -442,7 +428,7 @@ where
 // internal operations for SDP cones
 // ----------------------------------------
 
-fn _step_length_psd_component<T>(
+fn step_length_psd_component<T>(
     workΔ: &mut Matrix<T>,
     engine: &mut EigEngine<T>,
     d: &[T],
@@ -467,5 +453,57 @@ where
         T::min(-γ.recip(), αmax)
     } else {
         αmax
+    }
+}
+
+// produce the upper triangular part of the Symmetric Kronecker product of
+// a symmtric matrix A with itself, i.e. triu(A ⊗_s A)
+fn skron<T>(out: &mut Matrix<T>, A: &Symmetric<Matrix<T>>)
+where
+    T: FloatT,
+{
+    let sqrt2 = T::SQRT_2();
+    let n = A.nrows();
+
+    let mut col = 0;
+    for l in 0..n {
+        for k in 0..l {
+            let mut row = 0;
+            for j in 0..n {
+                let Ajl = A[(j, l)];
+                let Ajk = A[(j, k)];
+                for i in 0..j {
+                    if row > col {
+                        break;
+                    }
+                    out[(row, col)] = A[(i, k)] * Ajl + A[(i, l)] * Ajk;
+                    row += 1;
+                }
+                if row > col {
+                    break;
+                }
+                out[(row, col)] = sqrt2 * Ajl * Ajk;
+                row += 1;
+            }
+            col += 1;
+        }
+
+        let mut row = 0;
+        for j in 0..n {
+            let Ajl = A[(j, l)];
+            for i in 0..j {
+                if row > col {
+                    break;
+                }
+                out[(row, col)] = sqrt2 * A[(i, l)] * Ajl;
+                row += 1;
+            }
+            if row > col {
+                break;
+            }
+            out[(row, col)] = Ajl * Ajl;
+            row += 1;
+        }
+        col += 1;
     }
 }

@@ -5,6 +5,7 @@ impl<T> Matrix<T>
 where
     T: FloatT,
 {
+    #[allow(dead_code)]
     pub(crate) fn kron<MATA, MATB>(&mut self, A: &MATA, B: &MATB)
     where
         MATA: DenseMatrix<T>,

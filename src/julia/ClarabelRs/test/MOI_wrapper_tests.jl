@@ -11,9 +11,9 @@ const MOI = MathOptInterface
 
 T = Float64
 optimizer =  JuMP.optimizer_with_attributes(
-            Clarabel.Optimizer, 
+            ClarabelRs.Optimizer, 
             "chordal_decomposition_enable" => true, 
-            "chordal_decomposition_merge_method" => :clique_merge,
+            "chordal_decomposition_merge_method" => :clique_graph,
             "chordal_decomposition_compact" => true,
             "chordal_decomposition_complete_dual" => true,
        );
