@@ -192,6 +192,12 @@ where
         RRt.data_mut().set(T::zero());
         RRt.syrk(&f.R, T::one(), T::zero());
 
+        // PJG: it is possibly faster to compute the whole of RRt, and not
+        // just the upper triangle using syrk!, because then skron! can be
+        // be called with a Matrix type instead of Symmetric.   The internal
+        // indexing within skron! is then more straightforward and probably
+        // faster.   Possibly also worth considering a version of skron!
+        // that uses unchecked indexing.
         skron(&mut f.Hs, &RRt.sym());
 
         true //PJG: Should return result, with "?" operators above
@@ -467,43 +473,31 @@ where
 
     let mut col = 0;
     for l in 0..n {
-        for k in 0..l {
+        for k in 0..=l {
             let mut row = 0;
+            let kl_eq = k == l;
             for j in 0..n {
                 let Ajl = A[(j, l)];
                 let Ajk = A[(j, k)];
-                for i in 0..j {
+                for i in 0..=j {
                     if row > col {
                         break;
                     }
-                    out[(row, col)] = A[(i, k)] * Ajl + A[(i, l)] * Ajk;
+                    let ij_eq = i == j;
+                    if !(ij_eq || kl_eq) {
+                        out[(row, col)] = A[(i, k)] * Ajl + A[(i, l)] * Ajk;
+                    } else if ij_eq && kl_eq {
+                        out[(row, col)] = Ajl * Ajl;
+                    } else if ij_eq {
+                        out[(row, col)] = sqrt2 * Ajl * Ajk;
+                    } else {
+                        // kl_eq
+                        out[(row, col)] = sqrt2 * A[(i, l)] * Ajk;
+                    }
                     row += 1;
                 }
-                if row > col {
-                    break;
-                }
-                out[(row, col)] = sqrt2 * Ajl * Ajk;
-                row += 1;
             }
             col += 1;
         }
-
-        let mut row = 0;
-        for j in 0..n {
-            let Ajl = A[(j, l)];
-            for i in 0..j {
-                if row > col {
-                    break;
-                }
-                out[(row, col)] = sqrt2 * A[(i, l)] * Ajl;
-                row += 1;
-            }
-            if row > col {
-                break;
-            }
-            out[(row, col)] = Ajl * Ajl;
-            row += 1;
-        }
-        col += 1;
     }
 }

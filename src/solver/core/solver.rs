@@ -259,7 +259,10 @@ where
 
             // update the scalings
             // --------------
-            let is_scaling_success = self.variables.scale_cones(&mut self.cones,μ,scaling);
+            let is_scaling_success;
+            timeit!{timers => "scale cones"; {
+                is_scaling_success = self.variables.scale_cones(&mut self.cones,μ,scaling);
+            }}
             // check whether variables are interior points
             match self.strategy_checkpoint_is_scaling_success(is_scaling_success,scaling){
                 StrategyCheckpoint::Fail => {break}
