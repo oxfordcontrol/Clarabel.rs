@@ -153,7 +153,7 @@ where
         lhsz: Option<&mut [T]>,
         settings: &CoreSettings<T>,
     ) -> bool {
-        self.ldlsolver.solve(&mut self.x, &self.b);
+        self.ldlsolver.solve(&self.KKT, &mut self.x, &self.b);
 
         let is_success = {
             if settings.iterative_refinement_enable {
@@ -274,7 +274,7 @@ where
             let lastnorme = norme;
 
             //make a refinement
-            self.ldlsolver.solve(dx, e);
+            self.ldlsolver.solve(K, dx, e);
 
             //prospective solution is x + dx.  Use dx space to
             // hold it for a check before applying to x
