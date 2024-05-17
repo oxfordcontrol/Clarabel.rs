@@ -1,9 +1,7 @@
 mod core;
 pub use self::core::*;
 mod block_concatenate;
-pub use block_concatenate::*;
 mod matrix_math;
-pub use matrix_math::*;
 
 mod blaslike_traits;
 pub(crate) use blaslike_traits::*;

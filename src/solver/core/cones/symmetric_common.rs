@@ -1,4 +1,4 @@
-use crate::algebra::{FloatT, MatrixShape, VectorMath};
+use crate::algebra::{MatrixShape, VectorMath};
 
 use super::*;
 
@@ -15,11 +15,13 @@ pub trait SymmetricCone<T: FloatT>: JordanAlgebra<T> {
     // x = λ \ z
     // Included as a special case since q \ z for general q is difficult
     // to implement for general q i PSD cone and never actually needed.
+    #[allow(dead_code)] //PJG: not currently used anywhere
     fn λ_inv_circ_op(&mut self, x: &mut [T], z: &[T]);
 }
 
 pub trait JordanAlgebra<T: FloatT> {
     fn circ_op(&mut self, x: &mut [T], y: &[T], z: &[T]);
+    #[allow(dead_code)] //PJG: inv_circ_op not needed anywhere.  keep for symmetry
     fn inv_circ_op(&mut self, x: &mut [T], y: &[T], z: &[T]);
 }
 

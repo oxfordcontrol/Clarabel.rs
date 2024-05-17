@@ -1,5 +1,4 @@
 use super::*;
-use crate::algebra::FloatT;
 
 #[cfg(feature = "sdp")]
 use crate::algebra::triangular_number;
