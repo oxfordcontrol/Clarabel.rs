@@ -1,6 +1,4 @@
-// All internal matrix representations in the default
-// solver and math implementations are in standard
-// compressed sparse column format, as is the API.
+use crate::algebra::ShapedMatrix;
 
 /// Matrix shape marker for triangular matrices
 #[derive(PartialEq, Eq, Copy, Clone)]
@@ -55,6 +53,9 @@ impl MatrixShape {
     }
 }
 
+//-------------------------------------
+// Adjoint and Symmetric matrix views
+
 /// Adjoint of a matrix
 #[derive(Debug, Clone, PartialEq)]
 pub struct Adjoint<'a, M> {
@@ -67,13 +68,26 @@ pub struct Symmetric<'a, M> {
     pub src: &'a M,
 }
 
-/// Borrowed data slice reshaped into a matrix.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) struct ReshapedMatrix<'a, T> {
-    /// number of rows
-    pub m: usize,
-    ///number of columns
-    pub n: usize,
-    ///borrowed data
-    pub data: &'a [T],
+impl<'a, M> ShapedMatrix for Adjoint<'a, M>
+where
+    M: ShapedMatrix,
+{
+    fn size(&self) -> (usize, usize) {
+        (self.src.ncols(), self.src.nrows())
+    }
+    fn shape(&self) -> MatrixShape {
+        MatrixShape::T
+    }
+}
+
+impl<'a, M> ShapedMatrix for Symmetric<'a, M>
+where
+    M: ShapedMatrix,
+{
+    fn size(&self) -> (usize, usize) {
+        (self.src.ncols(), self.src.nrows())
+    }
+    fn shape(&self) -> MatrixShape {
+        MatrixShape::N
+    }
 }

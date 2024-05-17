@@ -1,25 +1,24 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{
-    DenseMatrix, FloatT, Matrix, MatrixShape, MatrixTriangle, MultiplySYRK, ShapedMatrix,
-};
+use crate::algebra::*;
 
-impl<T> MultiplySYRK for Matrix<T>
+impl<T> MultiplySYRK<T> for Matrix<T>
 where
     T: FloatT,
 {
-    type T = T;
-
     // implements self = C = αA*A' + βC
-    fn syrk<MATA>(&mut self, A: &MATA, α: T, β: T) -> &Self
+    // The matrix input A can itself be
+    // an Adjoint matrix, in which case the
+    // result amounts to C = αA'*A + βC
+    fn syrk<MATA>(&mut self, A: &MATA, α: T, β: T)
     where
-        MATA: DenseMatrix<T = T>,
+        MATA: DenseMatrix<T>,
     {
         assert!(self.nrows() == A.nrows());
         assert!(self.ncols() == A.nrows());
 
         if self.nrows() == 0 {
-            return self;
+            return;
         }
 
         let uplo = MatrixTriangle::Triu.as_blas_char();
@@ -41,7 +40,6 @@ where
             self.data_mut(),
             ldc,
         );
-        self
     }
 }
 

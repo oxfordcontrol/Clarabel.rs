@@ -331,7 +331,7 @@ where
     //The Julia version implements this using a module scope dictionary,
     //which allows users to register custom solver types.  That seems much
     //harder to do in Rust since a static mutable Hashmap is unsafe.  For
-    //now, we use a fixed lookup table, so any new suppored solver types
+    //now, we use a fixed lookup table, so any new supported solver types
     //supported must be added here.   It should be possible to allow a
     //"custom" LDL solver in the settings in well, whose constructor and
     //and matrix shape could then be registered as some (probably hidden)

@@ -1,11 +1,8 @@
-#![allow(unused)]
 #![allow(non_snake_case)]
 
 use crate::algebra::CscMatrix;
 use core::ops::Deref;
-use pyo3::exceptions::PyTypeError;
-use pyo3::{prelude::*, PyClass};
-use std::{cmp::Ordering, fmt::Write, io};
+use pyo3::prelude::*;
 
 //We can't implement the foreign trait FromPyObject directly on CscMatrix
 //since it is outside the crate, so put a dummy wrapper around it here.
@@ -28,7 +25,6 @@ impl<'a> FromPyObject<'a> for PyCscMatrix {
         let nzval: Vec<f64> = obj.getattr("data")?.extract()?;
         let rowval: Vec<usize> = obj.getattr("indices")?.extract()?;
         let colptr: Vec<usize> = obj.getattr("indptr")?.extract()?;
-        let nnz: usize = obj.getattr("nnz")?.extract()?;
         let shape: Vec<usize> = obj.getattr("shape")?.extract()?;
 
         let mat = CscMatrix::new(shape[0], shape[1], colptr, rowval, nzval);

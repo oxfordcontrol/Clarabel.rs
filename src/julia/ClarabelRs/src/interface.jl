@@ -9,6 +9,10 @@ function Solver(
     cone_types::Vector{<:Clarabel.SupportedCone},
     settings::Clarabel.Settings{Float64}
 ) 
+    # protect against cones with overly specific type, e.g. 
+    # when all of the cones are NonnegativeConeT
+    cone_types = convert(Vector{Clarabel.SupportedCone},cone_types)
+
     s = solver_new_jlrs(P,c,A,b,cone_types,settings)
     return s
 end
@@ -102,8 +106,7 @@ end
 
 function ccall_cones_to_array(cones::Vector{Clarabel.SupportedCone})
 
-    rscones = ConeDataJLRS[]
-    sizehint!(rscones,length(cones))
+    rscones = sizehint!(ConeDataJLRS[],length(cones))
     
     for cone in cones
 

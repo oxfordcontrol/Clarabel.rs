@@ -127,6 +127,20 @@ pub struct DefaultSettings<T: FloatT> {
     // preprocessing
     #[builder(default = "true")]
     pub presolve_enable: bool,
+
+    // chordal decomposition
+    #[cfg(feature = "sdp")]
+    #[builder(default = "true")]
+    pub chordal_decomposition_enable: bool,
+    #[cfg(feature = "sdp")]
+    #[builder(default = r#""clique_graph".to_string()"#)]
+    pub chordal_decomposition_merge_method: String,
+    #[cfg(feature = "sdp")]
+    #[builder(default = "true")]
+    pub chordal_decomposition_compact: bool,
+    #[cfg(feature = "sdp")]
+    #[builder(default = "true")]
+    pub chordal_decomposition_complete_dual: bool,
 }
 
 impl<T> Default for DefaultSettings<T>

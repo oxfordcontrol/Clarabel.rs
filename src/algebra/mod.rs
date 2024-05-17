@@ -11,15 +11,13 @@
 // first import and flatten the solver's collection
 // of core numeric types and matrix / vector traits.
 
-mod adjoint;
 mod error_types;
 mod floats;
 mod math_traits;
 mod matrix_traits;
 mod matrix_types;
-mod reshaped;
 mod scalarmath;
-mod symmetric;
+mod utils;
 mod vecmath;
 pub use error_types::*;
 pub use floats::*;
@@ -27,6 +25,7 @@ pub use math_traits::*;
 pub use matrix_traits::*;
 pub use matrix_types::*;
 pub(crate) use scalarmath::*;
+pub(crate) use utils::*;
 
 // matrix implementations
 mod csc;
@@ -39,6 +38,11 @@ pub(crate) use densesym3x3::*;
 mod dense;
 #[cfg(feature = "sdp")]
 pub use dense::*;
+// sparse vectors implementations (for chordal decomp only)
+#[cfg(feature = "sdp")]
+mod sparsevector;
+#[cfg(feature = "sdp")]
+pub(crate) use sparsevector::*;
 
 //configure tests of internals
 #[cfg(test)]

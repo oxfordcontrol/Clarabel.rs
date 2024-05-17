@@ -18,6 +18,10 @@ pub(crate) mod core;
 pub mod implementations;
 pub(crate) mod utils;
 
+// chordal decomposition only if SDPs are enabled
+#[cfg(feature = "sdp")]
+pub(crate) mod chordal;
+
 //Here we expose only part of the solver internals
 //and rearrange public modules a bit to give a more
 //user friendly API
@@ -34,7 +38,7 @@ pub use crate::solver::core::{IPSolver, SolverStatus};
 pub use crate::solver::core::traits;
 pub use crate::solver::core::CoreSettings;
 
-//If we have implemtations for multple alternative
+//If we had implementations for multple alternative
 //problem formats, they would live here.   Since we
 //only have default, it is exposed at the top level
 //in the use statements directly below instead.
