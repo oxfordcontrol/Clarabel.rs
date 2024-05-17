@@ -722,27 +722,12 @@ fn compute_weights(
 
 // Given two cliques `c_a` and `c_b` return a value for their edge weight.
 
-fn _edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod) -> isize {
+fn edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod) -> isize {
     let n_1 = c_a.len() as isize;
     let n_2 = c_b.len() as isize;
 
     // merged block size
     let n_m = union_dim(c_a, c_b) as isize;
-
-    match edge_weight {
-        EdgeWeightMethod::Cubic => n_1.pow(3) + n_2.pow(3) - n_m.pow(3),
-    }
-}
-
-// PJG: this function appears to give better performance, but deactived
-// since I want to agree with COSMO results for testing
-
-fn edge_metric(c_a: &VertexSet, c_b: &VertexSet, edge_weight: EdgeWeightMethod) -> isize {
-    let n_1 = triangular_number(c_a.len()) as isize;
-    let n_2 = triangular_number(c_b.len()) as isize;
-
-    // merged block size
-    let n_m = triangular_number(union_dim(c_a, c_b)) as isize;
 
     match edge_weight {
         EdgeWeightMethod::Cubic => n_1.pow(3) + n_2.pow(3) - n_m.pow(3),
