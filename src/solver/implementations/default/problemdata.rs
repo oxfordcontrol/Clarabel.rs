@@ -7,6 +7,10 @@ use crate::solver::core::{
     cones::{CompositeCone, Cone},
     traits::ProblemData,
 };
+use crate::solver::SupportedConeT;
+
+#[cfg(feature = "sdp")]
+use crate::solver::chordal::ChordalInfo;
 
 // ---------------
 // Data type for default problem format
@@ -20,6 +24,7 @@ pub struct DefaultProblemData<T> {
     pub q: Vec<T>,
     pub A: CscMatrix<T>,
     pub b: Vec<T>,
+    pub cones: Vec<SupportedConeT<T>>,
     pub n: usize,
     pub m: usize,
     pub equilibration: DefaultEquilibrationData<T>,
@@ -30,7 +35,10 @@ pub struct DefaultProblemData<T> {
     normq: Option<T>,
     normb: Option<T>,
 
-    pub presolver: Presolver<T>,
+    pub(crate) presolver: Option<Presolver<T>>,
+
+    #[cfg(feature = "sdp")]
+    pub(crate) chordal_info: Option<ChordalInfo<T>>,
 }
 
 impl<T> DefaultProblemData<T>
@@ -42,48 +50,93 @@ where
         q: &[T],
         A: &CscMatrix<T>,
         b: &[T],
-        presolver: Presolver<T>,
+        cones: &[SupportedConeT<T>],
+        settings: &DefaultSettings<T>,
     ) -> Self {
-        // dimension checks will have already been
-        // performed during problem setup, so skip here
+        // some caution is required to ensure we take a minimal,
+        // but nonzero, number of data copies during presolve steps
 
-        let P = P.to_triu();
-        let q = q.to_vec();
+        let mut P_new: Option<CscMatrix<T>> = None;
+        #[allow(unused_mut)] // mut q_new only needed with chordal
+        let mut q_new: Option<Vec<T>> = None;
+        let mut A_new: Option<CscMatrix<T>> = None;
+        let mut b_new: Option<Vec<T>> = None;
+        let mut cones_new: Option<Vec<SupportedConeT<T>>> = None;
 
-        let (A, mut b) = {
-            if let Some(map) = presolver.reduce_map.as_ref() {
-                (
-                    A.select_rows(&map.keep_logical),
-                    b.select(&map.keep_logical),
-                )
-            } else {
-                (A.clone(), b.to_vec())
-            }
-        };
+        if !P.is_triu() {
+            P_new = Some(P.to_triu());
+        }
 
-        // cap entries in b at INFINITY.  This is important
-        // for inf values that were not in a reduced cone
-        let infbound = presolver.infbound.as_T();
-        b.scalarop(|x| T::min(x, infbound));
+        // presolve : return nothing if disabled or no reduction
+        // --------------------------------------
+        let presolver = try_presolver(A, b, cones, settings);
 
-        let (m, n) = A.size();
+        if let Some(ref presolver) = presolver {
+            let (_A_new, _b_new, _cones_new) = presolver.presolve(A, b, cones);
+            (A_new, b_new, cones_new) = (Some(_A_new), Some(_b_new), Some(_cones_new));
+        }
+
+        // chordal decomposition : return nothing if disabled or no decomp
+        // --------------------------------------
+        #[cfg(feature = "sdp")]
+        let mut chordal_info = try_chordal_info(A, b, cones, settings);
+        #[cfg(feature = "sdp")]
+        if let Some(ref mut chordal_info) = chordal_info {
+            let (_P_new, _q_new, _A_new, _b_new, _cones_new) = chordal_info.decomp_augment(
+                P_new.as_ref().unwrap_or(P),
+                unwrap_and_slice_or_else(&q_new, || q),
+                A_new.as_ref().unwrap_or(A),
+                unwrap_and_slice_or_else(&b_new, || b),
+                settings,
+            );
+            (P_new, q_new, A_new, b_new, cones_new) = (
+                Some(_P_new),
+                Some(_q_new),
+                Some(_A_new),
+                Some(_b_new),
+                Some(_cones_new),
+            );
+        }
+
+        // now make sure we have a clean copy of everything if we
+        // haven't made one already.   Necessary since we will scale
+        // the internal copy and don't want to step on the user
+
+        let P_new = P_new.unwrap_or_else(|| P.clone());
+        let q_new = q_new.unwrap_or_else(|| q.to_vec());
+        let A_new = A_new.unwrap_or_else(|| A.clone());
+        let mut b_new = b_new.unwrap_or_else(|| b.to_vec());
+        let cones_new = cones_new.unwrap_or_else(|| cones.to_vec());
+
+        //cap entries in b at INFINITY.  This is important
+        //for inf values that were not in a reduced cone
+        //this is not considered part of the "presolve", so
+        //can always happen regardless of user settings
+        let infbound = crate::solver::get_infinity().as_T();
+        b_new.scalarop(|x| T::min(x, infbound));
+
+        // this ensures m is the *reduced* size m
+        let (m, n) = A_new.size();
 
         let equilibration = DefaultEquilibrationData::<T>::new(n, m);
 
-        let normq = Some(q.norm_inf());
-        let normb = Some(b.norm_inf());
+        let normq = Some(q_new.norm_inf());
+        let normb = Some(b_new.norm_inf());
 
         Self {
-            P,
-            q,
-            A,
-            b,
+            P: P_new,
+            q: q_new,
+            A: A_new,
+            b: b_new,
+            cones: cones_new,
             n,
             m,
             equilibration,
             normq,
             normb,
             presolver,
+            #[cfg(feature = "sdp")]
+            chordal_info,
         }
     }
 
@@ -246,4 +299,74 @@ fn scale_data<T: FloatT>(
         }
     }
     b.hadamard(e);
+}
+
+#[cfg(feature = "sdp")]
+fn try_chordal_info<T>(
+    A: &CscMatrix<T>,
+    b: &[T],
+    cones: &[SupportedConeT<T>],
+    settings: &DefaultSettings<T>,
+) -> Option<ChordalInfo<T>>
+where
+    T: FloatT,
+{
+    if !settings.chordal_decomposition_enable {
+        return None;
+    }
+
+    // nothing to do if there are no PSD cones
+    if !cones
+        .iter()
+        .any(|c| matches!(c, SupportedConeT::PSDTriangleConeT(_)))
+    {
+        return None;
+    }
+
+    let chordal_info = ChordalInfo::new(A, b, cones, settings);
+
+    // no decomposition possible
+    if !chordal_info.is_decomposed() {
+        return None;
+    }
+
+    Some(chordal_info)
+}
+
+fn try_presolver<T>(
+    A: &CscMatrix<T>,
+    b: &[T],
+    cones: &[SupportedConeT<T>],
+    settings: &DefaultSettings<T>,
+) -> Option<Presolver<T>>
+where
+    T: FloatT,
+{
+    if !settings.presolve_enable {
+        return None;
+    }
+
+    let presolver = Presolver::new(A, b, cones, settings);
+
+    if !presolver.is_reduced() {
+        return None;
+    }
+
+    Some(presolver)
+}
+
+// -- utility function that tries to unwrap and slice a vector, or return
+// an alternative.   Necessary since the Options for q and b are &Vec, but
+// the user supplied data is a slice &[T]
+
+pub fn unwrap_and_slice_or_else<'a, T, F>(opt: &'a Option<Vec<T>>, f: F) -> &'a [T]
+where
+    F: FnOnce() -> &'a [T],
+    T: FloatT,
+{
+    if opt.is_some() {
+        opt.as_ref().unwrap().as_slice()
+    } else {
+        f()
+    }
 }

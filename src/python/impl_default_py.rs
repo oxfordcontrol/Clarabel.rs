@@ -247,6 +247,16 @@ pub struct PyDefaultSettings {
     // preprocessing
     #[pyo3(get, set)]
     pub presolve_enable: bool,
+
+    //chordal decomposition (python must be built with "sdp" feature)
+    #[pyo3(get, set)]
+    pub chordal_decomposition_enable: bool,
+    #[pyo3(get, set)]
+    pub chordal_decomposition_merge_method: String,
+    #[pyo3(get, set)]
+    pub chordal_decomposition_compact: bool,
+    #[pyo3(get, set)]
+    pub chordal_decomposition_complete_dual: bool,
 }
 
 #[pymethods]
@@ -316,6 +326,10 @@ impl PyDefaultSettings {
             iterative_refinement_max_iter: set.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
             presolve_enable: set.presolve_enable,
+            chordal_decomposition_enable: set.chordal_decomposition_enable,
+            chordal_decomposition_merge_method: set.chordal_decomposition_merge_method.clone(),
+            chordal_decomposition_compact: set.chordal_decomposition_compact,
+            chordal_decomposition_complete_dual: set.chordal_decomposition_complete_dual,
         }
     }
 
@@ -360,6 +374,10 @@ impl PyDefaultSettings {
             iterative_refinement_max_iter: self.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: self.iterative_refinement_stop_ratio,
             presolve_enable: self.presolve_enable,
+            chordal_decomposition_enable: self.chordal_decomposition_enable,
+            chordal_decomposition_merge_method: self.chordal_decomposition_merge_method.clone(),
+            chordal_decomposition_compact: self.chordal_decomposition_compact,
+            chordal_decomposition_complete_dual: self.chordal_decomposition_complete_dual,
         }
     }
 }

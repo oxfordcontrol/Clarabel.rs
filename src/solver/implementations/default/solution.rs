@@ -1,10 +1,10 @@
+#![allow(unused_variables)]
+
 use super::*;
 use crate::{
     algebra::*,
     solver::core::{traits::Solution, SolverStatus},
 };
-use itertools::izip;
-use std::iter::zip;
 
 /// Standard-form solver type implementing the [`Solution`](crate::solver::core::traits::Solution) trait
 #[derive(Debug)]
@@ -25,7 +25,7 @@ impl<T> DefaultSolution<T>
 where
     T: FloatT,
 {
-    pub fn new(m: usize, n: usize) -> Self {
+    pub fn new(n: usize, m: usize) -> Self {
         let x = vec![T::zero(); n];
         let z = vec![T::zero(); m];
         let s = vec![T::zero(); m];
@@ -52,70 +52,54 @@ where
     type D = DefaultProblemData<T>;
     type V = DefaultVariables<T>;
     type I = DefaultInfo<T>;
+    type SE = DefaultSettings<T>;
 
-    fn finalize(
+    fn post_process(
         &mut self,
         data: &DefaultProblemData<T>,
-        variables: &DefaultVariables<T>,
+        variables: &mut DefaultVariables<T>,
         info: &DefaultInfo<T>,
+        settings: &DefaultSettings<T>,
     ) {
         self.status = info.status;
-        self.obj_val = info.cost_primal;
-        self.obj_val_dual = info.cost_dual;
+        let is_infeasible = info.status.is_infeasible();
 
-        // if we have an infeasible problem, normalize
-        // using κ to get an infeasibility certificate.
-        // Otherwise use τ to get a solution.
-        let scaleinv;
-        if info.status.is_infeasible() {
-            scaleinv = T::recip(variables.κ);
+        if is_infeasible {
             self.obj_val = T::nan();
             self.obj_val_dual = T::nan();
         } else {
-            scaleinv = T::recip(variables.τ);
-        }
-
-        // also undo the equilibration
-        let d = &data.equilibration.d;
-        let (e, einv) = (&data.equilibration.e, &data.equilibration.einv);
-        let cscale = data.equilibration.c;
-
-        self.x.copy_from(&variables.x).hadamard(d).scale(scaleinv);
-
-        if let Some(map) = data.presolver.reduce_map.as_ref() {
-            //
-
-            for (&zi, &si, &ei, &einvi, &mapi) in
-                izip!(&variables.z, &variables.s, e, einv, &map.keep_index)
-            {
-                self.z[mapi] = zi * ei * (scaleinv / cscale);
-                self.s[mapi] = si * einvi * scaleinv;
-            }
-
-            // eliminated constraints get huge slacks
-            // and are assumed to be nonbinding
-            let infbound = data.presolver.infbound.as_T();
-            let sz = zip(&mut self.s, &mut self.z);
-            zip(sz, &map.keep_logical).for_each(|((si, zi), b)| {
-                if !b {
-                    *si = infbound;
-                    *zi = T::zero();
-                }
-            });
-        } else {
-            self.z
-                .copy_from(&variables.z)
-                .hadamard(e)
-                .scale(scaleinv / cscale);
-            self.s
-                .copy_from(&variables.s)
-                .hadamard(einv)
-                .scale(scaleinv);
+            self.obj_val = info.cost_primal;
+            self.obj_val_dual = info.cost_dual;
         }
 
         self.iterations = info.iterations;
-        self.solve_time = info.solve_time;
         self.r_prim = info.res_primal;
         self.r_dual = info.res_dual;
+
+        // unscale the variables to get a solution
+        // to the internal problem as we solved it
+        variables.unscale(data, is_infeasible);
+
+        // unwind the chordal decomp and presolve, in the
+        // reverse of the order in which they were applied
+        #[cfg(feature = "sdp")]
+        let tmp = data
+            .chordal_info
+            .as_ref()
+            .map(|chordal_info| chordal_info.decomp_reverse(variables, &data.cones, settings));
+        #[cfg(feature = "sdp")]
+        let variables = tmp.as_ref().unwrap_or(variables);
+
+        if let Some(ref presolver) = data.presolver {
+            presolver.reverse_presolve(self, variables);
+        } else {
+            self.x.copy_from(&variables.x);
+            self.z.copy_from(&variables.z);
+            self.s.copy_from(&variables.s);
+        }
+    }
+
+    fn finalize(&mut self, info: &DefaultInfo<T>) {
+        self.solve_time = info.solve_time;
     }
 }

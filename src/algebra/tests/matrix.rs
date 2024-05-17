@@ -139,6 +139,22 @@ fn test_check_format() {
 }
 
 #[test]
+fn test_row_sums() {
+    let A = test_matrix_3x4();
+    let mut v = vec![0.0; 3];
+    A.row_sums(&mut v);
+    assert_eq!(v, vec![-2., 10., -9.]);
+}
+
+#[test]
+fn test_col_sums() {
+    let A = test_matrix_3x4();
+    let mut v = vec![0.0; 4];
+    A.col_sums(&mut v);
+    assert_eq!(v, vec![2., -21., 13., 5.]);
+}
+
+#[test]
 fn test_col_norms() {
     let A = test_matrix_3x4();
     let mut v = vec![0., -30., 12., 4.]; //big values should be ignored

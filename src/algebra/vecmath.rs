@@ -2,8 +2,7 @@ use super::{FloatT, ScalarMath, VectorMath};
 use itertools::izip;
 use std::iter::zip;
 
-impl<T: FloatT> VectorMath for [T] {
-    type T = T;
+impl<T: FloatT> VectorMath<T> for [T] {
     fn copy_from(&mut self, src: &[T]) -> &mut Self {
         self.copy_from_slice(src);
         self
@@ -143,13 +142,13 @@ impl<T: FloatT> VectorMath for [T] {
     }
 
     //inf-norm of elementwise product self.*v
-    fn norm_inf_scaled(&self, v: &Self) -> Self::T {
+    fn norm_inf_scaled(&self, v: &Self) -> T {
         assert_eq!(self.len(), v.len());
         zip(self, v).fold(T::zero(), |acc, (&x, &y)| T::max(acc, T::abs(x * y)))
     }
 
     //
-    fn norm_one_scaled(&self, v: &Self) -> Self::T {
+    fn norm_one_scaled(&self, v: &Self) -> T {
         zip(self, v).fold(T::zero(), |acc, (&x, &y)| acc + T::abs(x * y))
     }
 

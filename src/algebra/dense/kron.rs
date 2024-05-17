@@ -1,14 +1,15 @@
 #![allow(non_snake_case)]
-use crate::algebra::{DenseMatrix, FloatT, Matrix, ShapedMatrix};
+use crate::algebra::*;
 
 impl<T> Matrix<T>
 where
     T: FloatT,
 {
-    pub(crate) fn kron<MATA, MATB>(&mut self, A: &MATA, B: &MATB) -> &Self
+    #[allow(dead_code)]
+    pub(crate) fn kron<MATA, MATB>(&mut self, A: &MATA, B: &MATB)
     where
-        MATB: DenseMatrix<T = T, Output = T>,
-        MATA: DenseMatrix<T = T, Output = T>,
+        MATA: DenseMatrix<T>,
+        MATB: DenseMatrix<T>,
     {
         let (pp, qq) = A.size();
         let (rr, ss) = B.size();
@@ -21,13 +22,12 @@ where
                 for p in 0..pp {
                     let Apq = A[(p, q)];
                     for r in 0..rr {
-                        self.data_mut()[i] = Apq * B[(r, s)];
+                        self.data_mut()[i] = (Apq) * B[(r, s)];
                         i += 1;
                     }
                 }
             }
         }
-        self
     }
 }
 

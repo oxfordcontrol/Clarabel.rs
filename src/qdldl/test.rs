@@ -69,28 +69,28 @@ fn test_solve_from_factors() {
     //[2.0  1.0    ⋅    ⋅ ]
     //[ ⋅   7.0  -3.0   ⋅ ]
 
-    let Lp = vec![0, 2, 4, 5, 5];
-    let Li = vec![1, 2, 2, 3, 3];
-    let Lx = vec![1., 2., 1., 7., -3.];
-    let _d = vec![4., -1., -2., 1.];
+    let Lp = [0, 2, 4, 5, 5];
+    let Li = [1, 2, 2, 3, 3];
+    let Lx = [1., 2., 1., 7., -3.];
+    let _d = [4., -1., -2., 1.];
     let dinv = [0.25, -1.0, -0.5, 1.0];
-    let x = vec![-3., 2., 1., 4.];
+    let x = [-3., 2., 1., 4.];
 
     //(I+L)x = b.  Back solve on b in place.
-    let mut b = vec![-3., -1., -3., 15.];
+    let mut b = [-3., -1., -3., 15.];
     _lsolve_unsafe(&Lp, &Li, &Lx, &mut b);
     assert_eq!(b, x);
 
-    let mut b = vec![-3., -1., -3., 15.];
+    let mut b = [-3., -1., -3., 15.];
     _lsolve_safe(&Lp, &Li, &Lx, &mut b);
     assert_eq!(b, x);
 
     //(I+L')x = b.  Back solve on b in place.
-    let mut b = vec![1., 31., -11., 4.];
+    let mut b = [1., 31., -11., 4.];
     _ltsolve_unsafe(&Lp, &Li, &Lx, &mut b);
     assert_eq!(b, x);
 
-    let mut b = vec![1., 31., -11., 4.];
+    let mut b = [1., 31., -11., 4.];
     _ltsolve_safe(&Lp, &Li, &Lx, &mut b);
     assert_eq!(b, x);
 

@@ -1,7 +1,10 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{Adjoint, FloatT, MatrixShape, ShapedMatrix, SparseFormatError, Symmetric};
-use std::iter::zip;
+use crate::algebra::permute;
+use crate::algebra::utils::sortperm_by;
+use crate::algebra::{Adjoint, MatrixShape, ShapedMatrix, SparseFormatError, Symmetric};
+use num_traits::Num;
+use std::iter::{repeat, zip};
 
 /// Sparse matrix in standard Compressed Sparse Column (CSC) format
 ///
@@ -67,7 +70,7 @@ impl<'a, I, J, T> From<I> for CscMatrix<T>
 where
     I: IntoIterator<Item = J>,
     J: IntoIterator<Item = &'a T>,
-    T: FloatT,
+    T: Num + Copy + 'a,
 {
     #[allow(clippy::needless_range_loop)]
     fn from(rows: I) -> CscMatrix<T> {
@@ -80,7 +83,7 @@ where
         let n = rows.iter().map(|r| r.len()).next().unwrap_or(0);
 
         assert!(rows.iter().all(|r| r.len() == n));
-        let nnz = rows.iter().flatten().filter(|&&v| v != T::zero()).count();
+        let nnz = rows.iter().flatten().filter(|&v| *v != T::zero()).count();
 
         let mut colptr = Vec::with_capacity(n + 1);
         let mut rowval = Vec::with_capacity(nnz);
@@ -110,7 +113,7 @@ where
 
 impl<T> CscMatrix<T>
 where
-    T: FloatT,
+    T: Num + Copy,
 {
     /// `CscMatrix` constructor.
     ///
@@ -134,6 +137,72 @@ where
             rowval,
             nzval,
         }
+    }
+
+    /// `CscMatrix` constructor from data in triplet format.
+    ///
+    /// # Panics
+    /// Makes rudimentary dimensional compatibility checks and panics on
+    /// failure.   Data can be provided unsorted.   Repeated values are added.
+    ///
+
+    pub fn new_from_triplets(m: usize, n: usize, I: Vec<usize>, J: Vec<usize>, V: Vec<T>) -> Self {
+        assert_eq!(I.len(), J.len());
+        assert_eq!(I.len(), V.len());
+
+        let mut M = CscMatrix::spalloc((m, n), V.len());
+
+        let mut p = vec![0; V.len()];
+
+        // use M.rowptr as temporary workspace
+        M.rowval.iter_mut().enumerate().for_each(|(i, p)| *p = i);
+
+        // sort by column, then by row
+        sortperm_by(&mut p, &M.rowval, |&a, &b| {
+            J[a].cmp(&J[b]).then(I[a].cmp(&I[b]))
+        });
+
+        // map data into the matrix in sorted order
+        permute(&mut M.rowval, &I, &p);
+        permute(&mut M.nzval, &V, &p);
+
+        // assemble the column counts
+        for &c in J.iter() {
+            M.colptr[c] += 1;
+        }
+
+        // make a second pass to consolidate repeated entries
+        // within each column
+        let mut readidx = 0;
+        let mut writeidx = 0;
+
+        for col in 0..n {
+            let nentries = M.colptr[col]; //entries in this column
+            for j in 0..nentries {
+                // non-repeated or first entry in column
+                if j == 0 || M.rowval[readidx] != M.rowval[readidx - 1] {
+                    if writeidx != readidx {
+                        M.rowval[writeidx] = M.rowval[readidx];
+                        M.nzval[writeidx] = M.nzval[readidx];
+                    }
+                    writeidx += 1;
+                    readidx += 1;
+                }
+                // repeated row entry with value to be consolidated
+                else {
+                    M.nzval[writeidx - 1] = M.nzval[writeidx - 1] + M.nzval[readidx];
+                    M.colptr[col] -= 1;
+                    readidx += 1;
+                }
+            }
+        }
+
+        M.rowval.resize(writeidx, 0);
+        M.nzval.resize(writeidx, T::zero());
+
+        M.colcount_to_colptr();
+
+        M
     }
 
     /// allocate space for a sparse matrix with `nnz` elements
@@ -160,6 +229,57 @@ where
         let nzval = vec![T::one(); n];
 
         CscMatrix::new(n, n, colptr, rowval, nzval)
+    }
+
+    /// squeeze out entries that are == T::zero()
+    pub fn dropzeros(&mut self) {
+        // this function could possibly be generalized to allow filtering
+        // on a more general test, similar to fkeep! in Julia sparse matrix
+        // internals.  Then could be used as a filter for triu matrix etc
+
+        // Sweep through columns, rewriting kept elements in their new positions
+        // and updating the column pointers accordingly as we go.
+        let mut writeidx: usize = 0;
+        let mut first: usize = 0;
+
+        for col in 0..self.ncols() {
+            let last = self.colptr[col + 1];
+
+            for readidx in first..last {
+                let val = self.nzval[readidx];
+                let row = self.rowval[readidx];
+
+                // If nonzero and a shift so far, move the value
+                if val != T::zero() {
+                    if writeidx != readidx {
+                        self.nzval[writeidx] = val;
+                        self.rowval[writeidx] = row;
+                    }
+                    writeidx += 1;
+                }
+            }
+
+            first = self.colptr[col + 1];
+            self.colptr[col + 1] = writeidx;
+        }
+
+        self.rowval.resize(writeidx, 0);
+        self.nzval.resize(writeidx, T::zero());
+    }
+
+    /// Return matrix data in triplet format.
+    ///
+    #[cfg_attr(not(sdp), allow(dead_code))]
+    pub(crate) fn findnz(&self) -> (Vec<usize>, Vec<usize>, Vec<T>) {
+        let I = self.rowval.clone();
+        let mut J = Vec::with_capacity(self.nnz());
+        let V = self.nzval.clone();
+
+        for c in 0..self.ncols() {
+            let times = self.colptr[c + 1] - self.colptr[c];
+            J.extend(repeat(c).take(times));
+        }
+        (I, J, V)
     }
 
     /// number of nonzeros
@@ -357,6 +477,42 @@ where
         }
     }
 
+    /// Sets a value at a given (row,col) index, allocating
+    /// additional space in the matrix if required.  
+    ///
+    /// # Panics
+    /// Panics if the given index is out of bounds.
+    pub fn set_entry(&mut self, idx: (usize, usize), value: T) {
+        let (row, col) = idx;
+        assert!(row < self.nrows() && col < self.ncols());
+
+        let first = self.colptr[col];
+        let last = self.colptr[col + 1];
+        let rows_in_this_column = &self.rowval[first..last];
+
+        let i = rows_in_this_column.partition_point(|&x| x < row);
+
+        if i == rows_in_this_column.len() || rows_in_this_column[i] != row {
+            // don't allocate space for insertion of new zeros
+            if value == T::zero() {
+                return;
+            }
+
+            // the element must be inserted, then col counts rebuilt
+            self.rowval.insert(first + i, row);
+            self.nzval.insert(first + i, value);
+
+            // a bit wasteful since we only really need to
+            // rebuil from the insertion point onwards
+            self.colptr_to_colcount();
+            self.colptr[col] += 1;
+            self.colcount_to_colptr();
+        } else {
+            // the element already exists, so overwrite it
+            self.nzval[first + i] = value;
+        }
+    }
+
     /// Returns the (row,col) coordinates of the given linear index.
     ///
     /// # Panics
@@ -414,7 +570,7 @@ impl<T> ShapedMatrix for CscMatrix<T> {
 /// ```
 impl<'a, T> From<Adjoint<'a, CscMatrix<T>>> for CscMatrix<T>
 where
-    T: FloatT,
+    T: Num + Copy,
 {
     fn from(M: Adjoint<'a, CscMatrix<T>>) -> CscMatrix<T> {
         let src = M.src;
@@ -491,6 +647,35 @@ fn test_csc_get_entry() {
 }
 
 #[test]
+fn test_csc_set_entry() {
+    let mut A = CscMatrix::from(&[
+        [0.0, 3.0, 6.0, 0.0],
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 4.0, 7.0, 8.0],
+        [2.0, 5.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0],
+    ]);
+
+    let B = CscMatrix::from(&[
+        [0.0, 3.0, -6.0, 0.0],
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 4.0, 7.0, -8.0],
+        [2.0, 5.0, 10.0, 0.0],
+        [0.0, 0.0, 0.0, 11.0],
+    ]);
+
+    // overwrite existing entries
+    A.set_entry((0, 2), -6.0);
+    A.set_entry((2, 3), -8.0);
+
+    // add new entries
+    A.set_entry((3, 2), 10.0);
+    A.set_entry((4, 3), 11.0);
+
+    assert_eq!(A, B);
+}
+
+#[test]
 fn test_csc_index_to_coord() {
     let A = CscMatrix::from(&[
         [0.0, 4.0, 0.0, 0.0, 12.0],
@@ -536,4 +721,84 @@ fn test_adjoint_into() {
     let B: CscMatrix = A.t().into(); //Concrete form.  Allocates and copies.
 
     assert_eq!(B, T);
+}
+
+#[test]
+fn test_triplets() {
+    let A: CscMatrix = (&[
+        [1., 0., 0., 5.], //
+        [0., 0., 3., 0.], //
+        [2., 0., 4., 0.],
+    ])
+        .into();
+
+    let cols = vec![0, 0, 2, 2, 3];
+    let rows = vec![0, 2, 1, 2, 0];
+    let vals = vec![1., 2., 3., 4., 5.];
+
+    // extract triplet format data and compare
+    let (I, J, V) = A.findnz();
+    assert_eq!(I, rows);
+    assert_eq!(J, cols);
+    assert_eq!(V, vals);
+
+    // construct from triplets and compare
+    let B: CscMatrix = CscMatrix::new_from_triplets(3, 4, rows, cols, vals);
+    assert_eq!(A, B);
+
+    // same thing, but with data in the wrong order
+    let cols = vec![2, 0, 2, 0, 3];
+    let rows = vec![2, 2, 1, 0, 0];
+    let vals = vec![4., 2., 3., 1., 5.];
+
+    let B: CscMatrix = CscMatrix::new_from_triplets(3, 4, rows, cols, vals);
+
+    assert_eq!(A, B);
+
+    // case with repeated entries, unsorted
+
+    let A: CscMatrix<isize> = (&[
+        [0, 0, 0],   //
+        [-20, 0, 0], //
+        [-20, -20, 0],
+    ])
+        .into();
+
+    let rows = vec![1, 2, 2, 1, 2, 2];
+    let cols = vec![0, 0, 1, 0, 0, 1];
+    let vals = vec![-10, -10, -10, -10, -10, -10];
+
+    let B = CscMatrix::new_from_triplets(3, 3, rows, cols, vals);
+    assert_eq!(A, B);
+}
+
+#[test]
+fn test_drop_zeros() {
+    let mut A = CscMatrix::from(&[
+        [0.0, 3.0, 6.0, 0.0],
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 4.0, 7.0, 8.0],
+        [2.0, 5.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0],
+    ]);
+
+    // same, but with 2,6,7,8 set to zero
+    let B = CscMatrix::from(&[
+        [0.0, 3.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 4.0, 0.0, 0.0],
+        [0.0, 5.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0],
+    ]);
+
+    // overwrite existing entries
+    let dropped = [2, 6, 7, 8];
+    for idx in dropped {
+        A.nzval[idx - 1] = 0.0;
+    }
+
+    //squeeze out the zeros
+    A.dropzeros();
+
+    assert_eq!(A, B);
 }

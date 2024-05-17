@@ -15,13 +15,11 @@ cfg_if::cfg_if! {
     }
 }
 
-
-
-
 pub trait BlasFloatT: 
     private::BlasFloatSealed 
     + XsyevrScalar 
     + XpotrfScalar 
+    + XpotrsScalar 
     + XgesddScalar 
     + XgesvdScalar 
     + XgemmScalar 
@@ -29,6 +27,7 @@ pub trait BlasFloatT:
     + XsymvScalar 
     + XsyrkScalar
     + Xsyr2kScalar
+    + XgesvScalar
 {}
 
 cfg_if::cfg_if! {
@@ -100,8 +99,14 @@ pub trait XpotrfScalar: Sized {
     );
 }
 
-macro_rules! impl_blas_xpotrf{
-    ($T:ty, $XPOTRF:path) => {
+pub trait XpotrsScalar: Sized {
+    fn xpotrs(
+        uplo: u8, n: i32, nrhs: i32, a: &[Self], lda: i32,  b: &mut [Self], ldb: i32, info: &mut i32
+    );
+}
+
+macro_rules! impl_blas_xpotrfs{
+    ($T:ty, $XPOTRF:path, $XPOTRS:path) => {
         impl XpotrfScalar for $T {
             fn xpotrf(
                 uplo: u8, n: i32, a: &mut [Self], lda: i32, info: &mut i32
@@ -113,16 +118,27 @@ macro_rules! impl_blas_xpotrf{
                 }
             }
         }
+        impl XpotrsScalar for $T {
+            fn xpotrs(
+                uplo: u8, n: i32, nrhs: i32, a: &[Self], lda: i32, b: &mut [Self], ldb: i32, info: &mut i32
+            ) {
+                unsafe{
+                    $XPOTRS(
+                        uplo, n, nrhs, a, lda, b, ldb, info
+                    );
+                }
+            }
+        }
     };
 }
 
 cfg_if::cfg_if! {
   if #[cfg(not(feature="sdp-r"))] {
       // R blas/lapack only provides double precision routines
-      impl_blas_xpotrf!(f32, spotrf);      
+      impl_blas_xpotrfs!(f32, spotrf, spotrs);      
   }
 }
-impl_blas_xpotrf!(f64, dpotrf);
+impl_blas_xpotrfs!(f64, dpotrf, dpotrs);
 
 
 // --------------------------------------
@@ -390,3 +406,40 @@ cfg_if::cfg_if! {
   }
 }
 impl_blas_gsyr2k!(f64, dsyr2k);
+
+
+// --------------------------------------
+// ?gesv : Generalized (LU) linear solve, multiple right hand side
+// --------------------------------------
+
+pub trait XgesvScalar: Sized {
+    fn xgesv(
+        n: i32, nrhs: i32, a: &mut [Self], lda: i32, ipiv: &mut [i32], 
+                b: &mut [Self], ldb: i32, info:&mut i32,
+    );
+}
+
+macro_rules! impl_blas_xgesv{
+    ($T:ty, $XGESV:path) => {
+        impl XgesvScalar for $T {
+            fn xgesv(
+                n: i32, nrhs: i32, a: &mut [Self], lda: i32, ipiv: &mut [i32], 
+                b: &mut [Self], ldb: i32, info:&mut i32,
+            ) {
+                unsafe{
+                    $XGESV(
+                        n, nrhs, a, lda, ipiv, b, ldb, info,
+                    );
+                }
+            }
+        }
+    };
+}
+
+cfg_if::cfg_if! {
+  if #[cfg(not(feature="sdp-r"))] {
+      // R blas/lapack only provides double precision routines
+      impl_blas_xgesv!(f32, sgesv);
+  }
+}
+impl_blas_xgesv!(f64, dgesv);

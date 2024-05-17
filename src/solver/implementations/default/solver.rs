@@ -30,11 +30,11 @@ where
         q: &[T],
         A: &CscMatrix<T>,
         b: &[T],
-        cone_specs: &[SupportedConeT<T>],
+        cones: &[SupportedConeT<T>],
         settings: DefaultSettings<T>,
     ) -> Self {
         //sanity check problem dimensions
-        _check_dimensions(P, q, A, b, cone_specs);
+        _check_dimensions(P, q, A, b, cones);
 
         let mut timers = Timers::default();
         let mut output;
@@ -42,14 +42,18 @@ where
 
         timeit! {timers => "setup"; {
 
-        // reduce the cone sizes.  (A,b) will be reduced
-        // within the problem data constructor.  Also makes
-        // an internal copy of the user cone specification
-        let presolver = Presolver::<T>::new(A,b,cone_specs,&settings);
+        // user facing results go here.
+        let solution = DefaultSolution::<T>::new(A.n, A.m);
 
-        let cones = CompositeCone::<T>::new(&presolver.cone_specs);
-        let mut data = DefaultProblemData::<T>::new(P,q,A,b,presolver);
+        // presolve / chordal decomposition if needed,
+        // then take an internal copy of the problem data
+        let mut data;
+        timeit!{timers => "presolve"; {
+            data = DefaultProblemData::<T>::new(P,q,A,b,cones,&settings);
+        }}
 
+        let cones = CompositeCone::<T>::new(&data.cones);
+        assert_eq!(cones.numel, data.m);
         let variables = DefaultVariables::<T>::new(data.n,data.m);
         let residuals = DefaultResiduals::<T>::new(data.n,data.m);
 
@@ -69,9 +73,6 @@ where
         let step_rhs  = DefaultVariables::<T>::new(data.n,data.m);
         let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
         let prev_vars = DefaultVariables::<T>::new(data.n,data.m);
-
-        // user facing results go here.
-        let solution = DefaultSolution::<T>::new(data.presolver.mfull,data.n);
 
         output = Self{data,variables,residuals,kktsystem,step_lhs,
              step_rhs,prev_vars,info,solution,cones,settings,timers: None};
