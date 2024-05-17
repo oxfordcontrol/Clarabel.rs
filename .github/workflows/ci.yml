@@ -16,7 +16,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose --features sdp-accelerate
       
@@ -31,7 +31,7 @@ jobs:
         cargo tarpaulin --out xml --features sdp-accelerate --exclude-files "src/python/*,src/julia/*"
 
     - name: Upload to codecov.io
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         token: ${{secrets.CODECOV_TOKEN}}
 

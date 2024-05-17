@@ -15,6 +15,16 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 
 - Fix to output printing when Python version is run within a Jupyter notebook / Google Colab.  Fixes [#60].
 
+## [0.7.1] - 2024-29-02
+### Changed 
+
+- Fixes a panic / crash condition in PSD scaling step [#78](https://github.com/oxfordcontrol/Clarabel.rs/pull/78)
+
+### Rust specific changes
+
+- Fix to output printing when Python version is run within a Jupyter notebook / Google Colab.  Fixes [#60](https://github.com/oxfordcontrol/Clarabel.rs/issues/60).
+
+
 ## [0.7.0] - 2024-26-02
 ### Changed 
 
