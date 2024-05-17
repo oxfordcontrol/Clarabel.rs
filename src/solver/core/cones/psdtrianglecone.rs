@@ -476,24 +476,27 @@ where
         for k in 0..=l {
             let mut row = 0;
             let kl_eq = k == l;
+
             for j in 0..n {
                 let Ajl = A[(j, l)];
                 let Ajk = A[(j, k)];
+
                 for i in 0..=j {
                     if row > col {
                         break;
                     }
+
                     let ij_eq = i == j;
-                    if !(ij_eq || kl_eq) {
-                        out[(row, col)] = A[(i, k)] * Ajl + A[(i, l)] * Ajk;
-                    } else if ij_eq && kl_eq {
-                        out[(row, col)] = Ajl * Ajl;
-                    } else if ij_eq {
-                        out[(row, col)] = sqrt2 * Ajl * Ajk;
-                    } else {
-                        // kl_eq
-                        out[(row, col)] = sqrt2 * A[(i, l)] * Ajk;
-                    }
+
+                    out[(row, col)] = {
+                        match (ij_eq, kl_eq) {
+                            (false, false) => A[(i, k)] * Ajl + A[(i, l)] * Ajk,
+                            (true, false) => sqrt2 * Ajl * Ajk,
+                            (false, true) => sqrt2 * A[(i, l)] * Ajk,
+                            (true, true) => Ajl * Ajl,
+                        }
+                    };
+
                     row += 1;
                 }
             }
