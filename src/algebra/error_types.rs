@@ -1,7 +1,14 @@
 use thiserror::Error;
 
-/// Error type returned by sparse matrix user input checkers, e.g. [`check_format`](crate::algebra::CscMatrix::check_format) utility.
+/// Error type returned by matrix concatenation operations.
 #[derive(Error, Debug)]
+pub enum MatrixConcatenationError {
+    #[error("Incompatible dimensions")]
+    IncompatibleDimension,
+}
+
+#[derive(Error, Debug)]
+/// Error type returned by sparse matrix assembly operations.
 pub enum SparseFormatError {
     #[error("Matrix dimension fields and/or array lengths are incompatible")]
     IncompatibleDimension,
@@ -17,8 +24,10 @@ pub enum SparseFormatError {
 
 /// Error type returned by BLAS-like dense factorization routines.  Errors
 /// return the internal BLAS error codes.
+#[allow(clippy::upper_case_acronyms)]
+#[allow(dead_code)]
 #[derive(Error, Debug)]
-pub enum DenseFactorizationError {
+pub(crate) enum DenseFactorizationError {
     #[error("Matrix dimension fields and/or array lengths are incompatible")]
     IncompatibleDimension,
     #[error("Eigendecomposition error")]
@@ -27,4 +36,6 @@ pub enum DenseFactorizationError {
     SVD(i32),
     #[error("Cholesky error")]
     Cholesky(i32),
+    #[error("LU error")]
+    LU(i32),
 }

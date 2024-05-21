@@ -10,10 +10,14 @@ impl PyLapackPointers {
                 ssyevr_: get_ptr!(api, "ssyevr"),
                 dpotrf_: get_ptr!(api, "dpotrf"),
                 spotrf_: get_ptr!(api, "spotrf"),
+                dpotrs_: get_ptr!(api, "dpotrs"),
+                spotrs_: get_ptr!(api, "spotrs"),
                 dgesdd_: get_ptr!(api, "dgesdd"),
                 sgesdd_: get_ptr!(api, "sgesdd"),
                 dgesvd_: get_ptr!(api, "dgesvd"),
                 sgesvd_: get_ptr!(api, "sgesvd"),
+                dgesv_: get_ptr!(api, "dgesv"),
+                sgesv_: get_ptr!(api, "sgesv"),
             };
             Ok(ptrs)
         }

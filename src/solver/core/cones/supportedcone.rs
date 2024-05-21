@@ -1,5 +1,4 @@
 use super::*;
-use crate::algebra::FloatT;
 
 #[cfg(feature = "sdp")]
 use crate::algebra::triangular_number;
@@ -192,5 +191,66 @@ impl SupportedConeTag {
             SupportedConeTag::PSDTriangleCone => "PSDTriangleCone",
             SupportedConeTag::GenPowerCone => "GenPowerCone",
         }
+    }
+}
+
+// ----------------------------------------------
+// Iterator for the range of indices of the cone
+
+//PJG: type names are not satisfactory.   Try to combine
+//with the internal cone generators.
+
+#[cfg_attr(not(sdp), allow(dead_code))]
+pub(crate) struct RangeSupportedConesIterator<'a, T> {
+    cones: &'a [SupportedConeT<T>],
+    index: usize,
+    start: usize,
+}
+
+#[cfg_attr(not(sdp), allow(dead_code))]
+impl<'a, T> Iterator for RangeSupportedConesIterator<'a, T> {
+    type Item = std::ops::Range<usize>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index < self.cones.len() {
+            let cone = &self.cones[self.index];
+            let stop = self.start + cone.nvars();
+            let range = self.start..stop;
+            self.index += 1;
+            self.start = stop;
+            Some(range)
+        } else {
+            None
+        }
+    }
+}
+#[cfg_attr(not(sdp), allow(dead_code))]
+pub(crate) trait ConeRanges<'a, T> {
+    fn rng_cones_iter(&'a self) -> RangeSupportedConesIterator<'a, T>;
+}
+
+#[cfg_attr(not(sdp), allow(dead_code))]
+impl<'a, T> ConeRanges<'a, T> for [SupportedConeT<T>] {
+    fn rng_cones_iter(&'a self) -> RangeSupportedConesIterator<'a, T> {
+        RangeSupportedConesIterator::<'a, T> {
+            cones: self,
+            index: 0,
+            start: 0,
+        }
+    }
+}
+
+#[test]
+fn test_cone_ranges() {
+    let cones = [
+        SupportedConeT::NonnegativeConeT::<f64>(3),
+        SupportedConeT::NonnegativeConeT::<f64>(0),
+        SupportedConeT::SecondOrderConeT::<f64>(4),
+    ];
+
+    let rngs: Vec<std::ops::Range<usize>> = vec![0..3, 3..3, 3..7];
+
+    for (rng, conerng) in std::iter::zip(rngs.iter(), cones.rng_cones_iter()) {
+        assert_eq!(*rng, conerng);
     }
 }

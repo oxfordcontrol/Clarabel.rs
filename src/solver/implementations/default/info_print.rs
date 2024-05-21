@@ -1,3 +1,6 @@
+#[cfg(feature = "sdp")]
+use crate::solver::chordal::ChordalInfo;
+
 use crate::stdio;
 use crate::{
     algebra::*,
@@ -37,16 +40,22 @@ where
         cones: &CompositeCone<T>,
     ) -> std::io::Result<()> {
         if !settings.verbose {
-            return std::io::Result::Ok(())
+            return std::io::Result::Ok(());
         }
 
         let mut out = stdio::stdout();
 
-        if data.presolver.is_reduced() {
-            writeln!(out, 
+        if let Some(ref presolver) = data.presolver {
+            writeln!(
+                out,
                 "\npresolve: removed {} constraints",
-                data.presolver.count_reduced()
+                presolver.count_reduced()
             )?;
+        }
+
+        #[cfg(feature = "sdp")]
+        if let Some(ref chordal_info) = data.chordal_info {
+            print_chordal_decomposition(chordal_info, settings)?;
         }
 
         writeln!(out, "\nproblem:")?;
@@ -66,16 +75,16 @@ where
         #[cfg(feature = "sdp")]
         _print_conedims_by_type(cones, SupportedConeTag::PSDTriangleCone)?;
 
-        writeln!(out, )?;
+        writeln!(out,)?;
         _print_settings(settings)?;
-        writeln!(out, )?;
+        writeln!(out,)?;
 
         std::io::Result::Ok(())
     }
 
     fn print_status_header(&self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
         if !settings.verbose {
-            return std::io::Result::Ok(())
+            return std::io::Result::Ok(());
         }
 
         let mut out = stdio::stdout();
@@ -90,8 +99,8 @@ where
         write!(out, "k/t       ")?;
         write!(out, " μ       ")?;
         write!(out, "step      ")?;
-        writeln!(out, )?;
-        writeln!(out, 
+        writeln!(out,)?;
+        writeln!(out,
             "---------------------------------------------------------------------------------------------"
         )?;
         stdio::stdout().flush()?;
@@ -121,7 +130,7 @@ where
             write!(out, " ------   ")?; //info.step_length
         }
 
-        writeln!(out, )?;
+        writeln!(out,)?;
 
         std::io::Result::Ok(())
     }
@@ -133,13 +142,14 @@ where
 
         let mut out = stdio::stdout();
 
-        writeln!(out, 
+        writeln!(out,
             "---------------------------------------------------------------------------------------------"
         )?;
 
         writeln!(out, "Terminated with status = {}", self.status)?;
 
-        writeln!(out, 
+        writeln!(
+            out,
             "solve time = {:?}",
             Duration::from_secs_f64(self.solve_time)
         )?;
@@ -155,14 +165,15 @@ fn _bool_on_off(v: bool) -> &'static str {
     }
 }
 
-fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<()>{
+fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<()> {
     let set = settings;
     let mut out = stdio::stdout();
 
     writeln!(out, "settings:")?;
 
     if set.direct_kkt_solver {
-        writeln!(out, 
+        writeln!(
+            out,
             "  linear algebra: direct / {}, precision: {} bit",
             set.direct_solve_method,
             _get_precision_string::<T>()
@@ -176,50 +187,109 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<
             format!("{:?}", set.time_limit)
         }
     };
-    writeln!(out, 
+    writeln!(
+        out,
         "  max iter = {}, time limit = {},  max step = {:.3}",
         set.max_iter, time_lim_str, set.max_step_fraction
     )?;
 
-    writeln!(out, 
+    writeln!(
+        out,
         "  tol_feas = {:.1e}, tol_gap_abs = {:.1e}, tol_gap_rel = {:.1e},",
         set.tol_feas, set.tol_gap_abs, set.tol_gap_rel
     )?;
 
-    writeln!(out, 
+    writeln!(
+        out,
         "  static reg : {}, ϵ1 = {:.1e}, ϵ2 = {:.1e}",
         _bool_on_off(set.static_regularization_enable),
         set.static_regularization_constant,
         set.static_regularization_proportional,
     )?;
 
-    writeln!(out, 
+    writeln!(
+        out,
         "  dynamic reg: {}, ϵ = {:.1e}, δ = {:.1e}",
         _bool_on_off(set.dynamic_regularization_enable),
         set.dynamic_regularization_eps,
         set.dynamic_regularization_delta
     )?;
 
-    writeln!(out, 
+    writeln!(
+        out,
         "  iter refine: {}, reltol = {:.1e}, abstol = {:.1e},",
         _bool_on_off(set.iterative_refinement_enable),
         set.iterative_refinement_reltol,
         set.iterative_refinement_abstol
     )?;
 
-    writeln!(out, 
+    writeln!(
+        out,
         "               max iter = {}, stop ratio = {:.1}",
         set.iterative_refinement_max_iter, set.iterative_refinement_stop_ratio
     )?;
 
-    writeln!(out, 
+    writeln!(
+        out,
         "  equilibrate: {}, min_scale = {:.1e}, max_scale = {:.1e}",
         _bool_on_off(set.equilibrate_enable),
         set.equilibrate_min_scaling,
         set.equilibrate_max_scaling
     )?;
 
-    writeln!(out, "               max iter = {}", set.equilibrate_max_iter,)?;
+    writeln!(
+        out,
+        "               max iter = {}",
+        set.equilibrate_max_iter,
+    )?;
+
+    std::io::Result::Ok(())
+}
+
+#[cfg(feature = "sdp")]
+fn print_chordal_decomposition<T: FloatT>(
+    chordal_info: &ChordalInfo<T>,
+    settings: &DefaultSettings<T>,
+) -> std::io::Result<()> {
+    let mut out = stdio::stdout();
+
+    writeln!(out, "\nchordal decomposition:")?;
+    writeln!(
+        out,
+        "  compact format = {}, dual completion = {}",
+        _bool_on_off(settings.chordal_decomposition_compact),
+        _bool_on_off(settings.chordal_decomposition_complete_dual)
+    )?;
+
+    writeln!(
+        out,
+        "  merge method = {}",
+        settings.chordal_decomposition_merge_method
+    )?;
+
+    writeln!(
+        out,
+        "  PSD cones initial             = {}",
+        chordal_info.init_psd_cone_count()
+    )?;
+
+    writeln!(
+        out,
+        "  PSD cones decomposable        = {}",
+        chordal_info.decomposable_cone_count()
+    )?;
+
+    writeln!(
+        out,
+        "  PSD cones after decomposition = {}",
+        chordal_info.premerge_psd_cone_count()
+    )?;
+
+    writeln!(
+        out,
+        "  PSD cones after merges        = {}",
+        chordal_info.final_psd_cone_count()
+    )?;
 
     std::io::Result::Ok(())
 }
@@ -228,14 +298,17 @@ fn _get_precision_string<T: FloatT>() -> String {
     (::std::mem::size_of::<T>() * 8).to_string()
 }
 
-fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetag: SupportedConeTag) -> std::io::Result<()> {
+fn _print_conedims_by_type<T: FloatT>(
+    cones: &CompositeCone<T>,
+    conetag: SupportedConeTag,
+) -> std::io::Result<()> {
     let maxlistlen = 5;
 
     let count = cones.get_type_count(conetag);
 
     //skip if there are none of this type
     if count == 0 {
-        return std::io::Result::Ok(())
+        return std::io::Result::Ok(());
     }
 
     let mut out = stdio::stdout();
@@ -273,7 +346,7 @@ fn _print_conedims_by_type<T: FloatT>(cones: &CompositeCone<T>, conetag: Support
         write!(out, "...,{})", nvars[nvars.len() - 1])?;
     }
 
-    writeln!(out, )?;
+    writeln!(out,)?;
 
     std::io::Result::Ok(())
 }

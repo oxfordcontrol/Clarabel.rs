@@ -1,24 +1,30 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{
-    DenseMatrix, FloatT, Matrix, MatrixShape, MatrixTriangle, MultiplySYR2K, ShapedMatrix,
-};
+use crate::algebra::*;
 
-impl<T> MultiplySYR2K for Matrix<T>
+impl<S, T> MultiplySYR2K<T> for DenseStorageMatrix<S, T>
 where
     T: FloatT,
+    S: AsMut<[T]> + AsRef<[T]>,
 {
-    type T = T;
-
     // implements self = C = α(A*B' + B*A') + βC
-    fn syr2k(&mut self, A: &Matrix<T>, B: &Matrix<T>, α: T, β: T) -> &Self {
+    fn syr2k<S1, S2>(
+        &mut self,
+        A: &DenseStorageMatrix<S1, T>,
+        B: &DenseStorageMatrix<S2, T>,
+        α: T,
+        β: T,
+    ) where
+        S1: AsRef<[T]>,
+        S2: AsRef<[T]>,
+    {
         assert!(self.nrows() == A.nrows());
         assert!(self.nrows() == B.nrows());
         assert!(self.ncols() == B.nrows());
         assert!(A.ncols() == B.ncols());
 
         if self.nrows() == 0 {
-            return self;
+            return;
         }
 
         let n = self.nrows().try_into().unwrap();
@@ -44,7 +50,6 @@ where
             c,
             ldc,
         );
-        self
     }
 }
 

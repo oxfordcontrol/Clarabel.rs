@@ -13,9 +13,10 @@ use std::io::Write;
 /// Status of solver at termination
 
 #[repr(u32)]
-#[derive(PartialEq, Eq, Clone, Debug, Copy)]
+#[derive(PartialEq, Eq, Clone, Debug, Copy, Default)]
 pub enum SolverStatus {
     /// Problem is not solved (solver hasn't run).
+    #[default]
     Unsolved,
     /// Solver terminated with a solution.
     Solved,
@@ -89,12 +90,6 @@ impl std::fmt::Display for SolverStatus {
     }
 }
 
-impl Default for SolverStatus {
-    fn default() -> Self {
-        SolverStatus::Unsolved
-    }
-}
-
 // ---------------------------------
 // top level solver container type
 // ---------------------------------
@@ -132,9 +127,16 @@ fn _print_banner(is_verbose: bool) -> std::io::Result<()> {
     )?;
     writeln!(
         out,
-        "           Clarabel.rs v{}  -  Clever Acronym              \n",
+        "           Clarabel.rs v{}  -  Clever Acronym                ",
         crate::VERSION
     )?;
+    #[cfg(debug_assertions)]
+    writeln!(
+        out,
+        "                  *** debug build ***                        ",
+    )?;
+    #[cfg(not(debug_assertions))]
+    writeln!(out)?;
     writeln!(
         out,
         "                   (c) Paul Goulart                          "
@@ -176,7 +178,7 @@ where
     K: KKTSystem<T, D = D, V = V, C = C, SE = SE>,
     C: Cone<T>,
     I: Info<T, D = D, V = V, R = R, C = C, SE = SE>,
-    SO: Solution<T, D = D, V = V, I = I>,
+    SO: Solution<T, D = D, V = V, I = I, SE = SE>,
     SE: Settings<T>,
 {
     fn solve(&mut self) {
@@ -257,7 +259,10 @@ where
 
             // update the scalings
             // --------------
-            let is_scaling_success = self.variables.scale_cones(&mut self.cones,μ,scaling);
+            let is_scaling_success;
+            timeit!{timers => "scale cones"; {
+                is_scaling_success = self.variables.scale_cones(&mut self.cones,μ,scaling);
+            }}
             // check whether variables are interior points
             match self.strategy_checkpoint_is_scaling_success(is_scaling_success,scaling){
                 StrategyCheckpoint::Fail => {break}
@@ -374,12 +379,16 @@ where
             notimeit! {timers; {self.info.print_status(&self.settings).unwrap();}}
         }
 
-        //store final solution, timing etc
-        self.info
-            .finalize(&self.residuals, &self.settings, &mut timers);
+        timeit! {timers => "post-process"; {
+            //check for "almost" convergence case and then extract solution
+            self.info.post_process(&self.residuals, &self.settings);
+            self.solution
+                .post_process(&self.data, &mut self.variables, &self.info, &self.settings);
+        }}
 
-        self.solution
-            .finalize(&self.data, &self.variables, &self.info);
+        //halt timers
+        self.info.finalize(&mut timers);
+        self.solution.finalize(&self.info);
 
         self.info.print_footer(&self.settings).unwrap();
 
@@ -391,7 +400,6 @@ where
 // Encapsulate the internal helpers trait in a private module
 // so it doesn't get exported
 mod internal {
-    use super::super::cones::Cone;
     use super::super::traits::*;
     use super::*;
 

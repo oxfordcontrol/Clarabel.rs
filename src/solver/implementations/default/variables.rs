@@ -200,7 +200,7 @@ where
         let cur_κ = self.κ + α * step.κ;
 
         // compute current μ
-        let sz = <[T] as VectorMath>::dot_shifted(&self.z, &self.s, &step.z, &step.s, α);
+        let sz = <[T] as VectorMath<T>>::dot_shifted(&self.z, &self.s, &step.z, &step.s, α);
         let μ = (sz + cur_τ * cur_κ) / central_coef;
 
         // barrier terms from gap and scalars
@@ -251,5 +251,40 @@ where
         // zero to catch any elements in the zero cone
         // that need to be forced to zero
         cones.scaled_unit_shift(z, T::zero(), pd);
+    }
+}
+
+impl<T> DefaultVariables<T>
+where
+    T: FloatT,
+{
+    pub(crate) fn unscale(&mut self, data: &DefaultProblemData<T>, is_infeasible: bool) {
+        // if we have an infeasible problem, normalize
+        // using κ to get an infeasibility certificate.
+        // Otherwise use τ to get an unscaled solution.
+        let scaleinv = {
+            if is_infeasible {
+                T::recip(self.κ)
+            } else {
+                T::recip(self.τ)
+            }
+        };
+
+        // also undo the equilibration
+        let d = &data.equilibration.d;
+        let (e, einv) = (&data.equilibration.e, &data.equilibration.einv);
+        let cscale = data.equilibration.c;
+
+        self.x.hadamard(d).scale(scaleinv);
+        self.z.hadamard(e).scale(scaleinv / cscale);
+        self.s.hadamard(einv).scale(scaleinv);
+
+        self.τ *= scaleinv;
+        self.κ *= scaleinv;
+    }
+
+    #[cfg_attr(not(sdp), allow(dead_code))]
+    pub(crate) fn dims(&self) -> (usize, usize) {
+        (self.x.len(), self.s.len())
     }
 }

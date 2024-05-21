@@ -3,12 +3,13 @@
 // in block partitioned sparse matrices.
 //---------------------------------------------------------
 
-use crate::algebra::{CscMatrix, FloatT, MatrixShape, MatrixTriangle};
+use crate::algebra::{CscMatrix, MatrixShape, MatrixTriangle};
+use num_traits::Num;
 use std::iter::zip;
 
 impl<T> CscMatrix<T>
 where
-    T: FloatT,
+    T: Num + Copy,
 {
     // increment self.colptr by the number of nonzeros
     // in a dense upper/lower triangle on the diagonal.
@@ -247,6 +248,8 @@ where
         }
     }
 
+    // treats self.colptr as a vector of counts for entries in each column,
+    // and rebuilds a valid colptr from it
     pub(crate) fn colcount_to_colptr(&mut self) {
         let mut currentptr = 0;
         for p in &mut self.colptr {
@@ -254,6 +257,15 @@ where
             *p = currentptr;
             currentptr += count;
         }
+    }
+
+    // converts the colptr vector a vector of entry counts for each column
+    // the final entry is set to zero
+    pub(crate) fn colptr_to_colcount(&mut self) {
+        for i in 0..self.n {
+            self.colptr[i] = self.colptr[i + 1] - self.colptr[i];
+        }
+        self.colptr[self.n] = 0;
     }
 
     pub(crate) fn backshift_colptrs(&mut self) {

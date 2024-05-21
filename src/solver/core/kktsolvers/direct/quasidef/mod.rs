@@ -14,8 +14,9 @@ use kkt_assembly::*;
 pub trait DirectLDLSolver<T: FloatT> {
     fn update_values(&mut self, index: &[usize], values: &[T]);
     fn scale_values(&mut self, index: &[usize], scale: T);
+    #[allow(dead_code)] //PJG: could be removed.
     fn offset_values(&mut self, index: &[usize], offset: T, signs: &[i8]);
-    fn solve(&mut self, x: &mut [T], b: &[T]);
+    fn solve(&mut self, kkt: &CscMatrix<T>, x: &mut [T], b: &[T]);
     fn refactor(&mut self, kkt: &CscMatrix<T>) -> bool;
     fn required_matrix_shape() -> MatrixTriangle
     where

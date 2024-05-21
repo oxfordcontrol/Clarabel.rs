@@ -117,7 +117,7 @@ fn test_update_A_matrix_form() {
     //solver1.solve();
 
     // change A and re-solve
-    let mut A2 = A.clone();
+    let mut A2 = A;
     A2.nzval[2] = -1000.;
 
     // intention was to update the entry at position (1,1).  Did it work?
@@ -142,7 +142,7 @@ fn test_update_A_vector_form() {
     solver1.solve();
 
     // change A and re-solve
-    let mut A2 = A.clone();
+    let mut A2 = A;
     A2.nzval[2] = -1000.;
 
     // intention was to update the entry at position (1,1).  Did it work?
@@ -174,7 +174,7 @@ fn test_update_A_tuple_form() {
     solver1.solve();
 
     //new solver
-    let mut A2 = A.clone();
+    let mut A2 = A;
     A2.nzval[1] = 0.5;
     A2.nzval[2] = -0.5;
     let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings);
@@ -191,7 +191,7 @@ fn test_update_q() {
     solver1.solve();
 
     // change 1 and re-solve
-    let mut q2 = q.clone();
+    let mut q2 = q;
     q2[1] = 10.;
 
     // revised original solver
@@ -220,7 +220,7 @@ fn test_update_q_tuple() {
     solver1.solve();
 
     //new solver
-    let mut q2 = q.clone();
+    let mut q2 = q;
     q2[1] = 10.;
     let mut solver2 = DefaultSolver::new(&P, &q2, &A, &b, &cones, settings);
     solver2.solve();
@@ -236,7 +236,7 @@ fn test_update_b() {
     solver1.solve();
 
     // change 1 and re-solve
-    let mut b2 = b.clone();
+    let mut b2 = b;
     b2[0] = 0.;
 
     // revised original solver
@@ -276,7 +276,7 @@ fn test_update_b_tuple() {
 fn test_update_noops() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
     solver.solve();
 
     // apply no-op updates to check for crashes
@@ -286,11 +286,11 @@ fn test_update_noops() {
     solver.update_b(&[]).unwrap();
 
     // try noops in various combinations
-    let P2 = P.clone().to_triu();
-    let A2 = A.clone();
-    let b2 = b.clone();
+    let P2 = P.to_triu();
+    let A2 = A;
+    let b2 = b;
     let b2zip = zip(&[1, 3], &[0., 0.]);
-    let q2 = q.clone();
+    let q2 = q;
 
     solver.update_data(&[], &[], &[], &[]).unwrap();
     solver.update_data(&P2, &[], &A2, &[]).unwrap();
@@ -308,7 +308,7 @@ fn test_fail_on_presolve_enable() {
     // original problem
     let (P, q, A, b, cones, mut settings) = updating_test_data();
     settings.presolve_enable = true;
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
     solver.solve();
 
     // apply no-op updates to check that updates are rejected

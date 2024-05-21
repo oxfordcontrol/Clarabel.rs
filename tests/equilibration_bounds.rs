@@ -87,7 +87,7 @@ fn test_equilibrate_zero_rows() {
 
     A.nzval.set(0.0);
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone());
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
 
     solver.solve();
 

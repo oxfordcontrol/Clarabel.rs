@@ -61,7 +61,7 @@ where
         self.factors.offset_values(index, offset, signs);
     }
 
-    fn solve(&mut self, x: &mut [T], b: &[T]) {
+    fn solve(&mut self, _kkt: &CscMatrix<T>, x: &mut [T], b: &[T]) {
         // NB: QDLDL solves in place
         x.copy_from(b);
         self.factors.solve(x);

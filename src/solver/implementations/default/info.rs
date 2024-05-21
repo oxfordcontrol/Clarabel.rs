@@ -59,12 +59,7 @@ where
         timers.reset_timer("solve");
     }
 
-    fn finalize(
-        &mut self,
-        residuals: &DefaultResiduals<T>,
-        settings: &DefaultSettings<T>,
-        timers: &mut Timers,
-    ) {
+    fn post_process(&mut self, residuals: &DefaultResiduals<T>, settings: &DefaultSettings<T>) {
         // if there was an error or we ran out of time
         // or iterations, check for partial convergence
 
@@ -74,7 +69,10 @@ where
         {
             self.check_convergence_almost(residuals, settings);
         }
+    }
 
+    fn finalize(&mut self, timers: &mut Timers) {
+        //final check of timers
         self.solve_time = timers.total_time().as_secs_f64();
     }
 

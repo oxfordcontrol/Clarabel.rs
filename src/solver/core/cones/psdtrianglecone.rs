@@ -1,8 +1,5 @@
 use super::*;
-use crate::{
-    algebra::*,
-    solver::{core::ScalingStrategy, CoreSettings},
-};
+use crate::algebra::*;
 
 // ------------------------------------
 // Positive Semidefinite Cone (Scaled triangular form)
@@ -17,8 +14,6 @@ pub struct PSDConeData<T> {
     Λisqrt: Vec<T>,
     R: Matrix<T>,
     Rinv: Matrix<T>,
-    kronRR: Matrix<T>,
-    B: Matrix<T>,
     Hs: Matrix<T>,
 
     //workspace for various internal uses
@@ -45,8 +40,6 @@ where
             Λisqrt: vec![T::zero(); n],
             R: Matrix::zeros((n, n)),
             Rinv: Matrix::zeros((n, n)),
-            kronRR: Matrix::zeros((n * n, n * n)),
-            B: Matrix::zeros((Bm, n * n)),
             Hs: Matrix::zeros((Bm, Bm)),
 
             //workspace for various internal uses
@@ -117,7 +110,7 @@ where
             β = T::zero();
         } else {
             let Z = &mut self.data.workmat1;
-            _svec_to_mat(Z, z);
+            svec_to_mat(Z, z);
             self.data.Eig.eigvals(Z).expect("Eigval error");
             let e = &self.data.Eig.λ;
             α = e.minimum();
@@ -162,12 +155,12 @@ where
 
         let f = &mut self.data;
         let (S, Z) = (&mut f.workmat1, &mut f.workmat2);
-        _svec_to_mat(S, s);
-        _svec_to_mat(Z, z);
+        svec_to_mat(S, s);
+        svec_to_mat(Z, z);
 
         //compute Cholesky factors
-        let c1 = f.chol1.cholesky(S);
-        let c2 = f.chol2.cholesky(Z);
+        let c1 = f.chol1.factor(S);
+        let c2 = f.chol2.factor(Z);
 
         // bail if the cholesky factorization fails
         // PJG: Need proper Result return type here
@@ -180,7 +173,7 @@ where
         // SVD of L2'*L1,
         let tmp = &mut f.workmat1;
         tmp.mul(&L2.t(), L1, T::one(), T::zero());
-        f.SVD.svd(tmp).expect("SVD error");
+        f.SVD.factor(tmp).expect("SVD error");
 
         // assemble λ (diagonal), R and Rinv.
         f.λ.copy_from(&f.SVD.s);
@@ -194,22 +187,18 @@ where
         f.Rinv.mul(&f.SVD.U.t(), &L2.t(), T::one(), T::zero());
         f.Rinv.lscale(&f.Λisqrt);
 
-        // we should compute here the upper triangular part
-        // of the matrix Q* (RR^T) ⨂ (RR^T) * P.  The operator
-        // P is a matrix that transforms a packed triangle to
-        // a vectorized full matrix.
+        // compute R*R^T (upper triangular part only)
+        let RRt = &mut f.workmat1;
+        RRt.data_mut().set(T::zero());
+        RRt.syrk(&f.R, T::one(), T::zero());
 
-        f.kronRR.kron(&f.R, &f.R);
-
-        // B .= Q'*kRR, where Q' is the svec operator
-        for i in 0..f.B.ncols() {
-            let M = ReshapedMatrix::from_slice(f.kronRR.col_slice(i), f.R.nrows(), f.R.nrows());
-            let b = f.B.col_slice_mut(i);
-            _mat_to_svec(b, &M);
-        }
-
-        // compute Hs = triu(B*B')
-        f.Hs.syrk(&f.B, T::one(), T::zero());
+        // PJG: it is possibly faster to compute the whole of RRt, and not
+        // just the upper triangle using syrk!, because then skron! can be
+        // be called with a Matrix type instead of Symmetric.   The internal
+        // indexing within skron! is then more straightforward and probably
+        // faster.   Possibly also worth considering a version of skron!
+        // that uses unchecked indexing.
+        skron(&mut f.Hs, &RRt.sym());
 
         true //PJG: Should return result, with "?" operators above
     }
@@ -257,7 +246,7 @@ where
         let engine = &mut self.data.Eig;
 
         // d = Δz̃ = WΔz
-        _mul_Wx_inner(
+        mul_Wx_inner(
             MatrixShape::N,
             d,
             dz,
@@ -269,10 +258,10 @@ where
             &mut self.data.workmat3,
         );
         let workΔ = &mut self.data.workmat1;
-        let αz = _step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
+        let αz = step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
 
         // d = Δs̃ = W^{-T}Δs
-        _mul_Wx_inner(
+        mul_Wx_inner(
             MatrixShape::T,
             d,
             ds,
@@ -284,7 +273,7 @@ where
             &mut self.data.workmat3,
         );
         let workΔ = &mut self.data.workmat1;
-        let αs = _step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
+        let αs = step_length_psd_component(workΔ, engine, d, Λisqrt, αmax);
 
         (αz, αs)
     }
@@ -307,9 +296,9 @@ where
     {
         let (Q, q) = (&mut self.data.workmat1, &mut self.data.workvec);
         q.waxpby(T::one(), x, α, dx);
-        _svec_to_mat(Q, q);
+        svec_to_mat(Q, q);
 
-        match self.data.chol1.cholesky(Q) {
+        match self.data.chol1.factor(Q) {
             Ok(_) => self.data.chol1.logdet(),
             Err(_) => T::infinity(),
         }
@@ -329,8 +318,8 @@ where
         let X = &mut self.data.workmat1;
         let Z = &mut self.data.workmat2;
 
-        _svec_to_mat(X, x);
-        _svec_to_mat(Z, z);
+        svec_to_mat(X, x);
+        svec_to_mat(Z, z);
 
         let λ = &self.data.λ;
         let two: T = (2.).as_T();
@@ -339,11 +328,11 @@ where
                 X[(i, j)] = (two * Z[(i, j)]) / (λ[i] + λ[j]);
             }
         }
-        _mat_to_svec(x, X);
+        mat_to_svec(x, X);
     }
 
     fn mul_W(&mut self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
-        _mul_Wx_inner(
+        mul_Wx_inner(
             is_transpose,
             y,
             x,
@@ -357,7 +346,7 @@ where
     }
 
     fn mul_Winv(&mut self, is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
-        _mul_Wx_inner(
+        mul_Wx_inner(
             is_transpose,
             y,
             x,
@@ -372,7 +361,7 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn _mul_Wx_inner<T>(
+fn mul_Wx_inner<T>(
     is_transpose: MatrixShape,
     y: &mut [T],
     x: &[T],
@@ -386,8 +375,8 @@ fn _mul_Wx_inner<T>(
     T: FloatT,
 {
     let (X, Y, tmp) = (workmat1, workmat2, workmat3);
-    _svec_to_mat(X, x);
-    _svec_to_mat(Y, y);
+    svec_to_mat(X, x);
+    svec_to_mat(Y, y);
 
     match is_transpose {
         MatrixShape::T => {
@@ -403,7 +392,7 @@ fn _mul_Wx_inner<T>(
             Y.mul(tmp, Rx, α, β);
         }
     }
-    _mat_to_svec(y, Y);
+    mat_to_svec(y, Y);
 }
 
 // ---------------------------------------------
@@ -420,14 +409,14 @@ where
             &mut self.data.workmat2,
             &mut self.data.workmat3,
         );
-        _svec_to_mat(Y, y);
-        _svec_to_mat(Z, z);
+        svec_to_mat(Y, y);
+        svec_to_mat(Z, z);
 
         // X .= (Y*Z + Z*Y)/2
         // NB: works b/c Y and Z are both symmetric
         X.data_mut().set(T::zero()); //X.sym() will assert is_triu
         X.syr2k(Y, Z, (0.5).as_T(), T::zero());
-        _mat_to_svec(x, &X.sym());
+        mat_to_svec(x, &X.sym());
     }
 
     fn inv_circ_op(&mut self, _x: &mut [T], _y: &[T], _z: &[T]) {
@@ -445,7 +434,7 @@ where
 // internal operations for SDP cones
 // ----------------------------------------
 
-fn _step_length_psd_component<T>(
+fn step_length_psd_component<T>(
     workΔ: &mut Matrix<T>,
     engine: &mut EigEngine<T>,
     d: &[T],
@@ -459,7 +448,7 @@ where
         if d.is_empty() {
             T::max_value()
         } else {
-            _svec_to_mat(workΔ, d);
+            svec_to_mat(workΔ, d);
             workΔ.lrscale(Λisqrt, Λisqrt);
             engine.eigvals(workΔ).expect("Eigval error");
             engine.λ.minimum()
@@ -473,71 +462,45 @@ where
     }
 }
 
-fn _svec_to_mat<T: FloatT>(M: &mut Matrix<T>, x: &[T]) {
-    let mut idx = 0;
-    for col in 0..M.ncols() {
-        for row in 0..=col {
-            if row == col {
-                M[(row, col)] = x[idx];
-            } else {
-                M[(row, col)] = x[idx] * T::FRAC_1_SQRT_2();
-                M[(col, row)] = x[idx] * T::FRAC_1_SQRT_2();
-            }
-            idx += 1;
-        }
-    }
-}
-
-//PJG : Perhaps implementation for Symmetric type would be faster
-fn _mat_to_svec<MAT, T: FloatT>(x: &mut [T], M: &MAT)
+// produce the upper triangular part of the Symmetric Kronecker product of
+// a symmtric matrix A with itself, i.e. triu(A ⊗_s A)
+fn skron<T>(out: &mut Matrix<T>, A: &Symmetric<Matrix<T>>)
 where
-    MAT: DenseMatrix<T = T, Output = T>,
+    T: FloatT,
 {
-    let mut idx = 0;
-    for col in 0..M.ncols() {
-        for row in 0..=col {
-            x[idx] = {
-                if row == col {
-                    M[(row, col)]
-                } else {
-                    (M[(row, col)] + M[(col, row)]) * T::FRAC_1_SQRT_2()
-                }
-            };
-            idx += 1;
-        }
-    }
-}
+    let sqrt2 = T::SQRT_2();
+    let n = A.nrows();
 
-#[test]
+    let mut col = 0;
+    for l in 0..n {
+        for k in 0..=l {
+            let mut row = 0;
+            let kl_eq = k == l;
 
-fn test_svec_conversions() {
-    let n = 3;
+            for j in 0..n {
+                let Ajl = A[(j, l)];
+                let Ajk = A[(j, k)];
 
-    let X = Matrix::from(&[
-        [1., 3., -2.], //
-        [3., -4., 7.], //
-        [-2., 7., 5.], //
-    ]);
+                for i in 0..=j {
+                    if row > col {
+                        break;
+                    }
 
-    let Y = Matrix::from(&[
-        [2., 5., -4.],  //
-        [5., 6., 2.],   //
-        [-4., 2., -3.], //
-    ]);
+                    let ij_eq = i == j;
 
-    let mut Z = Matrix::zeros((3, 3));
+                    out[(row, col)] = {
+                        match (ij_eq, kl_eq) {
+                            (false, false) => A[(i, k)] * Ajl + A[(i, l)] * Ajk,
+                            (true, false) => sqrt2 * Ajl * Ajk,
+                            (false, true) => sqrt2 * A[(i, l)] * Ajk,
+                            (true, true) => Ajl * Ajl,
+                        }
+                    };
 
-    let mut x = vec![0.; triangular_number(n)];
-    let mut y = vec![0.; triangular_number(n)];
-
-    // check inner product identity
-    _mat_to_svec(&mut x, &X);
-    _mat_to_svec(&mut y, &Y);
-
-    assert!(f64::abs(x.dot(&y) - X.data().dot(Y.data())) < 1e-12);
-
-    // check round trip
-    _mat_to_svec(&mut x, &X);
-    _svec_to_mat(&mut Z, &x);
-    assert!(X.data().norm_inf_diff(Z.data()) < 1e-12);
+                    row += 1;
+                } //end i
+            } //end j
+            col += 1;
+        } //end k
+    } //end l
 }
