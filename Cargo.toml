@@ -1,6 +1,6 @@
 [package]
 name = "clarabel"
-version = "0.8.0"
+version = "0.8.1-rc.1"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 rust-version = "1.66"
@@ -160,5 +160,5 @@ crate-type = ["lib","cdylib"]
 
 [package.metadata.docs.rs]
 rustdoc-args = [ "--html-in-header", "./html/rustdocs-header.html" ]
-features = ["sdp","sdp-openblas"]
+features = ["sdp","sdp-mkl"]
 
