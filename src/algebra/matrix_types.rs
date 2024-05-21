@@ -12,6 +12,7 @@ pub(crate) enum MatrixTriangle {
 /// Matrix triangular form marker
 impl MatrixTriangle {
     /// convert to u8 character for BLAS calls
+    #[cfg(feature = "sdp")]
     pub fn as_blas_char(&self) -> u8 {
         match self {
             MatrixTriangle::Triu => b'U',
@@ -39,6 +40,7 @@ pub(crate) enum MatrixShape {
 
 impl MatrixShape {
     /// convert to u8 character for BLAS calls
+    #[cfg(feature = "sdp")]
     pub fn as_blas_char(&self) -> u8 {
         match self {
             MatrixShape::N => b'N',
