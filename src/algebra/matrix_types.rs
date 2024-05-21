@@ -2,7 +2,7 @@ use crate::algebra::ShapedMatrix;
 
 /// Matrix shape marker for triangular matrices
 #[derive(PartialEq, Eq, Copy, Clone)]
-pub(crate) enum MatrixTriangle {
+pub enum MatrixTriangle {
     /// Upper triangular matrix
     Triu,
     /// Lower triangular matrix
@@ -31,7 +31,7 @@ impl MatrixTriangle {
 
 /// Matrix orientation marker
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub(crate) enum MatrixShape {
+pub enum MatrixShape {
     /// Normal matrix orientation
     N,
     /// Transposed matrix orientation

@@ -137,6 +137,6 @@ where
 {
     let src_range = row_ptr..(row_ptr + cone.nvars());
     new_s[row_range.clone()].copy_from(&old_s[src_range.clone()]);
-    new_z[row_range.clone()].copy_from(&old_z[src_range.clone()]);
+    new_z[row_range].copy_from(&old_z[src_range]);
     row_ptr + cone.nvars()
 }

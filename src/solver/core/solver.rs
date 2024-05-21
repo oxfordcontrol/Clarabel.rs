@@ -136,7 +136,7 @@ fn _print_banner(is_verbose: bool) -> std::io::Result<()> {
         "                  *** debug build ***                        ",
     )?;
     #[cfg(not(debug_assertions))]
-    writeln!(out, "")?;
+    writeln!(out)?;
     writeln!(
         out,
         "                   (c) Paul Goulart                          "

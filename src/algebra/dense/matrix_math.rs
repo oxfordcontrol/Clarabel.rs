@@ -121,6 +121,7 @@ impl<T: FloatT> MatrixMathMut<T> for Matrix<T> {
 
 
 // additional functions that require floating point operations
+
 // allow dead code here since dense matrix and its supporting
 // functionality could eventually become a public interface.
 #[allow(dead_code)]
@@ -275,7 +276,7 @@ fn test_l_r_scalings() {
     assert_eq!(B,Btest);
 
     //left-right scale
-    let mut B = A.clone();
+    let mut B = A;
     B.lrscale(&lscale, &rscale);
     let Btest = Matrix::from(&[
         [ 2.,  4., -18.], 
