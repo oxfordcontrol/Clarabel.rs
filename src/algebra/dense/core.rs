@@ -6,34 +6,38 @@
 use crate::algebra::*;
 use num_traits::Num;
 
-/// Dense matrix in column major format
-///
-/// __Example usage__ : To construct the 3 x 3 matrix
-/// ```text
-/// A = [1.  3.  5.]
-///     [2.  0.  6.]
-///     [0.  4.  7.]
-/// ```
-///
-/// ```no_run
-/// use clarabel::algebra::Matrix;
-///
-/// let A : Matrix<f64> = Matrix::new(
-///    (3, 3),  //size as tuple
-///    vec![1., 2., 0., 3., 0., 4., 5., 6., 7.]
-///  );
-///
-/// ```
+// The comment below is not a docstring since it relies on the 
+// type Matrix<T> which is not currently visible outside the crate.
+// It can be restored if the dense Matrix type is made public.
 
-/// Creates a Matrix from a slice of arrays.
-///
-/// Example:
+// Dense matrix in column major format
+//
+// __Example usage__ : To construct the 3 x 3 matrix
+// ```text
+// A = [1.  3.  5.]
+//     [2.  0.  6.]
+//     [0.  4.  7.]
 /// ```
-/// use clarabel::algebra::Matrix;
-/// let A = Matrix::from(
-///      &[[1.0, 2.0],
-///        [3.0, 0.0],
-///        [0.0, 4.0]]);
+//
+// ```no_run
+// use clarabel::algebra::Matrix;
+//
+// let A : Matrix<f64> = Matrix::new(
+//    (3, 3),  //size as tuple
+//    vec![1., 2., 0., 3., 0., 4., 5., 6., 7.]
+//  );
+//
+// ```
+
+// Creates a Matrix from a slice of arrays.
+//
+// Example:
+// ```
+// use clarabel::algebra::Matrix;
+// let A = Matrix::from(
+//      &[[1.0, 2.0],
+//        [3.0, 0.0],
+//        [0.0, 4.0]]);
 // ```
 //
 #[allow(clippy::needless_range_loop)]

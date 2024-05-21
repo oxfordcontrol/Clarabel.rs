@@ -288,12 +288,12 @@ where
     }
 
     /// transpose
-    pub(crate) fn t(&self) -> Adjoint<'_, Self> {
+    pub fn t(&self) -> Adjoint<'_, Self> {
         Adjoint { src: self }
     }
 
     /// symmetric view
-    pub(crate) fn sym(&self) -> Symmetric<'_, Self> {
+    pub fn sym(&self) -> Symmetric<'_, Self> {
         debug_assert!(self.is_triu());
         Symmetric { src: self }
     }
