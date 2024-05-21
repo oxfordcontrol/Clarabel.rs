@@ -70,8 +70,8 @@ where
         //and the ranges for the corresponding entries
         //in the Hs sparse block
 
-        let rng_cones = _make_rng_cones(&cones);
-        let rng_blocks = _make_rng_blocks(&cones);
+        let rng_cones = make_rng_cones(&cones);
+        let rng_blocks = make_rng_blocks(&cones);
 
         Self {
             cones,
@@ -86,7 +86,7 @@ where
     }
 }
 
-fn _make_rng_cones<T>(cones: &[SupportedCone<T>]) -> Vec<Range<usize>>
+fn make_rng_cones<T>(cones: &[SupportedCone<T>]) -> Vec<Range<usize>>
 where
     T: FloatT,
 {
@@ -103,7 +103,7 @@ where
     rngs
 }
 
-fn _make_rng_blocks<T>(cones: &[SupportedCone<T>]) -> Vec<Range<usize>>
+fn make_rng_blocks<T>(cones: &[SupportedCone<T>]) -> Vec<Range<usize>>
 where
     T: FloatT,
 {
