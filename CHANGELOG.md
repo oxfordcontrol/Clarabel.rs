@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Version numbering in this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).  We aim to keep the core solver functionality and minor releases in sync between the Rust/Python and Julia implementations.  Small fixes that affect one implementation only may result in the patch release versions differing.
 
+## [0.8.0] - 2024-21-05
+### Changed 
+
+- implements chordal decomposition for PSD cones [#100](https://github.com/oxfordcontrol/Clarabel.rs/pull/100)
+- updates scaling bounds. Fixes [#96](https://github.com/oxfordcontrol/Clarabel.rs/issues/96)
+
+### Rust specific changes
+
+- Derive debug trait to the solution struct [#97](https://github.com/oxfordcontrol/Clarabel.rs/pull/97). Thanks @nunzioono.
+- Resolve clippy warnings for rustc >=v1.75 [#94](https://github.com/oxfordcontrol/Clarabel.rs/pull/94)
+
 ## [0.7.1] - 2024-29-02
 ### Changed 
 
@@ -128,6 +139,7 @@ offline against the Julia-based benchmark problem suite, but this will not appea
 - Ported all documentation to the common site [here](https://github.com/oxfordcontrol/ClarabelDocs)
 
 
+[0.8.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.5.1...v0.6.0
