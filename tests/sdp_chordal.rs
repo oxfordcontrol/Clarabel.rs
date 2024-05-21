@@ -90,6 +90,7 @@ fn test_sdp_chordal() {
 
     let mut settings = DefaultSettingsBuilder::default()
         .verbose(true)
+        .chordal_decomposition_enable(true)
         .chordal_decomposition_compact(true)
         .chordal_decomposition_complete_dual(true)
         .chordal_decomposition_merge_method("clique_graph".to_string())
