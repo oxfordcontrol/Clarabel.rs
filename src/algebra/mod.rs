@@ -23,7 +23,7 @@ pub use error_types::*;
 pub use floats::*;
 pub use math_traits::*;
 pub use matrix_traits::*;
-pub use matrix_types::*;
+pub(crate) use matrix_types::*;
 pub(crate) use scalarmath::*;
 pub(crate) use utils::*;
 
@@ -37,7 +37,7 @@ pub(crate) use densesym3x3::*;
 #[cfg(feature = "sdp")]
 mod dense;
 #[cfg(feature = "sdp")]
-pub use dense::*;
+pub(crate) use dense::*;
 // sparse vectors implementations (for chordal decomp only)
 #[cfg(feature = "sdp")]
 mod sparsevector;

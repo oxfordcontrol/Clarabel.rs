@@ -18,8 +18,8 @@ pub(crate) trait ShapedMatrix {
     }
 }
 
-/// PJG: replace panics here with Error types.  Add documentation
-/// and examples for blockdiag and hvcat
+// PJG: replace panics here with Error types.  Add documentation
+// and examples for blockdiag and hvcat
 
 /// Blockwise matrix concatenation
 pub trait BlockConcatenate: Sized {

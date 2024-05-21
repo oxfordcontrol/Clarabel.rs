@@ -8,6 +8,7 @@ pub enum MatrixConcatenationError {
 }
 
 #[derive(Error, Debug)]
+/// Error type returned by sparse matrix assembly operations.
 pub enum SparseFormatError {
     #[error("Matrix dimension fields and/or array lengths are incompatible")]
     IncompatibleDimension,
@@ -23,8 +24,10 @@ pub enum SparseFormatError {
 
 /// Error type returned by BLAS-like dense factorization routines.  Errors
 /// return the internal BLAS error codes.
+#[allow(clippy::upper_case_acronyms)]
+#[allow(dead_code)]
 #[derive(Error, Debug)]
-pub enum DenseFactorizationError {
+pub(crate) enum DenseFactorizationError {
     #[error("Matrix dimension fields and/or array lengths are incompatible")]
     IncompatibleDimension,
     #[error("Eigendecomposition error")]

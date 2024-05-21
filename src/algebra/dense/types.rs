@@ -3,7 +3,7 @@ use std::ops::{Index, IndexMut};
 
 // core dense matrix type for owned and borrowed matrices
 #[derive(Debug, Clone, PartialEq)]
-pub struct DenseStorageMatrix<S, T>
+pub(crate) struct DenseStorageMatrix<S, T>
 where
     S: AsRef<[T]>,
     T: Sized,
@@ -15,9 +15,9 @@ where
     pub(crate) phantom: std::marker::PhantomData<T>,
 }
 
-pub type Matrix<T> = DenseStorageMatrix<Vec<T>, T>;
-pub type BorrowedMatrix<'a, T> = DenseStorageMatrix<&'a [T], T>;
-pub type BorrowedMatrixMut<'a, T> = DenseStorageMatrix<&'a mut [T], T>;
+pub(crate) type Matrix<T> = DenseStorageMatrix<Vec<T>, T>;
+pub(crate) type BorrowedMatrix<'a, T> = DenseStorageMatrix<&'a [T], T>;
+pub(crate) type BorrowedMatrixMut<'a, T> = DenseStorageMatrix<&'a mut [T], T>;
 
 impl<S, T> ShapedMatrix for DenseStorageMatrix<S, T>
 where

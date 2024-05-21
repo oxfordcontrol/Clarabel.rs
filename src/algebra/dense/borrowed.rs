@@ -1,3 +1,7 @@
+// allow dead code here since dense matrix and its supporting
+// functionality could eventually become a public interface.
+#![allow(dead_code)]
+
 use crate::algebra::*;
 
 impl<'a, T> BorrowedMatrix<'a, T>

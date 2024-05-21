@@ -5,7 +5,7 @@ mod kron;
 mod matrix_math;
 pub(crate) use self::matrix_math::*;
 mod types;
-pub use self::types::*;
+pub(crate) use self::types::*;
 
 mod blaslike_traits;
 pub(crate) use blaslike_traits::*;

@@ -166,5 +166,5 @@ crate-type = ["lib","cdylib"]
 
 [package.metadata.docs.rs]
 rustdoc-args = [ "--html-in-header", "./html/rustdocs-header.html" ]
-
+features = ["sdp","sdp-openblas"]
 

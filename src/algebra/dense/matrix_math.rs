@@ -121,6 +121,9 @@ impl<T: FloatT> MatrixMathMut<T> for Matrix<T> {
 
 
 // additional functions that require floating point operations
+// allow dead code here since dense matrix and its supporting
+// functionality could eventually become a public interface.
+#[allow(dead_code)]
 impl<S,T> DenseStorageMatrix<S, T> 
 where 
     T: FloatT,

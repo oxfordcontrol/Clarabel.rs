@@ -180,6 +180,8 @@ pub trait MatrixMath<T> {
     fn quad_form(&self, y: &[T], x: &[T]) -> T;
 }
 
+/// Operations on mutable matrices of [`FloatT`](crate::algebra::FloatT)
+
 pub trait MatrixMathMut<T> {
     /// Elementwise scaling
     fn scale(&mut self, c: T);

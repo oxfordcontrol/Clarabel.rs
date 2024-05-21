@@ -1,4 +1,8 @@
+// allow dead code here since dense matrix and its supporting
+// functionality could eventually become a public interface.
+#![allow(dead_code)]
 #![allow(non_snake_case)]
+
 use crate::algebra::*;
 use num_traits::Num;
 

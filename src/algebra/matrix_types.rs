@@ -2,7 +2,7 @@ use crate::algebra::ShapedMatrix;
 
 /// Matrix shape marker for triangular matrices
 #[derive(PartialEq, Eq, Copy, Clone)]
-pub enum MatrixTriangle {
+pub(crate) enum MatrixTriangle {
     /// Upper triangular matrix
     Triu,
     /// Lower triangular matrix
@@ -19,6 +19,7 @@ impl MatrixTriangle {
         }
     }
     /// transpose
+    #[allow(dead_code)]
     pub fn t(&self) -> Self {
         match self {
             MatrixTriangle::Triu => MatrixTriangle::Tril,
@@ -29,7 +30,7 @@ impl MatrixTriangle {
 
 /// Matrix orientation marker
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum MatrixShape {
+pub(crate) enum MatrixShape {
     /// Normal matrix orientation
     N,
     /// Transposed matrix orientation
@@ -45,6 +46,7 @@ impl MatrixShape {
         }
     }
     /// transpose
+    #[allow(dead_code)]
     pub fn t(&self) -> Self {
         match self {
             MatrixShape::N => MatrixShape::T,
@@ -58,13 +60,13 @@ impl MatrixShape {
 
 /// Adjoint of a matrix
 #[derive(Debug, Clone, PartialEq)]
-pub struct Adjoint<'a, M> {
+pub(crate) struct Adjoint<'a, M> {
     pub src: &'a M,
 }
 /// Symmetric view of a matrix.   Only the upper
 /// triangle of the source matrix will be referenced.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Symmetric<'a, M> {
+pub(crate) struct Symmetric<'a, M> {
     pub src: &'a M,
 }
 
