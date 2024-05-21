@@ -109,12 +109,6 @@ name = "sdp"
 path = "examples/rust/example_sdp.rs"
 required-features = ["sdp"]
 
-[[example]]
-name = "chordal"
-path = "examples/rust/example_chordal.rs"
-required-features = ["sdp"]
-
-
 
 # -------------------------------
 # custom build profiles 
