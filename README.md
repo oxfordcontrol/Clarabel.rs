@@ -70,5 +70,17 @@ pip install clarabel
 
 To install the Python interface from source, see the [Python Installation Documentation](https://oxfordcontrol.github.io/ClarabelDocs/stable/python/installation_py/).
 
+## Citing
+```
+@misc{Clarabel_2024,
+      title={Clarabel: An interior-point solver for conic programs with quadratic objectives}, 
+      author={Paul J. Goulart and Yuwen Chen},
+      year={2024},
+      eprint={2405.12762},
+      archivePrefix={arXiv},
+      primaryClass={math.OC}
+}
+```
+
 ## License 🔍
 This project is licensed under the Apache License 2.0 - see the [LICENSE.md](LICENSE.md) file for details.
