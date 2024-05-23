@@ -83,12 +83,13 @@ optional = true
 [dependencies.faer]
 # version = "0.18"
 git = "https://github.com/sarah-ek/faer-rs"
-# rev = "f1dab94f69c35cb6af715068392ac4ce5093ffaa"  # ~0.18.2
-rev = "3756dccc5349a2edd209a578912bd0627ab8eb64"  # with permutation skipping 
+rev = "2484316d6c8e2abbbc8e5a2abf00b2499b4a7d7c"  # with permutation skipping 
 optional = true 
 
 [dependencies.faer-entity]
-version = "0.18"
+# version = "0.18.0"
+git = "https://github.com/sarah-ek/faer-rs"
+rev = "2484316d6c8e2abbbc8e5a2abf00b2499b4a7d7c"   # with permutation skipping 
 optional = true 
 
 
