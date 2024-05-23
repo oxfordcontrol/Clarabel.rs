@@ -50,6 +50,9 @@ julia = ["sdp", "dep:libc", "dep:num-derive", "dep:serde", "dep:serde_json"]
 # enable a blas/lapack source package 
 python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive"]
 
+# PJG: EXPERIMENTAL / WIP -- enable faer supernodal solver
+#compile with faer supernodal solver option
+faer-sparse    = ["dep:faer", "dep:faer-entity"]
 
 # -------------------------------
 # SDP configuration
@@ -74,6 +77,19 @@ optional = true
 [dependencies.indexmap]
 version = "2.2"
 optional = true
+
+# PJG: EXPERIMENTAL / WIP -- enable faer supernodal solver
+
+[dependencies.faer]
+# version = "0.18"
+git = "https://github.com/sarah-ek/faer-rs"
+# rev = "f1dab94f69c35cb6af715068392ac4ce5093ffaa"  # ~0.18.2
+rev = "3756dccc5349a2edd209a578912bd0627ab8eb64"  # with permutation skipping 
+optional = true 
+
+[dependencies.faer-entity]
+version = "0.18"
+optional = true 
 
 
 # -------------------------------
@@ -108,6 +124,13 @@ path = "examples/rust/example_box.rs"
 name = "sdp"
 path = "examples/rust/example_sdp.rs"
 required-features = ["sdp"]
+
+# PJG: EXPERIMENTAL / WIP -- enable faer supernodal solver
+
+[[example]]
+name = "box_faer"
+path = "examples/rust/example_box_faer.rs"
+required-features = ["faer-sparse"]
 
 
 # -------------------------------
