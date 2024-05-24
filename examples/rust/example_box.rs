@@ -3,7 +3,7 @@ use clarabel::algebra::*;
 use clarabel::solver::*;
 
 fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
-    let n = 20000;
+    let n = 2000000;
 
     let P = CscMatrix::identity(n);
 
