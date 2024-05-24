@@ -187,16 +187,29 @@ where
         // NB: faer solves in place.  Permute b to match the ordering used internally
         permute(&mut self.workvec, b, &self.perm);
 
-        let ldlt = LdltRef::new(&self.symbolic_cholesky, self.ld_vals.as_slice());
+        match self.symbolic_cholesky.raw() {
+            SymbolicCholeskyRaw::Simplicial(symbolic) => {
+                let rhs = &mut self.workvec;
+                let Lp = &symbolic.col_ptrs();
+                let Li = &symbolic.row_indices();
+                let Lx = &self.ld_vals.as_slice();
+                lsolve_unsafe(Lp, Li, Lx, rhs);
+                dsolve_unsafe(Lp, Li, Lx, rhs);
+                ltsolve_unsafe(Lp, Li, Lx, rhs);
+            }
+            SymbolicCholeskyRaw::Supernodal(_) => {
+                let rhs =
+                    faer::mat::from_column_major_slice_mut::<T>(&mut self.workvec[0..], b.len(), 1);
+                let ldlt = LdltRef::new(&self.symbolic_cholesky, self.ld_vals.as_slice());
 
-        let rhs = faer::mat::from_column_major_slice_mut::<T>(&mut self.workvec[0..], b.len(), 1);
-
-        ldlt.solve_in_place_with_conj(
-            Conj::No,
-            rhs,
-            self.parallelism,
-            PodStack::new(&mut self.work),
-        );
+                ldlt.solve_in_place_with_conj(
+                    Conj::No,
+                    rhs,
+                    self.parallelism,
+                    PodStack::new(&mut self.work),
+                );
+            }
+        }
 
         // workvec is now the solution, permute it back to the original ordering
         permute(x, &self.workvec, &self.iperm);
@@ -232,6 +245,10 @@ where
         MatrixTriangle::Triu
     }
 }
+
+// ---------------------------------------------------------------------
+// utility functions
+// ---------------------------------------------------------------------
 
 fn sort_csc_columns_with_map<T>(M: &mut CscMatrix<T>, map: &mut [usize])
 where
@@ -276,6 +293,53 @@ where
 
     M.check_format().unwrap();
 }
+
+// local direct implemention of forward/backward substitution
+// This is the same as the one in qdldl, with a slightly rewrite
+// to account for the fact that faer stores D on the diagonal
+// of its factorisation data
+// Solves (L+I)x = b, with x replacing b.  Unchecked version
+fn lsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
+    unsafe {
+        for i in 0..x.len() {
+            let xi = *x.get_unchecked(i);
+            let f = *Lp.get_unchecked(i) + 1; //+1 skips the 'D' entry
+            let l = *Lp.get_unchecked(i + 1);
+            for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
+                *(x.get_unchecked_mut(Lij)) -= Lxj * xi;
+            }
+        }
+    }
+}
+
+fn dsolve_unsafe<T: FloatT>(Lp: &[usize], _Li: &[usize], Lx: &[T], x: &mut [T]) {
+    unsafe {
+        for i in 0..x.len() {
+            let xi = x.get_unchecked_mut(i);
+            let Dii = Lx.get_unchecked(*Lp.get_unchecked(i)); //holds the 'D' entry
+            *xi /= *Dii;
+        }
+    }
+}
+
+// Solves (L+I)'x = b, with x replacing b.  Unchecked version.
+fn ltsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
+    unsafe {
+        for i in (0..x.len()).rev() {
+            let mut s = T::zero();
+            let f = *Lp.get_unchecked(i) + 1; //+1 skips the 'D' entry;
+            let l = *Lp.get_unchecked(i + 1);
+            for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
+                s += Lxj * (*x.get_unchecked(Lij));
+            }
+            *x.get_unchecked_mut(i) -= s;
+        }
+    }
+}
+
+// ---------------------------------------------------------------------
+// tests
+// ---------------------------------------------------------------------
 
 #[test]
 fn test_faer_ldl() {
