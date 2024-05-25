@@ -190,12 +190,12 @@ where
         match self.symbolic_cholesky.raw() {
             SymbolicCholeskyRaw::Simplicial(symbolic) => {
                 let rhs = &mut self.workvec;
-                let Lp = &symbolic.col_ptrs();
-                let Li = &symbolic.row_indices();
-                let Lx = &self.ld_vals.as_slice();
-                lsolve_unsafe(Lp, Li, Lx, rhs);
-                dsolve_unsafe(Lp, Li, Lx, rhs);
-                ltsolve_unsafe(Lp, Li, Lx, rhs);
+                simplicial_solve(
+                    &symbolic.col_ptrs(),
+                    &symbolic.row_indices(),
+                    &self.ld_vals.as_slice(),
+                    rhs,
+                );
             }
             SymbolicCholeskyRaw::Supernodal(_) => {
                 let rhs =
@@ -298,6 +298,13 @@ where
 // This is the same as the one in qdldl, with a slightly rewrite
 // to account for the fact that faer stores D on the diagonal
 // of its factorisation data
+
+fn simplicial_solve<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], b: &mut [T]) {
+    lsolve_unsafe(Lp, Li, Lx, b);
+    dsolve_unsafe(Lp, Li, Lx, b);
+    ltsolve_unsafe(Lp, Li, Lx, b);
+}
+
 // Solves (L+I)x = b, with x replacing b.  Unchecked version
 fn lsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
     unsafe {
