@@ -1,3 +1,4 @@
 ignore:
-  - "src/python/*"  
-  - "src/julia/*"
+  - "python/*"      # pyblas wrappers
+  - "src/python/*"  # py03 interface 
+  - "src/julia/*"   # ClarabelRs wrapper 
