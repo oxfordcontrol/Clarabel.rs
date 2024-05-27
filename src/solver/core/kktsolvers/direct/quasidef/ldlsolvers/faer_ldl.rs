@@ -347,6 +347,10 @@ fn test_faer_ldl() {
         -0.7307692307692306,
     ];
     assert!(x.norm_inf_diff(&xsol) < 1e-10);
+
+    // scale and update everything for codecov.
+    solver.offset_values(&[1, 2], 3., &[1, -1]);
+    solver.scale_values(&[1, 2], 2.);
 }
 
 #[test]
