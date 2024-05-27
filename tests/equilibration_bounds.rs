@@ -65,7 +65,7 @@ fn test_equilibrate_upper_bound() {
     let (P, c, mut A, b, cones) = equilibration_test_data();
     let settings = DefaultSettings::default();
 
-    A.nzval[0] = 1e+14;
+    A.nzval[0] = 1e+15;
 
     let solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone());
 
@@ -76,6 +76,9 @@ fn test_equilibrate_upper_bound() {
     assert!(e.minimum() >= settings.equilibrate_min_scaling);
     assert!(d.maximum() <= settings.equilibrate_max_scaling);
     assert!(e.maximum() <= settings.equilibrate_max_scaling);
+
+    // forces poorly converging test for codecov
+    solver.solve();
 }
 
 #[test]
