@@ -83,13 +83,13 @@ optional = true
 [dependencies.faer]
 # version = "0.18"
 git = "https://github.com/sarah-ek/faer-rs"
-rev = "2484316d6c8e2abbbc8e5a2abf00b2499b4a7d7c"  # with permutation skipping 
+rev = "7f7a6685a3771c07327b5210fe2eeb716aaa9781"  # improved triangular solve 
 optional = true 
 
 [dependencies.faer-entity]
 # version = "0.18.0"
 git = "https://github.com/sarah-ek/faer-rs"
-rev = "2484316d6c8e2abbbc8e5a2abf00b2499b4a7d7c"   # with permutation skipping 
+rev = "7f7a6685a3771c07327b5210fe2eeb716aaa9781"   # improved triangular solve 
 optional = true 
 
 

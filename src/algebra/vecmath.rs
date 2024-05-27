@@ -117,11 +117,11 @@ impl<T: FloatT> VectorMath<T> for [T] {
     // Returns infinity norm
     fn norm_inf(&self) -> T {
         let mut out = T::zero();
-        for v in self.iter().map(|v| v.abs()) {
+        for &v in self {
             if v.is_nan() {
                 return T::nan();
             }
-            out = if v > out { v } else { out };
+            out = T::max(out, v.abs());
         }
         out
     }
