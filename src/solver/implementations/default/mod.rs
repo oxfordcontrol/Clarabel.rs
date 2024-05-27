@@ -28,3 +28,6 @@ pub use settings::*;
 pub use solution::*;
 pub use solver::*;
 pub use variables::*;
+
+#[cfg(feature = "serde")]
+mod fileio;
