@@ -352,6 +352,7 @@ fn test_faer_ldl() {
 #[test]
 fn test_faer_qp() {
     use crate::solver::core::solver::IPSolver;
+    use crate::solver::SolverStatus;
 
     let P = CscMatrix {
         m: 1,
@@ -380,5 +381,5 @@ fn test_faer_qp() {
 
     solver.solve();
 
-    assert_eq!(solver.get_status(), crate::solver::Status::Solved);
+    assert_eq!(solver.solution.status, SolverStatus::Solved);
 }
