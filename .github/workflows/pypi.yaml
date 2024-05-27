@@ -154,6 +154,11 @@ jobs:
           manylinux: auto
           args: --out dist 
 
+      - name: Test sdist
+        run: |
+          pip install --force-reinstall --verbose dist/*.tar.gz
+          python -c 'import clarabel'
+          
       - name: Upload sdist
         uses: actions/upload-artifact@v3
         with:
