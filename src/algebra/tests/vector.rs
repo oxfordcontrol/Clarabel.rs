@@ -140,6 +140,9 @@ fn test_norm_scaled() {
 fn test_norm_inf() {
     let x = [-3., 4., -12.];
     assert_eq!(x.norm_inf(), 12.);
+
+    let x = [-3., f64::NAN, -12.];
+    assert!(x.norm_inf().is_nan());
 }
 
 #[test]
