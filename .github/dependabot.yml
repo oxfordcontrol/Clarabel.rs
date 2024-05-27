@@ -10,3 +10,12 @@ updates:
     schedule:
       # Check for updates to GitHub Actions every week
       interval: "weekly"
+
+  # copy over from https://github.com/pola-rs/polars/blob/main/.github/dependabot.yml
+  - package-ecosystem: cargo
+    directory: '/'
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build(rust)
+      prefix-development: chore(rust)
