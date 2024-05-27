@@ -5,10 +5,6 @@ use std::fmt::{Debug, Display, LowerExp};
 #[cfg(feature = "sdp")]
 use crate::algebra::dense::BlasFloatT;
 
-// PJG: this should be conditional
-//#[cfg(feature = "serde")]
-use serde;
-
 /// Core traits for internal floating point values.
 ///
 /// This trait defines a subset of bounds for `FloatT`, which is preferred
@@ -26,8 +22,6 @@ pub trait CoreFloatT:
     + LowerExp
     + Debug
     + Sized
-    + serde::Serialize //PJG: make conditional
-    + for<'a> serde::Deserialize<'a> //PJG: make conditional
 {
 }
 
@@ -43,8 +37,6 @@ impl<T> CoreFloatT for T where
         + LowerExp
         + Debug
         + Sized
-        + serde::Serialize //PJG: make conditional
-        + for<'a> serde::Deserialize<'a> //PJG: make conditional
 {
 }
 

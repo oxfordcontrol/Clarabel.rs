@@ -115,6 +115,12 @@ name = "sdp"
 path = "examples/rust/example_sdp.rs"
 required-features = ["sdp"]
 
+[[example]]
+name = "json"
+path = "examples/rust/example_json.rs"
+required-features = ["serde"]
+
+
 
 # -------------------------------
 # custom build profiles 
@@ -168,3 +174,8 @@ crate-type = ["lib","cdylib"]
 rustdoc-args = [ "--html-in-header", "./html/rustdocs-header.html" ]
 features = ["sdp","sdp-mkl"]
 
+
+# ------------------------------
+# testing, benchmarking etc 
+[dev-dependencies]
+tempfile = "3"

@@ -439,4 +439,17 @@ impl PyDefaultSolver {
             None => println!("no timers enabled"),
         };
     }
+
+    fn write_to_file(&self, filename: &str) -> PyResult<()> {
+        let mut file = std::fs::File::create(filename)?;
+        self.inner.write_to_file(&mut file)?;
+        Ok(())
+    }
+}
+
+#[pyfunction(name = "read_from_file")]
+pub fn read_from_file_py(filename: &str) -> PyResult<PyDefaultSolver> {
+    let mut file = std::fs::File::open(filename)?;
+    let solver = DefaultSolver::<f64>::read_from_file(&mut file)?;
+    Ok(PyDefaultSolver { inner: solver })
 }

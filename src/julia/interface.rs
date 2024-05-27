@@ -10,7 +10,11 @@ use crate::solver::{
 };
 use num_traits::FromPrimitive;
 use serde_json::*;
-use std::{ffi::CStr, os::raw::c_void};
+use std::fs::File;
+use std::{
+    ffi::CStr,
+    os::raw::{c_char, c_int, c_void},
+};
 
 // functions for converting solver to / from c void pointers
 
@@ -54,7 +58,7 @@ pub(crate) extern "C" fn solver_new_jlrs(
     A: &CscMatrixJLRS,
     b: &VectorJLRS<f64>,
     jlcones: &VectorJLRS<ConeDataJLRS>,
-    json_settings: *const std::os::raw::c_char,
+    json_settings: *const c_char,
 ) -> *mut c_void {
     let P = P.to_CscMatrix();
     let A = A.to_CscMatrix();
@@ -109,6 +113,39 @@ pub(crate) extern "C" fn solver_print_timers_jlrs(ptr: *mut c_void) {
     // don't drop, since the memory is owned by
     // Julia and we might want to solve again
     std::mem::forget(solver);
+}
+
+// dump problem data to a file
+// returns -1 on failure, 0 on success
+#[no_mangle]
+pub(crate) extern "C" fn solver_write_to_file_jlrs(
+    ptr: *mut c_void,
+    filename: *const std::os::raw::c_char,
+) -> c_int {
+    let slice = unsafe { CStr::from_ptr(filename) };
+
+    let filename = match slice.to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            return -1;
+        }
+    };
+
+    let mut file = match File::create(&filename) {
+        Ok(f) => f,
+        Err(_) => {
+            return -1;
+        }
+    };
+
+    let solver = from_ptr(ptr);
+    let status = solver.write_to_file(&mut file).is_ok();
+    let status = if status { 0 } else { -1 } as c_int;
+
+    // don't drop, since the memory is owned by Julia
+    std::mem::forget(solver);
+
+    return status;
 }
 
 // safely drop a solver object through its pointer.
