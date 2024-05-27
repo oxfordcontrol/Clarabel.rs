@@ -81,15 +81,11 @@ optional = true
 # PJG: EXPERIMENTAL / WIP -- enable faer supernodal solver
 
 [dependencies.faer]
-# version = "0.18"
-git = "https://github.com/sarah-ek/faer-rs"
-rev = "7f7a6685a3771c07327b5210fe2eeb716aaa9781"  # improved triangular solve 
+version = "0.19"
 optional = true 
 
 [dependencies.faer-entity]
-# version = "0.18.0"
-git = "https://github.com/sarah-ek/faer-rs"
-rev = "7f7a6685a3771c07327b5210fe2eeb716aaa9781"   # improved triangular solve 
+version = "0.19"
 optional = true 
 
 
