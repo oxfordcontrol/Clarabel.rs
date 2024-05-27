@@ -67,7 +67,7 @@ fn test_equilibrate_upper_bound() {
 
     A.nzval[0] = 1e+15;
 
-    let solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone());
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone());
 
     let d = &solver.data.equilibration.d;
     let e = &solver.data.equilibration.e;
