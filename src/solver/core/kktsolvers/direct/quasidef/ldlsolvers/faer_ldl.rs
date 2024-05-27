@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use faer::{
-    dyn_stack::{GlobalPodBuffer, PodStack},
+    dyn_stack::{GlobalPodBuffer, PodStack, StackReq},
     linalg::cholesky::ldlt_diagonal::compute::LdltRegularization,
     sparse::{
         linalg::{amd::Control, cholesky::*, SupernodalThreshold},
@@ -46,15 +46,23 @@ pub struct FaerDirectLDLSolver<T: FloatT> {
     perm: Vec<usize>,
     iperm: Vec<usize>,
 
+    // permuted KKT matrix
     perm_kkt: CscMatrix<T>,
     perm_map: Vec<usize>,
     perm_dsigns: Vec<i8>,
 
+    // space for permuted LHS/RHS when solving
+    bperm: Vec<T>,
+
+    // regularizer parameters captured from settings
     regularizer_params: FaerLDLRegularizerParams<T>,
+
+    // symbolic + numeric cholesky data
     symbolic_cholesky: SymbolicCholesky<usize>,
     ld_vals: Vec<T>,
+
+    // workspace for faer factor/solve calls
     work: GlobalPodBuffer,
-    workvec: Vec<T>,
 
     parallelism: Parallelism<'static>,
 }
@@ -82,8 +90,8 @@ where
         let mut perm_dsigns = vec![1_i8; Dsigns.len()];
         permute(&mut perm_dsigns, Dsigns, &perm);
 
-        // PJG: I think, but am not certain, that the amd_params will not be used
-        // by faer even though I put them into CholeskySymbolicParams provided
+        // the amd_params will not be used by faer even though
+        // we put them into CholeskySymbolicParams, provided
         // that my ordering is SymmetricOrdering::Identity
 
         let amd_params = Control {
@@ -124,13 +132,15 @@ where
             eps: settings.dynamic_regularization_eps,
         };
 
-        let work = GlobalPodBuffer::new(
-            symbolic_cholesky
-                .factorize_numeric_ldlt_req::<T>(true, parallelism)
-                .unwrap(),
-        );
+        // Required workspace for faer factor and solve
+        let req_factor = symbolic_cholesky
+            .factorize_numeric_ldlt_req::<f64>(true, parallelism)
+            .unwrap();
+        let req_solve = symbolic_cholesky.solve_in_place_req::<f64>(1).unwrap();
+        let req = StackReq::any_of([req_factor, req_solve]);
+        let work = GlobalPodBuffer::new(req);
 
-        let workvec = vec![T::zero(); perm_kkt.n];
+        let bperm = vec![T::zero(); perm_kkt.n];
 
         Self {
             perm,
@@ -138,11 +148,11 @@ where
             perm_kkt,
             perm_map,
             perm_dsigns,
+            bperm,
             regularizer_params,
             symbolic_cholesky,
             ld_vals,
             work,
-            workvec,
             parallelism,
         }
     }
@@ -185,34 +195,20 @@ where
 
     fn solve(&mut self, _kkt: &CscMatrix<T>, x: &mut [T], b: &[T]) {
         // NB: faer solves in place.  Permute b to match the ordering used internally
-        permute(&mut self.workvec, b, &self.perm);
+        permute(&mut self.bperm, b, &self.perm);
 
-        match self.symbolic_cholesky.raw() {
-            SymbolicCholeskyRaw::Simplicial(symbolic) => {
-                let rhs = &mut self.workvec;
-                simplicial_solve(
-                    &symbolic.col_ptrs(),
-                    &symbolic.row_indices(),
-                    &self.ld_vals.as_slice(),
-                    rhs,
-                );
-            }
-            SymbolicCholeskyRaw::Supernodal(_) => {
-                let rhs =
-                    faer::mat::from_column_major_slice_mut::<T>(&mut self.workvec[0..], b.len(), 1);
-                let ldlt = LdltRef::new(&self.symbolic_cholesky, self.ld_vals.as_slice());
+        let rhs = faer::mat::from_column_major_slice_mut::<T>(&mut self.bperm[0..], b.len(), 1);
+        let ldlt = LdltRef::new(&self.symbolic_cholesky, self.ld_vals.as_slice());
 
-                ldlt.solve_in_place_with_conj(
-                    Conj::No,
-                    rhs,
-                    self.parallelism,
-                    PodStack::new(&mut self.work),
-                );
-            }
-        }
+        ldlt.solve_in_place_with_conj(
+            Conj::No,
+            rhs,
+            self.parallelism,
+            PodStack::new(&mut self.work),
+        );
 
-        // workvec is now the solution, permute it back to the original ordering
-        permute(x, &self.workvec, &self.iperm);
+        // bperm is now the solution, permute it back to the original ordering
+        permute(x, &self.bperm, &self.iperm);
     }
 
     fn refactor(&mut self, _kkt: &CscMatrix<T>) -> bool {
@@ -294,56 +290,6 @@ where
     M.check_format().unwrap();
 }
 
-// local direct implemention of forward/backward substitution
-// This is the same as the one in qdldl, with a slightly rewrite
-// to account for the fact that faer stores D on the diagonal
-// of its factorisation data
-
-fn simplicial_solve<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], b: &mut [T]) {
-    lsolve_unsafe(Lp, Li, Lx, b);
-    dsolve_unsafe(Lp, Li, Lx, b);
-    ltsolve_unsafe(Lp, Li, Lx, b);
-}
-
-// Solves (L+I)x = b, with x replacing b.  Unchecked version
-fn lsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
-    unsafe {
-        for i in 0..x.len() {
-            let xi = *x.get_unchecked(i);
-            let f = *Lp.get_unchecked(i) + 1; //+1 skips the 'D' entry
-            let l = *Lp.get_unchecked(i + 1);
-            for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
-                *(x.get_unchecked_mut(Lij)) -= Lxj * xi;
-            }
-        }
-    }
-}
-
-fn dsolve_unsafe<T: FloatT>(Lp: &[usize], _Li: &[usize], Lx: &[T], x: &mut [T]) {
-    unsafe {
-        for i in 0..x.len() {
-            let xi = x.get_unchecked_mut(i);
-            let Dii = Lx.get_unchecked(*Lp.get_unchecked(i)); //holds the 'D' entry
-            *xi /= *Dii;
-        }
-    }
-}
-
-// Solves (L+I)'x = b, with x replacing b.  Unchecked version.
-fn ltsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
-    unsafe {
-        for i in (0..x.len()).rev() {
-            let mut s = T::zero();
-            let f = *Lp.get_unchecked(i) + 1; //+1 skips the 'D' entry;
-            let l = *Lp.get_unchecked(i + 1);
-            for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
-                s += Lxj * (*x.get_unchecked(Lij));
-            }
-            *x.get_unchecked_mut(i) -= s;
-        }
-    }
-}
-
 // ---------------------------------------------------------------------
 // tests
 // ---------------------------------------------------------------------
@@ -401,4 +347,38 @@ fn test_faer_ldl() {
         -0.7307692307692306,
     ];
     assert!(x.norm_inf_diff(&xsol) < 1e-10);
+}
+
+#[test]
+fn test_faer_qp() {
+    use crate::solver::core::solver::IPSolver;
+
+    let P = CscMatrix {
+        m: 1,
+        n: 1,
+        colptr: vec![0, 1],
+        rowval: vec![0],
+        nzval: vec![2.0],
+    };
+    let q = [1.0];
+    let A = CscMatrix {
+        m: 1,
+        n: 1,
+        colptr: vec![0, 1],
+        rowval: vec![0],
+        nzval: vec![-1.0],
+    };
+    let b = [-2.0];
+    let cones = vec![crate::solver::SupportedConeT::NonnegativeConeT(1)];
+
+    let settings = crate::solver::DefaultSettingsBuilder::default()
+        .direct_solve_method("faer".to_owned())
+        .build()
+        .unwrap();
+
+    let mut solver = crate::solver::DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+
+    solver.solve();
+
+    assert_eq!(solver.get_status(), crate::solver::Status::Solved);
 }

@@ -54,10 +54,10 @@ fn test_permute() {
     let mut x = vec![0.; 4];
     let mut y = vec![0.; 4];
 
-    _permute(&mut x, &b, &perm);
+    permute(&mut x, &b, &perm);
     assert_eq!(x, vec![4., 1., 3., 2.]);
 
-    _ipermute(&mut y, &x, &perm);
+    ipermute(&mut y, &x, &perm);
     assert_eq!(y, b);
 }
 
