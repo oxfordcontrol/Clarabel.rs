@@ -45,6 +45,12 @@ function write_to_file(solver::Solver, filename::String)
 
 end
 
+function read_from_file(filename::String)
+
+    solver_read_from_file_jlrs(filename::String)
+
+end
+
 
 # -------------------------------------
 # Wrappers for rust-side interface  
@@ -114,6 +120,22 @@ function solver_write_to_file_jlrs(solver::Solver, filename::String)
     if status != 0
         error("Error writing to file $filename")
     end
+    
+end
+
+function solver_read_from_file_jlrs(filename::String)
+
+    ptr = ccall(Libdl.dlsym(librust,:solver_read_from_file_jlrs),Ptr{Cvoid},
+    (
+        Cstring,
+    ), 
+        filename,
+    )
+
+    if ptr == C_NULL
+        error("Error reading from file $filename")
+    end
+    return Solver{Float64}(ptr)
     
 end
 

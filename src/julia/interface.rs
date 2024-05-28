@@ -148,6 +148,36 @@ pub(crate) extern "C" fn solver_write_to_file_jlrs(
     return status;
 }
 
+// dump problem data to a file
+// returns NULL on failure, pointer to solver on success
+#[no_mangle]
+pub(crate) extern "C" fn solver_read_from_file_jlrs(
+    filename: *const std::os::raw::c_char,
+) -> *const c_void {
+    let slice = unsafe { CStr::from_ptr(filename) };
+
+    let filename = match slice.to_str() {
+        Ok(s) => s,
+        Err(_) => {
+            return std::ptr::null();
+        }
+    };
+
+    let mut file = match File::open(&filename) {
+        Ok(f) => f,
+        Err(_) => {
+            return std::ptr::null();
+        }
+    };
+
+    let solver = DefaultSolver::read_from_file(&mut file);
+
+    match solver {
+        Ok(solver) => to_ptr(Box::new(solver)),
+        Err(_) => std::ptr::null(),
+    }
+}
+
 // safely drop a solver object through its pointer.
 // called by the Julia side finalizer when a solver
 // is out of scope
