@@ -106,8 +106,8 @@ fn test_position_all() {
     let idx = test.iter().position_all(|&v| *v > 2);
     assert_eq!(idx, vec![0, 3, 4]);
 
-    let idx = test.iter().position_all(|&v| *v == 2);
-    assert_eq!(idx, vec![]);
+    let idx: Vec<usize> = test.iter().position_all(|&v| *v == 2);
+    assert_eq!(idx, Vec::<usize>::new());
 }
 
 #[test]

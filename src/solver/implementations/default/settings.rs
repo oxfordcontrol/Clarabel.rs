@@ -2,13 +2,15 @@ use crate::algebra::*;
 use crate::solver::core::traits::Settings;
 use derive_builder::Builder;
 
-#[cfg(feature = "julia")]
-use serde::{Deserialize, Serialize};
+#[cfg(feature = "serde")]
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Standard-form solver type implementing the [`Settings`](crate::solver::core::traits::Settings) trait
 
 #[derive(Builder, Debug, Clone)]
-#[cfg_attr(feature = "julia", derive(Serialize, Deserialize))]
+#[builder(build_fn(validate = "Self::validate"))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[serde(bound = "T: Serialize + DeserializeOwned")]
 pub struct DefaultSettings<T: FloatT> {
     ///maximum number of iterations
     #[builder(default = "200")]
@@ -203,4 +205,113 @@ where
     fn core_mut(&mut self) -> &mut DefaultSettings<T> {
         self
     }
+}
+
+// pre build checker (for auto-validation when using the builder)
+
+/// Automatic pre-build settings validation
+impl<T> DefaultSettingsBuilder<T>
+where
+    T: FloatT,
+{
+    pub fn validate(&self) -> Result<(), String> {
+        // check that the direct solve method is valid
+        if let Some(ref direct_solve_method) = self.direct_solve_method {
+            validate_direct_solve_method(direct_solve_method.as_str())?;
+        }
+
+        // check that the chordal decomposition merge method is valid
+        #[cfg(feature = "sdp")]
+        if let Some(ref chordal_decomposition_merge_method) =
+            self.chordal_decomposition_merge_method
+        {
+            validate_chordal_decomposition_merge_method(
+                chordal_decomposition_merge_method.as_str(),
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
+// post build checker (for ad-hoc validation, e.g. when passing from python/Julia)
+// this is not used directly in the solver, but can be called manually by the user
+
+/// Manual post-build settings validation
+impl<T> DefaultSettings<T>
+where
+    T: FloatT,
+{
+    pub fn validate(&self) -> Result<(), String> {
+        validate_direct_solve_method(&self.direct_solve_method)?;
+
+        // check that the chordal decomposition merge method is valid
+        #[cfg(feature = "sdp")]
+        validate_chordal_decomposition_merge_method(&self.chordal_decomposition_merge_method)?;
+
+        Ok(())
+    }
+}
+
+// ---------------------------------------------------------
+// individual validation functions go here
+// ---------------------------------------------------------
+
+fn validate_direct_solve_method(direct_solve_method: &str) -> Result<(), String> {
+    match direct_solve_method {
+        "qdldl" => Ok(()),
+        #[cfg(feature = "faer-sparse")]
+        "faer" => Ok(()),
+        _ => Err(format!(
+            "Invalid direct_solve_method: {:?}",
+            direct_solve_method
+        )),
+    }
+}
+
+#[cfg(feature = "sdp")]
+fn validate_chordal_decomposition_merge_method(
+    chordal_decomposition_merge_method: &str,
+) -> Result<(), String> {
+    match chordal_decomposition_merge_method {
+        "none" => Ok(()),
+        "parent_child" => Ok(()),
+        "clique_graph" => Ok(()),
+        _ => Err(format!(
+            "Invalid chordal_decomposition_merge_method: {}",
+            chordal_decomposition_merge_method
+        )),
+    }
+}
+
+#[test]
+fn test_settings_validate() {
+    // all standard settings
+    DefaultSettingsBuilder::<f64>::default().build().unwrap();
+
+    // fail on unknown direct solve method
+    assert!(DefaultSettingsBuilder::<f64>::default()
+        .direct_solve_method("foo".to_string())
+        .build()
+        .is_err());
+
+    // fail on solve options in disabled feature
+    let builder = DefaultSettingsBuilder::<f64>::default()
+        .direct_solve_method("faer".to_string())
+        .build();
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "faer-sparse")] {
+            assert!(build.is_ok());
+        }
+        else {
+            assert!(builder.is_err());
+        }
+    }
+
+    #[cfg(feature = "sdp")]
+    // fail on unknown chordal decomposition merge method
+    assert!(DefaultSettingsBuilder::<f64>::default()
+        .chordal_decomposition_merge_method("foo".to_string())
+        .build()
+        .is_err());
 }
