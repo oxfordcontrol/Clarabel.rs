@@ -56,6 +56,8 @@ julia = ["sdp", "dep:libc", "dep:num-derive",  "serde"]
 python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde"]
 
 
+#compile with faer supernodal solver option
+faer-sparse = ["dep:faer", "dep:faer-entity"]
 
 # -------------------------------
 # SDP configuration
@@ -80,6 +82,14 @@ optional = true
 [dependencies.indexmap]
 version = "2.2"
 optional = true
+
+[dependencies.faer]
+version = "0.19"
+optional = true 
+
+[dependencies.faer-entity]
+version = "0.19"
+optional = true 
 
 
 # -------------------------------
@@ -116,9 +126,15 @@ path = "examples/rust/example_sdp.rs"
 required-features = ["sdp"]
 
 [[example]]
+name = "box_faer"
+path = "examples/rust/example_box_faer.rs"
+required-features = ["faer-sparse"]
+
+[[example]]
 name = "json"
 path = "examples/rust/example_json.rs"
 required-features = ["serde"]
+
 
 
 

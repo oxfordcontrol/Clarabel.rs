@@ -101,7 +101,7 @@ where
 
         // permute b
         let tmp = &mut self.workspace.fwork;
-        _permute(tmp, b, &self.perm);
+        permute(tmp, b, &self.perm);
 
         //solve in place with tmp as permuted RHS
         _solve(
@@ -113,7 +113,7 @@ where
         );
 
         // inverse permutation to put unpermuted soln in b
-        _ipermute(b, tmp, &self.perm);
+        ipermute(b, tmp, &self.perm);
     }
 
     pub fn update_values(&mut self, indices: &[usize], values: &[T]) {
@@ -195,12 +195,12 @@ fn _qdldl_new<T: FloatT>(
         iperm = _invperm(&_perm)?;
         perm = _perm;
     } else {
-        (perm, iperm) = _get_amd_ordering(Ain, opts.amd_dense_scale);
+        (perm, iperm) = get_amd_ordering(Ain, opts.amd_dense_scale);
     }
 
     //permute to (another) upper triangular matrix and store the
     //index mapping the input's entries to the permutation's entries
-    let (A, AtoPAPt) = _permute_symmetric(Ain, &iperm);
+    let (A, AtoPAPt) = permute_symmetric(Ain, &iperm);
 
     // handle the (possibly permuted) vector of
     // diagonal D signs if one was specified.  Otherwise
@@ -208,7 +208,7 @@ fn _qdldl_new<T: FloatT>(
     let mut Dsigns = vec![1_i8; n];
     if let Some(ds) = opts.Dsigns {
         Dsigns = vec![1_i8; n];
-        _permute(&mut Dsigns, &ds, &perm);
+        permute(&mut Dsigns, &ds, &perm);
     }
 
     // allocate workspace
@@ -452,8 +452,8 @@ fn _factor_inner<T: FloatT>(
     Lp[0] = 0;
     let mut acc = 0;
     for (Lp, Lnz) in zip(&mut Lp[1..], Lnz) {
-        *Lp = acc + Lnz;
-        acc = *Lp;
+        acc += Lnz;
+        *Lp = acc;
     }
 
     //  set all y_idx to be 'unused' initially
@@ -681,6 +681,24 @@ fn _ltsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T])
     }
 }
 
+// Solves D(L+I)'x = b, with x replacing b.  Unchecked version.
+fn _dltsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], Dinv: &[T], x: &mut [T]) {
+    unsafe {
+        for i in (0..x.len()).rev() {
+            let mut s = T::zero();
+            let f = *Lp.get_unchecked(i);
+            let l = *Lp.get_unchecked(i + 1);
+            for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
+                s += Lxj * (*x.get_unchecked(Lij));
+            }
+
+            let xi = x.get_unchecked_mut(i);
+            *xi *= *Dinv.get_unchecked(i);
+            *xi -= s;
+        }
+    }
+}
+
 // Solves Ax = b where A has given LDL factors, with x replacing b
 fn _solve<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], Dinv: &[T], b: &mut [T]) {
     // We call the `unsafe`d version of the forward and backward substitution
@@ -688,8 +706,13 @@ fn _solve<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], Dinv: &[T], b: &mut [
     // compatible dimensions.   For super safety or debugging purposes, there
     // are also `safe` versions implemented above.
     _lsolve_unsafe(Lp, Li, Lx, b);
-    zip(b.iter_mut(), Dinv).for_each(|(b, d)| *b *= *d);
-    _ltsolve_unsafe(Lp, Li, Lx, b);
+
+    // combined D and L^T solve in one pass
+    _dltsolve_unsafe(Lp, Li, Lx, Dinv, b);
+
+    // in separate passes for reference
+    //zip(b.iter_mut(), Dinv).for_each(|(b, d)| *b *= *d);
+    //_ltsolve_unsafe(Lp, Li, Lx, b);
 }
 
 // Construct an inverse permutation from a permutation
@@ -706,21 +729,32 @@ fn _invperm(p: &[usize]) -> Result<Vec<usize>, QDLDLError> {
     Ok(b)
 }
 
-// internal permutation and inverse permutation
-// functions that require no memory allocations
+// permutation and inverse permutation
+// functions that require no allocation
+// p must be a valid permutation vector
+// in both cases for safety
 
-fn _permute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
-    zip(p, x).for_each(|(p, x)| *x = b[*p]);
+pub(crate) fn permute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
+    debug_assert!(*p.iter().max().unwrap_or(&0) < x.len());
+    unsafe {
+        zip(p, x).for_each(|(p, x)| *x = *b.get_unchecked(*p));
+    }
 }
 
-fn _ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
-    zip(p, b).for_each(|(p, b)| x[*p] = *b);
+pub(crate) fn ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
+    debug_assert!(*p.iter().max().unwrap_or(&0) < x.len());
+    unsafe {
+        zip(p, b).for_each(|(p, b)| *x.get_unchecked_mut(*p) = *b);
+    }
 }
 
 // Given a sparse symmetric matrix `A` (with only upper triangular entries), return
 // permuted sparse symmetric matrix `P` (also only upper triangular) given the
 // inverse permutation vector `iperm`."
-fn _permute_symmetric<T: FloatT>(A: &CscMatrix<T>, iperm: &[usize]) -> (CscMatrix<T>, Vec<usize>) {
+pub(crate) fn permute_symmetric<T: FloatT>(
+    A: &CscMatrix<T>,
+    iperm: &[usize],
+) -> (CscMatrix<T>, Vec<usize>) {
     // perform a number of argument checks
     let (_m, n) = A.size();
     let mut P = CscMatrix::<T>::spalloc((n, n), A.nnz());
@@ -816,7 +850,7 @@ fn _permute_symmetric_inner<T: FloatT>(
     }
 }
 
-fn _get_amd_ordering<T: FloatT>(
+pub(crate) fn get_amd_ordering<T: FloatT>(
     A: &CscMatrix<T>,
     amd_dense_scale: f64,
 ) -> (Vec<usize>, Vec<usize>) {

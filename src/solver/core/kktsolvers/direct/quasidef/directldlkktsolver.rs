@@ -1,5 +1,8 @@
 #![allow(non_snake_case)]
 
+#[cfg(feature = "faer-sparse")]
+use super::ldlsolvers::faer_ldl::*;
+
 use super::ldlsolvers::qdldl::*;
 use super::*;
 use crate::solver::core::kktsolvers::KKTSolver;
@@ -345,8 +348,10 @@ where
             kktshape = QDLDLDirectLDLSolver::<T>::required_matrix_shape();
             ldlptr = |M, D, S| Box::new(QDLDLDirectLDLSolver::<T>::new(M, D, S));
         }
-        "custom" => {
-            unimplemented!();
+        #[cfg(feature = "faer-sparse")]
+        "faer" => {
+            kktshape = FaerDirectLDLSolver::<T>::required_matrix_shape();
+            ldlptr = |M, D, S| Box::new(FaerDirectLDLSolver::<T>::new(M, D, S));
         }
         _ => {
             panic! {"Unrecognized LDL solver type"};
