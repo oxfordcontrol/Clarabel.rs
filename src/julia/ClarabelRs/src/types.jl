@@ -107,6 +107,11 @@ mutable struct Solver{T <: Float64} <: Clarabel.AbstractSolver{Float64}
     ptr:: Ptr{Cvoid}
 
     function Solver{T}(ptr) where T
+
+        if ptr == C_NULL
+            throw(ErrorException("Solver constructor failed"))
+        end
+
         obj = new(ptr)
         finalizer(solver_drop_jlrs,obj)
         return obj
