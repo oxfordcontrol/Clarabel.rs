@@ -2,14 +2,15 @@ use crate::algebra::*;
 use crate::solver::core::traits::Settings;
 use derive_builder::Builder;
 
-#[cfg(feature = "julia")]
-use serde::{Deserialize, Serialize};
+#[cfg(feature = "serde")]
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 /// Standard-form solver type implementing the [`Settings`](crate::solver::core::traits::Settings) trait
 
 #[derive(Builder, Debug, Clone)]
 #[builder(build_fn(validate = "Self::validate"))]
-#[cfg_attr(feature = "julia", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[serde(bound = "T: Serialize + DeserializeOwned")]
 pub struct DefaultSettings<T: FloatT> {
     ///maximum number of iterations
     #[builder(default = "200")]

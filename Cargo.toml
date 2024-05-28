@@ -29,6 +29,10 @@ itertools      = "0.11"
 # -------------------------------
 
 [features]
+default = ["serde"]
+
+# enable reading / writing of problems from json files 
+serde = ["dep:serde", "dep:serde_json"]
 
 # enables blas/lapack for SDP support, with blas/lapack src unspecified
 # also enable packages required for chordal decomposition 
@@ -41,14 +45,16 @@ sdp-openblas   = ["sdp", "blas-src/openblas", "lapack-src/openblas"]
 sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl"]
 sdp-r          = ["sdp", "blas-src/r", "lapack-src/r"]
 
+
 # build as the julia interface 
-julia = ["sdp", "dep:libc", "dep:num-derive", "dep:serde", "dep:serde_json"] 
+julia = ["sdp", "dep:libc", "dep:num-derive",  "serde"] 
  
 # build as the python interface via maturin.
 # NB: python builds use scipy shared libraries
 # for blas/lapack, and should *not* explicitly 
 # enable a blas/lapack source package 
-python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive"]
+python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde"]
+
 
 
 # -------------------------------
@@ -109,6 +115,12 @@ name = "sdp"
 path = "examples/rust/example_sdp.rs"
 required-features = ["sdp"]
 
+[[example]]
+name = "json"
+path = "examples/rust/example_json.rs"
+required-features = ["serde"]
+
+
 
 # -------------------------------
 # custom build profiles 
@@ -162,3 +174,8 @@ crate-type = ["lib","cdylib"]
 rustdoc-args = [ "--html-in-header", "./html/rustdocs-header.html" ]
 features = ["sdp","sdp-mkl"]
 
+
+# ------------------------------
+# testing, benchmarking etc 
+[dev-dependencies]
+tempfile = "3"

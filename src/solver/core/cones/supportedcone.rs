@@ -2,6 +2,8 @@ use super::*;
 
 #[cfg(feature = "sdp")]
 use crate::algebra::triangular_number;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------
 // We define some machinery here for enumerating the
@@ -9,7 +11,8 @@ use crate::algebra::triangular_number;
 // ---------------------------------------------------
 
 /// API type describing the type of a conic constraint.
-///  
+///
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone)]
 pub enum SupportedConeT<T> {
     /// The zero cone (used for equality constraints).

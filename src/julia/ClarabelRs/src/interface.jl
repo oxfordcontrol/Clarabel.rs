@@ -39,6 +39,19 @@ function print_timers(solver::Solver)
 
 end
 
+function write_to_file(solver::Solver, filename::String)
+
+    solver_write_to_file_jlrs(solver::Solver, filename::String)
+
+end
+
+function read_from_file(filename::String)
+
+    solver_read_from_file_jlrs(filename::String)
+
+end
+
+
 # -------------------------------------
 # Wrappers for rust-side interface  
 #--------------------------------------
@@ -77,6 +90,7 @@ function solver_solve_jlrs(solver::Solver)
 
 end 
 
+
 function solver_get_info_jlrs(solver::Solver)
 
     ccall(Libdl.dlsym(librust,:solver_get_info_jlrs),Clarabel.DefaultInfo{Float64},
@@ -89,6 +103,39 @@ function solver_print_timers_jlrs(solver::Solver)
 
     ccall(Libdl.dlsym(librust,:solver_print_timers_jlrs),Cvoid,
     (Ptr{Cvoid},), solver.ptr)
+    
+end
+
+function solver_write_to_file_jlrs(solver::Solver, filename::String)
+
+    status = ccall(Libdl.dlsym(librust,:solver_write_to_file_jlrs),Cint,
+    (
+        Ptr{Cvoid},
+        Cstring
+    ), 
+        solver.ptr,
+        filename,
+    )
+
+    if status != 0
+        error("Error writing to file $filename")
+    end
+    
+end
+
+function solver_read_from_file_jlrs(filename::String)
+
+    ptr = ccall(Libdl.dlsym(librust,:solver_read_from_file_jlrs),Ptr{Cvoid},
+    (
+        Cstring,
+    ), 
+        filename,
+    )
+
+    if ptr == C_NULL
+        error("Error reading from file $filename")
+    end
+    return Solver{Float64}(ptr)
     
 end
 
