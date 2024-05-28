@@ -301,7 +301,7 @@ fn test_settings_validate() {
         .build();
     cfg_if::cfg_if! {
         if #[cfg(feature = "faer-sparse")] {
-            assert!(build.is_ok());
+            assert!(builder.is_ok());
         }
         else {
             assert!(builder.is_err());
