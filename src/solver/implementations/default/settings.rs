@@ -310,7 +310,7 @@ fn test_settings_validate() {
     #[cfg(feature = "sdp")]
     // fail on unknown chordal decomposition merge method
     assert!(DefaultSettingsBuilder::<f64>::default()
-        .chordal_decomposition_method("foo".to_string())
+        .chordal_decomposition_merge_method("foo".to_string())
         .build()
         .is_err());
 }
