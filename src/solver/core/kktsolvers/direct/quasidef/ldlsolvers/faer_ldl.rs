@@ -76,8 +76,9 @@ where
 
         // -----------------------------
 
-        // parallelism is set manually for testing.   Should be settable in settings
-        let parallelism = Parallelism::Rayon(12);
+        // Rayon(0) here is equivalent to rayon::current_num_threads()
+        // PJG: this should be a user-settable option
+        let parallelism = Parallelism::Rayon(0);
 
         // manually compute an AMD ordering for the KKT matrix
         // and permute it to match the ordering used in QDLDL
