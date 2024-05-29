@@ -571,13 +571,14 @@ fn _factor_inner<T: FloatT>(
                     for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
                         *(y_vals.get_unchecked_mut(Lij)) -= Lxj * y_vals_cidx;
                     }
-                }
 
-                // Now I have the cidx^th element of y = L\b.
-                // so compute the corresponding element of
-                // this row of L and put it into the right place
-                Lx[tmp_idx] = y_vals_cidx * Dinv[cidx];
-                D[k] -= y_vals_cidx * Lx[tmp_idx];
+                    // Now I have the cidx^th element of y = L\b.
+                    // so compute the corresponding element of
+                    // this row of L and put it into the right place
+                    let Lx_tmp_idx = y_vals_cidx * *Dinv.get_unchecked(cidx);
+                    *Lx.get_unchecked_mut(tmp_idx) = Lx_tmp_idx;
+                    *D.get_unchecked_mut(k) -= y_vals_cidx * Lx_tmp_idx;
+                }
             }
 
             // record which row it went into
