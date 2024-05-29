@@ -590,27 +590,29 @@ fn _factor_inner<T: FloatT>(
             y_markers[cidx] = QDLDL_UNUSED;
         }
 
-        // apply dynamic regularization
-        if regularize_enable {
-            let sign = T::from_i8(Dsigns[k]).unwrap();
-            if D[k] * sign < regularize_eps {
-                D[k] = regularize_delta * sign;
-                *regularize_count += 1;
+        if !logical_factor {
+            // apply dynamic regularization
+            if regularize_enable {
+                let sign = T::from_i8(Dsigns[k]).unwrap();
+                if D[k] * sign < regularize_eps {
+                    D[k] = regularize_delta * sign;
+                    *regularize_count += 1;
+                }
             }
-        }
 
-        // Maintain a count of the positive entries
-        // in D.  If we hit a zero, we can't factor
-        // this matrix, so abort
-        if D[k] == T::zero() {
-            return Err(QDLDLError::ZeroPivot);
-        }
-        if D[k] > T::zero() {
-            positiveValuesInD += 1;
-        }
+            // Maintain a count of the positive entries
+            // in D.  If we hit a zero, we can't factor
+            // this matrix, so abort
+            if D[k] == T::zero() {
+                return Err(QDLDLError::ZeroPivot);
+            }
+            if D[k] > T::zero() {
+                positiveValuesInD += 1;
+            }
 
-        // compute the inverse of the diagonal
-        Dinv[k] = T::recip(D[k]);
+            // compute the inverse of the diagonal
+            Dinv[k] = T::recip(D[k]);
+        }
     } //end for k
 
     Ok(positiveValuesInD)
