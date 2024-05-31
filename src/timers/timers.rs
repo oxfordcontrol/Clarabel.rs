@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
+
+#[cfg(not(feature="wasm"))]
 use std::time::{Duration, Instant};
+
+#[cfg(feature = "wasm")]
+use web_time::{Duration, Instant};
 
 #[derive(Debug, Default)]
 struct InnerTimer {

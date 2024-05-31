@@ -50,6 +50,7 @@ julia = ["sdp", "dep:libc", "dep:num-derive", "dep:serde", "dep:serde_json"]
 # enable a blas/lapack source package 
 python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive"]
 
+wasm = ["dep:web-time"]
 
 # -------------------------------
 # SDP configuration
@@ -162,3 +163,10 @@ crate-type = ["lib","cdylib"]
 rustdoc-args = [ "--html-in-header", "./html/rustdocs-header.html" ]
 features = ["sdp","sdp-mkl"]
 
+# ------------------------------
+# wasm compatibility
+# ------------------------------
+
+[dependencies.web-time]
+optional = true
+version = "0.2.3"
