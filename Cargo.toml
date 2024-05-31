@@ -55,6 +55,7 @@ julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse"]
 # enable a blas/lapack source package 
 python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde", "faer-sparse"]
 
+wasm = ["dep:web-time"]
 
 #compile with faer supernodal solver option
 faer-sparse = ["dep:faer", "dep:faer-entity"]
@@ -190,8 +191,17 @@ crate-type = ["lib","cdylib"]
 rustdoc-args = [ "--html-in-header", "./html/rustdocs-header.html" ]
 features = ["sdp","sdp-mkl"]
 
+# ------------------------------
+# wasm compatibility
+# ------------------------------
+
+[dependencies.web-time]
+optional = true
+version = "0.2.3"
 
 # ------------------------------
 # testing, benchmarking etc 
+# ------------------------------
 [dev-dependencies]
 tempfile = "3"
+
