@@ -26,8 +26,10 @@ fn main() {
     let cones = [NonnegativeConeT(b.len())];
 
     let settings = DefaultSettingsBuilder::default()
+        .direct_solve_method("faer".to_owned())
         .equilibrate_enable(true)
         .max_iter(50)
+        .verbose(true)
         .build()
         .unwrap();
 

@@ -54,10 +54,10 @@ fn test_permute() {
     let mut x = vec![0.; 4];
     let mut y = vec![0.; 4];
 
-    _permute(&mut x, &b, &perm);
+    permute(&mut x, &b, &perm);
     assert_eq!(x, vec![4., 1., 3., 2.]);
 
-    _ipermute(&mut y, &x, &perm);
+    ipermute(&mut y, &x, &perm);
     assert_eq!(y, b);
 }
 
@@ -124,7 +124,7 @@ fn test_etree() {
 #[test]
 fn test_amd() {
     let A = test_matrix_4x4();
-    let (perm, iperm) = _get_amd_ordering(&A, 1.5);
+    let (perm, iperm) = get_amd_ordering(&A, 1.5);
     assert_eq!(perm, [3, 0, 1, 2]);
     assert_eq!(iperm, [1, 2, 3, 0]);
 }
@@ -134,7 +134,7 @@ fn test_permute_symmetric() {
     //no permutation at all
     let A = test_matrix_4x4();
     let iperm: Vec<usize> = vec![0, 1, 2, 3];
-    let (P, AtoPAPt) = _permute_symmetric(&A, &iperm);
+    let (P, AtoPAPt) = permute_symmetric(&A, &iperm);
 
     assert_eq!(&A.colptr, &P.colptr);
     assert_eq!(&A.rowval, &P.rowval);
@@ -157,7 +157,7 @@ fn test_permute_symmetric() {
 
     let perm: Vec<usize> = vec![2, 3, 0, 1];
     let iperm = _invperm(&perm).unwrap();
-    let (P, _) = _permute_symmetric(&A, &iperm);
+    let (P, _) = permute_symmetric(&A, &iperm);
 
     assert_eq!(&P.colptr, &vec![0, 1, 3, 5, 8]);
     assert_eq!(&P.rowval, &vec![0, 0, 1, 2, 0, 2, 3, 0]);
