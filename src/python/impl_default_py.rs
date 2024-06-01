@@ -10,6 +10,7 @@ use crate::solver::{
         IPSolver, SolverStatus,
     },
     implementations::default::*,
+    SolverJSONReadWrite,
 };
 use num_derive::ToPrimitive;
 use num_traits::ToPrimitive;
