@@ -1,6 +1,6 @@
 use crate::{
     algebra::*,
-    solver::{DefaultSettings, DefaultSolver, SupportedConeT},
+    solver::{core::SolverJSONReadWrite, DefaultSettings, DefaultSolver, SupportedConeT},
 };
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -21,11 +21,11 @@ struct JsonProblemData<T: FloatT> {
     pub settings: DefaultSettings<T>,
 }
 
-impl<T> DefaultSolver<T>
+impl<T> SolverJSONReadWrite for DefaultSolver<T>
 where
     T: FloatT + DeserializeOwned + Serialize,
 {
-    pub fn write_to_file(&self, file: &mut File) -> Result<(), io::Error> {
+    fn write_to_file(&self, file: &mut File) -> Result<(), io::Error> {
         let mut json_data = JsonProblemData {
             P: self.data.P.clone(),
             q: self.data.q.clone(),
@@ -59,7 +59,7 @@ where
         Ok(())
     }
 
-    pub fn read_from_file(file: &mut File) -> Result<Self, io::Error> {
+    fn read_from_file(file: &mut File) -> Result<Self, io::Error> {
         // read file
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)?;

@@ -38,7 +38,11 @@ pub use crate::solver::core::{IPSolver, SolverStatus};
 pub use crate::solver::core::traits;
 pub use crate::solver::core::CoreSettings;
 
-//If we had implementations for multple alternative
+// read/write types if enabled
+#[cfg(feature = "serde")]
+pub use crate::solver::core::SolverJSONReadWrite;
+
+//If we had implementations for multiple alternative
 //problem formats, they would live here.   Since we
 //only have default, it is exposed at the top level
 //in the use statements directly below instead.
