@@ -10,9 +10,11 @@ use crate::solver::{
         IPSolver, SolverStatus,
     },
     implementations::default::*,
+    SolverJSONReadWrite,
 };
 use num_derive::ToPrimitive;
 use num_traits::ToPrimitive;
+use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use std::fmt::Write;
 
@@ -401,12 +403,20 @@ impl PyDefaultSolver {
         b: Vec<f64>,
         cones: Vec<PySupportedCone>,
         settings: PyDefaultSettings,
-    ) -> Self {
+    ) -> PyResult<Self> {
         let cones = _py_to_native_cones(cones);
         let settings = settings.to_internal();
-        let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
 
-        Self { inner: solver }
+        //manually validate settings from Python side
+        match settings.validate() {
+            Ok(_) => (),
+            Err(e) => {
+                return Err(PyException::new_err(format!("Invalid settings: {}", e)));
+            }
+        }
+
+        let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+        Ok(Self { inner: solver })
     }
 
     fn solve(&mut self) -> PyDefaultSolution {
@@ -439,4 +449,17 @@ impl PyDefaultSolver {
             None => println!("no timers enabled"),
         };
     }
+
+    fn write_to_file(&self, filename: &str) -> PyResult<()> {
+        let mut file = std::fs::File::create(filename)?;
+        self.inner.write_to_file(&mut file)?;
+        Ok(())
+    }
+}
+
+#[pyfunction(name = "read_from_file")]
+pub fn read_from_file_py(filename: &str) -> PyResult<PyDefaultSolver> {
+    let mut file = std::fs::File::open(filename)?;
+    let solver = DefaultSolver::<f64>::read_from_file(&mut file)?;
+    Ok(PyDefaultSolver { inner: solver })
 }

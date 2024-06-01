@@ -90,6 +90,14 @@ impl std::fmt::Display for SolverStatus {
     }
 }
 
+/// JSON file read/write trait for solver data.
+/// Only available with the "serde" feature enabled.
+#[cfg(feature = "serde")]
+pub trait SolverJSONReadWrite: Sized {
+    fn write_to_file(&self, file: &mut std::fs::File) -> Result<(), std::io::Error>;
+    fn read_from_file(file: &mut std::fs::File) -> Result<Self, std::io::Error>;
+}
+
 // ---------------------------------
 // top level solver container type
 // ---------------------------------

@@ -6,6 +6,9 @@ use crate::algebra::{Adjoint, MatrixShape, ShapedMatrix, SparseFormatError, Symm
 use num_traits::Num;
 use std::iter::{repeat, zip};
 
+#[cfg(feature = "serde")]
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
 /// Sparse matrix in standard Compressed Sparse Column (CSC) format
 ///
 /// __Example usage__ : To construct the 3 x 3 matrix
@@ -38,6 +41,8 @@ use std::iter::{repeat, zip};
 /// ```
 ///
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[serde(bound = "T: Serialize + DeserializeOwned")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CscMatrix<T = f64> {
     /// number of rows
@@ -269,7 +274,7 @@ where
 
     /// Return matrix data in triplet format.
     ///
-    #[cfg_attr(not(sdp), allow(dead_code))]
+    #[cfg_attr(not(feature = "sdp"), allow(dead_code))]
     pub(crate) fn findnz(&self) -> (Vec<usize>, Vec<usize>, Vec<T>) {
         let I = self.rowval.clone();
         let mut J = Vec::with_capacity(self.nnz());

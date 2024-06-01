@@ -6,11 +6,11 @@
 // which serves as a vectorized version of the std::iter::position
 // returning indices of *all* elements satisfying a predicate
 
+use crate::qdldl;
 use num_traits::Num;
 use std::cmp::Ordering;
-use std::iter::zip;
 
-#[cfg_attr(not(sdp), allow(dead_code))]
+#[cfg_attr(not(feature = "sdp"), allow(dead_code))]
 pub(crate) trait PositionAll<T>: Iterator<Item = T> {
     fn position_all<F>(&mut self, predicate: F) -> Vec<usize>
     where
@@ -34,16 +34,16 @@ where
 
 // permutation and inverse permutation
 pub(crate) fn permute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
-    zip(p, x).for_each(|(p, x)| *x = b[*p]);
+    qdldl::permute(x, b, p);
 }
 
 #[allow(dead_code)]
 pub(crate) fn ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
-    zip(p, b).for_each(|(p, b)| x[*p] = *b);
+    qdldl::ipermute(x, b, p);
 }
 
 // Construct an inverse permutation from a permutation
-#[cfg_attr(not(sdp), allow(dead_code))]
+#[cfg_attr(not(feature = "sdp"), allow(dead_code))]
 pub(crate) fn invperm(p: &[usize]) -> Vec<usize> {
     let mut b = vec![0; p.len()];
     for (i, j) in p.iter().enumerate() {
@@ -63,7 +63,7 @@ where
     p.sort_by_key(|&k| v[k]);
 }
 
-#[cfg_attr(not(sdp), allow(dead_code))]
+#[cfg_attr(not(feature = "sdp"), allow(dead_code))]
 pub(crate) fn sortperm_rev<T>(p: &mut [usize], v: &[T])
 where
     T: Sized + Ord + Copy,
@@ -86,7 +86,7 @@ where
 // non-float types (e.g. usize).  Would require partition of the
 // vector math traits into those that require FloatT and those
 // that only require Num + Ord.
-#[cfg_attr(not(sdp), allow(dead_code))]
+#[cfg_attr(not(feature = "sdp"), allow(dead_code))]
 pub(crate) fn findmax<T>(v: &[T]) -> Option<usize>
 where
     T: Num + Copy + Ord,
@@ -106,8 +106,8 @@ fn test_position_all() {
     let idx = test.iter().position_all(|&v| *v > 2);
     assert_eq!(idx, vec![0, 3, 4]);
 
-    let idx = test.iter().position_all(|&v| *v == 2);
-    assert_eq!(idx, vec![]);
+    let idx: Vec<usize> = test.iter().position_all(|&v| *v == 2);
+    assert_eq!(idx, Vec::<usize>::new());
 }
 
 #[test]

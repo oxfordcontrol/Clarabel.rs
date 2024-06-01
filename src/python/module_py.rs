@@ -39,6 +39,8 @@ fn clarabel(_py: Python, m: &PyModule) -> PyResult<()> {
         .unwrap();
     m.add_function(wrap_pyfunction!(default_infinity_py, m)?)
         .unwrap();
+    m.add_function(wrap_pyfunction!(read_from_file_py, m)?)
+        .unwrap();
 
     // API Cone types
     m.add_class::<PyZeroConeT>()?;
