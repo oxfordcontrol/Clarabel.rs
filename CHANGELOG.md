@@ -8,7 +8,7 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 
 ## [0.9.0] - 2024-01-06
 
-- ## What's Changed
+## What's Changed
 - Read/write problems to JSON files [#111](https://github.com/oxfordcontrol/Clarabel.rs/pull/111)
 
 ## Rust specific changes
