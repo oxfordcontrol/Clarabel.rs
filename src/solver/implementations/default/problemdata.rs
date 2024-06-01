@@ -358,7 +358,7 @@ where
 // -- utility function that tries to unwrap and slice a vector, or return
 // an alternative.   Necessary since the Options for q and b are &Vec, but
 // the user supplied data is a slice &[T]
-
+#[cfg(feature = "sdp")]
 pub(crate) fn unwrap_and_slice_or_else<'a, T, F>(opt: &'a Option<Vec<T>>, f: F) -> &'a [T]
 where
     F: FnOnce() -> &'a [T],

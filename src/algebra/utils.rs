@@ -10,7 +10,7 @@ use crate::qdldl;
 use num_traits::Num;
 use std::cmp::Ordering;
 
-#[cfg_attr(not(sdp), allow(dead_code))]
+#[cfg_attr(not(feature = "sdp"), allow(dead_code))]
 pub(crate) trait PositionAll<T>: Iterator<Item = T> {
     fn position_all<F>(&mut self, predicate: F) -> Vec<usize>
     where
@@ -43,7 +43,7 @@ pub(crate) fn ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
 }
 
 // Construct an inverse permutation from a permutation
-#[cfg_attr(not(sdp), allow(dead_code))]
+#[cfg_attr(not(feature = "sdp"), allow(dead_code))]
 pub(crate) fn invperm(p: &[usize]) -> Vec<usize> {
     let mut b = vec![0; p.len()];
     for (i, j) in p.iter().enumerate() {
@@ -63,7 +63,7 @@ where
     p.sort_by_key(|&k| v[k]);
 }
 
-#[cfg_attr(not(sdp), allow(dead_code))]
+#[cfg_attr(not(feature = "sdp"), allow(dead_code))]
 pub(crate) fn sortperm_rev<T>(p: &mut [usize], v: &[T])
 where
     T: Sized + Ord + Copy,
@@ -86,7 +86,7 @@ where
 // non-float types (e.g. usize).  Would require partition of the
 // vector math traits into those that require FloatT and those
 // that only require Num + Ord.
-#[cfg_attr(not(sdp), allow(dead_code))]
+#[cfg_attr(not(feature = "sdp"), allow(dead_code))]
 pub(crate) fn findmax<T>(v: &[T]) -> Option<usize>
 where
     T: Num + Copy + Ord,

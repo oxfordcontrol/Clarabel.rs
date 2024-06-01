@@ -274,7 +274,7 @@ where
 
     /// Return matrix data in triplet format.
     ///
-    #[cfg_attr(not(sdp), allow(dead_code))]
+    #[cfg_attr(not(feature = "sdp"), allow(dead_code))]
     pub(crate) fn findnz(&self) -> (Vec<usize>, Vec<usize>, Vec<T>) {
         let I = self.rowval.clone();
         let mut J = Vec::with_capacity(self.nnz());
