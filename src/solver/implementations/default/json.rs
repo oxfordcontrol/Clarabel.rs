@@ -13,12 +13,12 @@ use std::{fs::File, io, io::Read};
 #[derive(Serialize, Deserialize)]
 #[serde(bound = "T: Serialize + DeserializeOwned")]
 struct JsonProblemData<T: FloatT> {
+    pub settings: DefaultSettings<T>,
     pub P: CscMatrix<T>,
     pub q: Vec<T>,
     pub A: CscMatrix<T>,
     pub b: Vec<T>,
     pub cones: Vec<SupportedConeT<T>>,
-    pub settings: DefaultSettings<T>,
 }
 
 impl<T> SolverJSONReadWrite for DefaultSolver<T>
