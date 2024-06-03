@@ -7,6 +7,7 @@ use crate::solver::{
         IPSolver,
     },
     implementations::default::*,
+    SolverJSONReadWrite,
 };
 use num_traits::FromPrimitive;
 use serde_json::*;
