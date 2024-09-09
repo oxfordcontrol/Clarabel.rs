@@ -42,7 +42,7 @@ sdp = ["blas","lapack", "indexmap"]
 sdp-accelerate = ["sdp", "blas-src/accelerate", "lapack-src/accelerate"]
 sdp-netlib     = ["sdp", "blas-src/netlib", "lapack-src/netlib"]
 sdp-openblas   = ["sdp", "blas-src/openblas", "lapack-src/openblas"]
-sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl"]
+sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl","intel-mkl-src"]
 sdp-r          = ["sdp", "blas-src/r", "lapack-src/r"]
 
 
@@ -79,6 +79,11 @@ optional = true
 [dependencies.lapack-src]
 version = "0.10"
 optional = true 
+
+[dependencies.intel-mkl-src]
+version = "0.8.1"
+features = ["mkl-static-lp64-iomp"]
+optional = true
 
 [dependencies.indexmap]
 version = "2.2"
