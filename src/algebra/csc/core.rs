@@ -42,7 +42,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 ///
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[serde(bound = "T: Serialize + DeserializeOwned")]
+#[cfg_attr(feature = "serde", serde(bound = "T: Serialize + DeserializeOwned"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CscMatrix<T = f64> {
     /// number of rows
