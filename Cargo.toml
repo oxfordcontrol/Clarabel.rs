@@ -200,6 +200,8 @@ features = ["sdp","sdp-mkl"]
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 web-time = "0.2.3"
+[target.'cfg(target_family = "wasm")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
 
 # ------------------------------
 # testing, benchmarking etc 
