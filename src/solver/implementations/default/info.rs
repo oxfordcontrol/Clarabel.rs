@@ -140,7 +140,7 @@ where
             );
 
         // κ/τ ratio (scaled)
-        self.ktratio = variables.κ / variables.τ;
+        self.ktratio = variables.κ * τinv;
 
         // solve time so far (includes setup)
         self.solve_time = timers.total_time().as_secs_f64();
