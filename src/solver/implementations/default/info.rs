@@ -96,7 +96,7 @@ where
         let e = &data.equilibration.e;
         let dinv = &data.equilibration.dinv;
         let einv = &data.equilibration.einv;
-        let cinv = data.equilibration.c;
+        let cinv = T::recip(data.equilibration.c);
 
         // primal and dual costs. dot products are invariant w.r.t
         // equilibration, but we still need to back out the overall
