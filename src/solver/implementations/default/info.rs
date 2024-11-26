@@ -139,7 +139,7 @@ where
                 T::min(T::abs(self.cost_primal), T::abs(self.cost_dual)),
             );
 
-        // κ/τ
+        // κ/τ ratio (scaled)
         self.ktratio = variables.κ / variables.τ;
 
         // solve time so far (includes setup)
