@@ -27,7 +27,15 @@ impl<'a> FromPyObject<'a> for PyCscMatrix {
         let colptr: Vec<usize> = obj.getattr("indptr")?.extract()?;
         let shape: Vec<usize> = obj.getattr("shape")?.extract()?;
 
-        let mat = CscMatrix::new(shape[0], shape[1], colptr, rowval, nzval);
+        let mut mat = CscMatrix::new(shape[0], shape[1], colptr, rowval, nzval);
+
+        // if the python object was non in standard format, force the rust
+        // object to still be nicely formatted
+        let is_canonical: bool = obj.getattr("has_canonical_format")?.extract()?;
+
+        if !is_canonical {
+            let _ = mat.canonicalize();
+        }
 
         Ok(PyCscMatrix(mat))
     }
