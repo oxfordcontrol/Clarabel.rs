@@ -141,7 +141,10 @@ name = "json"
 path = "examples/rust/example_json.rs"
 required-features = ["serde"]
 
-
+[[example]]
+name = "example_wasm"
+path = "examples/rust/example_wasm.rs"
+required-features = ["wasm"]
 
 
 # -------------------------------

@@ -70,6 +70,28 @@ pip install clarabel
 
 To install the Python interface from source, see the [Python Installation Documentation](https://oxfordcontrol.github.io/ClarabelDocs/stable/python/installation_py/).
 
+## Building and Running the WebAssembly Example
+
+To build and run the WebAssembly example, follow these steps:
+
+1. Ensure you have `wasm-pack` installed. If not, you can install it using:
+   ```
+   cargo install wasm-pack
+   ```
+
+2. Build the WebAssembly example:
+   ```
+   wasm-pack build --target web --features wasm --example example_wasm
+   ```
+
+3. Serve the generated files using a web server. For example, you can use `basic-http-server`:
+   ```
+   cargo install basic-http-server
+   basic-http-server ./pkg
+   ```
+
+4. Open your web browser and navigate to the address provided by the web server to see the example in action.
+
 ## Citing
 ```
 @misc{Clarabel_2024,
