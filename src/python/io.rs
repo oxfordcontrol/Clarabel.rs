@@ -33,7 +33,7 @@ macro_rules! make_python_stdio {
             fn flush(&mut self) -> std::io::Result<()> {
                 // call the python flush() on sys.$pymodname
                 Python::with_gil(|py| -> std::io::Result<()> {
-                    py.run(
+                    py.run_bound(
                         std::concat!("import sys; sys.", $pymodname, ".flush()"),
                         None,
                         None,
