@@ -24,7 +24,7 @@ fn default_infinity_py() {
 // Python module and registry, which includes registration of the
 // data types defined in the other files in this rust module
 #[pymodule]
-fn clarabel(_py: Python, m: &PyModule) -> PyResult<()> {
+fn clarabel(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     //module version
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
