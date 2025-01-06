@@ -27,8 +27,10 @@ pub(crate) fn assemble_kkt_matrix<T: FloatT>(
     let (m, n) = A.size();
     let p = map.sparse_maps.pdim();
 
-    // entries actually on the diagonal of P
-    let nnz_diagP = P.count_diagonal_entries();
+    // entries actually on the diagonal of P.
+    // NB: user provided P is always triu regardless
+    // of the target shape of the KKT matrix
+    let nnz_diagP = P.count_diagonal_entries(MatrixTriangle::Triu);
 
     // total entries in the Hs blocks
     let nnz_Hsblocks = map.Hsblocks.len();

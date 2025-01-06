@@ -273,18 +273,94 @@ where
         self.colptr[0] = 0;
     }
 
-    pub(crate) fn count_diagonal_entries(&self) -> usize {
+    pub(crate) fn count_diagonal_entries(&self, shape: MatrixTriangle) -> usize {
         let mut count = 0;
-        for i in 0..self.n {
-            // compare last entry in each column with
-            // its row number to identify diagonal entries
-            if self.colptr[i+1] != self.colptr[i] &&    // nonempty column
-               self.rowval[self.colptr[i+1]-1] == i
-            {
-                // last element is on diagonal
-                count += 1;
+
+        match shape {
+            MatrixTriangle::Triu => {
+                for i in 0..self.n {
+                    // compare last entry in each column with
+                    // its row number to identify diagonal entries
+                    if self.colptr[i+1] != self.colptr[i] &&    // nonempty column
+                       self.rowval[self.colptr[i+1]-1] == i
+                    {
+                        // last element is on diagonal
+                        count += 1;
+                    }
+                }
+            }
+
+            MatrixTriangle::Tril => {
+                for i in 0..self.n {
+                    // compare first entry in each column with
+                    // its row number to identify diagonal entries
+                    if self.colptr[i+1] != self.colptr[i] &&    // nonempty column
+                       self.rowval[self.colptr[i]] == i
+                    {
+                        // first element is on diagonal
+                        count += 1;
+                    }
+                }
             }
         }
         count
     }
+}
+
+#[test]
+fn test_count_diagonal_entries_triu() {
+    let shape = MatrixTriangle::Triu;
+
+    let A = CscMatrix::from(&[
+        [1., 2., 3.], //
+        [0., 0., 4.], //
+        [0., 0., 1.],
+    ]); //
+    assert_eq!(A.count_diagonal_entries(shape), 2);
+
+    let A = CscMatrix::from(&[
+        [1., 0., 3.], //
+        [0., 0., 4.], //
+        [0., 0., 1.],
+    ]); //
+    assert_eq!(A.count_diagonal_entries(shape), 2);
+
+    let A = CscMatrix::from(&[
+        [1., 0., 3.], //
+        [0., 4., 4.], //
+        [0., 0., 1.],
+    ]); //
+    assert_eq!(A.count_diagonal_entries(shape), 3);
+
+    let A = CscMatrix::<f64>::zeros((5, 5)); //
+    assert_eq!(A.count_diagonal_entries(shape), 0);
+}
+
+#[test]
+fn test_count_diagonal_entries_tril() {
+    let shape = MatrixTriangle::Tril;
+
+    let A = CscMatrix::from(&[
+        [1., 0., 0.], //
+        [2., 0., 0.], //
+        [3., 4., 1.],
+    ]); //
+    assert_eq!(A.count_diagonal_entries(shape), 2);
+
+    let A = CscMatrix::from(&[
+        [1., 0., 0.], //
+        [0., 0., 0.], //
+        [3., 4., 1.],
+    ]); //
+    assert_eq!(A.count_diagonal_entries(shape), 2);
+
+    let A = CscMatrix::from(&[
+        [1., 0., 0.], //
+        [0., 4., 0.], //
+        [3., 4., 1.],
+    ]); //
+    assert_eq!(A.count_diagonal_entries(shape), 3);
+
+    let A = CscMatrix::<f64>::zeros((5, 5)); //
+    assert_eq!(A.count_diagonal_entries(shape), 0);
 }
