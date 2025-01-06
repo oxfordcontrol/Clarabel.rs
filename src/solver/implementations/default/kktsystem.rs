@@ -8,10 +8,10 @@ use crate::solver::core::{
 
 use crate::algebra::*;
 
-// We require Send here to allow pyo3 builds to share
+// We require Send/Sync here to allow pyo3 builds to share
 // solver objects between threads.
 
-type BoxedKKTSolver<T> = Box<dyn KKTSolver<T> + Send>;
+type BoxedKKTSolver<T> = Box<dyn KKTSolver<T> + Send + Sync>;
 
 /// Standard-form solver type implementing the [`KKTSystem`](crate::solver::core::traits::KKTSystem) trait
 

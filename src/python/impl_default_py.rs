@@ -12,8 +12,6 @@ use crate::solver::{
     implementations::default::*,
     SolverJSONReadWrite,
 };
-use num_derive::ToPrimitive;
-use num_traits::ToPrimitive;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 use std::fmt::Write;
@@ -91,8 +89,8 @@ impl PyDefaultSolution {
 // Solver Status
 // ----------------------------------
 
-#[derive(PartialEq, Debug, Clone, ToPrimitive)]
-#[pyclass(name = "SolverStatus")]
+#[derive(PartialEq, Debug, Clone, Copy)]
+#[pyclass(eq, eq_int, name = "SolverStatus")]
 pub enum PySolverStatus {
     Unsolved = 0,
     Solved,
@@ -146,7 +144,7 @@ impl PySolverStatus {
 
     // mapping of solver status to CVXPY keys is done via a hash
     pub fn __hash__(&self) -> u32 {
-        self.to_u32().unwrap()
+        *self as u32
     }
 }
 

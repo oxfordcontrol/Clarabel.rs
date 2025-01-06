@@ -21,7 +21,7 @@ impl From<PyCscMatrix> for CscMatrix<f64> {
 }
 
 impl<'a> FromPyObject<'a> for PyCscMatrix {
-    fn extract(obj: &'a PyAny) -> PyResult<Self> {
+    fn extract_bound(obj: &Bound<'a, pyo3::PyAny>) -> PyResult<Self> {
         let nzval: Vec<f64> = obj.getattr("data")?.extract()?;
         let rowval: Vec<usize> = obj.getattr("indices")?.extract()?;
         let colptr: Vec<usize> = obj.getattr("indptr")?.extract()?;
