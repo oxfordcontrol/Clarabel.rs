@@ -22,10 +22,10 @@ jobs:
       run: cargo --version
       
     - name: Build
-      run: cargo build --verbose --features sdp-accelerate
+      run: cargo build --verbose --features sdp-accelerate,faer-sparse,serde
       
     - name: Run tests
-      run: cargo test --verbose --features sdp-accelerate
+      run: cargo test --verbose --features sdp-accelerate,faer-sparse,serde
 
     - name: Install cargo-tarpaulin
       run: cargo install cargo-tarpaulin
