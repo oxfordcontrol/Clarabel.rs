@@ -44,6 +44,25 @@ fn test_presolve_single_unbounded() {
 }
 
 #[test]
+fn test_presolve_single_unbounded_2() {
+    // tests against https://github.com/oxfordcontrol/Clarabel.rs/issues/127
+    let (P, c, A, mut b, _) = presolve_test_data();
+
+    b[4] = 1e30_f64;
+
+    let cones = vec![ZeroConeT(2), NonnegativeConeT(4)];
+
+    let settings = DefaultSettings::default();
+
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+
+    solver.solve();
+
+    assert_eq!(solver.solution.status, SolverStatus::Solved);
+    assert_eq!(solver.variables.z.len(), 5);
+}
+
+#[test]
 fn test_presolve_completely_redundant_cone() {
     let (P, c, A, mut b, cones) = presolve_test_data();
 

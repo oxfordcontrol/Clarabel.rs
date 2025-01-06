@@ -114,6 +114,9 @@ where
                     cones_new.push(SupportedConeT::NonnegativeConeT(nkeep));
                 }
             } else {
+                //NB: take() is lazy, so must consume this block
+                //to force keep_iter to advance to the next cone
+                markers.last(); // skip this cone
                 cones_new.push(cone.clone());
             }
         }
