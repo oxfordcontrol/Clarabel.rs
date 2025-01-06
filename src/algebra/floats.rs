@@ -13,6 +13,7 @@ use crate::algebra::dense::BlasFloatT;
 pub trait CoreFloatT:
     'static
     + Send
+    + Sync
     + Float
     + FloatConst
     + NumAssign
@@ -28,6 +29,7 @@ pub trait CoreFloatT:
 impl<T> CoreFloatT for T where
     T: 'static
         + Send
+        + Sync
         + Float
         + FloatConst
         + NumAssign
