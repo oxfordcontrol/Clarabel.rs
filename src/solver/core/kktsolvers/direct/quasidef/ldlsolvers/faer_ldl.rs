@@ -198,7 +198,11 @@ where
         // NB: faer solves in place.  Permute b to match the ordering used internally
         permute(&mut self.bperm, b, &self.perm);
 
-        let rhs = faer::mat::from_column_major_slice_mut::<T>(&mut self.bperm[0..], b.len(), 1);
+        let rhs = faer::mat::from_column_major_slice_mut::<T, usize, usize>(
+            &mut self.bperm[0..],
+            b.len(),
+            1,
+        );
         let ldlt = LdltRef::new(&self.symbolic_cholesky, self.ld_vals.as_slice());
 
         ldlt.solve_in_place_with_conj(

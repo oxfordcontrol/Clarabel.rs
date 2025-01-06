@@ -89,12 +89,16 @@ optional = true
 version = "2.2"
 optional = true
 
+# -------------------------------
+# 3rd party sparse LDL solvers
+# -------------------------------
+
 [dependencies.faer]
-version = "0.19"
+version = "0.20"
 optional = true 
 
 [dependencies.faer-entity]
-version = "0.19"
+version = "0.20"
 optional = true 
 
 
