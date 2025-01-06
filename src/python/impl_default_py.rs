@@ -417,8 +417,8 @@ impl PyDefaultSolver {
         Ok(Self { inner: solver })
     }
 
-    fn solve(&mut self) -> PyDefaultSolution {
-        self.inner.solve();
+    fn solve(&mut self, py: Python<'_>) -> PyDefaultSolution {
+        py.allow_threads(|| self.inner.solve());
         PyDefaultSolution::new_from_internal(&self.inner.solution)
     }
 
