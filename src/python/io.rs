@@ -1,7 +1,7 @@
 // Provides a Writer to allow for redirection of stdout and stderr streams
 // to the ones configured for Python.
 
-use pyo3::ffi::{PySys_WriteStderr, PySys_WriteStdout};
+use pyo3::ffi::{c_str, PySys_WriteStderr, PySys_WriteStdout};
 use pyo3::prelude::*;
 use std::io::{LineWriter, Write};
 use std::os::raw::c_char;
@@ -33,8 +33,8 @@ macro_rules! make_python_stdio {
             fn flush(&mut self) -> std::io::Result<()> {
                 // call the python flush() on sys.$pymodname
                 Python::with_gil(|py| -> std::io::Result<()> {
-                    py.run_bound(
-                        std::concat!("import sys; sys.", $pymodname, ".flush()"),
+                    py.run(
+                        c_str!(std::concat!("import sys; sys.", $pymodname, ".flush()")),
                         None,
                         None,
                     )

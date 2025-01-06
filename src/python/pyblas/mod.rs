@@ -38,7 +38,7 @@ fn get_capsule_void_ptr(pyx_capi: &Bound<PyAny>, name: &str) -> PyResult<*mut li
 }
 
 fn get_pyx_capi<'a>(py: Python<'a>, pymodule: &str) -> PyResult<Bound<'a, PyAny>> {
-    let lib = PyModule::import_bound(py, pymodule)?;
+    let lib = PyModule::import(py, pymodule)?;
     let api = lib.getattr("__pyx_capi__")?;
     Ok(api)
 }
