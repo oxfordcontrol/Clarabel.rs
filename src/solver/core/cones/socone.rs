@@ -420,6 +420,14 @@ fn _step_length_soc_component<T>(x: &[T], y: &[T], αmax: T) -> T
 where
     T: FloatT,
 {
+    let mut αmax = αmax;
+
+    // upper bound the step length by the maximum allowable
+    // step length for the scalar part of the cone
+    if x[0] >= T::zero() && y[0] < T::zero() {
+        αmax = T::min(αmax, -x[0] / y[0]);
+    }
+
     // assume that x is in the SOC, and find the minimum positive root
     // of the quadratic equation:  ||x₁+αy₁||^2 = (x₀ + αy₀)^2
 
