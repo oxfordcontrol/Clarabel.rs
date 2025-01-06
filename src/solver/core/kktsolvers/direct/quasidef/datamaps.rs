@@ -19,11 +19,11 @@ where
     GenPowerCone(&'a GenPowerCone<T>),
 }
 
-impl<'a, T> SupportedCone<T>
+impl<T> SupportedCone<T>
 where
     T: FloatT,
 {
-    pub(crate) fn to_sparse_expansion(&'a self) -> Option<SparseExpansionCone<T>> {
+    pub(crate) fn to_sparse_expansion(&self) -> Option<SparseExpansionCone<T>> {
         match self {
             SupportedCone::SecondOrderCone(sc) => Some(SparseExpansionCone::SecondOrderCone(sc)),
             SupportedCone::GenPowerCone(sc) => Some(SparseExpansionCone::GenPowerCone(sc)),
