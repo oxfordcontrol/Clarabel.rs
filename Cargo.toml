@@ -50,9 +50,11 @@ sdp-r          = ["sdp", "blas-src/r", "lapack-src/r"]
 julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse"] 
  
 # build as the python interface via maturin.
-# NB: python builds use scipy shared libraries
-# for blas/lapack, and should *not* explicitly 
-# enable a blas/lapack source package 
+# python builds will default to use scipy shared libraries
+# for blas/lapack if none of the options above are specified.
+# This is the behaviour used when building the python wheels
+# for distribution on pypi
+
 python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde", "faer-sparse"]
 
 #compile with faer supernodal solver option
