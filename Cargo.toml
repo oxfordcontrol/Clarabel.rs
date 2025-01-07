@@ -170,6 +170,7 @@ features = ["derive"]
 [dependencies.serde_json]
 optional = true 
 version = "1"
+features = ["float_roundtrip"]
 
 [dependencies.libc]
 optional = true 
