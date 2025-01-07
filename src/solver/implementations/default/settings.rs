@@ -57,7 +57,7 @@ pub struct DefaultSettings<T: FloatT> {
     // we are checking that we are this far into the interior of
     // an inequality when checking.   Smaller for this value means
     // "less margin required"
-    #[builder(default = "(5e-12).as_T()")]
+    #[builder(default = "(5e-5).as_T()")]
     pub reduced_tol_gap_abs: T,
 
     ///reduced relative duality gap tolerance
@@ -69,7 +69,7 @@ pub struct DefaultSettings<T: FloatT> {
     pub reduced_tol_feas: T,
 
     ///reduced absolute infeasibility tolerance (primal and dual)
-    #[builder(default = "(5e-5).as_T()")]
+    #[builder(default = "(5e-12).as_T()")]
     pub reduced_tol_infeas_abs: T,
 
     ///reduced relative infeasibility tolerance (primal and dual)
