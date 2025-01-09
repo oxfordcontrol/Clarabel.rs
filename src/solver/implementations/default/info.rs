@@ -173,9 +173,9 @@ where
             // Going backwards. Stop immediately if residuals diverge out of feasibility tolerance.
             #[allow(clippy::collapsible_if)] // nested if for readability
             if self.ktratio < T::one() {
-                if (self.res_dual > settings.tol_feas
+                if (self.res_dual > settings.tol_feas * (100.).as_T()
                     && self.res_dual > self.prev_res_dual * (100.).as_T())
-                    || (self.res_primal > settings.tol_feas
+                    || (self.res_primal > settings.tol_feas * (100.).as_T()
                         && self.res_primal > self.prev_res_primal * (100.).as_T())
                 {
                     self.status = SolverStatus::InsufficientProgress;

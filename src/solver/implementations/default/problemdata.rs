@@ -145,7 +145,8 @@ where
             norm
         } else {
             let dinv = &self.equilibration.dinv;
-            let norm = self.q.norm_inf_scaled(dinv);
+            let cinv = T::recip(self.equilibration.c);
+            let norm = self.q.norm_inf_scaled(dinv) * cinv;
             self.normq = Some(norm);
             norm
         }
