@@ -4,7 +4,7 @@ use crate::algebra::{
     DenseMatrix, FloatT, Matrix, MatrixTriangle, MultiplySYMV, ShapedMatrix, Symmetric,
 };
 
-impl<'a, T> MultiplySYMV for Symmetric<'a, Matrix<T>>
+impl<T> MultiplySYMV for Symmetric<'_, Matrix<T>>
 where
     T: FloatT,
 {

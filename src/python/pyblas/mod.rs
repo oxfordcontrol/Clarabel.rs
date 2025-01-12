@@ -1,3 +1,5 @@
+#![allow(clippy::missing_transmute_annotations)]
+
 use pyo3::prelude::*;
 use pyo3::types::PyCapsule;
 

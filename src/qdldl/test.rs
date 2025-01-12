@@ -2,7 +2,6 @@ use super::*;
 extern crate amd;
 
 #[cfg(test)]
-
 fn test_matrix_4x4() -> CscMatrix<f64> {
     // A =
     //[ 8.0  -3.0   2.0    ⋅ ]

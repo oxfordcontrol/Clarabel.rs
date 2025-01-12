@@ -35,7 +35,6 @@ where
 {
     /// Overwrites internal problem data structures in a solver object with new data, avoiding new memory allocations.   
     /// See `update_P``, `update_q`, `update_A`, `update_b` for allowable inputs.
-
     pub fn update_data<
         DataP: MatrixProblemDataUpdate<T>,
         Dataq: VectorProblemDataUpdate<T>,

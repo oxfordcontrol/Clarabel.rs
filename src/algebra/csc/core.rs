@@ -130,7 +130,6 @@ where
     /// row index.   Responsibility for ensuring these conditions hold
     /// is left to the caller.
     ///
-
     pub fn new(m: usize, n: usize, colptr: Vec<usize>, rowval: Vec<usize>, nzval: Vec<T>) -> Self {
         assert_eq!(rowval.len(), nzval.len());
         assert_eq!(colptr.len(), n + 1);
@@ -150,7 +149,6 @@ where
     /// Makes rudimentary dimensional compatibility checks and panics on
     /// failure.   Data can be provided unsorted.   Repeated values are added.
     ///
-
     pub fn new_from_triplets(m: usize, n: usize, I: Vec<usize>, J: Vec<usize>, V: Vec<T>) -> Self {
         assert_eq!(I.len(), J.len());
         assert_eq!(I.len(), V.len());
@@ -211,7 +209,6 @@ where
     }
 
     /// allocate space for a sparse matrix with `nnz` elements
-
     pub fn spalloc(size: (usize, usize), nnz: usize) -> Self {
         let (m, n) = size;
         let mut colptr = vec![0; n + 1];

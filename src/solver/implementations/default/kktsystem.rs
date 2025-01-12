@@ -14,7 +14,6 @@ use crate::algebra::*;
 type BoxedKKTSolver<T> = Box<dyn KKTSolver<T> + Send + Sync>;
 
 /// Standard-form solver type implementing the [`KKTSystem`](crate::solver::core::traits::KKTSystem) trait
-
 pub struct DefaultKKTSystem<T> {
     kktsolver: BoxedKKTSolver<T>,
 
@@ -110,7 +109,7 @@ where
         }
 
         // calculate KKT solution for constant terms
-        return self.solve_constant_rhs(data, settings.core());
+        self.solve_constant_rhs(data, settings.core())
 
         //PJG is_success should be a Result in rust
     }

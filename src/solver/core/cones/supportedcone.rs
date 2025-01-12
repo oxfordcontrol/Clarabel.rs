@@ -211,7 +211,7 @@ pub(crate) struct RangeSupportedConesIterator<'a, T> {
 }
 
 #[cfg_attr(not(feature = "sdp"), allow(dead_code))]
-impl<'a, T> Iterator for RangeSupportedConesIterator<'a, T> {
+impl<T> Iterator for RangeSupportedConesIterator<'_, T> {
     type Item = std::ops::Range<usize>;
 
     fn next(&mut self) -> Option<Self::Item> {

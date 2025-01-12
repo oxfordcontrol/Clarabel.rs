@@ -93,7 +93,7 @@ impl<T> FloatT for T where T: CoreFloatT + MaybeBlasFloatT + MaybeFaerFloatT {}
 /// to [`FloatT`](crate::algebra::FloatT).  It is also used by the
 /// [user settings](crate::solver::implementations::default::DefaultSettings)
 /// for converting defaults of primitive type to [`FloatT`](crate::algebra::FloatT).
-
+//
 // NB: `AsFloatT` is a convenience trait for f32/64 and u32/64
 // so that we can do things like (2.0).as_T() everywhere on
 // constants, rather than the awful T::from_f32(2.0).unwrap()

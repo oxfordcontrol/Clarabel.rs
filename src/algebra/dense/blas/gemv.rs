@@ -18,7 +18,7 @@ where
     }
 }
 
-impl<'a, S, T> MultiplyGEMV<T> for Adjoint<'a, DenseStorageMatrix<S, T>>
+impl<S, T> MultiplyGEMV<T> for Adjoint<'_, DenseStorageMatrix<S, T>>
 where
     T: FloatT,
     S: AsRef<[T]>,

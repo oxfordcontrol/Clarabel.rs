@@ -66,15 +66,14 @@ where
         C
     }
 
+    // In dire need of example and units tests
+
     /// Horizontal and vertical concatentation of matrix blocks
     /// Errors if given data of incompatible dimensions
     ///
     ///
     //PJG: This might be modifiable to allow Adjoint and Symmetric
     //inputs as well.
-
-    // In dire need of example and units tests
-
     fn blockdiag(mats: &[&Self]) -> Result<Self, MatrixConcatenationError> {
         if mats.is_empty() {
             return Err(MatrixConcatenationError::IncompatibleDimension);
