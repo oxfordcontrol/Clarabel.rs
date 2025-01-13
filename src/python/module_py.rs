@@ -4,6 +4,8 @@ use pyo3::prelude::*;
 #[pyfunction(name = "force_load_blas_lapack")]
 fn force_load_blas_lapack_py() {
     //force BLAS/LAPACK fcn pointer load
+    //when using scipy lapack/blas
+    #[cfg(sdp_pyblas)]
     crate::python::pyblas::force_load();
 }
 
