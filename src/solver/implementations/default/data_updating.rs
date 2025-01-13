@@ -21,12 +21,18 @@ pub trait MatrixProblemDataUpdate<T: FloatT> {
         M: &mut CscMatrix<T>,
         lscale: &[T],
         rscale: &[T],
+        cscale: Option<T>,
     ) -> Result<(), SparseFormatError>;
 }
 
 // Trait for updating q and b vectors from various data types
 pub trait VectorProblemDataUpdate<T: FloatT> {
-    fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError>;
+    fn update_vector(
+        &self,
+        v: &mut [T],
+        vscale: &[T],
+        cscale: Option<T>,
+    ) -> Result<(), SparseFormatError>;
 }
 
 impl<T> DefaultSolver<T>
@@ -71,7 +77,8 @@ where
     ) -> Result<(), DataUpdateError> {
         self.check_presolve_disabled()?;
         let d = &self.data.equilibration.d;
-        data.update_matrix(&mut self.data.P, d, d)?;
+        let c = self.data.equilibration.c;
+        data.update_matrix(&mut self.data.P, d, d, Some(c))?;
         // overwrite KKT data
         self.kktsystem.update_P(&self.data.P);
         Ok(())
@@ -94,7 +101,7 @@ where
         self.check_presolve_disabled()?;
         let d = &self.data.equilibration.d;
         let e = &self.data.equilibration.e;
-        data.update_matrix(&mut self.data.A, e, d)?;
+        data.update_matrix(&mut self.data.A, e, d, None)?;
         // overwrite KKT data
         self.kktsystem.update_A(&self.data.A);
         Ok(())
@@ -107,7 +114,8 @@ where
     ) -> Result<(), DataUpdateError> {
         self.check_presolve_disabled()?;
         let d = &self.data.equilibration.d;
-        data.update_vector(&mut self.data.q, d)?;
+        let c = self.data.equilibration.c;
+        data.update_vector(&mut self.data.q, d, Some(c))?;
 
         // flush unscaled norm. Will be recalculated during solve
         self.data.clear_normq();
@@ -122,7 +130,7 @@ where
     ) -> Result<(), DataUpdateError> {
         self.check_presolve_disabled()?;
         let e = &self.data.equilibration.e;
-        data.update_vector(&mut self.data.b, e)?;
+        data.update_vector(&mut self.data.b, e, None)?;
 
         // flush unscaled norm. Will be recalculated during solve
         self.data.clear_normb();
@@ -148,10 +156,11 @@ where
         M: &mut CscMatrix<T>,
         lscale: &[T],
         rscale: &[T],
+        cscale: Option<T>,
     ) -> Result<(), SparseFormatError> {
         self.check_equal_sparsity(M)?;
         let v = &self.nzval;
-        v.update_matrix(M, lscale, rscale)
+        v.update_matrix(M, lscale, rscale, cscale)
     }
 }
 
@@ -164,6 +173,7 @@ where
         M: &mut CscMatrix<T>,
         lscale: &[T],
         rscale: &[T],
+        cscale: Option<T>,
     ) -> Result<(), SparseFormatError> {
         let data = self;
         if data.is_empty() {
@@ -178,6 +188,9 @@ where
 
         // reapply original equilibration
         M.lrscale(lscale, rscale);
+        if let Some(c) = cscale {
+            M.scale(c);
+        }
 
         Ok(())
     }
@@ -189,8 +202,9 @@ impl<T: FloatT> MatrixProblemDataUpdate<T> for Vec<T> {
         M: &mut CscMatrix<T>,
         lscale: &[T],
         rscale: &[T],
+        cscale: Option<T>,
     ) -> Result<(), SparseFormatError> {
-        self.as_slice().update_matrix(M, lscale, rscale)
+        self.as_slice().update_matrix(M, lscale, rscale, cscale)
     }
 }
 
@@ -200,6 +214,7 @@ impl<T: FloatT> MatrixProblemDataUpdate<T> for [T; 0] {
         _M: &mut CscMatrix<T>,
         _lscale: &[T],
         _rscale: &[T],
+        _cscale: Option<T>,
     ) -> Result<(), SparseFormatError> {
         Ok(())
     }
@@ -218,13 +233,18 @@ where
         M: &mut CscMatrix<T>,
         lscale: &[T],
         rscale: &[T],
+        cscale: Option<T>,
     ) -> Result<(), SparseFormatError> {
         for (&idx, &value) in self.clone() {
             if idx >= M.nzval.len() {
                 return Err(SparseFormatError::IncompatibleDimension);
             }
             let (row, col) = M.index_to_coord(idx);
-            M.nzval[idx] = lscale[row] * rscale[col] * value;
+            if let Some(c) = cscale {
+                M.nzval[idx] = lscale[row] * rscale[col] * c * value;
+            } else {
+                M.nzval[idx] = lscale[row] * rscale[col] * value;
+            }
         }
         Ok(())
     }
@@ -234,7 +254,12 @@ impl<T> VectorProblemDataUpdate<T> for [T]
 where
     T: FloatT,
 {
-    fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError> {
+    fn update_vector(
+        &self,
+        v: &mut [T],
+        vscale: &[T],
+        cscale: Option<T>,
+    ) -> Result<(), SparseFormatError> {
         let data = self;
         if data.is_empty() {
             return Ok(());
@@ -247,20 +272,34 @@ where
         v.copy_from_slice(data);
 
         //reapply original equilibration
-        v.hadamard(scale);
+        v.hadamard(vscale);
+
+        if let Some(c) = cscale {
+            v.scale(c);
+        }
 
         Ok(())
     }
 }
 
 impl<T: FloatT> VectorProblemDataUpdate<T> for Vec<T> {
-    fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError> {
-        self.as_slice().update_vector(v, scale)
+    fn update_vector(
+        &self,
+        v: &mut [T],
+        vscale: &[T],
+        cscale: Option<T>,
+    ) -> Result<(), SparseFormatError> {
+        self.as_slice().update_vector(v, vscale, cscale)
     }
 }
 
 impl<T: FloatT> VectorProblemDataUpdate<T> for [T; 0] {
-    fn update_vector(&self, _v: &mut [T], _scale: &[T]) -> Result<(), SparseFormatError> {
+    fn update_vector(
+        &self,
+        _v: &mut [T],
+        _vscale: &[T],
+        _cscale: Option<T>,
+    ) -> Result<(), SparseFormatError> {
         Ok(())
     }
 }
@@ -273,12 +312,21 @@ impl<'a, T> VectorProblemDataUpdate<T> for Zip<Iter<'a, usize>, Iter<'a, T>>
 where
     T: FloatT,
 {
-    fn update_vector(&self, v: &mut [T], scale: &[T]) -> Result<(), SparseFormatError> {
+    fn update_vector(
+        &self,
+        v: &mut [T],
+        vscale: &[T],
+        cscale: Option<T>,
+    ) -> Result<(), SparseFormatError> {
         for (&idx, &value) in self.clone() {
             if idx >= v.len() {
                 return Err(SparseFormatError::IncompatibleDimension);
             }
-            v[idx] = value * scale[idx];
+            if let Some(c) = cscale {
+                v[idx] = value * vscale[idx] * c;
+            } else {
+                v[idx] = value * vscale[idx];
+            }
         }
         Ok(())
     }
