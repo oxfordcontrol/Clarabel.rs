@@ -93,7 +93,7 @@ where
 
         // -----------------------------
 
-        // Rayon(0) here is equivalent to rayon::current_num_threads()
+        // Par::rayon(0) here is equivalent to rayon::current_num_threads()
         // PJG: this should be a user-settable option
         let parallelism = Par::rayon(0);
 
