@@ -23,7 +23,7 @@ module ClarabelRs
         global librust
         
         result = true
-        while result
+        while !result
             result = Libdl.dlclose(librust)
         end 
         librust = Libdl.dlopen(libpath)
