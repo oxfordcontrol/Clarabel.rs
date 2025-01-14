@@ -30,7 +30,6 @@ use crate::algebra::*;
 use crate::solver::core::kktsolvers::direct::DirectLDLSolver;
 use crate::solver::core::CoreSettings;
 use std::iter::zip;
-use std::num::NonZero;
 
 #[derive(Debug)]
 
@@ -96,7 +95,7 @@ where
 
         // Rayon(0) here is equivalent to rayon::current_num_threads()
         // PJG: this should be a user-settable option
-        let parallelism = Par::Rayon(NonZero::<usize>::new(4).unwrap());
+        let parallelism = Par::rayon(0);
 
         // manually compute an AMD ordering for the KKT matrix
         // and permute it to match the ordering used in QDLDL
