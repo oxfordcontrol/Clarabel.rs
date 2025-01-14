@@ -17,7 +17,6 @@ use crate::solver::chordal::ChordalInfo;
 // ---------------
 
 /// Standard-form solver type implementing the [`ProblemData`](crate::solver::core::traits::ProblemData) trait
-
 pub struct DefaultProblemData<T> {
     // the main KKT residuals
     pub P: CscMatrix<T>,
@@ -145,7 +144,8 @@ where
             norm
         } else {
             let dinv = &self.equilibration.dinv;
-            let norm = self.q.norm_inf_scaled(dinv);
+            let cinv = T::recip(self.equilibration.c);
+            let norm = self.q.norm_inf_scaled(dinv) * cinv;
             self.normq = Some(norm);
             norm
         }

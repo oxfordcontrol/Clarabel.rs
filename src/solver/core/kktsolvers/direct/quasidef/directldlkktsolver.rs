@@ -13,10 +13,10 @@ use std::iter::zip;
 // KKTSolver using direct LDL factorisation
 // -------------------------------------
 
-// We require Send here to allow pyo3 builds to share
+// We require Send/Sync here to allow pyo3 builds to share
 // solver objects between threads.
 
-pub(crate) type BoxedDirectLDLSolver<T> = Box<dyn DirectLDLSolver<T> + Send>;
+pub(crate) type BoxedDirectLDLSolver<T> = Box<dyn DirectLDLSolver<T> + Send + Sync>;
 
 pub struct DirectLDLKKTSolver<T> {
     // problem dimensions

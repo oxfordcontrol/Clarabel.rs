@@ -2,7 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 
 cfg_if::cfg_if! {
-    if #[cfg(feature="python")] {   
+    if #[cfg(sdp_pyblas)] {
         // imports via scipy 
         use crate::python::pyblas::*;
     }

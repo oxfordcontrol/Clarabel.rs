@@ -3,7 +3,6 @@
 use clarabel::{algebra::*, solver::*};
 
 #[allow(clippy::type_complexity)]
-
 fn basic_lp_data() -> (
     CscMatrix<f64>,
     Vec<f64>,

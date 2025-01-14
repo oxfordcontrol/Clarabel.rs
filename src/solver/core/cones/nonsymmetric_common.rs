@@ -24,7 +24,6 @@ pub(crate) trait NonsymmetricCone<T: FloatT> {
 // Trait and blanket utlity implementations for Exponential and 3D Power Cones
 // -------------------------------------
 #[allow(clippy::too_many_arguments)]
-
 pub(crate) trait Nonsymmetric3DCone<T: FloatT> {
     fn gradient_primal(&self, s: &[T]) -> [T; 3];
 

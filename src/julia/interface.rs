@@ -139,7 +139,7 @@ pub(crate) extern "C" fn solver_write_to_file_jlrs(
         }
     };
 
-    let mut file = match File::create(&filename) {
+    let mut file = match File::create(filename) {
         Ok(f) => f,
         Err(_) => {
             return -1;
@@ -153,7 +153,7 @@ pub(crate) extern "C" fn solver_write_to_file_jlrs(
     // don't drop, since the memory is owned by Julia
     std::mem::forget(solver);
 
-    return status;
+    status
 }
 
 // dump problem data to a file
@@ -171,7 +171,7 @@ pub(crate) extern "C" fn solver_read_from_file_jlrs(
         }
     };
 
-    let mut file = match File::open(&filename) {
+    let mut file = match File::open(filename) {
         Ok(f) => f,
         Err(_) => {
             return std::ptr::null();

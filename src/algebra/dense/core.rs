@@ -28,7 +28,7 @@ use num_traits::Num;
 //  );
 //
 // ```
-
+//
 // Creates a Matrix from a slice of arrays.
 //
 // Example:

@@ -8,7 +8,6 @@ use crate::solver::core::traits::Residuals;
 // ---------------
 
 /// Standard-form solver type implementing the [`Residuals`](crate::solver::core::traits::Residuals) trait
-
 pub struct DefaultResiduals<T> {
     // the main KKT residuals
     pub rx: Vec<T>,

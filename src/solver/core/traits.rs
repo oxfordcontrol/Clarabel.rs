@@ -16,7 +16,6 @@ use crate::algebra::*;
 use crate::timers::*;
 
 /// Data for a conic optimization problem.
-
 pub trait ProblemData<T: FloatT> {
     type V: Variables<T>;
     type C: Cone<T>;
@@ -27,7 +26,6 @@ pub trait ProblemData<T: FloatT> {
 }
 
 /// Variables for a conic optimization problem.
-
 pub trait Variables<T: FloatT> {
     type D: ProblemData<T>;
     type R: Residuals<T>;
@@ -35,15 +33,12 @@ pub trait Variables<T: FloatT> {
     type SE: Settings<T>;
 
     /// Compute the scaled duality gap.
-
     fn calc_mu(&mut self, residuals: &Self::R, cones: &Self::C) -> T;
 
     /// Compute the KKT RHS for a pure Newton step.
-
     fn affine_step_rhs(&mut self, residuals: &Self::R, variables: &Self, cones: &Self::C);
 
     /// Compute the KKT RHS for an interior point centering step.
-
     #[allow(clippy::too_many_arguments)]
     fn combined_step_rhs(
         &mut self,
@@ -58,7 +53,6 @@ pub trait Variables<T: FloatT> {
 
     /// Compute the maximum step length possible in the given
     /// step direction without violating a cone boundary.
-
     fn calc_step_length(
         &self,
         step_lhs: &Self,
@@ -79,22 +73,18 @@ pub trait Variables<T: FloatT> {
     /// Overwrite values with those from another object
     fn copy_from(&mut self, src: &Self);
 
-    /// Apply NT scaling to a collection of cones.
-
+    /// Apply NT scaling to a collection of cones
     fn scale_cones(&self, cones: &mut Self::C, μ: T, scaling_strategy: ScalingStrategy) -> bool;
 
     /// Compute the barrier function
-
     fn barrier(&self, step: &Self, α: T, cones: &mut Self::C) -> T;
 
     /// Rescale variables, e.g. to renormalize iterates
     /// in a homogeneous embedding
-
     fn rescale(&mut self);
 }
 
 /// Residuals for a conic optimization problem.
-
 pub trait Residuals<T: FloatT> {
     type D: ProblemData<T>;
     type V: Variables<T>;
@@ -105,7 +95,6 @@ pub trait Residuals<T: FloatT> {
 }
 
 /// KKT linear solver object.
-
 pub trait KKTSystem<T: FloatT> {
     type D: ProblemData<T>;
     type V: Variables<T>;
@@ -114,11 +103,9 @@ pub trait KKTSystem<T: FloatT> {
 
     /// Update the KKT system.   In particular, update KKT
     /// matrix entries with new variable and refactor.
-
     fn update(&mut self, data: &Self::D, cones: &Self::C, settings: &Self::SE) -> bool;
 
     /// Solve the KKT system for the given RHS.
-
     #[allow(clippy::too_many_arguments)]
     fn solve(
         &mut self,
@@ -132,7 +119,6 @@ pub trait KKTSystem<T: FloatT> {
     ) -> bool;
 
     /// Find an IP starting condition
-
     fn solve_initial_point(
         &mut self,
         variables: &mut Self::V,
@@ -142,7 +128,6 @@ pub trait KKTSystem<T: FloatT> {
 }
 
 /// Printing functions for the solver's Info
-
 pub trait InfoPrint<T>
 where
     T: FloatT,
@@ -172,7 +157,6 @@ where
 }
 
 /// Internal information for the solver to monitor progress and check for termination.
-
 pub trait Info<T>: InfoPrint<T>
 where
     T: FloatT,
@@ -216,7 +200,6 @@ where
 }
 
 /// Solution for a conic optimization problem.
-
 pub trait Solution<T: FloatT> {
     type D: ProblemData<T>;
     type V: Variables<T>;
@@ -242,7 +225,6 @@ pub trait Solution<T: FloatT> {
 /// specific settings they wish.   They must, however, also maintain
 /// a settings object of type [`CoreSettings`](crate::solver::core::CoreSettings)
 /// and return this to the solver internally.   
-
 pub trait Settings<T: FloatT> {
     /// Return the core settings.
     fn core(&self) -> &CoreSettings<T>;
