@@ -58,7 +58,7 @@ julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse"]
 python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde", "faer-sparse"]
 
 #compile with faer supernodal solver option
-faer-sparse = ["dep:faer", "dep:faer-entity"]
+faer-sparse = ["dep:faer", "dep:faer-traits"]
 
 # -------------------------------
 # SDP configuration
@@ -94,11 +94,11 @@ optional = true
 # -------------------------------
 
 [dependencies.faer]
-version = "0.20"
+version = "0.21"
 optional = true 
 
-[dependencies.faer-entity]
-version = "0.20"
+[dependencies.faer-traits]
+version = "0.21"
 optional = true 
 
 
