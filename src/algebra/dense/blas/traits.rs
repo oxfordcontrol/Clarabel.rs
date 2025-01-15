@@ -6,7 +6,7 @@ cfg_if::cfg_if! {
         // imports via scipy 
         use crate::python::pyblas::*;
     }
-        else {   
+    else {
         // standard imports via blas-lapack-rs crates 
         extern crate blas_src;
         extern crate lapack_src;
