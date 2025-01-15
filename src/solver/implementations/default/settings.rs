@@ -108,6 +108,11 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "(1e-4).as_T()")]
     pub min_terminate_step_length: T,
 
+    ///maximum solver threads for multithreaded KKT solvers
+    ///choosing 0 lets the solver choose for itself
+    #[builder(default = "0")]
+    pub max_threads: u32,
+
     ///use a direct linear solver method (required true)
     #[builder(default = "true")]
     pub direct_kkt_solver: bool,

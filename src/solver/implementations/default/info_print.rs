@@ -172,12 +172,14 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<
     writeln!(out, "settings:")?;
 
     if set.direct_kkt_solver {
-        writeln!(
+        write!(
             out,
             "  linear algebra: direct / {}, precision: {} bit",
             set.direct_solve_method,
             _get_precision_string::<T>()
         )?;
+        print_nthreads(&mut out, settings)?;
+        writeln!(out)?;
     }
 
     let time_lim_str = {
@@ -244,6 +246,27 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<
     )?;
 
     std::io::Result::Ok(())
+}
+
+fn print_nthreads<T: FloatT>(
+    out: &mut stdio::Stdout,
+    settings: &DefaultSettings<T>,
+) -> std::io::Result<()> {
+    match settings.direct_solve_method.as_str() {
+        #[cfg(feature = "faer-sparse")]
+        "faer" => {
+            let nthreads =
+                crate::solver::core::kktsolvers::direct::ldlsolvers::faer_ldl::FaerDirectLDLSolver::<
+                    T,
+                >::nthreads_from_settings(settings.max_threads as usize);
+            if nthreads == 1 {
+                write!(out, " ({nthreads} thread) ")
+            } else {
+                write!(out, " ({nthreads} threads) ")
+            }
+        }
+        _ => std::io::Result::Ok(()),
+    }
 }
 
 #[cfg(feature = "sdp")]

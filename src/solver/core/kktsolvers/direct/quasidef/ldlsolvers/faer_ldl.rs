@@ -88,14 +88,23 @@ impl<T> FaerDirectLDLSolver<T>
 where
     T: FloatT,
 {
+    pub fn nthreads_from_settings(setting: usize) -> usize {
+        faer::utils::thread::parallelism_degree(faer::Par::rayon(setting))
+    }
+
     pub fn new(KKT: &CscMatrix<T>, Dsigns: &[i8], settings: &CoreSettings<T>) -> Self {
         assert!(KKT.is_square(), "KKT matrix is not square");
 
         // -----------------------------
 
         // Par::rayon(0) here is equivalent to rayon::current_num_threads()
-        // PJG: this should be a user-settable option
-        let parallelism = Par::rayon(0);
+        let parallelism = {
+            match settings.max_threads {
+                0 => Par::rayon(0),
+                1 => Par::Seq,
+                _ => Par::rayon(settings.max_threads as usize),
+            }
+        };
 
         // manually compute an AMD ordering for the KKT matrix
         // and permute it to match the ordering used in QDLDL
