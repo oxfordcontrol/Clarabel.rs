@@ -248,6 +248,7 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<
     std::io::Result::Ok(())
 }
 
+#[allow(unused_variables)] //out is unused if faer-sparse is not enabled
 fn print_nthreads<T: FloatT>(
     out: &mut stdio::Stdout,
     settings: &DefaultSettings<T>,
