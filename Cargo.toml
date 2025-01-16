@@ -38,6 +38,9 @@ serde = ["dep:serde", "dep:serde_json"]
 # also enable packages required for chordal decomposition 
 sdp = ["blas","lapack", "indexmap"]
 
+# enable detailed build info reporting 
+buildinfo = ["dep:vergen"]
+
 # explicit configuration options for different blas flavours
 sdp-accelerate = ["sdp", "blas-src/accelerate", "lapack-src/accelerate"]
 sdp-netlib     = ["sdp", "blas-src/netlib", "lapack-src/netlib"]
@@ -45,9 +48,8 @@ sdp-openblas   = ["sdp", "blas-src/openblas", "lapack-src/openblas"]
 sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl","intel-mkl-src"]
 sdp-r          = ["sdp", "blas-src/r", "lapack-src/r"]
 
-
 # build as the julia interface 
-julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse"] 
+julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse", "buildinfo"] 
  
 # build as the python interface via maturin.
 # python builds will default to use scipy shared libraries
@@ -55,7 +57,7 @@ julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse"]
 # This is the behaviour used when building the python wheels
 # for distribution on pypi
 
-python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde", "faer-sparse"]
+python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde", "faer-sparse", "buildinfo"]
 
 #compile with faer supernodal solver option
 faer-sparse = ["dep:faer", "dep:faer-entity"]
@@ -209,6 +211,14 @@ features = ["sdp","sdp-mkl"]
 web-time = "0.2.3"
 [target.'cfg(target_family = "wasm")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
+
+# ------------------------------
+# detailed build info
+# ------------------------------
+[build-dependencies.vergen]
+optional = true
+version = "9.0"
+features = ["build", "cargo", "rustc", "si"]
 
 # ------------------------------
 # testing, benchmarking etc 

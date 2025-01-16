@@ -22,6 +22,10 @@ fn set_infinity_py(v: f64) {
 fn default_infinity_py() {
     crate::solver::default_infinity();
 }
+#[pyfunction(name = "buildinfo")]
+fn buildinfo_py() {
+    crate::buildinfo();
+}
 
 // Python module and registry, which includes registration of the
 // data types defined in the other files in this rust module
@@ -41,6 +45,7 @@ fn clarabel(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
         .unwrap();
     m.add_function(wrap_pyfunction!(default_infinity_py, m)?)
         .unwrap();
+    m.add_function(wrap_pyfunction!(buildinfo_py, m)?).unwrap();
     m.add_function(wrap_pyfunction!(read_from_file_py, m)?)
         .unwrap();
 

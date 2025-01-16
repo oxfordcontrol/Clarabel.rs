@@ -210,3 +210,8 @@ pub(crate) fn settings_from_json(json: *const std::os::raw::c_char) -> DefaultSe
     }
     settings
 }
+
+#[no_mangle]
+pub(crate) extern "C" fn buildinfo_jlrs() {
+    crate::buildinfo();
+}
