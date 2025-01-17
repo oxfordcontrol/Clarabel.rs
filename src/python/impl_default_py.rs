@@ -210,7 +210,9 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub min_terminate_step_length: f64,
 
-    // KKT settings incomplete
+    // KKT settings
+    #[pyo3(get, set)]
+    pub max_threads: u32,
     #[pyo3(get, set)]
     pub direct_kkt_solver: bool,
     #[pyo3(get, set)]
@@ -312,6 +314,7 @@ impl PyDefaultSettings {
             linesearch_backtrack_step: set.linesearch_backtrack_step,
             min_switch_step_length: set.min_switch_step_length,
             min_terminate_step_length: set.min_terminate_step_length,
+            max_threads: set.max_threads,
             direct_kkt_solver: set.direct_kkt_solver,
             direct_solve_method: set.direct_solve_method.clone(),
             static_regularization_enable: set.static_regularization_enable,
@@ -360,6 +363,7 @@ impl PyDefaultSettings {
             linesearch_backtrack_step: self.linesearch_backtrack_step,
             min_switch_step_length: self.min_switch_step_length,
             min_terminate_step_length: self.min_terminate_step_length,
+            max_threads: self.max_threads,
             direct_kkt_solver: self.direct_kkt_solver,
             direct_solve_method: self.direct_solve_method.clone(),
             static_regularization_enable: self.static_regularization_enable,

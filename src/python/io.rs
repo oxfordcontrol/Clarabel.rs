@@ -76,3 +76,7 @@ pub(crate) fn stdout() -> PythonStdout {
 pub(crate) fn stderr() -> PythonStderr {
     PythonStderr::new()
 }
+
+#[allow(unused_imports)]
+pub(crate) use PythonStderr as Stderr;
+pub(crate) use PythonStdout as Stdout;

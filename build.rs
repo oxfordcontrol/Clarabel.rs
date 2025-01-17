@@ -54,6 +54,7 @@ fn config_python_blas() {
         feature = "sdp-mkl",
         feature = "sdp-r"
     )) {
+        println!("cargo:rustc-cfg=sdp_pyblas");
         printinfo!("Python: compiling with python blas from scipy");
     } else {
         printinfo!("Python: compiling with local blas/lapack libraries");
