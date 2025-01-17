@@ -19,11 +19,11 @@ where
     GenPowerCone(&'a GenPowerCone<T>),
 }
 
-impl<'a, T> SupportedCone<T>
+impl<T> SupportedCone<T>
 where
     T: FloatT,
 {
-    pub(crate) fn to_sparse_expansion(&'a self) -> Option<SparseExpansionCone<T>> {
+    pub(crate) fn to_sparse_expansion(&self) -> Option<SparseExpansionCone<T>> {
         match self {
             SupportedCone::SecondOrderCone(sc) => Some(SparseExpansionCone::SecondOrderCone(sc)),
             SupportedCone::GenPowerCone(sc) => Some(SparseExpansionCone::GenPowerCone(sc)),
@@ -138,7 +138,7 @@ impl SparseExpansionMapTrait for SOCExpansionMap {
 
 impl_map_recover!(SecondOrderCone, SOCExpansionMap);
 
-impl<'a, T> SparseExpansionConeTrait<T> for &'a SecondOrderCone<T>
+impl<T> SparseExpansionConeTrait<T> for &'_ SecondOrderCone<T>
 where
     T: FloatT,
 {
@@ -255,7 +255,7 @@ impl SparseExpansionMapTrait for GenPowExpansionMap {
 
 impl_map_recover!(GenPowerCone, GenPowExpansionMap);
 
-impl<'a, T> SparseExpansionConeTrait<T> for &'a GenPowerCone<T>
+impl<T> SparseExpansionConeTrait<T> for &'_ GenPowerCone<T>
 where
     T: FloatT,
 {

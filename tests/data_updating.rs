@@ -13,11 +13,14 @@ fn updating_test_data() -> (
     Vec<SupportedConeT<f64>>,
     DefaultSettings<f64>,
 ) {
-    // P = [4. 1;1 2]
+    // huge values to ensure equilibration
+    // scaling term is small and carries
+    // through update
     let P = CscMatrix::from(&[
-        [4., 1.], //
-        [1., 2.], //
+        [40000., 1.], //
+        [1., 20000.], //
     ]);
+    let q = vec![10000.; 2];
 
     // A = [1 0; 0 1]; A = [-A;A]
     let A = CscMatrix::identity(2);
@@ -26,7 +29,6 @@ fn updating_test_data() -> (
     A1.negate();
     let A = CscMatrix::vcat(&A1, &A2);
 
-    let q = vec![1.; 2];
     let b = vec![1.; 4];
 
     let cones = vec![NonnegativeConeT(2), NonnegativeConeT(2)];
@@ -99,9 +101,10 @@ fn test_update_P_tuple() {
     solver1.solve();
 
     //new solver
+    let P00 = P.nzval[0];
     let P2 = CscMatrix::from(&[
-        [4., 3.], //
-        [0., 5.], //
+        [P00, 3.], //
+        [0., 5.],  //
     ]);
     let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings);
     solver2.solve();

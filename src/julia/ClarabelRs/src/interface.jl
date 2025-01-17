@@ -51,6 +51,12 @@ function read_from_file(filename::String)
 
 end
 
+function buildinfo()
+
+    buildinfo_jlrs()
+
+end
+
 
 # -------------------------------------
 # Wrappers for rust-side interface  
@@ -144,6 +150,12 @@ function solver_drop_jlrs(solver::Solver)
         (Ptr{Cvoid},), solver.ptr)
 
 end 
+
+function buildinfo_jlrs()
+
+    ccall(Libdl.dlsym(librust,:buildinfo_jlrs), Cvoid, ())
+    
+end
 
 
 # -------------------------------------

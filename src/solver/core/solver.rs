@@ -11,7 +11,6 @@ use std::io::Write;
 // ---------------------------------
 
 /// Status of solver at termination
-
 #[repr(u32)]
 #[derive(PartialEq, Eq, Clone, Debug, Copy, Default)]
 pub enum SolverStatus {
@@ -165,12 +164,11 @@ fn _print_banner(is_verbose: bool) -> std::io::Result<()> {
 // ---------------------------------
 
 /// An interior point solver implementing a predictor-corrector scheme
-
+//
 // Only the main solver function lives in IPSolver, since this is the
 // only publicly facing trait we want to give the solver.   Additional
 // internal functionality for the top level solver object is implemented
 // for the IPSolverUtilities trait below, upon which IPSolver depends
-
 pub trait IPSolver<T, D, V, R, K, C, I, SO, SE> {
     /// Run the solver
     fn solve(&mut self);

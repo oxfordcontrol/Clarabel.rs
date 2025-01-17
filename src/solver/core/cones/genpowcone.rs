@@ -37,7 +37,7 @@ impl<T> GenPowerConeData<T>
 where
     T: FloatT,
 {
-    pub fn new(α: &Vec<T>, dim2: usize) -> Self {
+    pub fn new(α: &[T], dim2: usize) -> Self {
         let dim1 = α.len();
         let dim = dim1 + dim2;
 

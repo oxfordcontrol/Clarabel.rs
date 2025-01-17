@@ -30,7 +30,6 @@ pub trait BlockConcatenate: Sized {
     /// ```
     /// # Panics
     /// Panics if row dimensions are incompatible
-
     fn hcat(A: &Self, B: &Self) -> Self;
 
     /// vertical matrix concatenation
@@ -42,7 +41,6 @@ pub trait BlockConcatenate: Sized {
     ///
     /// # Panics
     /// Panics if column dimensions are incompatible
-
     fn vcat(A: &Self, B: &Self) -> Self;
 
     fn hvcat(mats: &[&[&Self]]) -> Result<Self, MatrixConcatenationError>;

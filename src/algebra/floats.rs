@@ -13,6 +13,7 @@ use crate::algebra::dense::BlasFloatT;
 pub trait CoreFloatT:
     'static
     + Send
+    + Sync
     + Float
     + FloatConst
     + NumAssign
@@ -28,6 +29,7 @@ pub trait CoreFloatT:
 impl<T> CoreFloatT for T where
     T: 'static
         + Send
+        + Sync
         + Float
         + FloatConst
         + NumAssign
@@ -63,8 +65,8 @@ cfg_if::cfg_if! {
 
 cfg_if::cfg_if! {
     if #[cfg(feature="faer-sparse")] {
-        pub trait MaybeFaerFloatT : faer::SimpleEntity + faer::ComplexField<Real=Self> {}
-        impl<T> MaybeFaerFloatT for T where T: faer::SimpleEntity + faer::ComplexField<Real=Self> {}
+        pub trait MaybeFaerFloatT : faer_traits::RealField {}
+        impl<T> MaybeFaerFloatT for T where T: faer_traits::RealField {}
     }
     else {
         pub trait MaybeFaerFloatT {}
@@ -91,7 +93,7 @@ impl<T> FloatT for T where T: CoreFloatT + MaybeBlasFloatT + MaybeFaerFloatT {}
 /// to [`FloatT`](crate::algebra::FloatT).  It is also used by the
 /// [user settings](crate::solver::implementations::default::DefaultSettings)
 /// for converting defaults of primitive type to [`FloatT`](crate::algebra::FloatT).
-
+//
 // NB: `AsFloatT` is a convenience trait for f32/64 and u32/64
 // so that we can do things like (2.0).as_T() everywhere on
 // constants, rather than the awful T::from_f32(2.0).unwrap()

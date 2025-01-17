@@ -116,7 +116,7 @@ where
 // things like matrix multiplication and indexing, but
 // do not allow for modification of the underlying data.
 
-impl<'a, S, T> DenseMatrix<T> for Adjoint<'a, DenseStorageMatrix<S, T>>
+impl<S, T> DenseMatrix<T> for Adjoint<'_, DenseStorageMatrix<S, T>>
 where
     S: AsRef<[T]>,
     T: Sized,
@@ -130,7 +130,7 @@ where
     }
 }
 
-impl<'a, S, T> DenseMatrix<T> for Symmetric<'a, DenseStorageMatrix<S, T>>
+impl<S, T> DenseMatrix<T> for Symmetric<'_, DenseStorageMatrix<S, T>>
 where
     S: AsRef<[T]>,
     T: Sized,
@@ -149,7 +149,7 @@ where
     }
 }
 
-impl<'a, S, T> Index<(usize, usize)> for Adjoint<'a, DenseStorageMatrix<S, T>>
+impl<S, T> Index<(usize, usize)> for Adjoint<'_, DenseStorageMatrix<S, T>>
 where
     S: AsRef<[T]>,
 {
@@ -160,7 +160,7 @@ where
     }
 }
 
-impl<'a, S, T> Index<(usize, usize)> for Symmetric<'a, DenseStorageMatrix<S, T>>
+impl<S, T> Index<(usize, usize)> for Symmetric<'_, DenseStorageMatrix<S, T>>
 where
     S: AsRef<[T]>,
 {

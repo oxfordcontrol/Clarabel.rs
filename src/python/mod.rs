@@ -13,6 +13,11 @@ mod cscmatrix_py;
 mod impl_default_py;
 pub(crate) mod io;
 mod module_py;
+
+// compile this module if no local blas/lapack library
+// has been specified, and we want to use the python/scipy
+// version instead.  sdp_pyblas is defined in build.rs
+#[cfg(sdp_pyblas)]
 pub(crate) mod pyblas;
 
 // NB : Nothing is actually public here, but the python module itself
