@@ -6,6 +6,7 @@ use pyo3::prelude::*;
 
 //We can't implement the foreign trait FromPyObject directly on CscMatrix
 //since it is outside the crate, so put a dummy wrapper around it here.
+#[pyclass]
 pub struct PyCscMatrix(CscMatrix<f64>);
 
 impl Deref for PyCscMatrix {
@@ -29,7 +30,7 @@ impl<'a> FromPyObject<'a> for PyCscMatrix {
 
         let mut mat = CscMatrix::new(shape[0], shape[1], colptr, rowval, nzval);
 
-        // if the python object was non in standard format, force the rust
+        // if the python object was not in standard format, force the rust
         // object to still be nicely formatted
         let is_canonical: bool = obj.getattr("has_canonical_format")?.extract()?;
 
