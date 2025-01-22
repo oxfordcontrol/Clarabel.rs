@@ -4,16 +4,18 @@
 #![allow(non_snake_case)]
 
 use super::*;
-use crate::solver::{
-    core::{
-        traits::{InfoPrint, Settings},
-        IPSolver, SolverStatus,
+use crate::{
+    algebra::CscMatrix,
+    solver::{
+        core::{
+            traits::{InfoPrint, Settings},
+            IPSolver, SolverStatus,
+        },
+        implementations::default::*,
+        SolverJSONReadWrite,
     },
-    implementations::default::*,
-    SolverJSONReadWrite,
 };
-use pyo3::exceptions::PyException;
-use pyo3::prelude::*;
+use pyo3::{exceptions::PyException, prelude::*, types::PyDict};
 use std::fmt::Write;
 
 //Here we end up repeating several datatypes defined internally
@@ -389,6 +391,11 @@ impl PyDefaultSettings {
 // ----------------------------------
 // Solver
 // ----------------------------------
+impl From<DataUpdateError> for PyErr {
+    fn from(err: DataUpdateError) -> Self {
+        PyException::new_err(err.to_string())
+    }
+}
 
 #[pyclass(name = "DefaultSolver")]
 pub struct PyDefaultSolver {
@@ -457,6 +464,118 @@ impl PyDefaultSolver {
         self.inner.write_to_file(&mut file)?;
         Ok(())
     }
+
+    #[pyo3(signature = (**kwds))]
+    fn update(&mut self, kwds: Option<&Bound<'_, PyDict>>) -> PyResult<()> {
+        for (key, value) in kwds.unwrap().iter() {
+            let key = key.extract::<String>()?;
+
+            match key.as_str() {
+                "P" => match _py_to_matrix_update(value) {
+                    Some(PyMatrixUpdateData::Matrix(M)) => {
+                        self.inner.update_P(&M)?;
+                    }
+                    Some(PyMatrixUpdateData::Vector(v)) => {
+                        self.inner.update_P(&v)?;
+                    }
+                    Some(PyMatrixUpdateData::Tuple((indices, values))) => {
+                        self.inner.update_P(&(indices, values))?;
+                    }
+                    None => {
+                        return Err(PyException::new_err("Invalid P update data"));
+                    }
+                },
+                "A" => match _py_to_matrix_update(value) {
+                    Some(PyMatrixUpdateData::Matrix(M)) => {
+                        self.inner.update_A(&M)?;
+                    }
+                    Some(PyMatrixUpdateData::Vector(v)) => {
+                        self.inner.update_A(&v)?;
+                    }
+                    Some(PyMatrixUpdateData::Tuple((indices, values))) => {
+                        self.inner.update_A(&(indices, values))?;
+                    }
+                    None => {
+                        return Err(PyException::new_err("Invalid A update data"));
+                    }
+                },
+                "q" => match _py_to_vector_update(value) {
+                    Some(PyVectorUpdateData::Vector(v)) => {
+                        self.inner.update_q(&v)?;
+                    }
+                    Some(PyVectorUpdateData::Tuple((indices, values))) => {
+                        self.inner.update_q(&(indices, values))?;
+                    }
+                    None => {
+                        return Err(PyException::new_err("Invalid q update data"));
+                    }
+                },
+                "b" => match _py_to_vector_update(value) {
+                    Some(PyVectorUpdateData::Vector(v)) => {
+                        self.inner.update_b(&v)?;
+                    }
+                    Some(PyVectorUpdateData::Tuple((indices, values))) => {
+                        self.inner.update_b(&(indices, values))?;
+                    }
+                    None => {
+                        return Err(PyException::new_err("Invalid b update data"));
+                    }
+                },
+                _ => {
+                    println!("unrecognized key: {}", key);
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+enum PyMatrixUpdateData {
+    Matrix(CscMatrix<f64>),
+    Vector(Vec<f64>),
+    Tuple((Vec<usize>, Vec<f64>)),
+}
+
+enum PyVectorUpdateData {
+    Vector(Vec<f64>),
+    Tuple((Vec<usize>, Vec<f64>)),
+}
+
+impl From<PyVectorUpdateData> for PyMatrixUpdateData {
+    fn from(val: PyVectorUpdateData) -> Self {
+        match val {
+            PyVectorUpdateData::Vector(v) => PyMatrixUpdateData::Vector(v),
+            PyVectorUpdateData::Tuple((indices, values)) => {
+                PyMatrixUpdateData::Tuple((indices, values))
+            }
+        }
+    }
+}
+
+fn _py_to_matrix_update(arg: Bound<'_, PyAny>) -> Option<PyMatrixUpdateData> {
+    // try converting to a csc matrix
+    let csc: Option<CscMatrix<f64>> = arg.extract::<PyCscMatrix>().ok().map(|x| x.into());
+    if let Some(csc) = csc {
+        return Some(PyMatrixUpdateData::Matrix(csc));
+    }
+
+    // try as vector data
+    _py_to_vector_update(arg).map(|x| x.into())
+}
+
+fn _py_to_vector_update(arg: Bound<'_, PyAny>) -> Option<PyVectorUpdateData> {
+    // try converting to a complete data vector
+    let values: Option<Vec<f64>> = arg.extract().ok();
+    if let Some(values) = values {
+        return Some(PyVectorUpdateData::Vector(values));
+    }
+
+    // try converting to a tuple of data and index vectors
+    let tuple = arg.extract::<(Vec<usize>, Vec<f64>)>().ok();
+    if let Some(tuple) = tuple {
+        return Some(PyVectorUpdateData::Tuple(tuple));
+    }
+    None
 }
 
 #[pyfunction(name = "read_from_file")]

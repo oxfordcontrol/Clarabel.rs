@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use super::DefaultSolver;
 use crate::algebra::*;
-use core::iter::Zip;
+use core::iter::{zip, Zip};
 use core::slice::Iter;
 use thiserror::Error;
 
@@ -250,6 +250,22 @@ where
     }
 }
 
+impl<T> MatrixProblemDataUpdate<T> for (Vec<usize>, Vec<T>)
+where
+    T: FloatT,
+{
+    fn update_matrix(
+        &self,
+        M: &mut CscMatrix<T>,
+        lscale: &[T],
+        rscale: &[T],
+        cscale: Option<T>,
+    ) -> Result<(), SparseFormatError> {
+        let z = zip(self.0.iter(), self.1.iter());
+        z.update_matrix(M, lscale, rscale, cscale)
+    }
+}
+
 impl<T> VectorProblemDataUpdate<T> for [T]
 where
     T: FloatT,
@@ -329,5 +345,20 @@ where
             }
         }
         Ok(())
+    }
+}
+
+impl<T> VectorProblemDataUpdate<T> for (Vec<usize>, Vec<T>)
+where
+    T: FloatT,
+{
+    fn update_vector(
+        &self,
+        v: &mut [T],
+        vscale: &[T],
+        cscale: Option<T>,
+    ) -> Result<(), SparseFormatError> {
+        let z = zip(self.0.iter(), self.1.iter());
+        z.update_vector(v, vscale, cscale)
     }
 }

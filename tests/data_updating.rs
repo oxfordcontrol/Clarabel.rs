@@ -47,7 +47,7 @@ fn test_update_P_matrix_form() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
     let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
-    //solver1.solve();
+    solver1.solve();
 
     // change P and re-solve
     let mut P2 = P.to_triu();
