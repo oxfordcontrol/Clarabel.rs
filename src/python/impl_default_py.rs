@@ -539,8 +539,8 @@ impl PyDefaultSolver {
         PyDefaultSettings::new_from_internal(&self.inner.settings)
     }
 
-    fn is_presolved(&self) -> bool {
-        self.inner.is_presolved()
+    fn is_data_update_allowed(&self) -> bool {
+        self.inner.is_data_update_allowed()
     }
 }
 

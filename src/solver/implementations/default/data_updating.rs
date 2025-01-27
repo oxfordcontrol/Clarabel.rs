@@ -8,8 +8,11 @@ use thiserror::Error;
 /// Error type returned by user data update utilities, e.g. [`check_format`](crate::algebra::CscMatrix::check_format) utility.
 #[derive(Error, Debug)]
 pub enum DataUpdateError {
-    #[error("Data updates are not allowed when presolve is enabled")]
+    #[error("Data updates are not allowed when presolver is active")]
     PresolveIsActive,
+    #[cfg(feature = "sdp")]
+    #[error("Data updates are not allowed when chordal decomposition is active")]
+    ChordalDecompositionIsActive,
     #[error("Data formatting error")]
     BadFormat(#[from] SparseFormatError),
 }
@@ -44,11 +47,11 @@ where
     ///
     /// <div class="warning">
     ///
-    /// data updating functions will return an error when both 1) presolving has been
-    /// enabled and 2) the presolver modified the original problem data, e.g. by eliminating
-    /// constraints.  In order to guarantee that data updates will be accepted regardless
-    /// of the original problem data, set `presolve_enable = false` in the solver settings.
-    /// See also `is_presolved`.
+    /// data updating functions will return an error when either presolving or chordal
+    /// decomposition have modfied the original problem structure.  In order to guarantee
+    /// that data updates will be accepted regardless of the original problem data, set
+    /// `presolve_enable = false` and `chordal_decomposition_enable = false` in the solver settings.
+    /// See also `is_data_update_allowed()`.
     ///
     /// </div>
     pub fn update_data<
@@ -85,7 +88,7 @@ where
         &mut self,
         data: &Data,
     ) -> Result<(), DataUpdateError> {
-        self.check_presolve_inactive()?;
+        self.check_data_update_allowed()?;
         let d = &self.data.equilibration.d;
         let c = self.data.equilibration.c;
         data.update_matrix(&mut self.data.P, d, d, Some(c))?;
@@ -108,7 +111,7 @@ where
         &mut self,
         data: &Data,
     ) -> Result<(), DataUpdateError> {
-        self.check_presolve_inactive()?;
+        self.check_data_update_allowed()?;
         let d = &self.data.equilibration.d;
         let e = &self.data.equilibration.e;
         data.update_matrix(&mut self.data.A, e, d, None)?;
@@ -122,7 +125,7 @@ where
         &mut self,
         data: &Data,
     ) -> Result<(), DataUpdateError> {
-        self.check_presolve_inactive()?;
+        self.check_data_update_allowed()?;
         let d = &self.data.equilibration.d;
         let c = self.data.equilibration.c;
         data.update_vector(&mut self.data.q, d, Some(c))?;
@@ -138,7 +141,7 @@ where
         &mut self,
         data: &Data,
     ) -> Result<(), DataUpdateError> {
-        self.check_presolve_inactive()?;
+        self.check_data_update_allowed()?;
         let e = &self.data.equilibration.e;
         data.update_vector(&mut self.data.b, e, None)?;
 
@@ -148,18 +151,21 @@ where
         Ok(())
     }
 
-    fn check_presolve_inactive(&self) -> Result<(), DataUpdateError> {
-        if self.is_presolved() {
-            Err(DataUpdateError::PresolveIsActive)
-        } else {
-            Ok(())
+    fn check_data_update_allowed(&self) -> Result<(), DataUpdateError> {
+        if self.data.is_presolved() {
+            return Err(DataUpdateError::PresolveIsActive);
         }
+        #[cfg(feature = "sdp")]
+        if self.data.is_chordal_decomposed() {
+            return Err(DataUpdateError::ChordalDecompositionIsActive);
+        }
+        Ok(())
     }
 
-    /// Returns `true` if presolve was enabled in the settings during solver
-    /// creation and the problem data was actually reduced
-    pub fn is_presolved(&self) -> bool {
-        self.data.is_reduced()
+    /// Returns `true` if problem structure has been modified by
+    /// presolving or chordal decomposition
+    pub fn is_data_update_allowed(&self) -> bool {
+        self.check_data_update_allowed().is_ok()
     }
 }
 

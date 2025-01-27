@@ -271,16 +271,16 @@ def test_presolved_update(updating_test_data):
     solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
 
     # presolve enabled but nothing eliminated
-    assert not solver.is_presolved()
+    assert solver.is_data_update_allowed()
 
     # presolved disabled in settings
     b[0] = 1e30
     settings.presolve_enable = False
     solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
-    assert not solver.is_presolved()
+    assert solver.is_data_update_allowed()
 
     # should be eliminated
     b[0] = 1e30
     settings.presolve_enable = True
     solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
-    assert solver.is_presolved()
+    assert not solver.is_data_update_allowed()

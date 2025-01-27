@@ -314,19 +314,19 @@ fn test_fail_on_presolve_enable() {
     let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
 
     // presolve enabled but nothing eliminated
-    assert!(!solver.is_presolved());
+    assert!(solver.is_data_update_allowed());
 
     // presolved disabled in settings
     b[0] = 1e40;
     settings.presolve_enable = false;
     let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
-    assert!(!solver.is_presolved());
+    assert!(solver.is_data_update_allowed());
 
     // should be eliminated
     b[0] = 1e40;
     settings.presolve_enable = true;
     let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
-    assert!(solver.is_presolved());
+    assert!(!solver.is_data_update_allowed());
 
     // apply no-op updates to check that updates are rejected
     // when presolve is active
