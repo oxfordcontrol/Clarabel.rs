@@ -316,3 +316,25 @@ fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
         }
     }
 }
+
+#[test]
+fn test_symv_safe_and_unsafe() {
+    let A = CscMatrix::from(&[
+        [4.0, -3.0, 7.0, 0.0],
+        [0.0, 8.0, -1.0, 0.0],
+        [0.0, 0.0, 2.0, -3.0],
+        [0.0, 0.0, 0.0, 1.0],
+    ]);
+
+    let x = vec![1., 2., -3., -4.];
+    let a = -2.;
+    let b = 3.;
+
+    let mut y = vec![0., 1., -1., 2.];
+    _csc_symv_unsafe(&A, &mut y, &x, a, b);
+    assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
+
+    let mut y = vec![0., 1., -1., 2.];
+    _csc_symv_safe(&A, &mut y, &x, a, b);
+    assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
+}
