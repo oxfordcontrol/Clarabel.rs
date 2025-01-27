@@ -73,6 +73,22 @@ fn test_socp_feasible() {
 }
 
 #[test]
+fn test_socp_feasible_sparse() {
+    // same data, but with one SOC cone so that we get the
+    // sparse representation for code coverage
+    let (P, c, A, b, _) = basic_socp_data();
+    let cones = vec![NonnegativeConeT(3), NonnegativeConeT(6)];
+
+    let settings = DefaultSettings::<f64>::default();
+
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+
+    solver.solve();
+
+    assert_eq!(solver.solution.status, SolverStatus::Solved);
+}
+
+#[test]
 fn test_socp_infeasible() {
     let (P, c, A, mut b, cones) = basic_socp_data();
 

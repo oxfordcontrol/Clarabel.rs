@@ -171,9 +171,6 @@ where
         let w1sq = w[1..].sumsq();
         w[0] = T::sqrt(T::one() + w1sq);
 
-        //---------------------
-        //DEBUG ALTERNATIVE λ
-
         //Compute the scaling point λ.   Should satisfy λ = Wz = W^{-T}s
         let γ = half * wscale;
         self.λ[0] = γ;
@@ -186,6 +183,7 @@ where
         self.λ[1..].scale(T::recip(s[0] / sscale + z[0] / zscale + two * γ));
         self.λ.scale(T::sqrt(sscale * zscale));
 
+        // Populate sparse expansion terms if allocated
         if let Some(sparse_data) = &mut self.sparse_data {
             //various intermediate calcs for u,v,d,η
             let α = two * w[0];
