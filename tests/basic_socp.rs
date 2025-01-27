@@ -36,9 +36,9 @@ fn basic_socp_data() -> (
     let I1 = CscMatrix::<f64>::identity(3);
     let mut I2 = CscMatrix::<f64>::identity(3);
     I2.negate();
-    let mut A = CscMatrix::vcat(&I1, &I2);
+    let mut A = CscMatrix::vcat(&I1, &I2).unwrap();
     A.scale(2.);
-    let A = CscMatrix::vcat(&A, &I1);
+    let A = CscMatrix::vcat(&A, &I1).unwrap();
 
     let c = vec![0.1, -2.0, 1.0];
     let b = vec![1., 1., 1., 1., 1., 1., 0., 0., 0.];

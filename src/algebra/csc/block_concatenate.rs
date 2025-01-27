@@ -12,65 +12,14 @@ impl<T> BlockConcatenate for CscMatrix<T>
 where
     T: FloatT,
 {
-    fn hcat(A: &Self, B: &Self) -> Self {
-        //first check for compatible row dimensions
-        assert_eq!(A.m, B.m);
-
-        //dimensions for C = [A B];
-        let nnz = A.nnz() + B.nnz();
-        let m = A.m; //rows C
-        let n = A.n + B.n; //cols C
-        let mut C = CscMatrix::spalloc((m, n), nnz);
-
-        //we make dummy mapping indices since we don't care
-        //where the entries go.  An alternative would be to
-        //modify the fill_block method to accept Option<_>
-        let mut map = vec![0usize; max(A.nnz(), B.nnz())];
-
-        //compute column counts and fill
-        C.colcount_block(A, 0, MatrixShape::N);
-        C.colcount_block(B, A.n, MatrixShape::N);
-        C.colcount_to_colptr();
-
-        C.fill_block(A, &mut map, 0, 0, MatrixShape::N);
-        C.fill_block(B, &mut map, 0, A.n, MatrixShape::N);
-        C.backshift_colptrs();
-
-        C
+    fn hcat(A: &Self, B: &Self) -> Result<Self, MatrixConcatenationError> {
+        Self::hvcat(&[&[A, B]])
     }
 
-    fn vcat(A: &Self, B: &Self) -> Self {
-        //first check for compatible column dimensions
-        assert_eq!(A.n, B.n);
-
-        //dimensions for C = [A; B];
-        let nnz = A.nnz() + B.nnz();
-        let m = A.m + B.m; //rows C
-        let n = A.n; //cols C
-        let mut C = CscMatrix::spalloc((m, n), nnz);
-
-        //we make dummy mapping indices since we don't care
-        //where the entries go.  An alternative would be to
-        //modify the fill_block method to accept Option<_>
-        let mut map = vec![0usize; max(A.nnz(), B.nnz())];
-
-        //compute column counts and fill
-        C.colcount_block(A, 0, MatrixShape::N);
-        C.colcount_block(B, 0, MatrixShape::N);
-        C.colcount_to_colptr();
-
-        C.fill_block(A, &mut map, 0, 0, MatrixShape::N);
-        C.fill_block(B, &mut map, A.m, 0, MatrixShape::N);
-        C.backshift_colptrs();
-        C
+    fn vcat(A: &Self, B: &Self) -> Result<Self, MatrixConcatenationError> {
+        Self::hvcat(&[&[A], &[B]])
     }
 
-    // In dire need of example and units tests
-
-    /// Horizontal and vertical concatentation of matrix blocks
-    /// Errors if given data of incompatible dimensions
-    ///
-    ///
     //PJG: This might be modifiable to allow Adjoint and Symmetric
     //inputs as well.
     fn blockdiag(mats: &[&Self]) -> Result<Self, MatrixConcatenationError> {
@@ -196,7 +145,7 @@ fn test_dense_concatenate() {
     ]);
 
     // horizontal
-    let C = CscMatrix::hcat(&A, &B);
+    let C = CscMatrix::hcat(&A, &B).unwrap();
     let Ctest = CscMatrix::from(&[
         [1., 3., 5., 7.], //
         [2., 4., 6., 8.], //
@@ -205,7 +154,7 @@ fn test_dense_concatenate() {
     assert_eq!(C, Ctest);
 
     // vertical
-    let C = CscMatrix::vcat(&A, &B);
+    let C = CscMatrix::vcat(&A, &B).unwrap();
     let Ctest = CscMatrix::from(&[
         [1., 3.], //
         [2., 4.], //

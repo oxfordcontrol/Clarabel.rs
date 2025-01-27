@@ -27,7 +27,7 @@ fn updating_test_data() -> (
 
     let (mut A1, A2) = (A.clone(), A);
     A1.negate();
-    let A = CscMatrix::vcat(&A1, &A2);
+    let A = CscMatrix::vcat(&A1, &A2).unwrap();
 
     let b = vec![1.; 4];
 

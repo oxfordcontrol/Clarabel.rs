@@ -81,7 +81,7 @@ fn test_sdp_primal_infeasible() {
     // this adds a negative definiteness constraint to x
     let mut A2 = A.clone();
     A2.negate();
-    let A = CscMatrix::vcat(&A, &A2);
+    let A = CscMatrix::vcat(&A, &A2).unwrap();
     b.extend(vec![0.0; b.len()]);
     cones.extend([cones[0].clone()]);
 

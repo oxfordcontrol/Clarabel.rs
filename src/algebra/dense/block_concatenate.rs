@@ -13,32 +13,12 @@ impl<T> BlockConcatenate for Matrix<T>
 where
     T: FloatT,
 {
-    fn hcat(A: &Self, B: &Self) -> Self {
-        //first check for compatible row dimensions
-        assert_eq!(A.nrows(), B.nrows());
-
-        //dimensions for C = [A B];
-        let m = A.nrows(); //rows
-        let n = A.ncols() + B.ncols(); //cols s
-        let mut data = A.data.clone();
-        data.extend(&B.data);
-        Self::new((m, n), data)
+    fn hcat(A: &Self, B: &Self) -> Result<Self, MatrixConcatenationError> {
+        Self::hvcat(&[&[A, B]])
     }
 
-    fn vcat(A: &Self, B: &Self) -> Self {
-        //first check for compatible column dimensions
-        assert_eq!(A.ncols(), B.ncols());
-
-        //dimensions for C = [A; B];
-        let m = A.nrows() + B.nrows(); //rows C
-        let n = A.ncols(); //cols C
-        let mut data = Vec::with_capacity(m * n);
-
-        for col in 0..A.ncols() {
-            data.extend(A.col_slice(col));
-            data.extend(B.col_slice(col));
-        }
-        Self::new((m, n), data)
+    fn vcat(A: &Self, B: &Self) -> Result<Self, MatrixConcatenationError> {
+        Self::hvcat(&[&[A], &[B]])
     }
 
     fn hvcat(mats: &[&[&Self]]) -> Result<Self, MatrixConcatenationError> {
@@ -55,7 +35,7 @@ where
         for blockcolidx in 0..mats[0].len() {
             //every matrix in each block-column should have the same
             //number of columns
-            for col in 0..mats[blockcolidx][0].ncols() {
+            for col in 0..mats[0][blockcolidx].ncols() {
                 for blockrow in mats {
                     let block = blockrow[blockcolidx];
                     data.extend(block.col_slice(col));
@@ -104,7 +84,7 @@ fn test_dense_concatenate() {
     ]);
 
     // horizontal
-    let C = Matrix::hcat(&A, &B);
+    let C = Matrix::hcat(&A, &B).unwrap();
     let Ctest = Matrix::from(&[
         [1., 3., 5., 7.], //
         [2., 4., 6., 8.], //
@@ -113,7 +93,7 @@ fn test_dense_concatenate() {
     assert_eq!(C, Ctest);
 
     // vertical
-    let C = Matrix::vcat(&A, &B);
+    let C = Matrix::vcat(&A, &B).unwrap();
     let Ctest = Matrix::from(&[
         [1., 3.], //
         [2., 4.], //
