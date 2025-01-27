@@ -1,3 +1,7 @@
+status:
+  project: yes
+  patch: no
+  changes: no
 ignore:
   - "python/*"      # pyblas wrappers
   - "src/python/*"  # py03 interface 
