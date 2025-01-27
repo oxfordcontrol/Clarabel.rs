@@ -6,8 +6,7 @@ use std::cmp::max;
 use crate::algebra::{BlockConcatenate, CscMatrix, FloatT, MatrixShape};
 
 // PJG: hcat and vcat could return option and should probably
-// just call the internal hvcat function.   Needs examples, unit
-// tests and maybe make this a public interface
+// just call the internal hvcat function.
 
 impl<T> BlockConcatenate for CscMatrix<T>
 where
@@ -185,4 +184,53 @@ where
     }
 }
 
-//PJG: hvcat and blockdiag unittests here
+#[test]
+fn test_dense_concatenate() {
+    let A = CscMatrix::from(&[
+        [1., 3.], //
+        [2., 4.], //
+    ]);
+    let B = CscMatrix::from(&[
+        [5., 7.], //
+        [6., 8.], //
+    ]);
+
+    // horizontal
+    let C = CscMatrix::hcat(&A, &B);
+    let Ctest = CscMatrix::from(&[
+        [1., 3., 5., 7.], //
+        [2., 4., 6., 8.], //
+    ]);
+
+    assert_eq!(C, Ctest);
+
+    // vertical
+    let C = CscMatrix::vcat(&A, &B);
+    let Ctest = CscMatrix::from(&[
+        [1., 3.], //
+        [2., 4.], //
+        [5., 7.], //
+        [6., 8.], //
+    ]);
+    assert_eq!(C, Ctest);
+
+    // 2 x 2 block
+    let C = CscMatrix::hvcat(&[&[&A, &B], &[&B, &A]]).unwrap();
+    let Ctest = CscMatrix::from(&[
+        [1., 3., 5., 7.], //
+        [2., 4., 6., 8.], //
+        [5., 7., 1., 3.], //
+        [6., 8., 2., 4.], //
+    ]);
+    assert_eq!(C, Ctest);
+
+    // block diagonal
+    let C = CscMatrix::blockdiag(&[&A, &B]).unwrap();
+    let Ctest = CscMatrix::from(&[
+        [1., 3., 0., 0.], //
+        [2., 4., 0., 0.], //
+        [0., 0., 5., 7.], //
+        [0., 0., 6., 8.], //
+    ]);
+    assert_eq!(C, Ctest);
+}

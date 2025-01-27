@@ -6,7 +6,9 @@ use crate::algebra::{
 };
 
 // PJG: Should allow for borrowed data in the
-// inputs here
+// inputs here.   Return types not consistent.
+// tests are redundant with Csc implementation.
+
 impl<T> BlockConcatenate for Matrix<T>
 where
     T: FloatT,
@@ -101,8 +103,8 @@ fn test_dense_concatenate() {
         [6., 8.], //
     ]);
 
+    // horizontal
     let C = Matrix::hcat(&A, &B);
-
     let Ctest = Matrix::from(&[
         [1., 3., 5., 7.], //
         [2., 4., 6., 8.], //
@@ -110,16 +112,33 @@ fn test_dense_concatenate() {
 
     assert_eq!(C, Ctest);
 
+    // vertical
     let C = Matrix::vcat(&A, &B);
-
     let Ctest = Matrix::from(&[
         [1., 3.], //
         [2., 4.], //
         [5., 7.], //
         [6., 8.], //
     ]);
+    assert_eq!(C, Ctest);
 
+    // 2 x 2 block
+    let C = Matrix::hvcat(&[&[&A, &B], &[&B, &A]]).unwrap();
+    let Ctest = Matrix::from(&[
+        [1., 3., 5., 7.], //
+        [2., 4., 6., 8.], //
+        [5., 7., 1., 3.], //
+        [6., 8., 2., 4.], //
+    ]);
+    assert_eq!(C, Ctest);
+
+    // block diagonal
+    let C = Matrix::blockdiag(&[&A, &B]).unwrap();
+    let Ctest = Matrix::from(&[
+        [1., 3., 0., 0.], //
+        [2., 4., 0., 0.], //
+        [0., 0., 5., 7.], //
+        [0., 0., 6., 8.], //
+    ]);
     assert_eq!(C, Ctest);
 }
-
-//PJG: hvcat and blockdiag unittests here
