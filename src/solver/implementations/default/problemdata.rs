@@ -169,6 +169,21 @@ where
     pub(crate) fn clear_normb(&mut self) {
         self.normb = None;
     }
+
+    // data updating not supported following presolve
+    //reduction or chordal decomposition
+    pub(crate) fn is_presolved(&self) -> bool {
+        self.presolver.is_some()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn is_chordal_decomposed(&self) -> bool {
+        #[cfg(feature = "sdp")]
+        if self.chordal_info.is_some() {
+            return true;
+        }
+        false
+    }
 }
 
 impl<T> ProblemData<T> for DefaultProblemData<T>

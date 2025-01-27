@@ -21,7 +21,6 @@ def updating_test_data():
 
     cones = [clarabel.NonnegativeConeT(2), clarabel.NonnegativeConeT(2)]
     settings = clarabel.DefaultSettings()
-    settings.presolve_enable = False
     return P, q, A, b, cones, settings
 
 
@@ -243,3 +242,45 @@ def test_update_b_tuple(updating_test_data):
     solution2 = solver2.solve()
 
     assert np.allclose(solution1.x, solution2.x)
+
+
+def test_settings(updating_test_data):
+
+    P, q, A, b, cones, settings = updating_test_data
+
+    solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
+    solution = solver.solve()
+
+    assert solution.status == clarabel.SolverStatus.Solved
+
+    # extract settings, modify and reassign
+    settings = solver.get_settings()
+    settings.max_iter = 1
+    solver.update(settings=settings)
+    solution = solver.solve()
+
+    assert solution.status == clarabel.SolverStatus.MaxIterations
+
+
+def test_presolved_update(updating_test_data):
+
+    # check that updates are rejected properly after presolving
+
+    P, q, A, b, cones, settings = updating_test_data
+
+    solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
+
+    # presolve enabled but nothing eliminated
+    assert solver.is_data_update_allowed()
+
+    # presolved disabled in settings
+    b[0] = 1e30
+    settings.presolve_enable = False
+    solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
+    assert solver.is_data_update_allowed()
+
+    # should be eliminated
+    b[0] = 1e30
+    settings.presolve_enable = True
+    solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
+    assert not solver.is_data_update_allowed()
