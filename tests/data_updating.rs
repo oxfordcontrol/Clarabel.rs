@@ -309,26 +309,41 @@ fn test_update_noops() {
 #[test]
 fn test_fail_on_presolve_enable() {
     // original problem
-    let (P, q, A, b, cones, mut settings) = updating_test_data();
+    let (P, q, A, mut b, cones, mut settings) = updating_test_data();
     settings.presolve_enable = true;
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
-    solver.solve();
+    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+
+    // presolve enabled but nothing eliminated
+    assert!(!solver.is_presolved());
+
+    // presolved disabled in settings
+    b[0] = 1e40;
+    settings.presolve_enable = false;
+    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    assert!(!solver.is_presolved());
+
+    // should be eliminated
+    b[0] = 1e40;
+    settings.presolve_enable = true;
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    assert!(solver.is_presolved());
 
     // apply no-op updates to check that updates are rejected
+    // when presolve is active
     assert!(matches!(
         solver.update_P(&[]).err(),
-        Some(DataUpdateError::PresolveEnabled)
+        Some(DataUpdateError::PresolveIsActive)
     ));
     assert!(matches!(
         solver.update_A(&[]).err(),
-        Some(DataUpdateError::PresolveEnabled)
+        Some(DataUpdateError::PresolveIsActive)
     ));
     assert!(matches!(
         solver.update_b(&[]).err(),
-        Some(DataUpdateError::PresolveEnabled)
+        Some(DataUpdateError::PresolveIsActive)
     ));
     assert!(matches!(
         solver.update_q(&[]).err(),
-        Some(DataUpdateError::PresolveEnabled)
+        Some(DataUpdateError::PresolveIsActive)
     ));
 }

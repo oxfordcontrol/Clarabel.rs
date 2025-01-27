@@ -169,6 +169,10 @@ where
     pub(crate) fn clear_normb(&mut self) {
         self.normb = None;
     }
+
+    pub(crate) fn is_reduced(&self) -> bool {
+        self.presolver.is_some()
+    }
 }
 
 impl<T> ProblemData<T> for DefaultProblemData<T>

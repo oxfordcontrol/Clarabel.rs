@@ -338,10 +338,10 @@ impl PyDefaultSettings {
         }
     }
 
-    pub(crate) fn to_internal(&self) -> DefaultSettings<f64> {
+    pub(crate) fn to_internal(&self) -> Result<DefaultSettings<f64>, PyErr> {
         // convert python settings -> Rust
 
-        DefaultSettings::<f64> {
+        let settings = DefaultSettings::<f64> {
             max_iter: self.max_iter,
             time_limit: self.time_limit,
             verbose: self.verbose,
@@ -384,6 +384,12 @@ impl PyDefaultSettings {
             chordal_decomposition_merge_method: self.chordal_decomposition_merge_method.clone(),
             chordal_decomposition_compact: self.chordal_decomposition_compact,
             chordal_decomposition_complete_dual: self.chordal_decomposition_complete_dual,
+        };
+
+        //manually validate settings from Python side
+        match settings.validate() {
+            Ok(_) => Ok(settings),
+            Err(e) => Err(PyException::new_err(format!("Invalid settings: {}", e))),
         }
     }
 }
@@ -414,15 +420,7 @@ impl PyDefaultSolver {
         settings: PyDefaultSettings,
     ) -> PyResult<Self> {
         let cones = _py_to_native_cones(cones);
-        let settings = settings.to_internal();
-
-        //manually validate settings from Python side
-        match settings.validate() {
-            Ok(_) => (),
-            Err(e) => {
-                return Err(PyException::new_err(format!("Invalid settings: {}", e)));
-            }
-        }
+        let settings = settings.to_internal()?;
 
         let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
         Ok(Self { inner: solver })
@@ -521,12 +519,28 @@ impl PyDefaultSolver {
                         return Err(PyException::new_err("Invalid b update data"));
                     }
                 },
+                "settings" => {
+                    let settings: PyDefaultSettings = value.extract()?;
+                    let settings = settings.to_internal()?;
+                    self.inner.settings = settings;
+                }
                 _ => {
                     println!("unrecognized key: {}", key);
                 }
             }
         }
         Ok(())
+    }
+
+    // return the currently configured settings of a solver.  If settings
+    // are to be overridden, modify this object then pass back using kwargs
+    // update(settings=settings)
+    fn get_settings(&self) -> PyDefaultSettings {
+        PyDefaultSettings::new_from_internal(&self.inner.settings)
+    }
+
+    fn is_presolved(&self) -> bool {
+        self.inner.is_presolved()
     }
 }
 

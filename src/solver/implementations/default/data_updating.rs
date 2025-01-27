@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-use super::DefaultSolver;
 use crate::algebra::*;
+use crate::solver::DefaultSolver;
 use core::iter::{zip, Zip};
 use core::slice::Iter;
 use thiserror::Error;
@@ -9,12 +9,12 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum DataUpdateError {
     #[error("Data updates are not allowed when presolve is enabled")]
-    PresolveEnabled,
+    PresolveIsActive,
     #[error("Data formatting error")]
     BadFormat(#[from] SparseFormatError),
 }
 
-// Trait for updating P and A matrices from various data types
+/// Trait for updating problem data matrices (`P` and `A`) from various data types
 pub trait MatrixProblemDataUpdate<T: FloatT> {
     fn update_matrix(
         &self,
@@ -25,7 +25,7 @@ pub trait MatrixProblemDataUpdate<T: FloatT> {
     ) -> Result<(), SparseFormatError>;
 }
 
-// Trait for updating q and b vectors from various data types
+/// Trait for updating problem data vectors (`q`` and `b`) from various data types
 pub trait VectorProblemDataUpdate<T: FloatT> {
     fn update_vector(
         &self,
@@ -40,7 +40,17 @@ where
     T: FloatT,
 {
     /// Overwrites internal problem data structures in a solver object with new data, avoiding new memory allocations.   
-    /// See `update_P``, `update_q`, `update_A`, `update_b` for allowable inputs.
+    /// See `update_P`, `update_q`, `update_A`, `update_b` for allowable inputs.
+    ///
+    /// <div class="warning">
+    ///
+    /// data updating functions will return an error when both 1) presolving has been
+    /// enabled and 2) the presolver modified the original problem data, e.g. by eliminating
+    /// constraints.  In order to guarantee that data updates will be accepted regardless
+    /// of the original problem data, set `presolve_enable = false` in the solver settings.
+    /// See also `is_presolved`.
+    ///
+    /// </div>
     pub fn update_data<
         DataP: MatrixProblemDataUpdate<T>,
         Dataq: VectorProblemDataUpdate<T>,
@@ -63,11 +73,11 @@ where
 
     /// Overwrites the `P` matrix data in an existing solver object.   The input `P` can be    
     ///
-    /// - a nonempty Vector, in which case the nonzero values of the original `P` are overwritten, preserving the sparsity pattern, or
+    /// - a nonempty `Vec`, in which case the nonzero values of the original `P` are overwritten, preserving the sparsity pattern, or
     ///
-    /// - a SparseMatrixCSC, in which case the input must match the sparsity pattern of the upper triangular part of the original `P`.
+    /// - a `CscMatrix`, in which case the input must match the sparsity pattern of the upper triangular part of the original `P`.
     ///
-    /// - an iterator zip(&index,&values), specifying a selective update of values.
+    /// - an iterator `zip(&index,&values)`, specifying a selective update of values.
     ///
     /// - an empty vector, in which case no action is taken.
     ///
@@ -75,7 +85,7 @@ where
         &mut self,
         data: &Data,
     ) -> Result<(), DataUpdateError> {
-        self.check_presolve_disabled()?;
+        self.check_presolve_inactive()?;
         let d = &self.data.equilibration.d;
         let c = self.data.equilibration.c;
         data.update_matrix(&mut self.data.P, d, d, Some(c))?;
@@ -86,11 +96,11 @@ where
 
     /// Overwrites the `A` matrix data in an existing solver object.   The input `A` can be    
     ///
-    /// - a nonempty Vector, in which case the nonzero values of the original `A` are overwritten, preserving the sparsity pattern, or
+    /// - a nonempty `Vec`, in which case the nonzero values of the original `A` are overwritten, preserving the sparsity pattern, or
     ///
-    /// - a SparseMatrixCSC, in which case the input must match the sparsity pattern of the original `A`.  
+    /// - a `CscMatrix`, in which case the input must match the sparsity pattern of the original `A`.  
     ///
-    /// - an iterator zip(&index,&values), specifying a selective update of values.
+    /// - an iterator `zip(&index,&values)`, specifying a selective update of values.
     ///
     /// - an empty vector, in which case no action is taken.
     ///
@@ -98,7 +108,7 @@ where
         &mut self,
         data: &Data,
     ) -> Result<(), DataUpdateError> {
-        self.check_presolve_disabled()?;
+        self.check_presolve_inactive()?;
         let d = &self.data.equilibration.d;
         let e = &self.data.equilibration.e;
         data.update_matrix(&mut self.data.A, e, d, None)?;
@@ -112,7 +122,7 @@ where
         &mut self,
         data: &Data,
     ) -> Result<(), DataUpdateError> {
-        self.check_presolve_disabled()?;
+        self.check_presolve_inactive()?;
         let d = &self.data.equilibration.d;
         let c = self.data.equilibration.c;
         data.update_vector(&mut self.data.q, d, Some(c))?;
@@ -128,7 +138,7 @@ where
         &mut self,
         data: &Data,
     ) -> Result<(), DataUpdateError> {
-        self.check_presolve_disabled()?;
+        self.check_presolve_inactive()?;
         let e = &self.data.equilibration.e;
         data.update_vector(&mut self.data.b, e, None)?;
 
@@ -138,12 +148,18 @@ where
         Ok(())
     }
 
-    fn check_presolve_disabled(&self) -> Result<(), DataUpdateError> {
-        if self.settings.presolve_enable {
-            Err(DataUpdateError::PresolveEnabled)
+    fn check_presolve_inactive(&self) -> Result<(), DataUpdateError> {
+        if self.is_presolved() {
+            Err(DataUpdateError::PresolveIsActive)
         } else {
             Ok(())
         }
+    }
+
+    /// Returns `true` if presolve was enabled in the settings during solver
+    /// creation and the problem data was actually reduced
+    pub fn is_presolved(&self) -> bool {
+        self.data.is_reduced()
     }
 }
 
