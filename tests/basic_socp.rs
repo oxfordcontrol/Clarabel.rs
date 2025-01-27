@@ -77,7 +77,7 @@ fn test_socp_feasible_sparse() {
     // same data, but with one SOC cone so that we get the
     // sparse representation for code coverage
     let (P, c, A, b, _) = basic_socp_data();
-    let cones = vec![NonnegativeConeT(3), NonnegativeConeT(6)];
+    let cones = vec![NonnegativeConeT(3), SecondOrderConeT(6)];
 
     let settings = DefaultSettings::<f64>::default();
 
