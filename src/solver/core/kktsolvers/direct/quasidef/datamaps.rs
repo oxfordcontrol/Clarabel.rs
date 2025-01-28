@@ -110,9 +110,9 @@ macro_rules! impl_map_recover {
 //--------------------------------------
 
 pub(crate) struct SOCExpansionMap {
-    u: Vec<usize>, //off diag dense columns u
-    v: Vec<usize>, //off diag dense columns v
-    D: [usize; 2], //diag D
+    pub(crate) u: Vec<usize>, //off diag dense columns u
+    pub(crate) v: Vec<usize>, //off diag dense columns v
+    pub(crate) D: [usize; 2], //diag D
 }
 
 impl SOCExpansionMap {
@@ -225,10 +225,10 @@ where
 //--------------------------------------
 
 pub(crate) struct GenPowExpansionMap {
-    p: Vec<usize>, //off diag dense columns p
-    q: Vec<usize>, //off diag dense columns q
-    r: Vec<usize>, //off diag dense columns r
-    D: [usize; 3], //diag D
+    pub(crate) p: Vec<usize>, //off diag dense columns p
+    pub(crate) q: Vec<usize>, //off diag dense columns q
+    pub(crate) r: Vec<usize>, //off diag dense columns r
+    pub(crate) D: [usize; 3], //diag D
 }
 
 impl GenPowExpansionMap {
