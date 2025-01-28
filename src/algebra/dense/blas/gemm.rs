@@ -30,21 +30,9 @@ where
         let ldb = if B.shape() == MatrixShape::N { k } else { n };
         let ldc = m;
 
-        T::xgemm(
-            transA,
-            transB,
-            m,
-            n,
-            k,
-            α,
-            A.data(),
-            lda,
-            B.data(),
-            ldb,
-            β,
-            self.data_mut(),
-            ldc,
-        );
+        #[rustfmt::skip]
+        T::xgemm(transA,transB,m,n,k,α,A.data(),lda,B.data(),ldb,β,self.data_mut(),ldc);
+
         self
     }
 }

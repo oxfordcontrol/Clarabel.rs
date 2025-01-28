@@ -28,18 +28,8 @@ where
         let lda = if A.shape() == MatrixShape::N { n } else { k };
         let ldc = n;
 
-        T::xsyrk(
-            uplo,
-            transA,
-            n,
-            k,
-            α,
-            A.data(),
-            lda,
-            β,
-            self.data_mut(),
-            ldc,
-        );
+        #[rustfmt::skip]
+        T::xsyrk(uplo,transA,n,k,α,A.data(),lda,β,self.data_mut(),ldc);
     }
 }
 

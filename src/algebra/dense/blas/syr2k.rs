@@ -36,19 +36,11 @@ where
         let c = self.data_mut();
         let ldc = n;
 
+        #[rustfmt::skip]
         T::xsyr2k(
             MatrixTriangle::Triu.as_blas_char(),
             MatrixShape::N.as_blas_char(),
-            n,
-            k,
-            α,
-            a,
-            lda,
-            b,
-            ldb,
-            β,
-            c,
-            ldc,
+            n,k,α,a,lda,b,ldb,β,c,ldc,
         );
     }
 }
