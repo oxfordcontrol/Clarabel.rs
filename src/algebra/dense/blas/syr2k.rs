@@ -53,32 +53,39 @@ where
     }
 }
 
-#[test]
-#[rustfmt::skip]
-fn test_syr2k() {
+macro_rules! generate_test_syr2k {
+    ($fxx:ty, $test_name:ident) => {
+        #[test]
+        fn $test_name() {
 
-    let A = Matrix::from(&[
-        [ 1., -5.], 
-        [-4.,  3.], 
-        [ 2.,  6.],
-    ]);
+            #[rustfmt::skip]
+            let A = Matrix::<$fxx>::from(&[
+                [ 1., -5.], 
+                [-4.,  3.], 
+                [ 2.,  6.],
+            ]);
 
-    let B = Matrix::from(&[
-        [ 4.,  5.], 
-        [ 2., -2.], 
-        [-3., -2.],
-    ]);
+            let B = Matrix::<$fxx>::from(&[
+                [ 4.,  5.], 
+                [ 2., -2.], 
+                [-3., -2.],
+            ]);
 
-    let mut C = Matrix::<f64>::identity(3);
+            let mut C = Matrix::<$fxx>::identity(3);
 
-    //NB: modifies upper triangle only
-    C.syr2k(&A, &B, 2., 1.);
+            //NB: modifies upper triangle only
+            C.syr2k(&A, &B, 2., 1.);
 
-    let Ctest = Matrix::from(&[
-        [-83.,  22.,  90.], 
-        [  0., -55.,  -4.], 
-        [  0.,   0., -71.],
-    ]);
+            let Ctest = Matrix::<$fxx>::from(&[
+                [-83.,  22.,  90.], 
+                [  0., -55.,  -4.], 
+                [  0.,   0., -71.],
+            ]);
 
-    assert_eq!(C,Ctest);
+            assert_eq!(C, Ctest);
+        }
+    };
 }
+
+generate_test_syr2k!(f32, test_syr2k_f32);
+generate_test_syr2k!(f64, test_syr2k_f64);

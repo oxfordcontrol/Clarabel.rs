@@ -47,27 +47,34 @@ where
     }
 }
 
-#[test]
-fn test_lu() {
-    let mut A = Matrix::from(&[
-        [3., 2., 4.], //
-        [2., 0., 2.], //
-        [4., 2., 3.], //
-    ]);
+macro_rules! generate_test_lu {
+    ($fxx:ty, $test_name:ident) => {
+        #[test]
+        fn $test_name() {
+            let mut A = Matrix::<$fxx>::from(&[
+                [3., 2., 4.], //
+                [2., 0., 2.], //
+                [4., 2., 3.], //
+            ]);
 
-    let mut B = Matrix::from(&[
-        [-5., 13.], //
-        [-2., 4.],  //
-        [-2., 9.],  //
-    ]);
+            let mut B = Matrix::<$fxx>::from(&[
+                [-5., 13.], //
+                [-2., 4.],  //
+                [-2., 9.],  //
+            ]);
 
-    let X = Matrix::from(&[
-        [1., -1.], //
-        [0., 2.],  //
-        [-2., 3.], //
-    ]);
+            let X = Matrix::<$fxx>::from(&[
+                [1., -1.], //
+                [0., 2.],  //
+                [-2., 3.], //
+            ]);
 
-    let mut lu = LuSolver::new();
-    lu.lusolve(&mut A, &mut B).unwrap();
-    assert_eq!(B, X);
+            let mut lu = LuSolver::new();
+            lu.lusolve(&mut A, &mut B).unwrap();
+            assert_eq!(B, X);
+        }
+    };
 }
+
+generate_test_lu!(f32, test_lu_f32);
+generate_test_lu!(f64, test_lu_f64);
