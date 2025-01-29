@@ -156,11 +156,12 @@ pub(crate) extern "C" fn solver_write_to_file_jlrs(
     status
 }
 
-// dump problem data to a file
+// read problem data from a file with serialized JSON settings
 // returns NULL on failure, pointer to solver on success
 #[no_mangle]
 pub(crate) extern "C" fn solver_read_from_file_jlrs(
     filename: *const std::os::raw::c_char,
+    json_settings: *const std::os::raw::c_char,
 ) -> *const c_void {
     let slice = unsafe { CStr::from_ptr(filename) };
 
@@ -178,7 +179,18 @@ pub(crate) extern "C" fn solver_read_from_file_jlrs(
         }
     };
 
-    let solver = DefaultSolver::read_from_file(&mut file);
+    // None on the julia size is serialized as "",
+    let settings = unsafe {
+        if json_settings.is_null() {
+            None
+        } else if CStr::from_ptr(json_settings).to_bytes().is_empty() {
+            None
+        } else {
+            Some(settings_from_json(json_settings))
+        }
+    };
+
+    let solver = DefaultSolver::read_from_file(&mut file, settings);
 
     match solver {
         Ok(solver) => to_ptr(Box::new(solver)),

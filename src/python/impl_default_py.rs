@@ -593,8 +593,22 @@ fn _py_to_vector_update(arg: Bound<'_, PyAny>) -> Option<PyVectorUpdateData> {
 }
 
 #[pyfunction(name = "read_from_file")]
-pub fn read_from_file_py(filename: &str) -> PyResult<PyDefaultSolver> {
+#[pyo3(signature = (filename, settings=None))]
+pub fn read_from_file_py(
+    filename: &str,
+    settings: Option<PyDefaultSettings>,
+) -> PyResult<PyDefaultSolver> {
     let mut file = std::fs::File::open(filename)?;
-    let solver = DefaultSolver::<f64>::read_from_file(&mut file)?;
-    Ok(PyDefaultSolver { inner: solver })
+
+    match settings {
+        Some(settings) => {
+            let settings = settings.to_internal()?;
+            let solver = DefaultSolver::<f64>::read_from_file(&mut file, Some(settings))?;
+            Ok(PyDefaultSolver { inner: solver })
+        }
+        None => {
+            let solver = DefaultSolver::<f64>::read_from_file(&mut file, None)?;
+            Ok(PyDefaultSolver { inner: solver })
+        }
+    }
 }

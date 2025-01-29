@@ -45,9 +45,15 @@ function write_to_file(solver::Solver, filename::String)
 
 end
 
-function read_from_file(filename::String)
+function read_from_file(
+    filename::String, 
+    settings::Clarabel.Option{Clarabel.Settings{Float64}} = nothing
+)
 
-    solver_read_from_file_jlrs(filename::String)
+    solver_read_from_file_jlrs(
+        filename::String,
+        settings::Clarabel.Option{Clarabel.Settings{Float64}}
+    )
 
 end
 
@@ -129,13 +135,27 @@ function solver_write_to_file_jlrs(solver::Solver, filename::String)
     
 end
 
-function solver_read_from_file_jlrs(filename::String)
+function solver_read_from_file_jlrs(
+        filename::String,
+        settings::Clarabel.Option{Clarabel.Settings{Float64}}
+    )
+
+    #settings are serialized when passed to Rust,
+    #so either serialize the settings or make an
+    #empty string
+    if isnothing(settings)
+        settings = ""
+    else
+        settings = serialize(settings)
+    end
 
     ptr = ccall(Libdl.dlsym(librust,:solver_read_from_file_jlrs),Ptr{Cvoid},
     (
         Cstring,
+        Cstring
     ), 
         filename,
+        settings
     )
 
     if ptr == C_NULL

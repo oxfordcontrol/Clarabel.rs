@@ -1,7 +1,4 @@
-use crate::{
-    algebra::*,
-    solver::{core::SolverJSONReadWrite, DefaultSettings, DefaultSolver, SupportedConeT},
-};
+use crate::{algebra::*, solver::*};
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::io::Write;
@@ -22,7 +19,7 @@ struct JsonProblemData<T: FloatT> {
     pub settings: DefaultSettings<T>,
 }
 
-impl<T> SolverJSONReadWrite for DefaultSolver<T>
+impl<T> SolverJSONReadWrite<T> for DefaultSolver<T>
 where
     T: FloatT + DeserializeOwned + Serialize,
 {
@@ -60,7 +57,10 @@ where
         Ok(())
     }
 
-    fn read_from_file(file: &mut File) -> Result<Self, io::Error> {
+    fn read_from_file(
+        file: &mut File,
+        settings: Option<DefaultSettings<T>>,
+    ) -> Result<Self, io::Error> {
         // read file
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)?;
@@ -75,7 +75,7 @@ where
         let A = json_data.A;
         let b = json_data.b;
         let cones = json_data.cones;
-        let settings = json_data.settings;
+        let settings = settings.unwrap_or(json_data.settings);
         let solver = Self::new(&P, &q, &A, &b, &cones, settings);
 
         Ok(solver)
@@ -130,7 +130,18 @@ fn test_json_io() {
 
     // read the problem from the file
     file.seek(SeekFrom::Start(0)).unwrap();
-    let mut solver2 = crate::solver::DefaultSolver::<f64>::read_from_file(&mut file).unwrap();
+    let mut solver2 = crate::solver::DefaultSolver::<f64>::read_from_file(&mut file, None).unwrap();
     solver2.solve();
     assert_eq!(solver.solution.x, solver2.solution.x);
+
+    // read the problem from the file with custom settings
+    file.seek(SeekFrom::Start(0)).unwrap();
+    let settings = crate::solver::DefaultSettingsBuilder::default()
+        .max_iter(1)
+        .build()
+        .unwrap();
+    let mut solver3 =
+        crate::solver::DefaultSolver::<f64>::read_from_file(&mut file, Some(settings)).unwrap();
+    solver3.solve();
+    assert_eq!(solver3.solution.status, SolverStatus::MaxIterations);
 }

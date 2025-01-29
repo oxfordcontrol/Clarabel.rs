@@ -2,6 +2,7 @@ use self::internal::*;
 use super::cones::Cone;
 use super::traits::*;
 use crate::algebra::*;
+use crate::solver::DefaultSettings;
 use crate::stdio;
 use crate::timers::*;
 use std::io::Write;
@@ -92,9 +93,15 @@ impl std::fmt::Display for SolverStatus {
 /// JSON file read/write trait for solver data.
 /// Only available with the "serde" feature enabled.
 #[cfg(feature = "serde")]
-pub trait SolverJSONReadWrite: Sized {
+pub trait SolverJSONReadWrite<T>: Sized
+where
+    T: FloatT,
+{
     fn write_to_file(&self, file: &mut std::fs::File) -> Result<(), std::io::Error>;
-    fn read_from_file(file: &mut std::fs::File) -> Result<Self, std::io::Error>;
+    fn read_from_file(
+        file: &mut std::fs::File,
+        settings: Option<DefaultSettings<T>>,
+    ) -> Result<Self, std::io::Error>;
 }
 
 // ---------------------------------
