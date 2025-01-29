@@ -179,68 +179,82 @@ where
     }
 }
 
-#[test]
-fn test_svd_factor() {
-    use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
+macro_rules! generate_test_svd_factor {
+    ($fxx:ty, $test_name:ident, $tolfn:ident) => {
+        #[test]
+        fn $test_name() {
+            use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
 
-    let mut A = Matrix::from(&[
-        [3., 2., 2.],  //
-        [2., 3., -2.], //
-    ]);
+            let mut A = Matrix::<$fxx>::from(&[
+                [3., 2., 2.],  //
+                [2., 3., -2.], //
+            ]);
 
-    let Acopy = A.clone(); //A is corrupted after factorization
+            let Acopy = A.clone(); //A is corrupted after factorization
 
-    let mut eng = SVDEngine::<f64>::new((2, 3));
-    assert!(eng.factor(&mut A).is_ok());
-    let sol = [5., 3.];
-    assert!(eng.s.norm_inf_diff(&sol) < 1e-8);
+            let mut eng = SVDEngine::<$fxx>::new((2, 3));
+            assert!(eng.factor(&mut A).is_ok());
+            let sol = [5., 3.];
+            assert!(eng.s.norm_inf_diff(&sol) < (1e-12 as $fxx).$tolfn());
 
-    let mut M = Matrix::<f64>::zeros((2, 3));
+            let mut M = Matrix::<$fxx>::zeros((2, 3));
 
-    let U = &eng.U;
-    let s = &eng.s;
-    let Vt = &eng.Vt;
+            let U = &eng.U;
+            let s = &eng.s;
+            let Vt = &eng.Vt;
 
-    //reconstruct matrix from SVD
-    let mut Us = U.clone();
-    for c in 0..Us.ncols() {
-        for r in 0..Us.nrows() {
-            Us[(r, c)] *= s[c];
+            //reconstruct matrix from SVD
+            let mut Us = U.clone();
+            for c in 0..Us.ncols() {
+                for r in 0..Us.nrows() {
+                    Us[(r, c)] *= s[c];
+                }
+            }
+            M.mul(&Us, Vt, 1.0, 0.0);
+            assert!(M.data().norm_inf_diff(Acopy.data()) < (1e-12 as $fxx).$tolfn());
         }
-    }
-    M.mul(&Us, Vt, 1.0, 0.0);
-    assert!(M.data().norm_inf_diff(Acopy.data()) < 1e-8);
+    };
 }
 
-#[test]
-fn test_svd_solve() {
-    use crate::algebra::{DenseMatrix, VectorMath};
+generate_test_svd_factor!(f32, test_svd_factor_f32, sqrt);
+generate_test_svd_factor!(f64, test_svd_factor_f64, abs);
 
-    // Singular and non-square A
-    let mut A = Matrix::from(&[
-        [2., 4., 6.], //
-        [1., 2., 3.], //
-        [0., 1., 2.],
-    ]);
+macro_rules! generate_test_svd_solve {
+    ($fxx:ty, $test_name:ident, $tolfn:ident) => {
+        #[test]
+        fn $test_name() {
+            use crate::algebra::{DenseMatrix, VectorMath};
 
-    let mut B = Matrix::from(&[
-        [1., 2.], //
-        [3., 4.],
-        [5., 6.],
-    ]);
+            // Singular and non-square A
+            let mut A = Matrix::<$fxx>::from(&[
+                [2., 4., 6.], //
+                [1., 2., 3.], //
+                [0., 1., 2.],
+            ]);
 
-    // this appears to be an exact solution
-    let mut X = Matrix::from(&[
-        [-175., -200.], //
-        [-40., -44.],
-        [95., 112.],
-    ]);
-    X.data.scale(1. / 30.);
+            let mut B = Matrix::<$fxx>::from(&[
+                [1., 2.], //
+                [3., 4.],
+                [5., 6.],
+            ]);
 
-    let mut eng = SVDEngine::<f64>::new((3, 3));
+            // this appears to be an exact solution
+            let mut X = Matrix::<$fxx>::from(&[
+                [-175., -200.], //
+                [-40., -44.],
+                [95., 112.],
+            ]);
+            X.data.scale(1. / 30.);
 
-    assert!(eng.factor(&mut A).is_ok());
+            let mut eng = SVDEngine::<$fxx>::new((3, 3));
 
-    eng.solve(&mut B);
-    assert!(B.data().norm_inf_diff(X.data()) < 1e-14);
+            assert!(eng.factor(&mut A).is_ok());
+
+            eng.solve(&mut B);
+            assert!(B.data().norm_inf_diff(X.data()) < (1e-10 as $fxx).$tolfn());
+        }
+    };
 }
+
+generate_test_svd_solve!(f32, test_svd_solve_f32, sqrt);
+generate_test_svd_solve!(f64, test_svd_solve_f64, abs);

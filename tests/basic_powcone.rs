@@ -36,7 +36,7 @@ fn test_powcone() {
     let b2 = vec![3., 1.];
     let cones2 = vec![ZeroConeT(2)];
 
-    let A = CscMatrix::vcat(&A1, &A2);
+    let A = CscMatrix::vcat(&A1, &A2).unwrap();
     let b = [b1, b2].concat();
     let cones = [cones1, cones2].concat();
 

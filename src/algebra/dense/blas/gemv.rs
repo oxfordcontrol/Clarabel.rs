@@ -18,7 +18,7 @@ where
     }
 }
 
-impl<'a, S, T> MultiplyGEMV<T> for Adjoint<'a, DenseStorageMatrix<S, T>>
+impl<S, T> MultiplyGEMV<T> for Adjoint<'_, DenseStorageMatrix<S, T>>
 where
     T: FloatT,
     S: AsRef<[T]>,
@@ -57,22 +57,29 @@ where
     }
 }
 
-#[test]
-fn test_gemv() {
-    use crate::algebra::Matrix;
+macro_rules! generate_test_gemv {
+    ($fxx:ty, $test_name:ident) => {
+        #[test]
+        fn $test_name() {
+            use crate::algebra::Matrix;
 
-    #[rustfmt::skip]
-    let A = Matrix::from(
-        &[[ 1.,  2., 3.],
-          [ 4.,  5., 6.]]);
+            #[rustfmt::skip]
+            let A = Matrix::<$fxx>::from(
+                &[[ 1.,  2., 3.],
+                  [ 4.,  5., 6.]]);
 
-    let x = vec![1., 2., 3.];
-    let mut y = vec![-1., -2.];
-    A.gemv(&x, &mut y, 2.0, 3.0);
-    assert!(y == [25.0, 58.0]);
+            let x = vec![1., 2., 3.];
+            let mut y = vec![-1., -2.];
+            A.gemv(&x, &mut y, 2.0, 3.0);
+            assert!(y == [25.0, 58.0]);
 
-    let x = vec![1., 2.];
-    let mut y = vec![-1., -2., -3.];
-    A.t().gemv(&x, &mut y, 2.0, 3.0);
-    assert!(y == [15.0, 18.0, 21.0]);
+            let x = vec![1., 2.];
+            let mut y = vec![-1., -2., -3.];
+            A.t().gemv(&x, &mut y, 2.0, 3.0);
+            assert!(y == [15.0, 18.0, 21.0]);
+        }
+    };
 }
+
+generate_test_gemv!(f32, test_gemv_f32);
+generate_test_gemv!(f64, test_gemv_f64);

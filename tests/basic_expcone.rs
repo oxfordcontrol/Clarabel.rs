@@ -31,7 +31,7 @@ fn basic_expcone_data() -> (
     );
     let b2 = vec![1., f64::exp(5.)];
 
-    let A = CscMatrix::vcat(&A1, &A2);
+    let A = CscMatrix::vcat(&A1, &A2).unwrap();
     let b = [b1, b2].concat();
 
     let cones = vec![ExponentialConeT(), ZeroConeT(2)];

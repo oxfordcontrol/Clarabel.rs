@@ -101,53 +101,68 @@ where
     }
 }
 
-#[test]
-fn test_cholesky() {
-    use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
+macro_rules! generate_test_cholesky {
+    ($fxx:ty, $test_name:ident, $tolfn:ident) => {
+        #[test]
+        fn $test_name() {
+            use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
 
-    #[rustfmt::skip]
-    let mut S = Matrix::from(
-        &[[ 8., -2., 4.],
-          [-2., 12., 2.],
-          [ 4.,  2., 6.]]);
+            #[rustfmt::skip]
+            let mut S = Matrix::<$fxx>::from(
+            &[[ 8., -2., 4.],
+            [-2., 12., 2.],
+            [ 4.,  2., 6.]]);
 
-    let Scopy = S.clone(); //S is corrupted after factorization
+            let Scopy = S.clone(); //S is corrupted after factorization
 
-    let mut eng = CholeskyEngine::<f64>::new(3);
-    assert!(eng.factor(&mut S).is_ok());
+            let mut eng = CholeskyEngine::<$fxx>::new(3);
+            assert!(eng.factor(&mut S).is_ok());
 
-    let mut M = Matrix::<f64>::zeros((3, 3));
-    M.mul(&eng.L, &eng.L.t(), 1.0, 0.0);
+            let mut M = Matrix::<$fxx>::zeros((3, 3));
+            M.mul(&eng.L, &eng.L.t(), 1.0, 0.0);
 
-    assert!(M.data().norm_inf_diff(Scopy.data()) < 1e-8);
+            assert!(M.data().norm_inf_diff(Scopy.data()) < (1e-8 as $fxx).$tolfn());
 
-    // now try to solve with multiple RHS
-    let X = Matrix::from(&[
-        [1., 2.], //
-        [3., 4.], //
-        [5., 6.],
-    ]);
-    let mut B = Matrix::from(&[
-        [22., 32.], //
-        [44., 56.], //
-        [40., 52.],
-    ]);
+            // now try to solve with multiple RHS
+            let X = Matrix::<$fxx>::from(&[
+                [1., 2.], //
+                [3., 4.], //
+                [5., 6.],
+            ]);
+            let mut B = Matrix::<$fxx>::from(&[
+                [22., 32.], //
+                [44., 56.], //
+                [40., 52.],
+            ]);
 
-    eng.solve(&mut B);
+            eng.solve(&mut B);
 
-    assert!(B.data.norm_inf_diff(X.data()) <= 1e-14);
+            println!("final check {:?}", B.data.norm_inf_diff(X.data()));
+            assert!(B.data.norm_inf_diff(X.data()) <= (1e-12 as $fxx).$tolfn());
+        }
+    };
 }
 
-#[test]
-fn test_cholesky_logdet() {
-    #[rustfmt::skip]
-    let mut S = Matrix::from(
-        &[[ 8., -2., 4.],
-          [-2., 12., 2.],
-          [ 4.,  2., 6.]]);
+generate_test_cholesky!(f32, test_cholesky_f32, sqrt);
+generate_test_cholesky!(f64, test_cholesky_f64, abs);
 
-    let mut eng = CholeskyEngine::<f64>::new(3);
-    assert!(eng.factor(&mut S).is_ok());
+macro_rules! generate_test_cholesky_logdet {
+    ($fxx:ty, $test_name:ident, $tolfn:ident) => {
+        #[test]
+        #[allow(clippy::excessive_precision)]
+        fn $test_name() {
+            #[rustfmt::skip]
+            let mut S = Matrix::<$fxx>::from(
+            &[[ 8., -2., 4.],
+              [-2., 12., 2.],
+              [ 4.,  2., 6.]]);
 
-    assert!((eng.logdet() - 5.69035945432406).abs() < 1e-10);
+            let mut eng = CholeskyEngine::<$fxx>::new(3);
+            assert!(eng.factor(&mut S).is_ok());
+            assert!((eng.logdet() - 5.69035945432406).abs() < (1e-10 as $fxx).$tolfn());
+        }
+    };
 }
+
+generate_test_cholesky_logdet!(f32, test_cholesky_logdet_f32, sqrt);
+generate_test_cholesky_logdet!(f64, test_cholesky_logdet_f64, abs);

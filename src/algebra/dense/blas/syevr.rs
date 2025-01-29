@@ -85,9 +85,9 @@ where
             None => &mut Vfake,
         };
 
-        // standard BLAS ?symevr arguments for computing
+        // standard BLAS ?syevr arguments for computing
         // a full set of eigenvalues.
-        //let jobz = jobz; // 'N' for values, 'V' for vecs/values
+
         let range = b'A'; // compute all eigenvalues
         let uplo = MatrixTriangle::Triu.as_blas_char(); // we always assume triu form
         let n = An.try_into().unwrap();
@@ -129,35 +129,42 @@ where
     }
 }
 
-#[test]
-fn test_eigen() {
-    use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
+macro_rules! generate_test_eigen {
+    ($fxx:ty, $test_name:ident, $tolfn:ident) => {
+        #[test]
+        fn $test_name() {
+            use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
 
-    let mut S = Matrix::from(&[
-        [3., 2., 4.], //
-        [2., 0., 2.], //
-        [4., 2., 3.], //
-    ]);
+            let mut S = Matrix::<$fxx>::from(&[
+                [3., 2., 4.], //
+                [2., 0., 2.], //
+                [4., 2., 3.], //
+            ]);
 
-    let Scopy = S.clone(); //S is corrupted after factorization
+            let Scopy = S.clone(); //S is corrupted after factorization
 
-    let mut eng = EigEngine::<f64>::new(3);
-    assert!(eng.eigvals(&mut S).is_ok());
-    let sol = [-1.0, -1.0, 8.];
-    assert!(eng.λ.norm_inf_diff(&sol) < 1e-6);
+            let mut eng = EigEngine::<$fxx>::new(3);
+            assert!(eng.eigvals(&mut S).is_ok());
+            let sol = [-1.0, -1.0, 8.];
+            assert!(eng.λ.norm_inf_diff(&sol) < 1e-6);
 
-    let mut S = Scopy.clone(); //S is corrupted after factorization
-    assert!(eng.eigen(&mut S).is_ok());
-    let λ = &eng.λ;
-    let mut M = Matrix::<f64>::zeros((3, 3));
-    let V = eng.V.unwrap();
-    let mut Vs = V.clone();
-    for c in 0..3 {
-        for r in 0..3 {
-            Vs[(r, c)] *= λ[c];
+            let mut S = Scopy.clone(); //S is corrupted after factorization
+            assert!(eng.eigen(&mut S).is_ok());
+            let λ = &eng.λ;
+            let mut M = Matrix::<$fxx>::zeros((3, 3));
+            let V = eng.V.unwrap();
+            let mut Vs = V.clone();
+            for c in 0..3 {
+                for r in 0..3 {
+                    Vs[(r, c)] *= λ[c];
+                }
+            }
+
+            M.mul(&Vs, &V.t(), 1.0, 0.0);
+            assert!(M.data().norm_inf_diff(Scopy.data()) < (1e-11 as $fxx).$tolfn());
         }
-    }
-
-    M.mul(&Vs, &V.t(), 1.0, 0.0);
-    assert!(M.data().norm_inf_diff(Scopy.data()) < 1e-8);
+    };
 }
+
+generate_test_eigen!(f32, test_eigen_f32, sqrt);
+generate_test_eigen!(f64, test_eigen_f64, abs);

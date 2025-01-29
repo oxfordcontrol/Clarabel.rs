@@ -161,10 +161,11 @@ impl From<PySupportedCone> for SupportedConeT<f64> {
 }
 
 impl<'a> FromPyObject<'a> for PySupportedCone {
-    fn extract(obj: &'a PyAny) -> PyResult<Self> {
+    fn extract_bound(obj: &Bound<'a, pyo3::PyAny>) -> PyResult<Self> {
         let thetype = obj.get_type().name()?;
+        let typestr = thetype.to_string_lossy();
 
-        match thetype {
+        match typestr.as_ref() {
             "ZeroConeT" => {
                 let dim: usize = obj.getattr("dim")?.extract()?;
                 Ok(PySupportedCone(ZeroConeT(dim)))

@@ -3,7 +3,7 @@ use clarabel::algebra::*;
 use clarabel::solver::*;
 
 fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
-    let n = 2000000;
+    let n = 200;
 
     let P = CscMatrix::identity(n);
 
@@ -12,7 +12,7 @@ fn problem_data() -> (CscMatrix<f64>, Vec<f64>, CscMatrix<f64>, Vec<f64>) {
     let mut I2 = CscMatrix::<f64>::identity(n);
     I2.negate();
 
-    let A = CscMatrix::vcat(&I1, &I2);
+    let A = CscMatrix::vcat(&I1, &I2).unwrap();
 
     let q = vec![1.; n];
     let b = vec![1.; 2 * n];

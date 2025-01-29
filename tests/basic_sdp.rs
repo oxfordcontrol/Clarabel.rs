@@ -26,18 +26,7 @@ fn basic_sdp_data() -> (
     (P, c, A, b, cones)
 }
 
-#[test]
-fn test_sdp_feasible() {
-    let (P, c, A, b, cones) = basic_sdp_data();
-
-    let settings = DefaultSettings::default();
-
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
-
-    solver.solve();
-
-    assert_eq!(solver.solution.status, SolverStatus::Solved);
-
+fn basic_sdp_solution() -> (Vec<f64>, f64) {
     let refsol = vec![
         -3.0729833267361095,
         0.3696004167288786,
@@ -46,16 +35,32 @@ fn test_sdp_feasible() {
         -0.026739700851545107,
         -0.016084530571308823,
     ];
-
-    assert!(solver.solution.x.dist(&refsol) <= 1e-6);
-
     let refobj = 4.840076866013861;
+
+    (refsol, refobj)
+}
+
+#[test]
+fn test_sdp_feasible() {
+    let (P, c, A, b, cones) = basic_sdp_data();
+    let (refsol, refobj) = basic_sdp_solution();
+
+    let settings = DefaultSettings::default();
+
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+
+    solver.solve();
+
+    assert_eq!(solver.solution.status, SolverStatus::Solved);
+    assert!(solver.solution.x.dist(&refsol) <= 1e-6);
     assert!(f64::abs(solver.info.cost_primal - refobj) <= 1e-6);
 }
 
 #[test]
-fn empty_sdp_cone() {
+fn test_sdp_empty_cone() {
     let (P, c, A, b, mut cones) = basic_sdp_data();
+    let (refsol, refobj) = basic_sdp_solution();
+
     cones.append(&mut vec![PSDTriangleConeT(0)]);
 
     let settings = DefaultSettings::default();
@@ -65,19 +70,7 @@ fn empty_sdp_cone() {
     solver.solve();
 
     assert_eq!(solver.solution.status, SolverStatus::Solved);
-
-    let refsol = vec![
-        -3.0729833267361095,
-        0.3696004167288786,
-        -0.022226685581313674,
-        0.31441213129613066,
-        -0.026739700851545107,
-        -0.016084530571308823,
-    ];
-
     assert!(solver.solution.x.dist(&refsol) <= 1e-6);
-
-    let refobj = 4.840076866013861;
     assert!(f64::abs(solver.info.cost_primal - refobj) <= 1e-6);
 }
 
@@ -88,7 +81,7 @@ fn test_sdp_primal_infeasible() {
     // this adds a negative definiteness constraint to x
     let mut A2 = A.clone();
     A2.negate();
-    let A = CscMatrix::vcat(&A, &A2);
+    let A = CscMatrix::vcat(&A, &A2).unwrap();
     b.extend(vec![0.0; b.len()]);
     cones.extend([cones[0].clone()]);
 

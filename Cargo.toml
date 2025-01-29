@@ -1,6 +1,6 @@
 [package]
 name = "clarabel"
-version = "0.9.0"
+version = "0.10.0"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 rust-version = "1.66"
@@ -38,6 +38,9 @@ serde = ["dep:serde", "dep:serde_json"]
 # also enable packages required for chordal decomposition 
 sdp = ["blas","lapack", "indexmap"]
 
+# enable detailed build info reporting 
+buildinfo = ["dep:vergen"]
+
 # explicit configuration options for different blas flavours
 sdp-accelerate = ["sdp", "blas-src/accelerate", "lapack-src/accelerate"]
 sdp-netlib     = ["sdp", "blas-src/netlib", "lapack-src/netlib"]
@@ -45,20 +48,19 @@ sdp-openblas   = ["sdp", "blas-src/openblas", "lapack-src/openblas"]
 sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl","intel-mkl-src"]
 sdp-r          = ["sdp", "blas-src/r", "lapack-src/r"]
 
-
 # build as the julia interface 
-julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse"] 
+julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse", "buildinfo"] 
  
 # build as the python interface via maturin.
-# NB: python builds use scipy shared libraries
-# for blas/lapack, and should *not* explicitly 
-# enable a blas/lapack source package 
-python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde", "faer-sparse"]
+# python builds will default to use scipy shared libraries
+# for blas/lapack if none of the options above are specified.
+# This is the behaviour used when building the python wheels
+# for distribution on pypi
 
-wasm = ["dep:web-time"]
+python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde", "faer-sparse", "buildinfo"]
 
 #compile with faer supernodal solver option
-faer-sparse = ["dep:faer", "dep:faer-entity"]
+faer-sparse = ["dep:faer", "dep:faer-traits"]
 
 # -------------------------------
 # SDP configuration
@@ -89,12 +91,16 @@ optional = true
 version = "2.2"
 optional = true
 
+# -------------------------------
+# 3rd party sparse LDL solvers
+# -------------------------------
+
 [dependencies.faer]
-version = "0.19"
+version = "0.21"
 optional = true 
 
-[dependencies.faer-entity]
-version = "0.19"
+[dependencies.faer-traits]
+version = "0.21"
 optional = true 
 
 
@@ -158,7 +164,7 @@ debug = true
 
 [dependencies.num-derive]
 optional = true 
-version = "0.2"
+version = "0.4"
 
 [dependencies.serde]
 optional = true 
@@ -168,6 +174,7 @@ features = ["derive"]
 [dependencies.serde_json]
 optional = true 
 version = "1"
+features = ["float_roundtrip"]
 
 [dependencies.libc]
 optional = true 
@@ -175,10 +182,10 @@ version = "0.2"
 
 [dependencies.pyo3]
 optional = true
-version = "0.20"
+version = "0.23"
 # "extension-module" tells pyo3 we want to build an extension module (skips linking against libpython.so)
-# "abi3-py37" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.7
-features = ["extension-module", "abi3-py37"]
+# "abi3-py39" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.9
+features = ["extension-module", "abi3-py39"]
 
 [lib]
 name = "clarabel"
@@ -200,9 +207,18 @@ features = ["sdp","sdp-mkl"]
 # wasm compatibility
 # ------------------------------
 
-[dependencies.web-time]
+[target.'cfg(target_family = "wasm")'.dependencies]
+web-time = "0.2.3"
+[target.'cfg(target_family = "wasm")'.dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+# ------------------------------
+# detailed build info
+# ------------------------------
+[build-dependencies.vergen]
 optional = true
-version = "0.2.3"
+version = "9.0"
+features = ["build", "cargo", "rustc", "si"]
 
 # ------------------------------
 # testing, benchmarking etc 

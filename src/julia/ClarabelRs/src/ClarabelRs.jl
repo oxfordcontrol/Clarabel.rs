@@ -13,7 +13,7 @@ module ClarabelRs
         # > cargo build --release --features julia
         global libpath = joinpath(@__DIR__, 
                         "../../../../target/release/",
-                        "libclarabel." * Base.Libc.dlext
+                        "libclarabel." * Libdl.dlext
                 )
         global librust = Libdl.dlopen(libpath)
     end
@@ -22,8 +22,8 @@ module ClarabelRs
         global libpath
         global librust
         
-        result = true
-        while result
+        result = false
+        while !result
             result = Libdl.dlclose(librust)
         end 
         librust = Libdl.dlopen(libpath)

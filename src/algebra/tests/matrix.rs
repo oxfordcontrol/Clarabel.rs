@@ -306,28 +306,6 @@ fn test_matrix_to_triu_notsquare() {
 }
 
 #[test]
-fn test_matrix_hcat_and_vcat() {
-    let n = 3;
-    let I1 = CscMatrix::<f64>::identity(n);
-    let mut I2 = CscMatrix::<f64>::identity(n);
-    I2.negate();
-
-    let Av = CscMatrix::vcat(&I1, &I2);
-    assert_eq!(Av.ncols(), 3);
-    assert_eq!(Av.nrows(), 6);
-    assert_eq!(Av.colptr, vec![0, 2, 4, 6]);
-    assert_eq!(Av.rowval, vec![0, 3, 1, 4, 2, 5]);
-    assert_eq!(Av.nzval, vec![1., -1., 1., -1., 1., -1.]);
-
-    let Ah = CscMatrix::hcat(&I1, &I2);
-    assert_eq!(Ah.ncols(), 6);
-    assert_eq!(Ah.nrows(), 3);
-    assert_eq!(Ah.colptr, vec![0, 1, 2, 3, 4, 5, 6]);
-    assert_eq!(Ah.rowval, vec![0, 1, 2, 0, 1, 2]);
-    assert_eq!(Ah.nzval, vec![1., 1., 1., -1., -1., -1.]);
-}
-
-#[test]
 fn test_matrix_select_rows() {
     let A = test_matrix_4x4();
 

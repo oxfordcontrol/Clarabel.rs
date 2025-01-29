@@ -1,4 +1,6 @@
 #![allow(non_snake_case)]
+#[cfg(target_family = "wasm")]
+use wasm_bindgen_test::*;
 
 use clarabel::{algebra::*, solver::*};
 
@@ -30,7 +32,7 @@ fn basic_qp_data() -> (
 
     let (mut A1, A2) = (A.clone(), A);
     A1.negate();
-    let A = CscMatrix::vcat(&A1, &A2);
+    let A = CscMatrix::vcat(&A1, &A2).unwrap();
 
     let c = vec![1., 1.];
     let b = vec![-1., 0., 0., 1., 0.7, 0.7];
@@ -172,4 +174,13 @@ fn test_qp_dual_infeasible_ill_cond() {
     assert_eq!(solver.solution.status, SolverStatus::DualInfeasible);
     assert!(solver.solution.obj_val.is_nan());
     assert!(solver.solution.obj_val_dual.is_nan());
+}
+
+// a minimal test to check that the wasm build is working
+
+#[cfg(target_family = "wasm")]
+#[wasm_bindgen_test]
+fn test_qp_feasible_wasm() {
+    wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_browser);
+    test_qp_feasible();
 }

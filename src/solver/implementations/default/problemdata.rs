@@ -17,7 +17,6 @@ use crate::solver::chordal::ChordalInfo;
 // ---------------
 
 /// Standard-form solver type implementing the [`ProblemData`](crate::solver::core::traits::ProblemData) trait
-
 pub struct DefaultProblemData<T> {
     // the main KKT residuals
     pub P: CscMatrix<T>,
@@ -145,7 +144,8 @@ where
             norm
         } else {
             let dinv = &self.equilibration.dinv;
-            let norm = self.q.norm_inf_scaled(dinv);
+            let cinv = T::recip(self.equilibration.c);
+            let norm = self.q.norm_inf_scaled(dinv) * cinv;
             self.normq = Some(norm);
             norm
         }
@@ -168,6 +168,21 @@ where
 
     pub(crate) fn clear_normb(&mut self) {
         self.normb = None;
+    }
+
+    // data updating not supported following presolve
+    //reduction or chordal decomposition
+    pub(crate) fn is_presolved(&self) -> bool {
+        self.presolver.is_some()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn is_chordal_decomposed(&self) -> bool {
+        #[cfg(feature = "sdp")]
+        if self.chordal_info.is_some() {
+            return true;
+        }
+        false
     }
 }
 
