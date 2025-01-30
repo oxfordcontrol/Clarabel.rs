@@ -276,12 +276,9 @@ where
     pub(crate) fn count_diagonal_entries(&self) -> usize {
         let mut count = 0;
         for i in 0..self.n {
-            // compare last entry in each column with
-            // its row number to identify diagonal entries
-            if self.colptr[i+1] != self.colptr[i] &&    // nonempty column
-               self.rowval[self.colptr[i+1]-1] == i
+            // Check if the ith column contain ith row
+            if self.rowval[self.colptr[i]..self.colptr[i+1]].contains(&i) 
             {
-                // last element is on diagonal
                 count += 1;
             }
         }
