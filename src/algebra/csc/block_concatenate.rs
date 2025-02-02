@@ -5,9 +5,6 @@ use std::cmp::max;
 
 use crate::algebra::{BlockConcatenate, CscMatrix, FloatT, MatrixShape};
 
-// PJG: hcat and vcat could return option and should probably
-// just call the internal hvcat function.
-
 impl<T> BlockConcatenate for CscMatrix<T>
 where
     T: FloatT,
