@@ -111,7 +111,7 @@ where
         //for inf values that were not in a reduced cone
         //this is not considered part of the "presolve", so
         //can always happen regardless of user settings
-        let infbound = crate::solver::get_infinity().as_T();
+        let infbound = crate::get_infinity().as_T();
         b_new.scalarop(|x| T::min(x, infbound));
 
         // this ensures m is the *reduced* size m

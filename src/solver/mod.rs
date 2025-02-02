@@ -11,12 +11,9 @@
 //! It is also possible to implement a custom solver by defining a collection
 //! of custom types that together implement all of the required core
 //! [traits] for objects in Clarabel's core solver.
-
-pub(crate) const _INFINITY_DEFAULT: f64 = 1e20;
 // internal module structure
 pub(crate) mod core;
 pub mod implementations;
-pub(crate) mod utils;
 
 // chordal decomposition only if SDPs are enabled
 #[cfg(feature = "sdp")]
@@ -25,8 +22,6 @@ pub(crate) mod chordal;
 //Here we expose only part of the solver internals
 //and rearrange public modules a bit to give a more
 //user friendly API
-
-pub use crate::solver::utils::infbounds::*;
 
 //allows declaration of cone constraints
 pub use crate::solver::core::cones::{SupportedConeT, SupportedConeT::*};

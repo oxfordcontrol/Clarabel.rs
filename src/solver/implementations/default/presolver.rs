@@ -47,7 +47,7 @@ where
         cones: &[SupportedConeT<T>],
         _settings: &DefaultSettings<T>,
     ) -> Self {
-        let infbound = crate::solver::get_infinity();
+        let infbound = crate::get_infinity();
 
         // make copy of cones to protect from user interference
         let init_cones = cones.to_vec();

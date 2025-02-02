@@ -55,6 +55,7 @@
 
 //Rust hates greek characters
 #![allow(confusable_idents)]
+#![warn(missing_docs)]
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -63,6 +64,9 @@ pub mod qdldl;
 pub mod solver;
 pub(crate) mod stdio;
 pub mod timers;
+
+pub(crate) mod utils;
+pub use crate::utils::infbounds::*;
 
 #[cfg(feature = "python")]
 pub mod python;
@@ -79,7 +83,7 @@ macro_rules! printbuildenv {
     };
 }
 
-// print detailed build info to stdout
+/// print detailed build configuration info to stdout
 #[allow(clippy::explicit_write)]
 pub fn buildinfo() {
     use std::io::Write;
@@ -108,6 +112,8 @@ pub fn buildinfo() {
     #[cfg(not(feature = "buildinfo"))]
     writeln!(crate::stdio::stdout(), "no build info available").unwrap();
 }
+
+pub(crate) const _INFINITY_DEFAULT: f64 = 1e20;
 
 #[test]
 fn test_buildinfo() {

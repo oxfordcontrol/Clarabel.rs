@@ -12,15 +12,15 @@ fn force_load_blas_lapack_py() {
 // get/set for the solver's internal infinity limit
 #[pyfunction(name = "get_infinity")]
 fn get_infinity_py() -> f64 {
-    crate::solver::get_infinity()
+    crate::get_infinity()
 }
 #[pyfunction(name = "set_infinity")]
 fn set_infinity_py(v: f64) {
-    crate::solver::set_infinity(v);
+    crate::set_infinity(v);
 }
 #[pyfunction(name = "default_infinity")]
 fn default_infinity_py() {
-    crate::solver::default_infinity();
+    crate::default_infinity();
 }
 #[pyfunction(name = "buildinfo")]
 fn buildinfo_py() {

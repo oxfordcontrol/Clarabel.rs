@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use clarabel::{algebra::*, solver::*};
+use clarabel::{default_infinity, get_infinity, set_infinity};
 
 #[allow(clippy::type_complexity)]
 fn presolve_test_data() -> (
