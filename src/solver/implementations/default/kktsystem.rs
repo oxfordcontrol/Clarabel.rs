@@ -8,13 +8,12 @@ use crate::solver::core::{
 
 use crate::algebra::*;
 
-// We require Send here to allow pyo3 builds to share
+// We require Send/Sync here to allow pyo3 builds to share
 // solver objects between threads.
 
-type BoxedKKTSolver<T> = Box<dyn KKTSolver<T> + Send>;
+type BoxedKKTSolver<T> = Box<dyn KKTSolver<T> + Send + Sync>;
 
 /// Standard-form solver type implementing the [`KKTSystem`](crate::solver::core::traits::KKTSystem) trait
-
 pub struct DefaultKKTSystem<T> {
     kktsolver: BoxedKKTSolver<T>,
 
@@ -36,6 +35,7 @@ impl<T> DefaultKKTSystem<T>
 where
     T: FloatT,
 {
+    /// Create a new KKT system solver
     pub fn new(
         data: &DefaultProblemData<T>,
         cones: &CompositeCone<T>,
@@ -110,7 +110,7 @@ where
         }
 
         // calculate KKT solution for constant terms
-        return self.solve_constant_rhs(data, settings.core());
+        self.solve_constant_rhs(data, settings.core())
 
         //PJG is_success should be a Result in rust
     }

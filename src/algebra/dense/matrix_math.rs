@@ -285,3 +285,36 @@ fn test_l_r_scalings() {
     ]);
     assert_eq!(B,Btest);
 }
+
+#[test]
+fn test_symmetric_part() {
+
+    let mut A = Matrix::from(&[
+        [-1.,  4.,  6.],
+        [ 2., -8.,  8.],
+        [ 0.,  4.,  9.],
+    ]);
+
+    let B = Matrix::from(&[
+        [-1.,  3.,  3.],
+        [ 3., -8.,  6.],
+        [ 3.,  6.,  9.],
+    ]);
+
+    A.symmetric_part();
+    assert_eq!(B,A);
+}
+
+#[test]
+fn test_col_norms_sym() {
+
+    let A = Matrix::from(&[
+        [-1.,  4.,  6.],
+        [ 2., -8.,  8.],
+        [ 0.,  4.,  9.],
+    ]);
+
+    let mut v = vec![0.0; 3];
+    A.col_norms_sym(&mut v);
+    assert_eq!(v, [6.0, 8.0, 9.0]);
+}

@@ -15,8 +15,7 @@ pub(crate) struct SparseVector<T = f64> {
     pub nzval: Vec<T>,
 }
 
-/// Creates a SparseVector from a dense slice.
-
+/// Creates a `SparseVector` from a dense slice.
 impl<T> SparseVector<T>
 where
     T: Num + Copy,

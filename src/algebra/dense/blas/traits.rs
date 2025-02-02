@@ -2,11 +2,11 @@
 #![allow(clippy::too_many_arguments)]
 
 cfg_if::cfg_if! {
-    if #[cfg(feature="python")] {   
+    if #[cfg(sdp_pyblas)] {
         // imports via scipy 
         use crate::python::pyblas::*;
     }
-        else {   
+    else {
         // standard imports via blas-lapack-rs crates 
         extern crate blas_src;
         extern crate lapack_src;

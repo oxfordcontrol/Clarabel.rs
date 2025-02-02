@@ -19,11 +19,11 @@ where
     GenPowerCone(&'a GenPowerCone<T>),
 }
 
-impl<'a, T> SupportedCone<T>
+impl<T> SupportedCone<T>
 where
     T: FloatT,
 {
-    pub(crate) fn to_sparse_expansion(&'a self) -> Option<SparseExpansionCone<T>> {
+    pub(crate) fn to_sparse_expansion(&self) -> Option<SparseExpansionCone<T>> {
         match self {
             SupportedCone::SecondOrderCone(sc) => Some(SparseExpansionCone::SecondOrderCone(sc)),
             SupportedCone::GenPowerCone(sc) => Some(SparseExpansionCone::GenPowerCone(sc)),
@@ -110,9 +110,9 @@ macro_rules! impl_map_recover {
 //--------------------------------------
 
 pub(crate) struct SOCExpansionMap {
-    u: Vec<usize>, //off diag dense columns u
-    v: Vec<usize>, //off diag dense columns v
-    D: [usize; 2], //diag D
+    pub(crate) u: Vec<usize>, //off diag dense columns u
+    pub(crate) v: Vec<usize>, //off diag dense columns v
+    pub(crate) D: [usize; 2], //diag D
 }
 
 impl SOCExpansionMap {
@@ -138,7 +138,7 @@ impl SparseExpansionMapTrait for SOCExpansionMap {
 
 impl_map_recover!(SecondOrderCone, SOCExpansionMap);
 
-impl<'a, T> SparseExpansionConeTrait<T> for &'a SecondOrderCone<T>
+impl<T> SparseExpansionConeTrait<T> for &'_ SecondOrderCone<T>
 where
     T: FloatT,
 {
@@ -225,10 +225,10 @@ where
 //--------------------------------------
 
 pub(crate) struct GenPowExpansionMap {
-    p: Vec<usize>, //off diag dense columns p
-    q: Vec<usize>, //off diag dense columns q
-    r: Vec<usize>, //off diag dense columns r
-    D: [usize; 3], //diag D
+    pub(crate) p: Vec<usize>, //off diag dense columns p
+    pub(crate) q: Vec<usize>, //off diag dense columns q
+    pub(crate) r: Vec<usize>, //off diag dense columns r
+    pub(crate) D: [usize; 3], //diag D
 }
 
 impl GenPowExpansionMap {
@@ -255,7 +255,7 @@ impl SparseExpansionMapTrait for GenPowExpansionMap {
 
 impl_map_recover!(GenPowerCone, GenPowExpansionMap);
 
-impl<'a, T> SparseExpansionConeTrait<T> for &'a GenPowerCone<T>
+impl<T> SparseExpansionConeTrait<T> for &'_ GenPowerCone<T>
 where
     T: FloatT,
 {

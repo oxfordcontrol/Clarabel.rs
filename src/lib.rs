@@ -55,6 +55,7 @@
 
 //Rust hates greek characters
 #![allow(confusable_idents)]
+#![warn(missing_docs)]
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -64,8 +65,57 @@ pub mod solver;
 pub(crate) mod stdio;
 pub mod timers;
 
+pub(crate) mod utils;
+pub use crate::utils::infbounds::*;
+
 #[cfg(feature = "python")]
 pub mod python;
 
 #[cfg(feature = "julia")]
 pub mod julia;
+
+#[allow(unused_macros)]
+macro_rules! printbuildenv {
+    ($tag:expr) => {
+        if let Some(opt) = option_env!(concat!("VERGEN_", $tag)) {
+            writeln!(crate::stdio::stdout(), "{}: {}", $tag, opt).unwrap();
+        }
+    };
+}
+
+/// print detailed build configuration info to stdout
+#[allow(clippy::explicit_write)]
+pub fn buildinfo() {
+    use std::io::Write;
+
+    #[cfg(feature = "buildinfo")]
+    {
+        printbuildenv!("BUILD_TIMESTAMP");
+        printbuildenv!("CARGO_DEBUG");
+        printbuildenv!("CARGO_FEATURES");
+        printbuildenv!("CARGO_OPT_LEVEL");
+        printbuildenv!("CARGO_TARGET_TRIPLE");
+        printbuildenv!("RUSTC_CHANNEL");
+        printbuildenv!("RUSTC_COMMIT_DATE");
+        printbuildenv!("RUSTC_COMMIT_HASH");
+        printbuildenv!("RUSTC_HOST_TRIPLE");
+        printbuildenv!("RUSTC_LLVM_VERSION");
+        printbuildenv!("RUSTC_SEMVER");
+        printbuildenv!("SYSINFO_NAME");
+        printbuildenv!("SYSINFO_OS_VERSION");
+        printbuildenv!("SYSINFO_TOTAL_MEMORY");
+        printbuildenv!("SYSINFO_CPU_VENDOR");
+        printbuildenv!("SYSINFO_CPU_CORE_COUNT");
+        printbuildenv!("SYSINFO_CPU_BRAND");
+        printbuildenv!("SYSINFO_CPU_FREQUENCY");
+    }
+    #[cfg(not(feature = "buildinfo"))]
+    writeln!(crate::stdio::stdout(), "no build info available").unwrap();
+}
+
+pub(crate) const _INFINITY_DEFAULT: f64 = 1e20;
+
+#[test]
+fn test_buildinfo() {
+    buildinfo();
+}

@@ -1,7 +1,7 @@
 //! Clarabel Python interface.
 //!
 //! This module implements a wrapper for the Rust version of Python using
-//! [PYO3](https://pyo3.rs/).   To build these wrappers from `cargo`, compile the crate with
+//! [PyO3](https://pyo3.rs/).   To build these wrappers from `cargo`, compile the crate with
 //! `--features python`.   This module has no public API.
 //!
 //! It should not normally be necessary to compile the Python wrapper from
@@ -13,6 +13,11 @@ mod cscmatrix_py;
 mod impl_default_py;
 pub(crate) mod io;
 mod module_py;
+
+// compile this module if no local blas/lapack library
+// has been specified, and we want to use the python/scipy
+// version instead.  sdp_pyblas is defined in build.rs
+#[cfg(sdp_pyblas)]
 pub(crate) mod pyblas;
 
 // NB : Nothing is actually public here, but the python module itself

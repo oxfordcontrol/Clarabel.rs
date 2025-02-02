@@ -171,9 +171,6 @@ where
         let w1sq = w[1..].sumsq();
         w[0] = T::sqrt(T::one() + w1sq);
 
-        //---------------------
-        //DEBUG ALTERNATIVE λ
-
         //Compute the scaling point λ.   Should satisfy λ = Wz = W^{-T}s
         let γ = half * wscale;
         self.λ[0] = γ;
@@ -186,6 +183,7 @@ where
         self.λ[1..].scale(T::recip(s[0] / sscale + z[0] / zscale + two * γ));
         self.λ.scale(T::sqrt(sscale * zscale));
 
+        // Populate sparse expansion terms if allocated
         if let Some(sparse_data) = &mut self.sparse_data {
             //various intermediate calcs for u,v,d,η
             let α = two * w[0];
@@ -224,11 +222,15 @@ where
             Hsblock.fill(self.η * self.η);
             Hsblock[0] *= sparse_data.d;
         } else {
-            let two: T = (2.).as_T();
             // for dense form, we return H = \eta^2 (2*ww^T - J), where
             // J = diag(1,-I).  We are packing into dense triu form
-            Hsblock[0] = two * self.w[0] * self.w[0] - T::one();
+
+            // 2 * w[0]^2 - 1., avoiding bad cancellations
+            Hsblock[0] =
+                (T::SQRT_2() * self.w[0] - T::one()) * (T::SQRT_2() * self.w[0] + T::one());
+
             let mut hidx = 1;
+            let two: T = (2.).as_T();
 
             for col in 1..self.dim {
                 let wcol = self.w[col];
@@ -387,7 +389,8 @@ fn _soc_residual<T>(z: &[T]) -> T
 where
     T: FloatT,
 {
-    z[0] * z[0] - z[1..].sumsq()
+    let z1norm = z[1..].norm();
+    (z[0] - z1norm) * (z[0] + z1norm)
 }
 
 fn _sqrt_soc_residual<T>(z: &[T]) -> T
@@ -409,9 +412,10 @@ where
     T: FloatT,
 {
     let x0 = z[0] + α * dz[0];
-    let x1_sq = <[T] as VectorMath<T>>::dot_shifted(&z[1..], &z[1..], &dz[1..], &dz[1..], α);
+    let x1sq = <[T] as VectorMath<T>>::dot_shifted(&z[1..], &z[1..], &dz[1..], &dz[1..], α);
+    let x1norm = x1sq.sqrt();
 
-    x0 * x0 - x1_sq
+    (x0 - x1norm) * (x0 + x1norm)
 }
 
 // find the maximum step length α≥0 so that

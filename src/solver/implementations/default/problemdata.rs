@@ -17,16 +17,22 @@ use crate::solver::chordal::ChordalInfo;
 // ---------------
 
 /// Standard-form solver type implementing the [`ProblemData`](crate::solver::core::traits::ProblemData) trait
-
 pub struct DefaultProblemData<T> {
-    // the main KKT residuals
+    /// The matrix P in the quadratic objective term
     pub P: CscMatrix<T>,
+    /// The vector q in the quadratic objective term
     pub q: Vec<T>,
+    /// The matrix A in the constraints
     pub A: CscMatrix<T>,
+    /// The vector b in the constraints
     pub b: Vec<T>,
+    /// Vector of cones in the problem
     pub cones: Vec<SupportedConeT<T>>,
+    /// Number of variables
     pub n: usize,
+    /// Number of constraints
     pub m: usize,
+    /// Equilibration data for the problem
     pub equilibration: DefaultEquilibrationData<T>,
 
     // unscaled inf norms of linear terms.  Set to "None"
@@ -45,6 +51,7 @@ impl<T> DefaultProblemData<T>
 where
     T: FloatT,
 {
+    /// Create a new `DefaultProblemData` object
     pub fn new(
         P: &CscMatrix<T>,
         q: &[T],
@@ -112,7 +119,7 @@ where
         //for inf values that were not in a reduced cone
         //this is not considered part of the "presolve", so
         //can always happen regardless of user settings
-        let infbound = crate::solver::get_infinity().as_T();
+        let infbound = crate::get_infinity().as_T();
         b_new.scalarop(|x| T::min(x, infbound));
 
         // this ensures m is the *reduced* size m
@@ -145,7 +152,8 @@ where
             norm
         } else {
             let dinv = &self.equilibration.dinv;
-            let norm = self.q.norm_inf_scaled(dinv);
+            let cinv = T::recip(self.equilibration.c);
+            let norm = self.q.norm_inf_scaled(dinv) * cinv;
             self.normq = Some(norm);
             norm
         }
@@ -168,6 +176,21 @@ where
 
     pub(crate) fn clear_normb(&mut self) {
         self.normb = None;
+    }
+
+    // data updating not supported following presolve
+    //reduction or chordal decomposition
+    pub(crate) fn is_presolved(&self) -> bool {
+        self.presolver.is_some()
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn is_chordal_decomposed(&self) -> bool {
+        #[cfg(feature = "sdp")]
+        if self.chordal_info.is_some() {
+            return true;
+        }
+        false
     }
 }
 

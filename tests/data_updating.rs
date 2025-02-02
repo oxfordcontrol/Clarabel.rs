@@ -13,20 +13,22 @@ fn updating_test_data() -> (
     Vec<SupportedConeT<f64>>,
     DefaultSettings<f64>,
 ) {
-    // P = [4. 1;1 2]
+    // huge values to ensure equilibration
+    // scaling term is small and carries
+    // through update
     let P = CscMatrix::from(&[
-        [4., 1.], //
-        [1., 2.], //
+        [40000., 1.], //
+        [1., 20000.], //
     ]);
+    let q = vec![10000.; 2];
 
     // A = [1 0; 0 1]; A = [-A;A]
     let A = CscMatrix::identity(2);
 
     let (mut A1, A2) = (A.clone(), A);
     A1.negate();
-    let A = CscMatrix::vcat(&A1, &A2);
+    let A = CscMatrix::vcat(&A1, &A2).unwrap();
 
-    let q = vec![1.; 2];
     let b = vec![1.; 4];
 
     let cones = vec![NonnegativeConeT(2), NonnegativeConeT(2)];
@@ -45,7 +47,7 @@ fn test_update_P_matrix_form() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
     let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
-    //solver1.solve();
+    solver1.solve();
 
     // change P and re-solve
     let mut P2 = P.to_triu();
@@ -99,9 +101,10 @@ fn test_update_P_tuple() {
     solver1.solve();
 
     //new solver
+    let P00 = P.nzval[0];
     let P2 = CscMatrix::from(&[
-        [4., 3.], //
-        [0., 5.], //
+        [P00, 3.], //
+        [0., 5.],  //
     ]);
     let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings);
     solver2.solve();
@@ -306,26 +309,41 @@ fn test_update_noops() {
 #[test]
 fn test_fail_on_presolve_enable() {
     // original problem
-    let (P, q, A, b, cones, mut settings) = updating_test_data();
+    let (P, q, A, mut b, cones, mut settings) = updating_test_data();
     settings.presolve_enable = true;
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
-    solver.solve();
+    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+
+    // presolve enabled but nothing eliminated
+    assert!(solver.is_data_update_allowed());
+
+    // presolved disabled in settings
+    b[0] = 1e40;
+    settings.presolve_enable = false;
+    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    assert!(solver.is_data_update_allowed());
+
+    // should be eliminated
+    b[0] = 1e40;
+    settings.presolve_enable = true;
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    assert!(!solver.is_data_update_allowed());
 
     // apply no-op updates to check that updates are rejected
+    // when presolve is active
     assert!(matches!(
         solver.update_P(&[]).err(),
-        Some(DataUpdateError::PresolveEnabled)
+        Some(DataUpdateError::PresolveIsActive)
     ));
     assert!(matches!(
         solver.update_A(&[]).err(),
-        Some(DataUpdateError::PresolveEnabled)
+        Some(DataUpdateError::PresolveIsActive)
     ));
     assert!(matches!(
         solver.update_b(&[]).err(),
-        Some(DataUpdateError::PresolveEnabled)
+        Some(DataUpdateError::PresolveIsActive)
     ));
     assert!(matches!(
         solver.update_q(&[]).err(),
-        Some(DataUpdateError::PresolveEnabled)
+        Some(DataUpdateError::PresolveIsActive)
     ));
 }

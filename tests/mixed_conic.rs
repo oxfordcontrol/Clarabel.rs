@@ -24,9 +24,9 @@ fn test_mixed_conic_feasible() {
         ExponentialConeT(),
     ];
 
-    let A = CscMatrix::vcat(&I, &I);
-    let A = CscMatrix::vcat(&A, &A);
-    let A = CscMatrix::vcat(&A, &I); // produces 5 stacked copies of I
+    let A = CscMatrix::vcat(&I, &I).unwrap();
+    let A = CscMatrix::vcat(&A, &A).unwrap();
+    let A = CscMatrix::vcat(&A, &I).unwrap(); // produces 5 stacked copies of I
 
     let b = vec![0.; 5 * n];
 

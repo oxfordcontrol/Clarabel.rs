@@ -36,9 +36,9 @@ fn basic_socp_data() -> (
     let I1 = CscMatrix::<f64>::identity(3);
     let mut I2 = CscMatrix::<f64>::identity(3);
     I2.negate();
-    let mut A = CscMatrix::vcat(&I1, &I2);
+    let mut A = CscMatrix::vcat(&I1, &I2).unwrap();
     A.scale(2.);
-    let A = CscMatrix::vcat(&A, &I1);
+    let A = CscMatrix::vcat(&A, &I1).unwrap();
 
     let c = vec![0.1, -2.0, 1.0];
     let b = vec![1., 1., 1., 1., 1., 1., 0., 0., 0.];
@@ -70,6 +70,22 @@ fn test_socp_feasible() {
     let refobj = -8.4590e-01;
     assert!(f64::abs(solver.solution.obj_val - refobj) <= 1e-4);
     assert!(f64::abs(solver.solution.obj_val_dual - refobj) <= 1e-4);
+}
+
+#[test]
+fn test_socp_feasible_sparse() {
+    // same data, but with one SOC cone so that we get the
+    // sparse representation for code coverage
+    let (P, c, A, b, _) = basic_socp_data();
+    let cones = vec![NonnegativeConeT(3), SecondOrderConeT(6)];
+
+    let settings = DefaultSettings::<f64>::default();
+
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+
+    solver.solve();
+
+    assert_eq!(solver.solution.status, SolverStatus::Solved);
 }
 
 #[test]

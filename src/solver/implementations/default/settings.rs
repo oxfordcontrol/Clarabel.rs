@@ -10,7 +10,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 #[derive(Builder, Debug, Clone)]
 #[builder(build_fn(validate = "Self::validate"))]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[serde(bound = "T: Serialize + DeserializeOwned")]
+#[cfg_attr(feature = "serde", serde(bound = "T: Serialize + DeserializeOwned"))]
+#[cfg_attr(feature = "serde", serde(default))]
 pub struct DefaultSettings<T: FloatT> {
     ///maximum number of iterations
     #[builder(default = "200")]
@@ -53,6 +54,10 @@ pub struct DefaultSettings<T: FloatT> {
     pub tol_ktratio: T,
 
     ///reduced absolute duality gap tolerance
+    // NB: reduced_tol_infeas_abs is *smaller* when relaxed, since
+    // we are checking that we are this far into the interior of
+    // an inequality when checking.   Smaller for this value means
+    // "less margin required"
     #[builder(default = "(5e-5).as_T()")]
     pub reduced_tol_gap_abs: T,
 
@@ -65,7 +70,7 @@ pub struct DefaultSettings<T: FloatT> {
     pub reduced_tol_feas: T,
 
     ///reduced absolute infeasibility tolerance (primal and dual)
-    #[builder(default = "(5e-5).as_T()")]
+    #[builder(default = "(5e-12).as_T()")]
     pub reduced_tol_infeas_abs: T,
 
     ///reduced relative infeasibility tolerance (primal and dual)
@@ -92,7 +97,7 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "(1e+4).as_T()")]
     pub equilibrate_max_scaling: T,
 
-    ///linesearch backtracking
+    ///line search backtracking
     #[builder(default = "(0.8).as_T()")]
     pub linesearch_backtrack_step: T,
 
@@ -103,6 +108,11 @@ pub struct DefaultSettings<T: FloatT> {
     ///minimum step size allowed for symmetric cones & asymmetric cones with Dual scaling
     #[builder(default = "(1e-4).as_T()")]
     pub min_terminate_step_length: T,
+
+    ///maximum solver threads for multithreaded KKT solvers
+    ///choosing 0 lets the solver choose for itself
+    #[builder(default = "0")]
+    pub max_threads: u32,
 
     ///use a direct linear solver method (required true)
     #[builder(default = "true")]
@@ -214,8 +224,8 @@ impl<T> DefaultSettingsBuilder<T>
 where
     T: FloatT,
 {
+    /// check that the specified direct_solve_method is valid
     pub fn validate(&self) -> Result<(), String> {
-        // check that the direct solve method is valid
         if let Some(ref direct_solve_method) = self.direct_solve_method {
             validate_direct_solve_method(direct_solve_method.as_str())?;
         }
@@ -242,6 +252,7 @@ impl<T> DefaultSettings<T>
 where
     T: FloatT,
 {
+    /// Checks that the settings are valid
     pub fn validate(&self) -> Result<(), String> {
         validate_direct_solve_method(&self.direct_solve_method)?;
 

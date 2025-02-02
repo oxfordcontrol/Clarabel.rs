@@ -42,7 +42,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 ///
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[serde(bound = "T: Serialize + DeserializeOwned")]
+#[cfg_attr(feature = "serde", serde(bound = "T: Serialize + DeserializeOwned"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CscMatrix<T = f64> {
     /// number of rows
@@ -51,7 +51,7 @@ pub struct CscMatrix<T = f64> {
     pub n: usize,
     /// CSC format column pointer.   
     ///
-    /// Ths field should have length `n+1`. The last entry corresponds
+    /// This field should have length `n+1`. The last entry corresponds
     /// to the the number of nonzeros and should agree with the lengths
     /// of the `rowval` and `nzval` fields.
     pub colptr: Vec<usize>,
@@ -130,7 +130,6 @@ where
     /// row index.   Responsibility for ensuring these conditions hold
     /// is left to the caller.
     ///
-
     pub fn new(m: usize, n: usize, colptr: Vec<usize>, rowval: Vec<usize>, nzval: Vec<T>) -> Self {
         assert_eq!(rowval.len(), nzval.len());
         assert_eq!(colptr.len(), n + 1);
@@ -150,7 +149,6 @@ where
     /// Makes rudimentary dimensional compatibility checks and panics on
     /// failure.   Data can be provided unsorted.   Repeated values are added.
     ///
-
     pub fn new_from_triplets(m: usize, n: usize, I: Vec<usize>, J: Vec<usize>, V: Vec<T>) -> Self {
         assert_eq!(I.len(), J.len());
         assert_eq!(I.len(), V.len());
@@ -211,7 +209,6 @@ where
     }
 
     /// allocate space for a sparse matrix with `nnz` elements
-
     pub fn spalloc(size: (usize, usize), nnz: usize) -> Self {
         let (m, n) = size;
         let mut colptr = vec![0; n + 1];
@@ -303,23 +300,9 @@ where
         Symmetric { src: self }
     }
 
-    /// Check that matrix data is correctly formatted.
+    /// Check that matrix data is canonically formatted.
     pub fn check_format(&self) -> Result<(), SparseFormatError> {
-        if self.rowval.len() != self.nzval.len() {
-            return Err(SparseFormatError::IncompatibleDimension);
-        }
-
-        if self.colptr.is_empty()
-            || (self.colptr.len() - 1) != self.n
-            || self.colptr[self.n] != self.rowval.len()
-        {
-            return Err(SparseFormatError::IncompatibleDimension);
-        }
-
-        //check for colptr monotonicity
-        if self.colptr.windows(2).any(|c| c[0] > c[1]) {
-            return Err(SparseFormatError::BadColptr);
-        }
+        self.check_dimensions()?;
 
         //check for rowval monotonicity within each column
         for col in 0..self.n {
@@ -335,12 +318,108 @@ where
 
         Ok(())
     }
+
+    /// Put matrix into standard ('canonical') form, operating in place.  This function
+    /// sorts data within each column by row index, and removes any duplicates.
+    /// Does not remove structural zeros.
+    ///
+    /// # Panics
+    /// Panics if the matrix initial dimensions are incompatible.
+    ///
+    pub fn canonicalize(&mut self) -> Result<(), SparseFormatError> {
+        self.check_dimensions()?;
+        self.sort_indices()?;
+        self.deduplicate()
+    }
+
+    /// Adds together repeated entries in the same column.   Input must
+    /// already be in column sorted order.
+    fn sort_indices(&mut self) -> Result<(), SparseFormatError> {
+        let mut tempdata: Vec<(usize, T)> = Vec::new();
+
+        for col in 0..self.n {
+            let start = self.colptr[col];
+            let stop = self.colptr[col + 1];
+
+            let nzval = &mut self.nzval[start..stop];
+            let rowval = &mut self.rowval[start..stop];
+
+            tempdata.resize(stop - start, (0, T::zero()));
+
+            for (i, (r, v)) in zip(rowval.iter(), nzval.iter()).enumerate() {
+                tempdata[i] = (*r, *v);
+            }
+            tempdata.sort_by_key(|&(r, _)| r);
+
+            for (i, (r, v)) in tempdata.iter().enumerate() {
+                rowval[i] = *r;
+                nzval[i] = *v;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Adds together repeated entries in the same column.   Input must
+    /// already be in column sorted order.
+    fn deduplicate(&mut self) -> Result<(), SparseFormatError> {
+        let mut nnz = 0;
+        let mut stop = 0;
+
+        for col in 0..self.n {
+            let mut ptr = stop;
+            stop = self.colptr[col + 1];
+
+            while ptr < stop {
+                let thisrow = self.rowval[ptr];
+                let mut accum = self.nzval[ptr];
+                ptr += 1;
+
+                while (ptr < stop) && (self.rowval[ptr] == thisrow) {
+                    accum = accum + self.nzval[ptr];
+                    ptr += 1;
+                }
+                self.rowval[nnz] = thisrow;
+                self.nzval[nnz] = accum;
+                nnz += 1;
+            }
+            self.colptr[col + 1] = nnz;
+        }
+
+        self.rowval.truncate(nnz);
+        self.nzval.truncate(nnz);
+
+        Ok(())
+    }
+
+    /// Check that for dimensional consistency.  Private since users should
+    /// check everything via check_format, and the canonicalization functions
+    /// must at least check dimensions before running.
+    fn check_dimensions(&self) -> Result<(), SparseFormatError> {
+        if self.rowval.len() != self.nzval.len() {
+            return Err(SparseFormatError::IncompatibleDimension);
+        }
+
+        if self.colptr.is_empty()
+            || (self.colptr.len() - 1) != self.n
+            || self.colptr[self.n] != self.rowval.len()
+        {
+            return Err(SparseFormatError::IncompatibleDimension);
+        }
+
+        //check for colptr monotonicity
+        if self.colptr.windows(2).any(|c| c[0] > c[1]) {
+            return Err(SparseFormatError::BadColptr);
+        }
+        Ok(())
+    }
+
     /// True if matrices if the same size and sparsity pattern
     pub fn is_equal_sparsity(&self, other: &Self) -> bool {
         self.size() == other.size() && self.colptr == other.colptr && self.rowval == other.rowval
     }
 
-    /// Same as is_equal_sparsity, but returns an error indicating the reason
+    /// Same as `is_equal_sparsity`, but returns an error indicating the reason
     /// for failure if the matrices do not have equivalent sparsity patterns.
     pub fn check_equal_sparsity(&self, other: &Self) -> Result<(), SparseFormatError> {
         if self.size() != other.size() {
@@ -806,4 +885,155 @@ fn test_drop_zeros() {
     A.dropzeros();
 
     assert_eq!(A, B);
+}
+
+#[test]
+fn test_sort_indices() {
+    let mut A = CscMatrix {
+        m: 4,
+        n: 3,
+        colptr: vec![0, 2, 4, 5],
+        rowval: vec![3, 1, 4, 2, 2],
+        nzval: vec![2.0, 3.0, 1.0, 4.0, 5.0],
+    };
+
+    A.sort_indices().unwrap();
+    assert_eq!(A.rowval, vec![1, 3, 2, 4, 2]);
+    assert_eq!(A.nzval, vec![3.0, 2.0, 4.0, 1.0, 5.0]);
+
+    //nothing to sort
+    A.sort_indices().unwrap();
+    assert_eq!(A.rowval, vec![1, 3, 2, 4, 2]);
+    assert_eq!(A.nzval, vec![3.0, 2.0, 4.0, 1.0, 5.0]);
+}
+
+#[test]
+fn test_sort_indices_with_duplicates() {
+    let mut A = CscMatrix {
+        m: 4,
+        n: 2,
+        colptr: vec![0, 3, 5],
+        rowval: vec![3, 3, 1, 2, 4],
+        nzval: vec![2.0, 3.0, 1.0, 1.0, 4.0],
+    };
+
+    A.sort_indices().unwrap();
+    assert_eq!(A.rowval, vec![1, 3, 3, 2, 4]);
+    assert_eq!(A.nzval, vec![1.0, 2.0, 3.0, 1.0, 4.0]);
+}
+
+#[test]
+fn test_deduplicate() {
+    let mut A = CscMatrix {
+        m: 4,
+        n: 2,
+        colptr: vec![0, 2, 4],
+        rowval: vec![1, 1, 2, 4],
+        nzval: vec![3.0, 2.0, 1.0, 4.0],
+    };
+
+    A.deduplicate().unwrap();
+    assert_eq!(A.colptr, vec![0, 1, 3]);
+    assert_eq!(A.rowval, vec![1, 2, 4]);
+    assert_eq!(A.nzval, vec![5.0, 1.0, 4.0]);
+
+    // nothing to deduplicate
+    A.deduplicate().unwrap();
+    assert_eq!(A.colptr, vec![0, 1, 3]);
+    assert_eq!(A.rowval, vec![1, 2, 4]);
+    assert_eq!(A.nzval, vec![5.0, 1.0, 4.0]);
+}
+
+#[test]
+fn test_deduplicate_multiple_columns() {
+    let mut A = CscMatrix {
+        m: 4,
+        n: 3,
+        colptr: vec![0, 2, 4, 6],
+        rowval: vec![1, 1, 2, 4, 3, 3],
+        nzval: vec![3.0, 2.0, 1.0, 4.0, 5.0, 6.0],
+    };
+
+    A.deduplicate().unwrap();
+    assert_eq!(A.colptr, vec![0, 1, 3, 4]);
+    assert_eq!(A.rowval, vec![1, 2, 4, 3]);
+    assert_eq!(A.nzval, vec![5.0, 1.0, 4.0, 11.0]);
+}
+
+#[test]
+fn test_deduplicate_1col() {
+    let mut A = CscMatrix {
+        m: 4,
+        n: 1,
+        colptr: vec![0, 3],
+        rowval: vec![1, 1, 4],
+        nzval: vec![2.0, 3.0, 4.0],
+    };
+
+    A.deduplicate().unwrap();
+    assert_eq!(A.colptr, vec![0, 2]);
+    assert_eq!(A.rowval, vec![1, 4]);
+    assert_eq!(A.nzval, vec![5.0, 4.0]);
+}
+
+#[test]
+fn test_canonicalize() {
+    let mut A = CscMatrix {
+        m: 4,
+        n: 3,
+        colptr: vec![0, 3, 4, 7],
+        rowval: vec![2, 1, 1, 4, 3, 4, 3],
+        nzval: vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+    };
+
+    A.canonicalize().unwrap();
+    assert_eq!(A.colptr, vec![0, 2, 3, 5]);
+    assert_eq!(A.rowval, vec![1, 2, 4, 3, 4]);
+    assert_eq!(A.nzval, vec![5.0, 1.0, 4.0, 12.0, 6.0]);
+}
+
+#[test]
+fn test_canonicalize_structural_zeros() {
+    let mut A = CscMatrix {
+        m: 4,
+        n: 3,
+        colptr: vec![0, 3, 4, 7],
+        rowval: vec![2, 1, 1, 4, 3, 4, 3],
+        nzval: vec![1.0, 2.0, 3.0, 0.0, 5.0, 6.0, -5.0],
+    };
+
+    A.canonicalize().unwrap();
+    assert_eq!(A.colptr, vec![0, 2, 3, 5]);
+    assert_eq!(A.rowval, vec![1, 2, 4, 3, 4]);
+    assert_eq!(A.nzval, vec![5.0, 1.0, 0.0, 0.0, 6.0]);
+}
+
+#[test]
+fn test_canonicalize_empty() {
+    let mut A: CscMatrix<f64> = CscMatrix {
+        m: 0,
+        n: 0,
+        colptr: vec![0],
+        rowval: vec![],
+        nzval: vec![],
+    };
+
+    A.canonicalize().unwrap();
+    assert!(A.rowval.is_empty());
+    assert!(A.nzval.is_empty());
+}
+
+#[test]
+fn test_canonicalize_singleton() {
+    let mut A = CscMatrix {
+        m: 4,
+        n: 1,
+        colptr: vec![0, 1],
+        rowval: vec![2],
+        nzval: vec![5.0],
+    };
+
+    A.sort_indices().unwrap();
+    assert_eq!(A.rowval, vec![2]);
+    assert_eq!(A.nzval, vec![5.0]);
 }

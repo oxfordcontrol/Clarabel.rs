@@ -1,7 +1,12 @@
-status:
-  project: yes
-  patch: no
-  changes: no
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
 ignore:
   - "python/*"      # pyblas wrappers
   - "src/python/*"  # py03 interface 

@@ -72,7 +72,7 @@ pub struct Symmetric<'a, M> {
     pub src: &'a M,
 }
 
-impl<'a, M> ShapedMatrix for Adjoint<'a, M>
+impl<M> ShapedMatrix for Adjoint<'_, M>
 where
     M: ShapedMatrix,
 {
@@ -84,7 +84,7 @@ where
     }
 }
 
-impl<'a, M> ShapedMatrix for Symmetric<'a, M>
+impl<M> ShapedMatrix for Symmetric<'_, M>
 where
     M: ShapedMatrix,
 {

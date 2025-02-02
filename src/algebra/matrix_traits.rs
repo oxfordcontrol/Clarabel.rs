@@ -18,9 +18,6 @@ pub(crate) trait ShapedMatrix {
     }
 }
 
-// PJG: replace panics here with Error types.  Add documentation
-// and examples for blockdiag and hvcat
-
 /// Blockwise matrix concatenation
 pub trait BlockConcatenate: Sized {
     /// horizontal matrix concatenation
@@ -28,10 +25,9 @@ pub trait BlockConcatenate: Sized {
     /// ```text
     /// C = [A B]
     /// ```
-    /// # Panics
-    /// Panics if row dimensions are incompatible
-
-    fn hcat(A: &Self, B: &Self) -> Self;
+    ///
+    /// Errors if row dimensions are incompatible
+    fn hcat(A: &Self, B: &Self) -> Result<Self, MatrixConcatenationError>;
 
     /// vertical matrix concatenation
     ///
@@ -40,13 +36,13 @@ pub trait BlockConcatenate: Sized {
     ///     [ B ]
     /// ```
     ///
-    /// # Panics
-    /// Panics if column dimensions are incompatible
+    /// Errors if column dimensions are incompatible
+    fn vcat(A: &Self, B: &Self) -> Result<Self, MatrixConcatenationError>;
 
-    fn vcat(A: &Self, B: &Self) -> Self;
-
+    /// general block concatenation
     fn hvcat(mats: &[&[&Self]]) -> Result<Self, MatrixConcatenationError>;
 
+    /// block diagonal concatenation
     fn blockdiag(mats: &[&Self]) -> Result<Self, MatrixConcatenationError>;
 }
 

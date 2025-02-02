@@ -4,27 +4,33 @@ use pyo3::prelude::*;
 #[pyfunction(name = "force_load_blas_lapack")]
 fn force_load_blas_lapack_py() {
     //force BLAS/LAPACK fcn pointer load
+    //when using scipy lapack/blas
+    #[cfg(sdp_pyblas)]
     crate::python::pyblas::force_load();
 }
 
 // get/set for the solver's internal infinity limit
 #[pyfunction(name = "get_infinity")]
 fn get_infinity_py() -> f64 {
-    crate::solver::get_infinity()
+    crate::get_infinity()
 }
 #[pyfunction(name = "set_infinity")]
 fn set_infinity_py(v: f64) {
-    crate::solver::set_infinity(v);
+    crate::set_infinity(v);
 }
 #[pyfunction(name = "default_infinity")]
 fn default_infinity_py() {
-    crate::solver::default_infinity();
+    crate::default_infinity();
+}
+#[pyfunction(name = "buildinfo")]
+fn buildinfo_py() {
+    crate::buildinfo();
 }
 
 // Python module and registry, which includes registration of the
 // data types defined in the other files in this rust module
 #[pymodule]
-fn clarabel(_py: Python, m: &PyModule) -> PyResult<()> {
+fn clarabel(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     //module version
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
@@ -39,6 +45,7 @@ fn clarabel(_py: Python, m: &PyModule) -> PyResult<()> {
         .unwrap();
     m.add_function(wrap_pyfunction!(default_infinity_py, m)?)
         .unwrap();
+    m.add_function(wrap_pyfunction!(buildinfo_py, m)?).unwrap();
     m.add_function(wrap_pyfunction!(read_from_file_py, m)?)
         .unwrap();
 

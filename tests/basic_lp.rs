@@ -3,7 +3,6 @@
 use clarabel::{algebra::*, solver::*};
 
 #[allow(clippy::type_complexity)]
-
 fn basic_lp_data() -> (
     CscMatrix<f64>,
     Vec<f64>,
@@ -16,7 +15,7 @@ fn basic_lp_data() -> (
     let I1 = CscMatrix::<f64>::identity(3);
     let mut I2 = CscMatrix::<f64>::identity(3);
     I2.negate();
-    let mut A = CscMatrix::vcat(&I1, &I2);
+    let mut A = CscMatrix::vcat(&I1, &I2).unwrap();
     A.scale(2.);
 
     let c = vec![3., -2., 1.];

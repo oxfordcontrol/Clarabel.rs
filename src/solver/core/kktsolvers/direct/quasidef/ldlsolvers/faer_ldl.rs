@@ -1,13 +1,29 @@
 #![allow(non_snake_case)]
 
+use faer::dyn_stack::{MemBuffer, MemStack, StackReq};
+// use faer::{
+//     dyn_stack::{GlobalPodBuffer, PodStack, StackReq},
+//     linalg::cholesky::ldlt::compute::LdltRegularization,
+//     sparse::{
+//         linalg::{amd::Control, cholesky::*, SupernodalThreshold},
+//         SparseColMatRef, SymbolicSparseColMatRef,
+//     },
+//     Conj, Parallelism, Side,
+// };
 use faer::{
-    dyn_stack::{GlobalPodBuffer, PodStack, StackReq},
-    linalg::cholesky::ldlt_diagonal::compute::LdltRegularization,
+    linalg::cholesky::ldlt::factor::{LdltParams, LdltRegularization},
     sparse::{
-        linalg::{amd::Control, cholesky::*, SupernodalThreshold},
+        linalg::{
+            amd::Control,
+            cholesky::{
+                factorize_symbolic_cholesky, CholeskySymbolicParams, LdltRef, SymbolicCholesky,
+                SymmetricOrdering,
+            },
+            SupernodalThreshold,
+        },
         SparseColMatRef, SymbolicSparseColMatRef,
     },
-    Conj, Parallelism, Side,
+    Conj, MatMut, Par, Side, Spec,
 };
 
 use crate::algebra::*;
@@ -56,29 +72,39 @@ pub struct FaerDirectLDLSolver<T: FloatT> {
 
     // regularizer parameters captured from settings
     regularizer_params: FaerLDLRegularizerParams<T>,
+    ldlt_params: Spec<LdltParams, T>,
 
     // symbolic + numeric cholesky data
     symbolic_cholesky: SymbolicCholesky<usize>,
     ld_vals: Vec<T>,
 
     // workspace for faer factor/solve calls
-    work: GlobalPodBuffer,
+    work: MemBuffer,
 
-    parallelism: Parallelism<'static>,
+    parallelism: Par,
 }
 
 impl<T> FaerDirectLDLSolver<T>
 where
     T: FloatT,
 {
+    pub fn nthreads_from_settings(setting: usize) -> usize {
+        faer::utils::thread::parallelism_degree(faer::Par::rayon(setting))
+    }
+
     pub fn new(KKT: &CscMatrix<T>, Dsigns: &[i8], settings: &CoreSettings<T>) -> Self {
         assert!(KKT.is_square(), "KKT matrix is not square");
 
         // -----------------------------
 
-        // Rayon(0) here is equivalent to rayon::current_num_threads()
-        // PJG: this should be a user-settable option
-        let parallelism = Parallelism::Rayon(0);
+        // Par::rayon(0) here is equivalent to rayon::current_num_threads()
+        let parallelism = {
+            match settings.max_threads {
+                0 => Par::rayon(0),
+                1 => Par::Seq,
+                _ => Par::rayon(settings.max_threads as usize),
+            }
+        };
 
         // manually compute an AMD ordering for the KKT matrix
         // and permute it to match the ordering used in QDLDL
@@ -125,7 +151,7 @@ where
         )
         .unwrap();
 
-        let ld_vals = vec![T::zero(); symbolic_cholesky.len_values()];
+        let ld_vals = vec![T::zero(); symbolic_cholesky.len_val()];
 
         let regularizer_params = FaerLDLRegularizerParams {
             regularize: settings.dynamic_regularization_enable,
@@ -133,13 +159,14 @@ where
             eps: settings.dynamic_regularization_eps,
         };
 
+        let ldlt_params: Spec<LdltParams, T> = Default::default();
+
         // Required workspace for faer factor and solve
-        let req_factor = symbolic_cholesky
-            .factorize_numeric_ldlt_req::<f64>(true, parallelism)
-            .unwrap();
-        let req_solve = symbolic_cholesky.solve_in_place_req::<f64>(1).unwrap();
-        let req = StackReq::any_of([req_factor, req_solve]);
-        let work = GlobalPodBuffer::new(req);
+        let req_factor =
+            symbolic_cholesky.factorize_numeric_ldlt_scratch::<T>(parallelism, ldlt_params);
+        let req_solve = symbolic_cholesky.solve_in_place_scratch::<T>(1, parallelism); // 1 is the number of RHS
+        let req = StackReq::any_of(&[req_factor, req_solve]);
+        let work = MemBuffer::new(req);
 
         let bperm = vec![T::zero(); perm_kkt.n];
 
@@ -151,6 +178,7 @@ where
             perm_dsigns,
             bperm,
             regularizer_params,
+            ldlt_params,
             symbolic_cholesky,
             ld_vals,
             work,
@@ -161,7 +189,7 @@ where
 
 impl<T> DirectLDLSolver<T> for FaerDirectLDLSolver<T>
 where
-    T: FloatT + faer::Entity + faer::SimpleEntity,
+    T: FloatT,
 {
     fn update_values(&mut self, index: &[usize], values: &[T]) {
         // PJG: this is replicating the update_values function in qdldl
@@ -198,14 +226,14 @@ where
         // NB: faer solves in place.  Permute b to match the ordering used internally
         permute(&mut self.bperm, b, &self.perm);
 
-        let rhs = faer::mat::from_column_major_slice_mut::<T>(&mut self.bperm[0..], b.len(), 1);
+        let rhs = MatMut::from_column_major_slice_mut(&mut self.bperm[0..], b.len(), 1);
         let ldlt = LdltRef::new(&self.symbolic_cholesky, self.ld_vals.as_slice());
 
         ldlt.solve_in_place_with_conj(
             Conj::No,
             rhs,
             self.parallelism,
-            PodStack::new(&mut self.work),
+            MemStack::new(&mut self.work),
         );
 
         // bperm is now the solution, permute it back to the original ordering
@@ -226,16 +254,17 @@ where
 
         let regularizer = self.regularizer_params.to_faer(&self.perm_dsigns);
 
-        self.symbolic_cholesky.factorize_numeric_ldlt(
-            self.ld_vals.as_mut_slice(),
-            a,
-            Side::Upper,
-            regularizer,
-            self.parallelism,
-            PodStack::new(&mut self.work),
-        );
-
-        true // assume success for experimental purposes
+        self.symbolic_cholesky
+            .factorize_numeric_ldlt(
+                self.ld_vals.as_mut_slice(),
+                a,
+                Side::Upper,
+                regularizer,
+                self.parallelism,
+                MemStack::new(&mut self.work),
+                self.ldlt_params,
+            )
+            .is_ok() // PJG: convert to bool for consistency with qdldl.   Should really return Result here and elsewhere
     }
 
     fn required_matrix_shape() -> MatrixTriangle {

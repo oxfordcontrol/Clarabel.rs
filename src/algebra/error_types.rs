@@ -4,21 +4,27 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum MatrixConcatenationError {
     #[error("Incompatible dimensions")]
+    /// Indicates inputs have incompatible dimension
     IncompatibleDimension,
 }
 
 #[derive(Error, Debug)]
 /// Error type returned by sparse matrix assembly operations.
 pub enum SparseFormatError {
+    /// Matrix dimension fields and/or array lengths are incompatible
     #[error("Matrix dimension fields and/or array lengths are incompatible")]
     IncompatibleDimension,
+    /// Data is not sorted by row index within each column
     #[error("Data is not sorted by row index within each column")]
     BadRowOrdering,
     #[error("Row value exceeds the matrix row dimension")]
+    /// Row value exceeds the matrix row dimension
     BadRowval,
     #[error("Bad column pointer values")]
+    /// Matrix column pointer values are defective
     BadColptr,
     #[error("sparsity pattern mismatch")]
+    /// Operation on matrices that have mismatching sparsity patterns
     SparsityMismatch,
 }
 

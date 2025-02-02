@@ -2,7 +2,6 @@ use super::*;
 extern crate amd;
 
 #[cfg(test)]
-
 fn test_matrix_4x4() -> CscMatrix<f64> {
     // A =
     //[ 8.0  -3.0   2.0    ⋅ ]
@@ -49,7 +48,7 @@ fn test_invperm_bad_perm2() {
 
 #[test]
 fn test_permute() {
-    let perm = vec![3, 0, 2, 1]; //index too big
+    let perm = vec![3, 0, 2, 1];
     let b = vec![1., 2., 3., 4.];
     let mut x = vec![0.; 4];
     let mut y = vec![0.; 4];

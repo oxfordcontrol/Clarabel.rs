@@ -3,7 +3,6 @@
 // for floats of type FloatT.
 
 /// Scalar operations on [`FloatT`](crate::algebra::FloatT)
-
 pub trait ScalarMath {
     /// Applies a threshold value.   
     ///
@@ -17,7 +16,6 @@ pub trait ScalarMath {
 }
 
 /// Vector operations on slices of [`FloatT`](crate::algebra::FloatT)
-
 pub trait VectorMath<T> {
     /// Copy values from `src` to `self`
     fn copy_from(&mut self, src: &Self) -> &mut Self;
@@ -65,7 +63,7 @@ pub trait VectorMath<T> {
     /// Dot product
     fn dot(&self, y: &Self) -> T;
 
-    // computes dot(z + αdz,s + αds) without intermediate allocation
+    /// computes dot(z + αdz,s + αds) without intermediate allocation
     fn dot_shifted(z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T;
 
     /// Standard Euclidian or 2-norm distance from `self` to `y`
@@ -95,7 +93,7 @@ pub trait VectorMath<T> {
     /// Inf-norm of an elementwise scaling of `self` by `v`
     fn norm_one_scaled(&self, v: &Self) -> T;
 
-    // Inf-norm of vector difference
+    /// Inf-norm of vector difference
     fn norm_inf_diff(&self, b: &Self) -> T;
 
     /// Minimum value in vector
@@ -121,7 +119,6 @@ pub trait VectorMath<T> {
 }
 
 /// Matrix operations for matrices of [`FloatT`](crate::algebra::FloatT)
-
 pub(crate) trait MatrixVectorMultiply<T> {
     /// BLAS-like general matrix-vector multiply.  Produces `y = a*self*x + b*y`
     fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T);
@@ -134,7 +131,6 @@ pub(crate) trait SymMatrixVectorMultiply<T> {
 }
 
 /// Operations on matrices of [`FloatT`](crate::algebra::FloatT)
-
 pub trait MatrixMath<T> {
     /// Compute columnwise sums on a matrix and
     /// assign the results to the vector `sums`
@@ -156,7 +152,7 @@ pub trait MatrixMath<T> {
     fn col_norms_no_reset(&self, norms: &mut [T]);
 
     /// Compute columnwise infinity norm operations on
-    /// a symmstric matrix
+    /// a symmetric matrix
     fn col_norms_sym(&self, norms: &mut [T]);
 
     /// Compute columnwise infinity norm operations on
@@ -181,7 +177,6 @@ pub trait MatrixMath<T> {
 }
 
 /// Operations on mutable matrices of [`FloatT`](crate::algebra::FloatT)
-
 pub trait MatrixMathMut<T> {
     /// Elementwise scaling
     fn scale(&mut self, c: T);

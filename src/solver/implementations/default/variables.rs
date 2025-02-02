@@ -38,6 +38,7 @@ impl<T> DefaultVariables<T>
 where
     T: FloatT,
 {
+    /// Create a new `DefaultVariables` object
     pub fn new(n: usize, m: usize) -> Self {
         let x = vec![T::zero(); n];
         let s = vec![T::zero(); m];
@@ -273,10 +274,10 @@ where
         // also undo the equilibration
         let d = &data.equilibration.d;
         let (e, einv) = (&data.equilibration.e, &data.equilibration.einv);
-        let cscale = data.equilibration.c;
+        let cinv = T::recip(data.equilibration.c);
 
         self.x.hadamard(d).scale(scaleinv);
-        self.z.hadamard(e).scale(scaleinv / cscale);
+        self.z.hadamard(e).scale(scaleinv * cinv);
         self.s.hadamard(einv).scale(scaleinv);
 
         self.τ *= scaleinv;

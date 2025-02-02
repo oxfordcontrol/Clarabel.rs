@@ -21,7 +21,7 @@ pub use data_updating::*;
 pub use equilibration::*;
 pub use info::*;
 pub use kktsystem::*;
-pub use presolver::*;
+pub(crate) use presolver::*;
 pub use problemdata::*;
 pub use residuals::*;
 pub use settings::*;

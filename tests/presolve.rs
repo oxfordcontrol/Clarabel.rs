@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use clarabel::{algebra::*, solver::*};
+use clarabel::{default_infinity, get_infinity, set_infinity};
 
 #[allow(clippy::type_complexity)]
 fn presolve_test_data() -> (
@@ -14,7 +15,7 @@ fn presolve_test_data() -> (
     let P = CscMatrix::identity(n);
     let mut A2 = CscMatrix::identity(n);
     A2.negate();
-    let mut A = CscMatrix::vcat(&P, &A2);
+    let mut A = CscMatrix::vcat(&P, &A2).unwrap();
     A.scale(2.);
 
     let c = vec![3., -2., 1.];

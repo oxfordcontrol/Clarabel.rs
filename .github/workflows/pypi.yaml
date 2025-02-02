@@ -13,7 +13,7 @@ on:
 
 env:
   PACKAGE_NAME: clarabel
-  PYTHON_VERSION: "3.7" # to build abi3 wheels
+  PYTHON_VERSION: "3.9" # to build abi3 wheels
   PYPI_TARGET: pypi # use "testpypi" for testing, "pypi" otherwise
 
 # NB: uncomment "if" lines below to skip compilation except on version tagging
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
        matrix:
-        target: [x86_64, i686, aarch64]
+        target: [x86_64, aarch64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -110,7 +110,7 @@ jobs:
     # if: "startsWith(github.ref, 'refs/tags/v')"
     strategy:
       matrix:
-        target: [x64, x86]
+        target: [x64]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -146,6 +146,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          default: true
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1

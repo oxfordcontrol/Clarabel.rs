@@ -9,7 +9,6 @@ use crate::algebra::*;
 use crate::timers::*;
 
 /// Solver for problems in standard conic program form
-
 pub type DefaultSolver<T = f64> = Solver<
     DefaultProblemData<T>,
     DefaultVariables<T>,

@@ -2,6 +2,7 @@ use self::internal::*;
 use super::cones::Cone;
 use super::traits::*;
 use crate::algebra::*;
+use crate::solver::DefaultSettings;
 use crate::stdio;
 use crate::timers::*;
 use std::io::Write;
@@ -11,7 +12,6 @@ use std::io::Write;
 // ---------------------------------
 
 /// Status of solver at termination
-
 #[repr(u32)]
 #[derive(PartialEq, Eq, Clone, Debug, Copy, Default)]
 pub enum SolverStatus {
@@ -93,9 +93,17 @@ impl std::fmt::Display for SolverStatus {
 /// JSON file read/write trait for solver data.
 /// Only available with the "serde" feature enabled.
 #[cfg(feature = "serde")]
-pub trait SolverJSONReadWrite: Sized {
+pub trait SolverJSONReadWrite<T>: Sized
+where
+    T: FloatT,
+{
+    /// write internal problem data to a JSON file
     fn write_to_file(&self, file: &mut std::fs::File) -> Result<(), std::io::Error>;
-    fn read_from_file(file: &mut std::fs::File) -> Result<Self, std::io::Error>;
+    /// load problem data from a JSON file previously saved using [`write_to_file`](self::SolverJSONReadWrite::write_to_file)
+    fn read_from_file(
+        file: &mut std::fs::File,
+        settings: Option<DefaultSettings<T>>,
+    ) -> Result<Self, std::io::Error>;
 }
 
 // ---------------------------------
@@ -165,12 +173,11 @@ fn _print_banner(is_verbose: bool) -> std::io::Result<()> {
 // ---------------------------------
 
 /// An interior point solver implementing a predictor-corrector scheme
-
+//
 // Only the main solver function lives in IPSolver, since this is the
 // only publicly facing trait we want to give the solver.   Additional
 // internal functionality for the top level solver object is implemented
 // for the IPSolverUtilities trait below, upon which IPSolver depends
-
 pub trait IPSolver<T, D, V, R, K, C, I, SO, SE> {
     /// Run the solver
     fn solve(&mut self);

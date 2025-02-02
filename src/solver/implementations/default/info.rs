@@ -5,33 +5,52 @@ use crate::solver::traits::Variables;
 use crate::timers::*;
 
 /// Standard-form solver type implementing the [`Info`](crate::solver::core::traits::Info) and [`InfoPrint`](crate::solver::core::traits::InfoPrint) traits
-
 #[repr(C)]
 #[derive(Default, Debug, Clone)]
 pub struct DefaultInfo<T> {
+    /// interior point path parameter μ
     pub μ: T,
+    /// interior point path parameter reduction ratio σ
     pub sigma: T,
+    /// step length for the current iteration
     pub step_length: T,
+    /// number of iterations
     pub iterations: u32,
+    /// primal objective value
     pub cost_primal: T,
+    /// dual objective value
     pub cost_dual: T,
+    /// primal residual
     pub res_primal: T,
+    /// dual residual
     pub res_dual: T,
+    /// primal infeasibility residual
     pub res_primal_inf: T,
+    /// dual infeasibility residual
     pub res_dual_inf: T,
+    /// absolute duality gap
     pub gap_abs: T,
+    /// relative duality gap
     pub gap_rel: T,
+    /// κ/τ ratio
     pub ktratio: T,
 
     // previous iterate
+    /// primal object value from previous iteration
     prev_cost_primal: T,
+    /// dual objective value from previous iteration
     prev_cost_dual: T,
+    /// primal residual from previous iteration
     prev_res_primal: T,
+    /// dual residual from previous iteration
     prev_res_dual: T,
+    /// absolute duality gap from previous iteration
     prev_gap_abs: T,
+    /// relative duality gap from previous iteration
     prev_gap_rel: T,
-
+    /// solve time
     pub solve_time: f64,
+    /// solver status
     pub status: SolverStatus,
 }
 
@@ -39,6 +58,7 @@ impl<T> DefaultInfo<T>
 where
     T: FloatT,
 {
+    /// creates a new `DefaultInfo` object
     pub fn new() -> Self {
         Self::default()
     }
@@ -92,27 +112,29 @@ where
         let normq = data.get_normq();
 
         // shortcuts for the equilibration matrices
+        let d = &data.equilibration.d;
+        let e = &data.equilibration.e;
         let dinv = &data.equilibration.dinv;
         let einv = &data.equilibration.einv;
-        let cscale = data.equilibration.c;
+        let cinv = T::recip(data.equilibration.c);
 
         // primal and dual costs. dot products are invariant w.r.t
         // equilibration, but we still need to back out the overall
         // objective scaling term c
 
         let xPx_τinvsq_over2 = residuals.dot_xPx * τinv * τinv / (2.).as_T();
-        self.cost_primal = (residuals.dot_qx * τinv + xPx_τinvsq_over2) / cscale;
-        self.cost_dual = (-residuals.dot_bz * τinv - xPx_τinvsq_over2) / cscale;
+        self.cost_primal = (residuals.dot_qx * τinv + xPx_τinvsq_over2) * cinv;
+        self.cost_dual = (-residuals.dot_bz * τinv - xPx_τinvsq_over2) * cinv;
 
         // variables norms, undoing the equilibration.  Do not unscale
         // by τ yet because the infeasibility residuals are ratios of
         // terms that have no affine parts anyway
-        let mut normx = variables.x.norm_scaled(dinv);
-        let mut normz = variables.z.norm_scaled(einv);
+        let mut normx = variables.x.norm_scaled(d);
+        let mut normz = variables.z.norm_scaled(e) * cinv;
         let mut norms = variables.s.norm_scaled(einv);
 
         // primal and dual infeasibility residuals.
-        self.res_primal_inf = residuals.rx_inf.norm_scaled(dinv) / T::max(T::one(), normz);
+        self.res_primal_inf = (residuals.rx_inf.norm_scaled(dinv) * cinv) / T::max(T::one(), normz);
         self.res_dual_inf = T::max(
             residuals.Px.norm_scaled(dinv) / T::max(T::one(), normx),
             residuals.rz_inf.norm_scaled(einv) / T::max(T::one(), normx + norms),
@@ -127,7 +149,7 @@ where
         self.res_primal =
             residuals.rz.norm_scaled(einv) * τinv / T::max(T::one(), normb + normx + norms);
         self.res_dual =
-            residuals.rx.norm_scaled(dinv) * τinv / T::max(T::one(), normq + normx + normz);
+            residuals.rx.norm_scaled(dinv) * τinv * cinv / T::max(T::one(), normq + normx + normz);
 
         // absolute and relative gaps
         self.gap_abs = T::abs(self.cost_primal - self.cost_dual);
@@ -137,8 +159,8 @@ where
                 T::min(T::abs(self.cost_primal), T::abs(self.cost_dual)),
             );
 
-        // κ/τ
-        self.ktratio = variables.κ / variables.τ;
+        // κ/τ ratio (scaled)
+        self.ktratio = variables.κ * τinv;
 
         // solve time so far (includes setup)
         self.solve_time = timers.total_time().as_secs_f64();
@@ -169,12 +191,15 @@ where
             }
 
             // Going backwards. Stop immediately if residuals diverge out of feasibility tolerance.
-            if (self.res_dual > settings.tol_feas
-                && self.res_dual > self.prev_res_dual * (100.).as_T())
-                || (self.res_primal > settings.tol_feas
-                    && self.res_primal > self.prev_res_primal * (100.).as_T())
-            {
-                self.status = SolverStatus::InsufficientProgress;
+            #[allow(clippy::collapsible_if)] // nested if for readability
+            if self.ktratio < T::one() {
+                if (self.res_dual > settings.tol_feas * (100.).as_T()
+                    && self.res_dual > self.prev_res_dual * (100.).as_T())
+                    || (self.res_primal > settings.tol_feas * (100.).as_T()
+                        && self.res_primal > self.prev_res_primal * (100.).as_T())
+                {
+                    self.status = SolverStatus::InsufficientProgress;
+                }
             }
         }
 
