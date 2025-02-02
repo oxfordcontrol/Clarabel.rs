@@ -39,7 +39,7 @@ pub trait BlockConcatenate: Sized {
     /// Errors if column dimensions are incompatible
     fn vcat(A: &Self, B: &Self) -> Result<Self, MatrixConcatenationError>;
 
-    /// general block concatentation
+    /// general block concatenation
     fn hvcat(mats: &[&[&Self]]) -> Result<Self, MatrixConcatenationError>;
 
     /// block diagonal concatenation

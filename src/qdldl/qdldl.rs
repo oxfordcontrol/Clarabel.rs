@@ -6,39 +6,56 @@ use std::iter::zip;
 use thiserror::Error;
 
 /// Error codes returnable from [`QDLDLFactorisation`](QDLDLFactorisation) factor operations
-
 #[derive(Error, Debug)]
 pub enum QDLDLError {
     #[error("Matrix dimension fields are incompatible")]
+    /// Matrix dimension fields are incompatible
     IncompatibleDimension,
     #[error("Matrix has a zero column")]
+    /// Matrix has a zero column
     EmptyColumn,
     #[error("Matrix is not upper triangular")]
+    /// Matrix is not upper triangular
     NotUpperTriangular,
+    /// Matrix factorization produced a zero pivot
     #[error("Matrix factorization produced a zero pivot")]
     ZeroPivot,
     #[error("Invalid permutation vector")]
+    /// Invalid permutation vector supplied
     InvalidPermutation,
 }
 
-/// Required settings for [`QDLDLFactorisation`](QDLDLFactorisation)
-
 #[derive(Builder, Debug, Clone)]
+#[allow(missing_docs)]
+/// Required settings for [`QDLDLFactorisation`](QDLDLFactorisation)
 pub struct QDLDLSettings<T: FloatT> {
+    /// "dense scale" parameter for AMD ordering
     #[builder(default = "1.0")]
-    amd_dense_scale: f64,
+    pub amd_dense_scale: f64,
+
+    /// optional ueser-supplied custom permutation vector for the matrix
     #[builder(default = "None", setter(strip_option))]
-    perm: Option<Vec<usize>>,
+    pub perm: Option<Vec<usize>>,
+
+    /// Logical factorisation only, no numerical factorisation
     #[builder(default = "false")]
-    logical: bool,
+    pub logical: bool,
+
+    /// optional user-supplied signs of the diagonal elements of D in LDL^T
     #[builder(default = "None", setter(strip_option))]
-    Dsigns: Option<Vec<i8>>,
+    pub Dsigns: Option<Vec<i8>>,
+
+    /// Enable regularization during factorisation
     #[builder(default = "true")]
-    regularize_enable: bool,
+    pub regularize_enable: bool,
+
+    /// Regularization epsilon parameter
     #[builder(default = "(1e-12).as_T()")]
-    regularize_eps: T,
+    pub regularize_eps: T,
+
+    /// Regularization delta parameter
     #[builder(default = "(1e-7).as_T()")]
-    regularize_delta: T,
+    pub regularize_delta: T,
 }
 
 impl<T> Default for QDLDLSettings<T>
@@ -51,29 +68,30 @@ where
 }
 
 /// Performs $LDL^T$ factorization of a symmetric quasidefinite matrix
-
 #[derive(Debug)]
 pub struct QDLDLFactorisation<T = f64> {
-    // permutation vector
+    /// permutation vector
     pub perm: Vec<usize>,
-    // inverse permutation
+    /// inverse permutation
     #[allow(dead_code)] //Unused because we call ipermute in solve instead.  Keep anyway.
     iperm: Vec<usize>,
-    // lower triangular factor
+    /// lower triangular factor L in LDL^T
     pub L: CscMatrix<T>,
-    // D and is inverse for A = LDL^T
+    /// vector of diagonal elements of D in LDL^T
     pub D: Vec<T>,
+    /// vector of reciprocal diagonal elements of D in LDL^T
     pub Dinv: Vec<T>,
-    // workspace data
+    /// internal workspace data
     workspace: QDLDLWorkspace<T>,
-    // is it logical factorisation only?
-    is_logical: bool,
+    /// true of factorisation is symbolic only
+    is_symbolic: bool,
 }
 
 impl<T> QDLDLFactorisation<T>
 where
     T: FloatT,
 {
+    /// create a new LDL^T factorisation
     pub fn new(
         Ain: &CscMatrix<T>,
         opts: Option<QDLDLSettings<T>>,
@@ -83,18 +101,21 @@ where
         _qdldl_new(Ain, opts)
     }
 
+    /// returns the number of positive eigenvalues
     pub fn positive_inertia(&self) -> usize {
         self.workspace.positive_inertia
     }
+    /// returns the number of regularisation shifts
+    /// that were applied during factorisation
     pub fn regularize_count(&self) -> usize {
         self.workspace.regularize_count
     }
 
-    // Solves Ax = b using LDL factors for A.
-    // Solves in place (x replaces b)
+    /// Solves Ax = b using LDL factors for A.
+    /// Solves in place (x replaces b)
     pub fn solve(&mut self, b: &mut [T]) {
         // bomb if logical factorisation only
-        assert!(!self.is_logical);
+        assert!(!self.is_symbolic);
 
         // bomb if b is the wrong size
         assert_eq!(b.len(), self.D.len());
@@ -116,6 +137,8 @@ where
         ipermute(b, tmp, &self.perm);
     }
 
+    /// Update a subset of the values of the matrix to be (re)factored.  See [`refactor`](crate::qdldl::QDLDLFactorisation::refactor)
+    ///
     pub fn update_values(&mut self, indices: &[usize], values: &[T]) {
         let nzval = &mut self.workspace.triuA.nzval; // post perm internal data
         let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
@@ -125,6 +148,8 @@ where
         }
     }
 
+    /// Update a subset of the values of the matrix to be (re)factored.  See [`refactor`](crate::qdldl::QDLDLFactorisation::refactor)
+    ///
     pub fn scale_values(&mut self, indices: &[usize], scale: T) {
         let nzval = &mut self.workspace.triuA.nzval; // post perm internal data
         let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
@@ -134,6 +159,10 @@ where
         }
     }
 
+    /// Shifts a subset of the values of the matrix to be (re)factored.   The
+    /// values are offset by `offset`, with `signs` a vector of +/- 1 values
+    /// indicating the direction of shifts. See [`refactor`](crate::qdldl::QDLDLFactorisation::refactor)
+    ///
     pub fn offset_values(&mut self, indices: &[usize], offset: T, signs: &[i8]) {
         assert_eq!(indices.len(), signs.len());
 
@@ -141,22 +170,32 @@ where
         let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
 
         for (&idx, &sign) in zip(indices, signs) {
-            let sign: T = T::from_i8(sign).unwrap();
-            nzval[AtoPAPt[idx]] += offset * sign;
+            match sign.signum() {
+                1 => {
+                    nzval[AtoPAPt[idx]] += offset;
+                }
+                -1 => {
+                    nzval[AtoPAPt[idx]] -= offset;
+                }
+                _ => {}
+            }
         }
     }
 
+    /// Refactor a matrix after its data has been modified.   See [`update_values`](crate::qdldl::QDLDLFactorisation::update_values),
+    /// [`scale_values`](crate::qdldl::QDLDLFactorisation::scale_values) and [`offset_values`](crate::qdldl::QDLDLFactorisation::offset_values)
+    ///
     pub fn refactor(&mut self) -> Result<(), QDLDLError> {
         // It never makes sense to call refactor for a logical
         // factorization since it will always be the same.  Calling
         // this function implies that we want a numerical factorization
-        self.is_logical = false;
+        self.is_symbolic = false;
         _factor(
             &mut self.L,
             &mut self.D,
             &mut self.Dinv,
             &mut self.workspace,
-            self.is_logical,
+            self.is_symbolic,
         )
     }
 }
@@ -241,7 +280,7 @@ fn _qdldl_new<T: FloatT>(
         D,
         Dinv,
         workspace,
-        is_logical: opts.logical,
+        is_symbolic: opts.logical,
     })
 }
 

@@ -9,16 +9,20 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum DataUpdateError {
     #[error("Data updates are not allowed when presolver is active")]
+    /// Data updates are not allowed when presolver is active
     PresolveIsActive,
     #[cfg(feature = "sdp")]
     #[error("Data updates are not allowed when chordal decomposition is active")]
+    /// Data updates are not allowed when chordal decomposition is active
     ChordalDecompositionIsActive,
     #[error("Data formatting error")]
+    /// Data formatting error.   See [`SparseFormatError`]
     BadFormat(#[from] SparseFormatError),
 }
 
 /// Trait for updating problem data matrices (`P` and `A`) from various data types
 pub trait MatrixProblemDataUpdate<T: FloatT> {
+    /// Update matrix entries using associated left/right conditioners and scaling terms
     fn update_matrix(
         &self,
         M: &mut CscMatrix<T>,
@@ -30,6 +34,7 @@ pub trait MatrixProblemDataUpdate<T: FloatT> {
 
 /// Trait for updating problem data vectors (`q`` and `b`) from various data types
 pub trait VectorProblemDataUpdate<T: FloatT> {
+    /// Update vector entries using associated elementwise and overall scaling terms
     fn update_vector(
         &self,
         v: &mut [T],
@@ -42,6 +47,8 @@ impl<T> DefaultSolver<T>
 where
     T: FloatT,
 {
+    // PJG: rustdoc fails to resolve links to `update_P`, `update_q`, `update_A`, `update_b` below
+
     /// Overwrites internal problem data structures in a solver object with new data, avoiding new memory allocations.   
     /// See `update_P`, `update_q`, `update_A`, `update_b` for allowable inputs.
     ///

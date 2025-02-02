@@ -38,6 +38,7 @@ impl<T> DefaultVariables<T>
 where
     T: FloatT,
 {
+    /// Create a new `DefaultVariables` object
     pub fn new(n: usize, m: usize) -> Self {
         let x = vec![T::zero(); n];
         let s = vec![T::zero(); m];
