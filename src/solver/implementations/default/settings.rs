@@ -97,7 +97,7 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "(1e+4).as_T()")]
     pub equilibrate_max_scaling: T,
 
-    ///linesearch backtracking
+    ///line search backtracking
     #[builder(default = "(0.8).as_T()")]
     pub linesearch_backtrack_step: T,
 
@@ -224,8 +224,8 @@ impl<T> DefaultSettingsBuilder<T>
 where
     T: FloatT,
 {
+    /// check that the specified direct_solve_method is valid
     pub fn validate(&self) -> Result<(), String> {
-        // check that the direct solve method is valid
         if let Some(ref direct_solve_method) = self.direct_solve_method {
             validate_direct_solve_method(direct_solve_method.as_str())?;
         }
@@ -252,6 +252,7 @@ impl<T> DefaultSettings<T>
 where
     T: FloatT,
 {
+    /// Checks that the settings are valid
     pub fn validate(&self) -> Result<(), String> {
         validate_direct_solve_method(&self.direct_solve_method)?;
 

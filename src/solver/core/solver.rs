@@ -97,7 +97,9 @@ pub trait SolverJSONReadWrite<T>: Sized
 where
     T: FloatT,
 {
+    /// write internal problem data to a JSON file
     fn write_to_file(&self, file: &mut std::fs::File) -> Result<(), std::io::Error>;
+    /// load problem data from a JSON file previously saved using [`write_to_file`](self::SolverJSONReadWrite::write_to_file)
     fn read_from_file(
         file: &mut std::fs::File,
         settings: Option<DefaultSettings<T>>,

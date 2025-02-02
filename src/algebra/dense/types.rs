@@ -10,7 +10,7 @@ where
 {
     /// dimensions
     pub size: (usize, usize),
-    /// vector of data in column major formmat
+    /// vector of data in column major format
     pub data: S,
     pub(crate) phantom: std::marker::PhantomData<T>,
 }

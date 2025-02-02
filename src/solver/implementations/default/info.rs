@@ -8,29 +8,49 @@ use crate::timers::*;
 #[repr(C)]
 #[derive(Default, Debug, Clone)]
 pub struct DefaultInfo<T> {
+    /// interior point path parameter μ
     pub μ: T,
+    /// interior point path parameter reduction ratio σ
     pub sigma: T,
+    /// step length for the current iteration
     pub step_length: T,
+    /// number of iterations
     pub iterations: u32,
+    /// primal objective value
     pub cost_primal: T,
+    /// dual objective value
     pub cost_dual: T,
+    /// primal residual
     pub res_primal: T,
+    /// dual residual
     pub res_dual: T,
+    /// primal infeasibility residual
     pub res_primal_inf: T,
+    /// dual infeasibility residual
     pub res_dual_inf: T,
+    /// absolute duality gap
     pub gap_abs: T,
+    /// relative duality gap
     pub gap_rel: T,
+    /// κ/τ ratio
     pub ktratio: T,
 
     // previous iterate
+    /// primal object value from previous iteration
     prev_cost_primal: T,
+    /// dual objective value from previous iteration
     prev_cost_dual: T,
+    /// primal residual from previous iteration
     prev_res_primal: T,
+    /// dual residual from previous iteration
     prev_res_dual: T,
+    /// absolute duality gap from previous iteration
     prev_gap_abs: T,
+    /// relative duality gap from previous iteration
     prev_gap_rel: T,
-
+    /// solve time
     pub solve_time: f64,
+    /// solver status
     pub status: SolverStatus,
 }
 
@@ -38,6 +58,7 @@ impl<T> DefaultInfo<T>
 where
     T: FloatT,
 {
+    /// creates a new `DefaultInfo` object
     pub fn new() -> Self {
         Self::default()
     }

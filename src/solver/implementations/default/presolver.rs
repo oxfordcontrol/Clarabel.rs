@@ -18,7 +18,7 @@ pub(crate) struct PresolverRowReductionIndex {
 /// Presolver data for the standard solver implementation
 
 #[derive(Debug)]
-pub struct Presolver<T> {
+pub(crate) struct Presolver<T> {
     // original cones of the problem
     // PJG: not currently used.  Here for future presolver
     pub(crate) _init_cones: Vec<SupportedConeT<T>>,
@@ -41,13 +41,14 @@ impl<T> Presolver<T>
 where
     T: FloatT,
 {
-    pub fn new(
+    /// create a new presolver object
+    pub(crate) fn new(
         _A: &CscMatrix<T>,
         b: &[T],
         cones: &[SupportedConeT<T>],
         _settings: &DefaultSettings<T>,
     ) -> Self {
-        let infbound = crate::solver::get_infinity();
+        let infbound = crate::get_infinity();
 
         // make copy of cones to protect from user interference
         let init_cones = cones.to_vec();
@@ -64,10 +65,12 @@ where
         }
     }
 
-    pub fn is_reduced(&self) -> bool {
+    /// true if the presolver has reduced the problem
+    pub(crate) fn is_reduced(&self) -> bool {
         self.reduce_map.is_some()
     }
-    pub fn count_reduced(&self) -> usize {
+    /// returns number of constraints eliminated
+    pub(crate) fn count_reduced(&self) -> usize {
         self.mfull - self.mreduced
     }
 
