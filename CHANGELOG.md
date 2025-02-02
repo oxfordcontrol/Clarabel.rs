@@ -13,13 +13,13 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 - norm unscaling bug fix [#136](https://github.com/oxfordcontrol/Clarabel.rs/pull/136)
 
 ## Rust-specific changed
-- dorce mkl LP64 format (32 bit ints) [#130](https://github.com/oxfordcontrol/Clarabel.rs/pull/130)
+- force mkl LP64 format (32 bit ints) [#130](https://github.com/oxfordcontrol/Clarabel.rs/pull/130)
 - python 3.7/3.8 EOL updates [#147](https://github.com/oxfordcontrol/Clarabel.rs/pull/147)
 - enable CSC diagonal counting for triu/tril [#145](https://github.com/oxfordcontrol/Clarabel.rs/pull/145)
 - use .dlext directly from Libdl rather than Base.Libc in Clarabel.Rs julia wrapper by @mipals [#142](https://github.com/oxfordcontrol/Clarabel.rs/pull/142)
 - wasm as platform dependency.  Fixes #135.
 - fix of #125 [#138](https://github.com/oxfordcontrol/Clarabel.rs/pull/138)
-- fixes [#127] indexing failure in presolve [#135](https://github.com/oxfordcontrol/Clarabel.rs/pull/137)
+- fix #127 indexing failure in presolve [#135](https://github.com/oxfordcontrol/Clarabel.rs/pull/137)
 - utilities for converting to CSC canonicalization / deduplication [#140](https://github.com/oxfordcontrol/Clarabel.rs/pull/140)
 - fix compilation failure without "serde" feature by @cbbowen in [#131](https://github.com/oxfordcontrol/Clarabel.rs/pull/131)
 - release gil when solving by @wuciting in [#122](https://github.com/oxfordcontrol/Clarabel.rs/pull/122)
