@@ -3,6 +3,7 @@ Cargo.lock
 .DS_Store
 .vscode
 .env*
+/.config/spellcheck*
 /env
 notes*.txt
 /dist
