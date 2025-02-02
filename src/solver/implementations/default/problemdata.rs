@@ -18,14 +18,21 @@ use crate::solver::chordal::ChordalInfo;
 
 /// Standard-form solver type implementing the [`ProblemData`](crate::solver::core::traits::ProblemData) trait
 pub struct DefaultProblemData<T> {
-    // the main KKT residuals
+    /// The matrix P in the quadratic objective term
     pub P: CscMatrix<T>,
+    /// The vector q in the quadratic objective term
     pub q: Vec<T>,
+    /// The matrix A in the constraints
     pub A: CscMatrix<T>,
+    /// The vector b in the constraints
     pub b: Vec<T>,
+    /// Vector of cones in the problem
     pub cones: Vec<SupportedConeT<T>>,
+    /// Number of variables
     pub n: usize,
+    /// Number of constraints
     pub m: usize,
+    /// Equilibration data for the problem
     pub equilibration: DefaultEquilibrationData<T>,
 
     // unscaled inf norms of linear terms.  Set to "None"
@@ -44,6 +51,7 @@ impl<T> DefaultProblemData<T>
 where
     T: FloatT,
 {
+    /// Create a new `DefaultProblemData` object
     pub fn new(
         P: &CscMatrix<T>,
         q: &[T],

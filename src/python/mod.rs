@@ -1,7 +1,7 @@
 //! Clarabel Python interface.
 //!
 //! This module implements a wrapper for the Rust version of Python using
-//! [PYO3](https://pyo3.rs/).   To build these wrappers from `cargo`, compile the crate with
+//! [PyO3](https://pyo3.rs/).   To build these wrappers from `cargo`, compile the crate with
 //! `--features python`.   This module has no public API.
 //!
 //! It should not normally be necessary to compile the Python wrapper from

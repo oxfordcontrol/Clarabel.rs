@@ -35,6 +35,7 @@ impl<T> DefaultKKTSystem<T>
 where
     T: FloatT,
 {
+    /// Create a new KKT system solver
     pub fn new(
         data: &DefaultProblemData<T>,
         cones: &CompositeCone<T>,

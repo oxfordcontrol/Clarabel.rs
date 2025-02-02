@@ -10,29 +10,30 @@ use crate::solver::core::traits::Residuals;
 /// Standard-form solver type implementing the [`Residuals`](crate::solver::core::traits::Residuals) trait
 pub struct DefaultResiduals<T> {
     // the main KKT residuals
-    pub rx: Vec<T>,
-    pub rz: Vec<T>,
-    pub rτ: T,
+    pub(crate) rx: Vec<T>,
+    pub(crate) rz: Vec<T>,
+    pub(crate) rτ: T,
 
     // partial residuals for infeasibility checks
-    pub rx_inf: Vec<T>,
-    pub rz_inf: Vec<T>,
+    pub(crate) rx_inf: Vec<T>,
+    pub(crate) rz_inf: Vec<T>,
 
     // various inner products.
     // NB: these are invariant w.r.t equilibration
-    pub dot_qx: T,
-    pub dot_bz: T,
-    pub dot_sz: T,
-    pub dot_xPx: T,
+    pub(crate) dot_qx: T,
+    pub(crate) dot_bz: T,
+    pub(crate) dot_sz: T,
+    pub(crate) dot_xPx: T,
 
     // the product Px by itself. Required for infeasibilty checks
-    pub Px: Vec<T>,
+    pub(crate) Px: Vec<T>,
 }
 
 impl<T> DefaultResiduals<T>
 where
     T: FloatT,
 {
+    /// Create a new `DefaultResiduals` object
     pub fn new(n: usize, m: usize) -> Self {
         let rx = vec![T::zero(); n];
         let rz = vec![T::zero(); m];

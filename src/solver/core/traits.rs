@@ -17,8 +17,11 @@ use crate::timers::*;
 
 /// Data for a conic optimization problem.
 pub trait ProblemData<T: FloatT> {
+    /// associated variable type
     type V: Variables<T>;
+    /// associated cone type
     type C: Cone<T>;
+    /// associated settings type
     type SE: Settings<T>;
 
     /// Equilibrate internal data before solver starts.
@@ -27,9 +30,13 @@ pub trait ProblemData<T: FloatT> {
 
 /// Variables for a conic optimization problem.
 pub trait Variables<T: FloatT> {
+    /// associated problem data type
     type D: ProblemData<T>;
+    /// associated problem residuals type
     type R: Residuals<T>;
+    /// associated cone type
     type C: Cone<T>;
+    /// associated settings type
     type SE: Settings<T>;
 
     /// Compute the scaled duality gap.
@@ -86,7 +93,9 @@ pub trait Variables<T: FloatT> {
 
 /// Residuals for a conic optimization problem.
 pub trait Residuals<T: FloatT> {
+    /// associated problem data type
     type D: ProblemData<T>;
+    /// associated variable type
     type V: Variables<T>;
 
     /// Compute residuals for the given variables.
@@ -96,9 +105,13 @@ pub trait Residuals<T: FloatT> {
 
 /// KKT linear solver object.
 pub trait KKTSystem<T: FloatT> {
+    /// associated problem data type
     type D: ProblemData<T>;
+    /// associated variable type
     type V: Variables<T>;
+    /// associated cone type
     type C: Cone<T>;
+    /// associated settings type
     type SE: Settings<T>;
 
     /// Update the KKT system.   In particular, update KKT
@@ -132,8 +145,11 @@ pub trait InfoPrint<T>
 where
     T: FloatT,
 {
+    /// associated problem data type
     type D: ProblemData<T>;
+    /// associated cone type
     type C: Cone<T>;
+    /// associated settings type
     type SE: Settings<T>;
 
     /// Print the solver configuration, e.g. settings etc.
@@ -161,7 +177,9 @@ pub trait Info<T>: InfoPrint<T>
 where
     T: FloatT,
 {
+    /// associated variables type
     type V: Variables<T>;
+    /// associated problem residuals type
     type R: Residuals<T>;
 
     /// Reset internal data, particularly solve timers.
@@ -185,8 +203,9 @@ where
     /// Return `true` if termination conditions have been reached.
     fn check_termination(&mut self, residuals: &Self::R, settings: &Self::SE, iter: u32) -> bool;
 
-    // save and recover prior iterates
+    /// save a prior iterate
     fn save_prev_iterate(&mut self, variables: &Self::V, prev_variables: &mut Self::V);
+    /// restore a prior iterate
     fn reset_to_prev_iterate(&mut self, variables: &mut Self::V, prev_variables: &Self::V);
 
     /// Record some of the top level solver's choice of various
@@ -194,16 +213,21 @@ where
     /// `σ = ` multiplier for the updated centering parameter.
     fn save_scalars(&mut self, μ: T, α: T, σ: T, iter: u32);
 
-    /// Report or update termination status
+    /// Report the termination status
     fn get_status(&self) -> SolverStatus;
+    /// Set the termination status
     fn set_status(&mut self, status: SolverStatus);
 }
 
 /// Solution for a conic optimization problem.
 pub trait Solution<T: FloatT> {
+    /// Associated problem data type
     type D: ProblemData<T>;
+    /// Associated problem variable type
     type V: Variables<T>;
+    /// Associated progress information type
     type I: Info<T>;
+    /// Associated solver settings settings
     type SE: Settings<T>;
 
     /// Compute solution from the Variables at solver termination
@@ -221,7 +245,7 @@ pub trait Solution<T: FloatT> {
 
 /// Settings for a conic optimization problem.
 ///
-/// Implementors of this trait can define any internal or problem
+/// Implementers of this trait can define any internal or problem
 /// specific settings they wish.   They must, however, also maintain
 /// a settings object of type [`CoreSettings`](crate::solver::core::CoreSettings)
 /// and return this to the solver internally.   

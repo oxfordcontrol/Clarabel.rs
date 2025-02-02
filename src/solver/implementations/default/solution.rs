@@ -9,15 +9,25 @@ use crate::{
 /// Standard-form solver type implementing the [`Solution`](crate::solver::core::traits::Solution) trait
 #[derive(Debug)]
 pub struct DefaultSolution<T> {
+    /// primal solution
     pub x: Vec<T>,
+    /// dual solution (in dual cone)
     pub z: Vec<T>,
+    /// vector of slacks (in primal cone)
     pub s: Vec<T>,
+    /// final solver status
     pub status: SolverStatus,
+    /// primal objective value
     pub obj_val: T,
+    /// dual objective value
     pub obj_val_dual: T,
+    /// solve time in seconds
     pub solve_time: f64,
+    /// number of iterations
     pub iterations: u32,
+    /// primal residual
     pub r_prim: T,
+    /// dual residual
     pub r_dual: T,
 }
 
@@ -25,6 +35,7 @@ impl<T> DefaultSolution<T>
 where
     T: FloatT,
 {
+    /// Create a new `DefaultSolution` object
     pub fn new(n: usize, m: usize) -> Self {
         let x = vec![T::zero(); n];
         let z = vec![T::zero(); m];

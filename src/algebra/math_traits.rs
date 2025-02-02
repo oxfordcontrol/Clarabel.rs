@@ -63,7 +63,7 @@ pub trait VectorMath<T> {
     /// Dot product
     fn dot(&self, y: &Self) -> T;
 
-    // computes dot(z + αdz,s + αds) without intermediate allocation
+    /// computes dot(z + αdz,s + αds) without intermediate allocation
     fn dot_shifted(z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T;
 
     /// Standard Euclidian or 2-norm distance from `self` to `y`
@@ -93,7 +93,7 @@ pub trait VectorMath<T> {
     /// Inf-norm of an elementwise scaling of `self` by `v`
     fn norm_one_scaled(&self, v: &Self) -> T;
 
-    // Inf-norm of vector difference
+    /// Inf-norm of vector difference
     fn norm_inf_diff(&self, b: &Self) -> T;
 
     /// Minimum value in vector
@@ -152,7 +152,7 @@ pub trait MatrixMath<T> {
     fn col_norms_no_reset(&self, norms: &mut [T]);
 
     /// Compute columnwise infinity norm operations on
-    /// a symmstric matrix
+    /// a symmetric matrix
     fn col_norms_sym(&self, norms: &mut [T]);
 
     /// Compute columnwise infinity norm operations on

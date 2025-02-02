@@ -51,7 +51,7 @@ pub struct CscMatrix<T = f64> {
     pub n: usize,
     /// CSC format column pointer.   
     ///
-    /// Ths field should have length `n+1`. The last entry corresponds
+    /// This field should have length `n+1`. The last entry corresponds
     /// to the the number of nonzeros and should agree with the lengths
     /// of the `rowval` and `nzval` fields.
     pub colptr: Vec<usize>,
@@ -419,7 +419,7 @@ where
         self.size() == other.size() && self.colptr == other.colptr && self.rowval == other.rowval
     }
 
-    /// Same as is_equal_sparsity, but returns an error indicating the reason
+    /// Same as `is_equal_sparsity`, but returns an error indicating the reason
     /// for failure if the matrices do not have equivalent sparsity patterns.
     pub fn check_equal_sparsity(&self, other: &Self) -> Result<(), SparseFormatError> {
         if self.size() != other.size() {
