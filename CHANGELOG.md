@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Version numbering in this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).  We aim to keep the core solver functionality and minor releases in sync between the Rust/Python and Julia implementations.  Small fixes that affect one implementation only may result in the patch release versions differing.
 
+## [0.10.0] - 2024-03-02
+
+## What's Changed
+- fix socp line search failure case [#141](https://github.com/oxfordcontrol/Clarabel.rs/pull/141)
+- norm unscaling bug fix [#136](https://github.com/oxfordcontrol/Clarabel.rs/pull/136)
+
+## Rust-specific changed
+- dorce mkl LP64 format (32 bit ints) [#130](https://github.com/oxfordcontrol/Clarabel.rs/pull/130)
+- python 3.7/3.8 EOL updates [#147](https://github.com/oxfordcontrol/Clarabel.rs/pull/147)
+- enable CSC diagonal counting for triu/tril [#145](https://github.com/oxfordcontrol/Clarabel.rs/pull/145)
+- use .dlext directly from Libdl rather than Base.Libc in Clarabel.Rs julia wrapper by @mipals [#142](https://github.com/oxfordcontrol/Clarabel.rs/pull/142)
+- wasm as platform dependency.  Fixes #135.
+- fix of #125 [#138](https://github.com/oxfordcontrol/Clarabel.rs/pull/138)
+- fixes [#127] indexing failure in presolve [#135](https://github.com/oxfordcontrol/Clarabel.rs/pull/137)
+- utilities for converting to CSC canonicalization / deduplication [#140](https://github.com/oxfordcontrol/Clarabel.rs/pull/140)
+- fix compilation failure without "serde" feature by @cbbowen in [#131](https://github.com/oxfordcontrol/Clarabel.rs/pull/131)
+- release gil when solving by @wuciting in [#122](https://github.com/oxfordcontrol/Clarabel.rs/pull/122)
+- allow python to build with non-scipy blas and lapack [#151](https://github.com/oxfordcontrol/Clarabel.rs/pull/151)
+- QP/SDP tests for pytest [#150](https://github.com/oxfordcontrol/Clarabel.rs/pull/150)
+- update to faer v0.21 [#155](https://github.com/oxfordcontrol/Clarabel.rs/pull/155)
+- python data updates [#156](https://github.com/oxfordcontrol/Clarabel.rs/pull/156)
+- cvxpy support hooks for #75 in [#157](https://github.com/oxfordcontrol/Clarabel.rs/pull/157)
+- Additional documentation 
+
 ## [0.9.0] - 2024-01-06
 
 ## What's Changed
