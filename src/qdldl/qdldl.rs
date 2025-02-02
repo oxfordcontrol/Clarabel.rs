@@ -83,7 +83,7 @@ pub struct QDLDLFactorisation<T = f64> {
     pub Dinv: Vec<T>,
     /// internal workspace data
     workspace: QDLDLWorkspace<T>,
-    /// true of factorisation is symbolic only
+    /// true if factorisation is symbolic only
     is_symbolic: bool,
 }
 
