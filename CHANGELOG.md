@@ -11,6 +11,7 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 ## What's Changed
 - fix socp line search failure case [#141](https://github.com/oxfordcontrol/Clarabel.rs/pull/141)
 - norm unscaling bug fix [#136](https://github.com/oxfordcontrol/Clarabel.rs/pull/136)
+- added `max_threads` to settings
 
 ## Rust-specific changed
 - force mkl LP64 format (32 bit ints) [#130](https://github.com/oxfordcontrol/Clarabel.rs/pull/130)
