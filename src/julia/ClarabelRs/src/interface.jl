@@ -39,18 +39,18 @@ function print_timers(solver::Solver)
 
 end
 
-function write_to_file(solver::Solver, filename::String)
+function save_to_file(solver::Solver, filename::String)
 
-    solver_write_to_file_jlrs(solver::Solver, filename::String)
+    solver_save_to_file_jlrs(solver::Solver, filename::String)
 
 end
 
-function read_from_file(
+function load_from_file(
     filename::String, 
     settings::Clarabel.Option{Clarabel.Settings{Float64}} = nothing
 )
 
-    solver_read_from_file_jlrs(
+    solver_load_from_file_jlrs(
         filename::String,
         settings::Clarabel.Option{Clarabel.Settings{Float64}}
     )
@@ -118,9 +118,9 @@ function solver_print_timers_jlrs(solver::Solver)
     
 end
 
-function solver_write_to_file_jlrs(solver::Solver, filename::String)
+function solver_save_to_file_jlrs(solver::Solver, filename::String)
 
-    status = ccall(Libdl.dlsym(librust,:solver_write_to_file_jlrs),Cint,
+    status = ccall(Libdl.dlsym(librust,:solver_save_to_file_jlrs),Cint,
     (
         Ptr{Cvoid},
         Cstring
@@ -135,7 +135,7 @@ function solver_write_to_file_jlrs(solver::Solver, filename::String)
     
 end
 
-function solver_read_from_file_jlrs(
+function solver_load_from_file_jlrs(
         filename::String,
         settings::Clarabel.Option{Clarabel.Settings{Float64}}
     )
@@ -149,7 +149,7 @@ function solver_read_from_file_jlrs(
         settings = serialize(settings)
     end
 
-    ptr = ccall(Libdl.dlsym(librust,:solver_read_from_file_jlrs),Ptr{Cvoid},
+    ptr = ccall(Libdl.dlsym(librust,:solver_load_from_file_jlrs),Ptr{Cvoid},
     (
         Cstring,
         Cstring

@@ -1,8 +1,11 @@
 use super::*;
-use crate::solver::core::{
-    cones::{CompositeCone, SupportedConeT},
-    traits::ProblemData,
-    Solver,
+use crate::{
+    io::ConfigurablePrintTarget,
+    solver::core::{
+        cones::{CompositeCone, SupportedConeT},
+        traits::ProblemData,
+        Solver,
+    },
 };
 
 use crate::algebra::*;
@@ -105,4 +108,28 @@ fn _check_dimensions<T: FloatT>(
     assert!(n == A.ncols(), "A and q incompatible dimensions.");
     assert!(n == P.ncols(), "P and q incompatible dimensions.");
     assert!(P.is_square(), "P not square.");
+}
+
+impl<T> ConfigurablePrintTarget for DefaultSolver<T>
+where
+    T: FloatT,
+{
+    fn print_to_stdout(&mut self) {
+        self.info.print_to_stdout();
+    }
+    fn print_to_file(&mut self, file: std::fs::File) {
+        self.info.print_to_file(file)
+    }
+    fn print_to_stream(&mut self, stream: Box<dyn std::io::Write + Send + Sync>) {
+        self.info.print_to_stream(stream)
+    }
+    fn print_to_buffer(&mut self) {
+        self.info.print_to_buffer();
+    }
+    fn get_print_buffer(&mut self) -> std::io::Result<String> {
+        self.info.get_print_buffer()
+    }
+    fn print_target(&mut self) -> &dyn std::io::Write {
+        self.info.print_target()
+    }
 }

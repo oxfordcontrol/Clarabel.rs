@@ -1,12 +1,13 @@
 use super::*;
 use crate::algebra::*;
+use crate::io::PrintTarget;
 use crate::solver::core::{traits::Info, SolverStatus};
 use crate::solver::traits::Variables;
 use crate::timers::*;
 
 /// Standard-form solver type implementing the [`Info`](crate::solver::core::traits::Info) and [`InfoPrint`](crate::solver::core::traits::InfoPrint) traits
 #[repr(C)]
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct DefaultInfo<T> {
     /// interior point path parameter μ
     pub μ: T,
@@ -52,6 +53,9 @@ pub struct DefaultInfo<T> {
     pub solve_time: f64,
     /// solver status
     pub status: SolverStatus,
+
+    // target stream for printing
+    pub(crate) stream: PrintTarget,
 }
 
 impl<T> DefaultInfo<T>

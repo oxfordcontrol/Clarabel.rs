@@ -6,6 +6,7 @@
 use super::*;
 use crate::{
     algebra::CscMatrix,
+    io::*,
     solver::{
         core::{
             traits::{InfoPrint, Settings},
@@ -457,10 +458,20 @@ impl PyDefaultSolver {
         };
     }
 
-    fn write_to_file(&self, filename: &str) -> PyResult<()> {
-        let mut file = std::fs::File::create(filename)?;
-        self.inner.write_to_file(&mut file)?;
+    // printing redirects
+    fn print_to_stdout(&mut self) {
+        self.inner.print_to_stdout();
+    }
+    fn print_to_file(&mut self, filename: &str) -> PyResult<()> {
+        let file = std::fs::File::create(filename)?;
+        self.inner.print_to_file(file);
         Ok(())
+    }
+    fn print_to_buffer(&mut self) {
+        self.inner.print_to_buffer();
+    }
+    fn get_print_buffer(&mut self) -> PyResult<String> {
+        self.inner.get_print_buffer().map_err(|e| e.into())
     }
 
     #[pyo3(signature = (**kwds))]
@@ -592,9 +603,9 @@ fn _py_to_vector_update(arg: Bound<'_, PyAny>) -> Option<PyVectorUpdateData> {
     None
 }
 
-#[pyfunction(name = "read_from_file")]
+#[pyfunction(name = "load_from_file")]
 #[pyo3(signature = (filename, settings=None))]
-pub fn read_from_file_py(
+pub fn load_from_file_py(
     filename: &str,
     settings: Option<PyDefaultSettings>,
 ) -> PyResult<PyDefaultSolver> {
@@ -603,11 +614,11 @@ pub fn read_from_file_py(
     match settings {
         Some(settings) => {
             let settings = settings.to_internal()?;
-            let solver = DefaultSolver::<f64>::read_from_file(&mut file, Some(settings))?;
+            let solver = DefaultSolver::<f64>::load_from_file(&mut file, Some(settings))?;
             Ok(PyDefaultSolver { inner: solver })
         }
         None => {
-            let solver = DefaultSolver::<f64>::read_from_file(&mut file, None)?;
+            let solver = DefaultSolver::<f64>::load_from_file(&mut file, None)?;
             Ok(PyDefaultSolver { inner: solver })
         }
     }

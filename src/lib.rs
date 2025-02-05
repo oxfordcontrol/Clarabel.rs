@@ -60,9 +60,9 @@
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub mod algebra;
+pub mod io;
 pub mod qdldl;
 pub mod solver;
-pub(crate) mod stdio;
 pub mod timers;
 
 pub(crate) mod utils;
@@ -78,7 +78,7 @@ pub mod julia;
 macro_rules! printbuildenv {
     ($tag:expr) => {
         if let Some(opt) = option_env!(concat!("VERGEN_", $tag)) {
-            writeln!(crate::stdio::stdout(), "{}: {}", $tag, opt).unwrap();
+            writeln!(crate::io::stdout(), "{}: {}", $tag, opt).unwrap();
         }
     };
 }
@@ -110,7 +110,7 @@ pub fn buildinfo() {
         printbuildenv!("SYSINFO_CPU_FREQUENCY");
     }
     #[cfg(not(feature = "buildinfo"))]
-    writeln!(crate::stdio::stdout(), "no build info available").unwrap();
+    writeln!(crate::io::stdout(), "no build info available").unwrap();
 }
 
 pub(crate) const _INFINITY_DEFAULT: f64 = 1e20;

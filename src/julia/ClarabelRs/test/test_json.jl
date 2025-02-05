@@ -5,13 +5,13 @@ using ClarabelRs
 filename = "../../../../examples/data/hs35.json"
 
 # with settings in file 
-solver = ClarabelRs.read_from_file(filename)
+solver = ClarabelRs.load_from_file(filename)
 solution = ClarabelRs.solve!(solver)
 @assert solution.status == Clarabel.SOLVED
 
 # with custom settings
 settings = Clarabel.Settings() 
 settings.max_iter = 1
-solver = ClarabelRs.read_from_file(filename,settings)
+solver = ClarabelRs.load_from_file(filename,settings)
 solution = ClarabelRs.solve!(solver)
 @assert solution.status == Clarabel.MAX_ITERATIONS
