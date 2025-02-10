@@ -123,6 +123,9 @@ where
     fn print_to_stream(&mut self, stream: Box<dyn std::io::Write + Send + Sync>) {
         self.info.print_to_stream(stream)
     }
+    fn print_to_sink(&mut self) {
+        self.info.print_to_sink()
+    }
     fn print_to_buffer(&mut self) {
         self.info.print_to_buffer();
     }

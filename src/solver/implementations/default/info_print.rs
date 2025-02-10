@@ -25,6 +25,9 @@ impl<T> ConfigurablePrintTarget for DefaultInfo<T> {
     fn print_to_stream(&mut self, stream: Box<dyn Write + Send + Sync>) {
         self.stream.print_to_stream(stream)
     }
+    fn print_to_sink(&mut self) {
+        self.stream.print_to_sink()
+    }
     fn print_to_buffer(&mut self) {
         self.stream.print_to_buffer()
     }

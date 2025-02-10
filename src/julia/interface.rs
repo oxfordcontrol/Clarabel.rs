@@ -97,19 +97,6 @@ pub(crate) extern "C" fn solver_solve_jlrs(ptr: *mut c_void) -> SolutionJLRS {
 }
 
 #[no_mangle]
-pub(crate) extern "C" fn solver_get_info_jlrs(ptr: *mut c_void) -> DefaultInfo<f64> {
-    let solver = from_ptr(ptr);
-
-    let info = solver.info.clone();
-
-    // don't drop, since the memory is owned by
-    // Julia and we might want to solve again
-    std::mem::forget(solver);
-
-    info
-}
-
-#[no_mangle]
 pub(crate) extern "C" fn solver_print_timers_jlrs(ptr: *mut c_void) {
     let solver = from_ptr(ptr);
 

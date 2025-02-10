@@ -2,7 +2,7 @@
 //!
 
 use std::fs::File;
-use std::io::{Error, ErrorKind, Result, Write};
+use std::io::{Error, ErrorKind, Result, Sink, Write};
 
 #[cfg(not(feature = "python"))]
 #[allow(unused_imports)]
@@ -21,6 +21,7 @@ pub(crate) enum PrintTarget {
     File(File),
     Buffer(Vec<u8>),
     Stream(Box<dyn Write + Send + Sync>), // Supports any stream that implements `Write`
+    Sink(Sink),
 }
 
 impl<'a> From<&'a mut PrintTarget> for Box<&'a mut dyn Write> {
@@ -30,6 +31,20 @@ impl<'a> From<&'a mut PrintTarget> for Box<&'a mut dyn Write> {
             PrintTarget::File(ref mut file) => Box::new(file),
             PrintTarget::Stream(ref mut stream) => Box::new(stream),
             PrintTarget::Buffer(ref mut buffer) => Box::new(buffer),
+            PrintTarget::Sink(ref mut sink) => Box::new(sink),
+        }
+    }
+}
+
+impl Clone for PrintTarget {
+    fn clone(&self) -> Self {
+        match self {
+            PrintTarget::Stdout(_) => PrintTarget::Stdout(self::stdout()),
+            PrintTarget::File(file) => PrintTarget::File(file.try_clone().unwrap()),
+            PrintTarget::Buffer(buffer) => PrintTarget::Buffer(buffer.clone()),
+            //arbitary stream cloning is not supported
+            PrintTarget::Stream(_) => PrintTarget::Sink(std::io::sink()),
+            PrintTarget::Sink(_) => PrintTarget::Sink(std::io::sink()),
         }
     }
 }
@@ -42,6 +57,7 @@ impl std::fmt::Debug for PrintTarget {
             PrintTarget::File(_) => write!(f, "PrintTarget::File"),
             PrintTarget::Buffer(_) => write!(f, "PrintTarget::Buffer"),
             PrintTarget::Stream(_) => write!(f, "PrintTarget::Stream"),
+            PrintTarget::Sink(_) => write!(f, "PrintTarget::Sink"),
         }
     }
 }
@@ -62,6 +78,7 @@ impl Write for PrintTarget {
                 Ok(buf.len())
             }
             PrintTarget::Stream(stream) => stream.write(buf),
+            PrintTarget::Sink(sink) => sink.write(buf),
         }
     }
 
@@ -71,6 +88,7 @@ impl Write for PrintTarget {
             PrintTarget::File(file) => file.flush(),
             PrintTarget::Buffer(_) => Ok(()),
             PrintTarget::Stream(stream) => stream.flush(),
+            PrintTarget::Sink(sink) => sink.flush(),
         }
     }
 }
@@ -83,6 +101,8 @@ pub trait ConfigurablePrintTarget {
     fn print_to_file(&mut self, file: File);
     /// redirect print output to a stream
     fn print_to_stream(&mut self, stream: Box<dyn Write + Send + Sync>);
+    /// redirect print output to sink (no output)
+    fn print_to_sink(&mut self);
     /// redirect print output to an internal buffer
     fn print_to_buffer(&mut self);
     /// get the contents of the internal print buffer
@@ -93,19 +113,18 @@ impl ConfigurablePrintTarget for PrintTarget {
     fn print_to_stdout(&mut self) {
         *self = PrintTarget::Stdout(self::stdout());
     }
-
     fn print_to_file(&mut self, file: File) {
         *self = PrintTarget::File(file);
     }
-
     fn print_to_stream(&mut self, stream: Box<dyn Write + Send + Sync>) {
         *self = PrintTarget::Stream(stream);
     }
-
+    fn print_to_sink(&mut self) {
+        *self = PrintTarget::Sink(std::io::sink());
+    }
     fn print_to_buffer(&mut self) {
         *self = PrintTarget::Buffer(Vec::new());
     }
-
     fn get_print_buffer(&mut self) -> std::io::Result<String> {
         match self {
             PrintTarget::Buffer(buffer) => Ok(String::from_utf8_lossy(buffer).to_string()),
