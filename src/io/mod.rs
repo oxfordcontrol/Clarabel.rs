@@ -34,6 +34,7 @@ impl<'a> From<&'a mut PrintTarget> for Box<&'a mut dyn Write> {
     }
 }
 
+// explicit debug implementation because Python stdout does not implement Debug
 impl std::fmt::Debug for PrintTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -118,5 +119,41 @@ impl ConfigurablePrintTarget for PrintTarget {
     }
     fn print_target(&mut self) -> &dyn Write {
         self
+    }
+}
+
+#[test]
+fn test_print_target_debug() {
+    use std::io::Cursor;
+    //stdout
+    let target = PrintTarget::Stdout(stdout());
+    assert_eq!(format!("{:?}", target), "PrintTarget::Stdout");
+
+    //file
+    let file = tempfile::tempfile().unwrap();
+    let target = PrintTarget::File(file);
+    assert_eq!(format!("{:?}", target), "PrintTarget::File");
+
+    //buffer
+    let target = PrintTarget::Buffer(Vec::new());
+    assert_eq!(format!("{:?}", target), "PrintTarget::Buffer");
+
+    //stream
+    let target = PrintTarget::Stream(Box::new(Cursor::new(Vec::new())));
+    assert_eq!(format!("{:?}", target), "PrintTarget::Stream");
+}
+
+#[test]
+fn test_print_target_from() {
+    let mut buffer = PrintTarget::Buffer(Vec::new());
+    let mut writer: Box<&mut dyn Write> = Box::from(&mut buffer);
+
+    let data = b"foo";
+    writer.write_all(data).unwrap();
+
+    if let PrintTarget::Buffer(buf) = buffer {
+        assert_eq!(buf, data);
+    } else {
+        panic!("Expected PrintTarget::Buffer");
     }
 }
