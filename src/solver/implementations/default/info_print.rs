@@ -31,9 +31,6 @@ impl<T> ConfigurablePrintTarget for DefaultInfo<T> {
     fn get_print_buffer(&mut self) -> std::io::Result<String> {
         self.stream.get_print_buffer()
     }
-    fn print_target(&mut self) -> &dyn Write {
-        &self.stream
-    }
 }
 
 macro_rules! expformat {

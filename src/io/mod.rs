@@ -87,8 +87,6 @@ pub trait ConfigurablePrintTarget {
     fn print_to_buffer(&mut self);
     /// get the contents of the internal print buffer
     fn get_print_buffer(&mut self) -> Result<String>;
-    /// get the current print target
-    fn print_target(&mut self) -> &dyn Write;
 }
 
 impl ConfigurablePrintTarget for PrintTarget {
@@ -116,9 +114,6 @@ impl ConfigurablePrintTarget for PrintTarget {
                 "Print buffering is not configured.",
             )),
         }
-    }
-    fn print_target(&mut self) -> &dyn Write {
-        self
     }
 }
 

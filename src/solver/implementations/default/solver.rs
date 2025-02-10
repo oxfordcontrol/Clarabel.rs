@@ -129,7 +129,4 @@ where
     fn get_print_buffer(&mut self) -> std::io::Result<String> {
         self.info.get_print_buffer()
     }
-    fn print_target(&mut self) -> &dyn std::io::Write {
-        self.info.print_target()
-    }
 }
