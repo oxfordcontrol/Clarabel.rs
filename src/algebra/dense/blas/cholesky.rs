@@ -137,7 +137,6 @@ macro_rules! generate_test_cholesky {
 
             eng.solve(&mut B);
 
-            println!("final check {:?}", B.data.norm_inf_diff(X.data()));
             assert!(B.data.norm_inf_diff(X.data()) <= (1e-12 as $fxx).$tolfn());
         }
     };
