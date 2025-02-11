@@ -24,14 +24,14 @@ pub(crate) enum PrintTarget {
     Sink(Sink),
 }
 
-impl<'a> From<&'a mut PrintTarget> for Box<&'a mut dyn Write> {
+impl<'a> From<&'a mut PrintTarget> for &'a mut dyn Write {
     fn from(target: &'a mut PrintTarget) -> Self {
         match target {
-            PrintTarget::Stdout(ref mut stdout) => Box::new(stdout),
-            PrintTarget::File(ref mut file) => Box::new(file),
-            PrintTarget::Stream(ref mut stream) => Box::new(stream),
-            PrintTarget::Buffer(ref mut buffer) => Box::new(buffer),
-            PrintTarget::Sink(ref mut sink) => Box::new(sink),
+            PrintTarget::Stdout(ref mut stdout) => stdout,
+            PrintTarget::File(ref mut file) => file,
+            PrintTarget::Stream(ref mut stream) => stream.as_mut(),
+            PrintTarget::Buffer(ref mut buffer) => buffer,
+            PrintTarget::Sink(ref mut sink) => sink,
         }
     }
 }
@@ -137,37 +137,59 @@ impl ConfigurablePrintTarget for PrintTarget {
 }
 
 #[test]
-fn test_print_target_debug() {
+fn test_print_target_from() {
+    use std::io::Cursor;
+
+    // stdout
+    let mut target = PrintTarget::Stdout(stdout());
+    let writer: &mut dyn Write = (&mut target).into();
+    assert!(writer.write(b"foo").is_ok());
+
+    // file
+    let file = tempfile::tempfile().unwrap();
+    let mut target = PrintTarget::File(file);
+    let writer: &mut dyn Write = (&mut target).into();
+    assert!(writer.write(b"foo").is_ok());
+
+    // buffer
+    let mut target = PrintTarget::Buffer(Vec::new());
+    let writer: &mut dyn Write = (&mut target).into();
+    assert!(writer.write(b"foo").is_ok());
+
+    // stream
+    let mut target = PrintTarget::Stream(Box::new(Cursor::new(Vec::new())));
+    let writer: &mut dyn Write = (&mut target).into();
+    assert!(writer.write(b"foo").is_ok());
+
+    // sink
+    let mut target = PrintTarget::Sink(std::io::sink());
+    let writer: &mut dyn Write = (&mut target).into();
+    assert!(writer.write(b"foo").is_ok());
+}
+
+#[test]
+fn test_print_target_debug_and_clone() {
     use std::io::Cursor;
     //stdout
     let target = PrintTarget::Stdout(stdout());
-    assert_eq!(format!("{:?}", target), "PrintTarget::Stdout");
+    assert_eq!(format!("{:?}", target.clone()), "PrintTarget::Stdout");
 
     //file
     let file = tempfile::tempfile().unwrap();
     let target = PrintTarget::File(file);
-    assert_eq!(format!("{:?}", target), "PrintTarget::File");
+    assert_eq!(format!("{:?}", target.clone()), "PrintTarget::File");
 
     //buffer
     let target = PrintTarget::Buffer(Vec::new());
-    assert_eq!(format!("{:?}", target), "PrintTarget::Buffer");
+    assert_eq!(format!("{:?}", target.clone()), "PrintTarget::Buffer");
 
     //stream
     let target = PrintTarget::Stream(Box::new(Cursor::new(Vec::new())));
     assert_eq!(format!("{:?}", target), "PrintTarget::Stream");
-}
+    assert_eq!(format!("{:?}", target.clone()), "PrintTarget::Sink");
 
-#[test]
-fn test_print_target_from() {
-    let mut buffer = PrintTarget::Buffer(Vec::new());
-    let mut writer: Box<&mut dyn Write> = Box::from(&mut buffer);
-
-    let data = b"foo";
-    writer.write_all(data).unwrap();
-
-    if let PrintTarget::Buffer(buf) = buffer {
-        assert_eq!(buf, data);
-    } else {
-        panic!("Expected PrintTarget::Buffer");
-    }
+    // sink
+    let target = PrintTarget::Sink(std::io::sink());
+    let cloned_target = target.clone();
+    assert_eq!(format!("{:?}", cloned_target), "PrintTarget::Sink");
 }

@@ -62,3 +62,11 @@ fn test_print_to_stream() {
     file2.read_to_string(&mut result).unwrap();
     assert!(result.contains("Clarabel.rs"));
 }
+
+#[test]
+fn test_print_to_sink() {
+    let mut solver = test_print_solver();
+    solver.print_to_sink();
+    solver.solve();
+    // no output
+}
