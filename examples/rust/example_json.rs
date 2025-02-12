@@ -8,12 +8,12 @@ fn main() {
 
     let filename = "./examples/data/hs35.json";
     let mut file = File::open(filename).unwrap();
-    let mut solver = DefaultSolver::<f64>::read_from_file(&mut file, None).unwrap();
+    let mut solver = DefaultSolver::<f64>::load_from_file(&mut file, None).unwrap();
     solver.solve();
 
     // to write the back to a new file
 
     // let outfile = "./examples/data/output.json";
     // let mut file = File::create(outfile).unwrap();
-    // solver.write_to_file(&mut file).unwrap();
+    // solver.save_to_file(&mut file).unwrap();
 }

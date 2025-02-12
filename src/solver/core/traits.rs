@@ -152,24 +152,27 @@ where
     /// associated settings type
     type SE: Settings<T>;
 
+    /// Return the print target for the solver.
+    fn print_target(&mut self) -> &mut dyn std::io::Write;
+
     /// Print the solver configuration, e.g. settings etc.
     /// This function is called once at the start of the solve.
     fn print_configuration(
-        &self,
+        &mut self,
         settings: &Self::SE,
         data: &Self::D,
         cones: &Self::C,
     ) -> std::io::Result<()>;
 
     /// Print a header to appear at the top of progress information.
-    fn print_status_header(&self, settings: &Self::SE) -> std::io::Result<()>;
+    fn print_status_header(&mut self, settings: &Self::SE) -> std::io::Result<()>;
 
     /// Print solver progress information.   Called once per iteration.
-    fn print_status(&self, settings: &Self::SE) -> std::io::Result<()>;
+    fn print_status(&mut self, settings: &Self::SE) -> std::io::Result<()>;
 
     /// Print solver final status and other exit information.   Called at
     /// solver termination.
-    fn print_footer(&self, settings: &Self::SE) -> std::io::Result<()>;
+    fn print_footer(&mut self, settings: &Self::SE) -> std::io::Result<()>;
 }
 
 /// Internal information for the solver to monitor progress and check for termination.

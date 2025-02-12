@@ -1,7 +1,7 @@
 #[cfg(feature = "sdp")]
 use crate::solver::chordal::ChordalInfo;
 
-use crate::stdio;
+use crate::io::{ConfigurablePrintTarget, PrintTarget};
 use crate::{
     algebra::*,
     solver::core::cones::{SupportedConeAsTag, SupportedConeTag},
@@ -14,6 +14,27 @@ use crate::solver::core::{
     traits::InfoPrint,
 };
 use std::time::Duration;
+
+impl<T> ConfigurablePrintTarget for DefaultInfo<T> {
+    fn print_to_stdout(&mut self) {
+        self.stream.print_to_stdout()
+    }
+    fn print_to_file(&mut self, file: std::fs::File) {
+        self.stream.print_to_file(file)
+    }
+    fn print_to_stream(&mut self, stream: Box<dyn Write + Send + Sync>) {
+        self.stream.print_to_stream(stream)
+    }
+    fn print_to_sink(&mut self) {
+        self.stream.print_to_sink()
+    }
+    fn print_to_buffer(&mut self) {
+        self.stream.print_to_buffer()
+    }
+    fn get_print_buffer(&mut self) -> std::io::Result<String> {
+        self.stream.get_print_buffer()
+    }
+}
 
 macro_rules! expformat {
     ($fmt:expr,$val:expr) => {
@@ -34,7 +55,7 @@ where
     type SE = DefaultSettings<T>;
 
     fn print_configuration(
-        &self,
+        &mut self,
         settings: &DefaultSettings<T>,
         data: &DefaultProblemData<T>,
         cones: &CompositeCone<T>,
@@ -43,7 +64,7 @@ where
             return std::io::Result::Ok(());
         }
 
-        let mut out = stdio::stdout();
+        let out = &mut self.stream;
 
         if let Some(ref presolver) = data.presolver {
             writeln!(
@@ -55,7 +76,7 @@ where
 
         #[cfg(feature = "sdp")]
         if let Some(ref chordal_info) = data.chordal_info {
-            print_chordal_decomposition(chordal_info, settings)?;
+            print_chordal_decomposition(out, chordal_info, settings)?;
         }
 
         writeln!(out, "\nproblem:")?;
@@ -66,28 +87,28 @@ where
         writeln!(out, "  cones (total) = {}", cones.len())?;
 
         //All dims here are dummies since we just care about the cone type
-        _print_conedims_by_type(cones, SupportedConeTag::ZeroCone)?;
-        _print_conedims_by_type(cones, SupportedConeTag::NonnegativeCone)?;
-        _print_conedims_by_type(cones, SupportedConeTag::SecondOrderCone)?;
-        _print_conedims_by_type(cones, SupportedConeTag::ExponentialCone)?;
-        _print_conedims_by_type(cones, SupportedConeTag::PowerCone)?;
-        _print_conedims_by_type(cones, SupportedConeTag::GenPowerCone)?;
+        _print_conedims_by_type(out, cones, SupportedConeTag::ZeroCone)?;
+        _print_conedims_by_type(out, cones, SupportedConeTag::NonnegativeCone)?;
+        _print_conedims_by_type(out, cones, SupportedConeTag::SecondOrderCone)?;
+        _print_conedims_by_type(out, cones, SupportedConeTag::ExponentialCone)?;
+        _print_conedims_by_type(out, cones, SupportedConeTag::PowerCone)?;
+        _print_conedims_by_type(out, cones, SupportedConeTag::GenPowerCone)?;
         #[cfg(feature = "sdp")]
-        _print_conedims_by_type(cones, SupportedConeTag::PSDTriangleCone)?;
+        _print_conedims_by_type(out, cones, SupportedConeTag::PSDTriangleCone)?;
 
         writeln!(out,)?;
-        _print_settings(settings)?;
+        _print_settings(out, settings)?;
         writeln!(out,)?;
 
         std::io::Result::Ok(())
     }
 
-    fn print_status_header(&self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
+    fn print_status_header(&mut self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
         if !settings.verbose {
             return std::io::Result::Ok(());
         }
 
-        let mut out = stdio::stdout();
+        let out = &mut self.stream;
 
         //print a subheader for the iterations info
         write!(out, "iter    ")?;
@@ -103,16 +124,16 @@ where
         writeln!(out,
             "---------------------------------------------------------------------------------------------"
         )?;
-        stdio::stdout().flush()?;
+        out.flush()?;
         std::io::Result::Ok(())
     }
 
-    fn print_status(&self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
+    fn print_status(&mut self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
         if !settings.verbose {
             return std::io::Result::Ok(());
         }
 
-        let mut out = stdio::stdout();
+        let out = &mut self.stream;
 
         write!(out, "{:>3}  ", self.iterations)?;
         write!(out, "{}  ", expformat!("{:+8.4e}", self.cost_primal))?;
@@ -135,12 +156,12 @@ where
         std::io::Result::Ok(())
     }
 
-    fn print_footer(&self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
+    fn print_footer(&mut self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
         if !settings.verbose {
             return std::io::Result::Ok(());
         }
 
-        let mut out = stdio::stdout();
+        let out = &mut self.stream;
 
         writeln!(out,
             "---------------------------------------------------------------------------------------------"
@@ -156,6 +177,10 @@ where
 
         std::io::Result::Ok(())
     }
+
+    fn print_target(&mut self) -> &mut dyn std::io::Write {
+        &mut self.stream
+    }
 }
 
 fn _bool_on_off(v: bool) -> &'static str {
@@ -165,9 +190,11 @@ fn _bool_on_off(v: bool) -> &'static str {
     }
 }
 
-fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<()> {
+fn _print_settings<T: FloatT>(
+    out: &mut PrintTarget,
+    settings: &DefaultSettings<T>,
+) -> std::io::Result<()> {
     let set = settings;
-    let mut out = stdio::stdout();
 
     writeln!(out, "settings:")?;
 
@@ -178,7 +205,7 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<
             set.direct_solve_method,
             _get_precision_string::<T>()
         )?;
-        print_nthreads(&mut out, settings)?;
+        print_nthreads(out, settings)?;
         writeln!(out)?;
     }
 
@@ -250,7 +277,7 @@ fn _print_settings<T: FloatT>(settings: &DefaultSettings<T>) -> std::io::Result<
 
 #[allow(unused_variables)] //out is unused if faer-sparse is not enabled
 fn print_nthreads<T: FloatT>(
-    out: &mut stdio::Stdout,
+    out: &mut PrintTarget,
     settings: &DefaultSettings<T>,
 ) -> std::io::Result<()> {
     match settings.direct_solve_method.as_str() {
@@ -272,11 +299,10 @@ fn print_nthreads<T: FloatT>(
 
 #[cfg(feature = "sdp")]
 fn print_chordal_decomposition<T: FloatT>(
+    out: &mut PrintTarget,
     chordal_info: &ChordalInfo<T>,
     settings: &DefaultSettings<T>,
 ) -> std::io::Result<()> {
-    let mut out = stdio::stdout();
-
     writeln!(out, "\nchordal decomposition:")?;
     writeln!(
         out,
@@ -323,6 +349,7 @@ fn _get_precision_string<T: FloatT>() -> String {
 }
 
 fn _print_conedims_by_type<T: FloatT>(
+    out: &mut PrintTarget,
     cones: &CompositeCone<T>,
     conetag: SupportedConeTag,
 ) -> std::io::Result<()> {
@@ -334,8 +361,6 @@ fn _print_conedims_by_type<T: FloatT>(
     if count == 0 {
         return std::io::Result::Ok(());
     }
-
-    let mut out = stdio::stdout();
 
     // how many of this type of cone?
     let name = conetag.as_str();

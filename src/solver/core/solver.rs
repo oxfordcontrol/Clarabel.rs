@@ -3,7 +3,6 @@ use super::cones::Cone;
 use super::traits::*;
 use crate::algebra::*;
 use crate::solver::DefaultSettings;
-use crate::stdio;
 use crate::timers::*;
 use std::io::Write;
 
@@ -98,9 +97,9 @@ where
     T: FloatT,
 {
     /// write internal problem data to a JSON file
-    fn write_to_file(&self, file: &mut std::fs::File) -> Result<(), std::io::Error>;
-    /// load problem data from a JSON file previously saved using [`write_to_file`](self::SolverJSONReadWrite::write_to_file)
-    fn read_from_file(
+    fn save_to_file(&self, file: &mut std::fs::File) -> Result<(), std::io::Error>;
+    /// load problem data from a JSON file previously saved using [`save_to_file`](self::SolverJSONReadWrite::save_to_file)
+    fn load_from_file(
         file: &mut std::fs::File,
         settings: Option<DefaultSettings<T>>,
     ) -> Result<Self, std::io::Error>;
@@ -130,12 +129,10 @@ pub struct Solver<D, V, R, K, C, I, SO, SE> {
     pub timers: Option<Timers>,
 }
 
-fn _print_banner(is_verbose: bool) -> std::io::Result<()> {
+fn _print_banner(out: &mut dyn Write, is_verbose: bool) -> std::io::Result<()> {
     if !is_verbose {
         return std::io::Result::Ok(());
     }
-
-    let mut out = stdio::stdout();
 
     writeln!(
         out,
@@ -211,7 +208,7 @@ where
         // solver release info, solver config
         // problem dimensions, cone types etc
         notimeit! {timers; {
-            _print_banner(self.settings.core().verbose).unwrap();
+            _print_banner(self.info.print_target(), self.settings.core().verbose).unwrap();
             self.info.print_configuration(&self.settings, &self.data, &self.cones).unwrap();
             self.info.print_status_header(&self.settings).unwrap();
         }}
