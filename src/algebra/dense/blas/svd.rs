@@ -204,7 +204,8 @@ macro_rules! generate_test_svd_factor {
                 let sol = [5., 3.];
                 assert!(eng.s.norm_inf_diff(&sol) < (1e-12 as $fxx).$tolfn());
 
-                let mut M = Matrix::<$fxx>::zeros((2, 3));
+                let mut M = Matrix::<$fxx>::zeros((1, 1));
+                M.resize((2, 3)); //manual resize for test coverage
 
                 let U = &eng.U;
                 let s = &eng.s;
