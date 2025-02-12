@@ -78,15 +78,7 @@ where
             self.V = Some(Matrix::<T>::zeros((An, An)));
         }
 
-        // target for computed eigenvectors (if any)
-        let mut Vfake = [T::zero()];
-        let Vdata = match self.V.as_mut() {
-            Some(V) => V.data_mut(),
-            None => &mut Vfake,
-        };
-
-        // standard BLAS ?syevr arguments for computing
-        // a full set of eigenvalues.
+        // standard BLAS ?syevr arguments for computing a full set of eigenvalues.
 
         let range = b'A'; // compute all eigenvalues
         let uplo = MatrixTriangle::Triu.as_blas_char(); // we always assume triu form
@@ -100,7 +92,6 @@ where
         let abstol = -T::one(); // forces default tolerance
         let m = &mut 0_i32; // returns # of computed eigenvalues
         let w = &mut self.λ; // eigenvalues go here
-        let z = Vdata; // vectors go here
         let ldz = n; // leading dim of eigenvector matrix
         let isuppz = &mut self.isuppz;
         let work = &mut self.work;
@@ -108,6 +99,12 @@ where
         let iwork = &mut self.iwork;
         let mut liwork = -1_i32; // -1 => config to request required work size
         let info = &mut 0_i32; // output info
+
+        // target for computed eigenvectors (if any)
+        let z = match self.V.as_mut() {
+            Some(V) => V.data_mut(),
+            None => &mut [T::zero()], // fake target
+        };
 
         for i in 0..2 {
             T::xsyevr(

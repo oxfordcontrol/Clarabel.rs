@@ -4,14 +4,13 @@ use crate::algebra::*;
 use core::cmp::min;
 use std::iter::zip;
 
-#[derive(PartialEq, Eq)]
-#[allow(dead_code)] //QRDecomposition is not used yet
+#[allow(dead_code)]
+#[derive(PartialEq, Eq, Copy, Clone, Default)]
 pub(crate) enum SVDEngineAlgorithm {
+    #[default]
     DivideAndConquer,
     QRDecomposition,
 }
-
-const DEFAULT_SVD_ALGORITHM: SVDEngineAlgorithm = SVDEngineAlgorithm::DivideAndConquer;
 
 pub(crate) struct SVDEngine<T> {
     /// Computed singular values
@@ -42,7 +41,7 @@ where
         let Vt = Matrix::<T>::zeros((min(m, n), n));
         let work = vec![T::one()];
         let iwork = vec![1];
-        let algorithm = DEFAULT_SVD_ALGORITHM;
+        let algorithm = SVDEngineAlgorithm::default();
         Self {
             s,
             U,
@@ -185,33 +184,42 @@ macro_rules! generate_test_svd_factor {
         fn $test_name() {
             use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
 
-            let mut A = Matrix::<$fxx>::from(&[
-                [3., 2., 2.],  //
-                [2., 3., -2.], //
-            ]);
+            let methods = [
+                SVDEngineAlgorithm::DivideAndConquer,
+                SVDEngineAlgorithm::QRDecomposition,
+            ];
 
-            let Acopy = A.clone(); //A is corrupted after factorization
+            for method in methods.iter() {
+                let mut A = Matrix::<$fxx>::from(&[
+                    [3., 2., 2.],  //
+                    [2., 3., -2.], //
+                ]);
 
-            let mut eng = SVDEngine::<$fxx>::new((2, 3));
-            assert!(eng.factor(&mut A).is_ok());
-            let sol = [5., 3.];
-            assert!(eng.s.norm_inf_diff(&sol) < (1e-12 as $fxx).$tolfn());
+                let Acopy = A.clone(); //A is corrupted after factorization
 
-            let mut M = Matrix::<$fxx>::zeros((2, 3));
+                let mut eng = SVDEngine::<$fxx>::new((2, 3));
+                eng.algorithm = *method;
 
-            let U = &eng.U;
-            let s = &eng.s;
-            let Vt = &eng.Vt;
+                assert!(eng.factor(&mut A).is_ok());
+                let sol = [5., 3.];
+                assert!(eng.s.norm_inf_diff(&sol) < (1e-12 as $fxx).$tolfn());
 
-            //reconstruct matrix from SVD
-            let mut Us = U.clone();
-            for c in 0..Us.ncols() {
-                for r in 0..Us.nrows() {
-                    Us[(r, c)] *= s[c];
+                let mut M = Matrix::<$fxx>::zeros((2, 3));
+
+                let U = &eng.U;
+                let s = &eng.s;
+                let Vt = &eng.Vt;
+
+                //reconstruct matrix from SVD
+                let mut Us = U.clone();
+                for c in 0..Us.ncols() {
+                    for r in 0..Us.nrows() {
+                        Us[(r, c)] *= s[c];
+                    }
                 }
+                M.mul(&Us, Vt, 1.0, 0.0);
+                assert!(M.data().norm_inf_diff(Acopy.data()) < (1e-12 as $fxx).$tolfn());
             }
-            M.mul(&Us, Vt, 1.0, 0.0);
-            assert!(M.data().norm_inf_diff(Acopy.data()) < (1e-12 as $fxx).$tolfn());
         }
     };
 }
@@ -225,33 +233,41 @@ macro_rules! generate_test_svd_solve {
         fn $test_name() {
             use crate::algebra::{DenseMatrix, VectorMath};
 
-            // Singular and non-square A
-            let mut A = Matrix::<$fxx>::from(&[
-                [2., 4., 6.], //
-                [1., 2., 3.], //
-                [0., 1., 2.],
-            ]);
+            let methods = [
+                SVDEngineAlgorithm::DivideAndConquer,
+                SVDEngineAlgorithm::QRDecomposition,
+            ];
 
-            let mut B = Matrix::<$fxx>::from(&[
-                [1., 2.], //
-                [3., 4.],
-                [5., 6.],
-            ]);
+            for method in methods.iter() {
+                // Singular and non-square A
+                let mut A = Matrix::<$fxx>::from(&[
+                    [2., 4., 6.], //
+                    [1., 2., 3.], //
+                    [0., 1., 2.],
+                ]);
 
-            // this appears to be an exact solution
-            let mut X = Matrix::<$fxx>::from(&[
-                [-175., -200.], //
-                [-40., -44.],
-                [95., 112.],
-            ]);
-            X.data.scale(1. / 30.);
+                let mut B = Matrix::<$fxx>::from(&[
+                    [1., 2.], //
+                    [3., 4.],
+                    [5., 6.],
+                ]);
 
-            let mut eng = SVDEngine::<$fxx>::new((3, 3));
+                // this appears to be an exact solution
+                let mut X = Matrix::<$fxx>::from(&[
+                    [-175., -200.], //
+                    [-40., -44.],
+                    [95., 112.],
+                ]);
+                X.data.scale(1. / 30.);
 
-            assert!(eng.factor(&mut A).is_ok());
+                let mut eng = SVDEngine::<$fxx>::new((3, 3));
+                eng.algorithm = *method;
 
-            eng.solve(&mut B);
-            assert!(B.data().norm_inf_diff(X.data()) < (1e-10 as $fxx).$tolfn());
+                assert!(eng.factor(&mut A).is_ok());
+
+                eng.solve(&mut B);
+                assert!(B.data().norm_inf_diff(X.data()) < (1e-10 as $fxx).$tolfn());
+            }
         }
     };
 }
