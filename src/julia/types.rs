@@ -157,8 +157,8 @@ pub(crate) struct InfoJLRS {
     pub prev_gap_abs: f64,
     pub prev_gap_rel: f64,
     pub solve_time: f64,
-    pub status: SolverStatus,
-    //NB : print stream left out because it is not FFI safe
+    pub status: u32, //0 indexed enum in RS/JL
+                     //NB : print stream left out because it is not FFI safe
 }
 
 impl From<&DefaultInfo<f64>> for InfoJLRS {
@@ -184,7 +184,7 @@ impl From<&DefaultInfo<f64>> for InfoJLRS {
             prev_gap_abs: sol.prev_gap_abs,
             prev_gap_rel: sol.prev_gap_rel,
             solve_time: sol.solve_time,
-            status: sol.status,
+            status: sol.status as u32,
         }
     }
 }
