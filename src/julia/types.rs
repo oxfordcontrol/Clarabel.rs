@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::algebra::CscMatrix;
-use crate::solver::implementations::default::*;
+use crate::solver::{implementations::default::*, SolverStatus};
 use num_derive::FromPrimitive;
 use std::slice;
 
@@ -130,6 +130,61 @@ impl From<&DefaultSolution<f64>> for SolutionJLRS {
             iterations: sol.iterations,
             r_prim: sol.r_prim,
             r_dual: sol.r_dual,
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug)]
+pub(crate) struct InfoJLRS {
+    pub μ: f64,
+    pub sigma: f64,
+    pub step_length: f64,
+    pub iterations: u32,
+    pub cost_primal: f64,
+    pub cost_dual: f64,
+    pub res_primal: f64,
+    pub res_dual: f64,
+    pub res_primal_inf: f64,
+    pub res_dual_inf: f64,
+    pub gap_abs: f64,
+    pub gap_rel: f64,
+    pub ktratio: f64,
+    pub prev_cost_primal: f64,
+    pub prev_cost_dual: f64,
+    pub prev_res_primal: f64,
+    pub prev_res_dual: f64,
+    pub prev_gap_abs: f64,
+    pub prev_gap_rel: f64,
+    pub solve_time: f64,
+    pub status: SolverStatus,
+    //NB : print stream left out because it is not FFI safe
+}
+
+impl From<&DefaultInfo<f64>> for InfoJLRS {
+    fn from(sol: &DefaultInfo<f64>) -> Self {
+        InfoJLRS {
+            μ: sol.μ,
+            sigma: sol.sigma,
+            step_length: sol.step_length,
+            iterations: sol.iterations,
+            cost_primal: sol.cost_primal,
+            cost_dual: sol.cost_dual,
+            res_primal: sol.res_primal,
+            res_dual: sol.res_dual,
+            res_primal_inf: sol.res_primal_inf,
+            res_dual_inf: sol.res_dual_inf,
+            gap_abs: sol.gap_abs,
+            gap_rel: sol.gap_rel,
+            ktratio: sol.ktratio,
+            prev_cost_primal: sol.prev_cost_primal,
+            prev_cost_dual: sol.prev_cost_dual,
+            prev_res_primal: sol.prev_res_primal,
+            prev_res_dual: sol.prev_res_dual,
+            prev_gap_abs: sol.prev_gap_abs,
+            prev_gap_rel: sol.prev_gap_rel,
+            solve_time: sol.solve_time,
+            status: sol.status,
         }
     }
 }

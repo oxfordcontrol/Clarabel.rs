@@ -38,17 +38,17 @@ pub struct DefaultInfo<T> {
 
     // previous iterate
     /// primal object value from previous iteration
-    prev_cost_primal: T,
+    pub(crate) prev_cost_primal: T,
     /// dual objective value from previous iteration
-    prev_cost_dual: T,
+    pub(crate) prev_cost_dual: T,
     /// primal residual from previous iteration
-    prev_res_primal: T,
+    pub(crate) prev_res_primal: T,
     /// dual residual from previous iteration
-    prev_res_dual: T,
+    pub(crate) prev_res_dual: T,
     /// absolute duality gap from previous iteration
-    prev_gap_abs: T,
+    pub(crate) prev_gap_abs: T,
     /// relative duality gap from previous iteration
-    prev_gap_rel: T,
+    pub(crate) prev_gap_rel: T,
     /// solve time
     pub solve_time: f64,
     /// solver status

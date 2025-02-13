@@ -26,6 +26,13 @@ function solve!(solver::Solver)
 
 end
 
+function get_info(solver::Solver)
+
+    info = solver_get_info_jlrs(solver::Solver)
+    return info
+
+end
+
 function print_timers(solver::Solver)
 
     solver_print_timers_jlrs(solver::Solver)
@@ -95,6 +102,13 @@ function solver_solve_jlrs(solver::Solver)
 
 end
 
+
+function solver_get_info_jlrs(solver::Solver)
+
+    ccall(Libdl.dlsym(librust,:solver_get_info_jlrs),Clarabel.DefaultInfo{Float64},
+        (Ptr{Cvoid},), solver.ptr)
+
+end
 
 function solver_print_timers_jlrs(solver::Solver)
 
