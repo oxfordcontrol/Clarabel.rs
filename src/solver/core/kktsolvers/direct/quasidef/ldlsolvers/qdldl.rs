@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
 use crate::qdldl::*;
-use crate::solver::core::kktsolvers::direct::DirectLDLSolver;
+use crate::solver::core::kktsolvers::direct::{DirectLDLSolver, DirectLDLSolverReqs};
 use crate::solver::core::CoreSettings;
 
 pub struct QDLDLDirectLDLSolver<T> {
@@ -14,9 +14,7 @@ where
     T: FloatT,
 {
     pub fn new(KKT: &CscMatrix<T>, Dsigns: &[i8], settings: &CoreSettings<T>) -> Self {
-        let dim = KKT.nrows();
-
-        assert!(dim == KKT.ncols(), "KKT matrix is not square");
+        assert!(KKT.is_square(), "KKT matrix is not square");
 
         // occasionally we find that the default AMD parameters give a bad ordering, particularly
         // for some big matrices.  In particular, KKT conditions for QPs are sometimes worse
@@ -25,7 +23,7 @@ where
         // different value.   We fix a bit more generous AMD_DENSE here, which should perhaps
         // be user-settable.
 
-        //make a logical factorization to fix memory allocations
+        //make a logical factorization to determine memory allocations
 
         let opts = QDLDLSettingsBuilder::default()
             .logical(true) //allocate memory only on init
@@ -40,6 +38,15 @@ where
         let factors = QDLDLFactorisation::<T>::new(KKT, Some(opts)).unwrap();
 
         Self { factors }
+    }
+}
+
+impl<T> DirectLDLSolverReqs<T> for QDLDLDirectLDLSolver<T>
+where
+    T: FloatT,
+{
+    fn required_matrix_shape() -> MatrixTriangle {
+        MatrixTriangle::Triu
     }
 }
 
@@ -73,9 +80,5 @@ where
         //so we ignore the KKT matrix provided by the caller
         self.factors.refactor().unwrap();
         self.factors.Dinv.is_finite()
-    }
-
-    fn required_matrix_shape() -> MatrixTriangle {
-        MatrixTriangle::Triu
     }
 }

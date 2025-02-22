@@ -234,7 +234,7 @@ fn _qdldl_new<T: FloatT>(
         iperm = _invperm(&_perm)?;
         perm = _perm;
     } else {
-        (perm, iperm) = get_amd_ordering(Ain, opts.amd_dense_scale);
+        (perm, iperm, _) = get_amd_ordering(Ain, opts.amd_dense_scale);
     }
 
     //permute to (another) upper triangular matrix and store the
@@ -895,15 +895,15 @@ fn _permute_symmetric_inner<T: FloatT>(
 pub(crate) fn get_amd_ordering<T: FloatT>(
     A: &CscMatrix<T>,
     amd_dense_scale: f64,
-) -> (Vec<usize>, Vec<usize>) {
+) -> (Vec<usize>, Vec<usize>, amd::Info) {
     // PJG: For interested readers - setting amd_dense_scale to 1.5 seems to work better
     // for KKT systems in QP problems, but this ad hoc method can surely be improved
 
     // computes a permutation for A using AMD default parameters
     let mut control = amd::Control::default();
     control.dense *= amd_dense_scale; //increase the default value
-    let (perm, iperm, _info) = amd::order(A.nrows(), &A.colptr, &A.rowval, &control).unwrap();
-    (perm, iperm)
+    let (perm, iperm, info) = amd::order(A.nrows(), &A.colptr, &A.rowval, &control).unwrap();
+    (perm, iperm, info)
 }
 
 //configure tests of internals

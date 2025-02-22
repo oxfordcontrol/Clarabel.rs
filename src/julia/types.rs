@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::algebra::CscMatrix;
-use crate::solver::{implementations::default::*, SolverStatus};
+use crate::solver::implementations::default::*;
 use num_derive::FromPrimitive;
 use std::slice;
 

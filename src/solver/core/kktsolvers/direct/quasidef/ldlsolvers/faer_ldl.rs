@@ -27,7 +27,7 @@ use faer::{
 };
 
 use crate::algebra::*;
-use crate::solver::core::kktsolvers::direct::DirectLDLSolver;
+use crate::solver::core::kktsolvers::direct::{DirectLDLSolver, DirectLDLSolverReqs};
 use crate::solver::core::CoreSettings;
 use std::iter::zip;
 
@@ -109,7 +109,7 @@ where
         // manually compute an AMD ordering for the KKT matrix
         // and permute it to match the ordering used in QDLDL
         let amd_dense_scale = 1.5; // magic number from QDLDL
-        let (perm, iperm) = crate::qdldl::get_amd_ordering(KKT, amd_dense_scale);
+        let (perm, iperm, _) = crate::qdldl::get_amd_ordering(KKT, amd_dense_scale);
 
         let (mut perm_kkt, mut perm_map) = crate::qdldl::permute_symmetric(KKT, &iperm);
 
@@ -184,6 +184,15 @@ where
             work,
             parallelism,
         }
+    }
+}
+
+impl<T> DirectLDLSolverReqs<T> for FaerDirectLDLSolver<T>
+where
+    T: FloatT,
+{
+    fn required_matrix_shape() -> MatrixTriangle {
+        MatrixTriangle::Triu
     }
 }
 
@@ -265,10 +274,6 @@ where
                 self.ldlt_params,
             )
             .is_ok() // PJG: convert to bool for consistency with qdldl.   Should really return Result here and elsewhere
-    }
-
-    fn required_matrix_shape() -> MatrixTriangle {
-        MatrixTriangle::Triu
     }
 }
 
