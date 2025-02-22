@@ -92,7 +92,12 @@ where
         let diagonal_regularizer = T::zero();
 
         // now make the LDL linear solver engine
-        let ldlsolver = ldl_ctor(&KKT, &dsigns, settings);
+        // final argument is None, since it is only
+        // used by the Auto solver type to pass on
+        // AMD ordering vectors to its selected solver
+        // If using a solver directly and no ordering is
+        // provided, the solver finds one for itself
+        let ldlsolver = ldl_ctor(&KKT, &dsigns, settings, None);
 
         Self {
             m,
@@ -325,7 +330,8 @@ fn _get_refine_error<T: FloatT>(e: &mut [T], b: &[T], K: &CscMatrix<T>, ξ: &mut
     e.norm_inf()
 }
 
-type LDLConstructor<T> = fn(&CscMatrix<T>, &[i8], &CoreSettings<T>) -> BoxedDirectLDLSolver<T>;
+type LDLConstructor<T> =
+    fn(&CscMatrix<T>, &[i8], &CoreSettings<T>, Option<Vec<usize>>) -> BoxedDirectLDLSolver<T>;
 
 fn get_ldlsolver_config<T>(settings: &CoreSettings<T>) -> (MatrixTriangle, LDLConstructor<T>)
 where
@@ -346,16 +352,16 @@ where
     match settings.direct_solve_method.as_str() {
         "auto" => {
             kktshape = AutoDirectLDLSolver::<T>::required_matrix_shape();
-            ldlptr = |M, D, S| AutoDirectLDLSolver::<T>::new(M, D, S);
+            ldlptr = |M, D, S, P| AutoDirectLDLSolver::<T>::new(M, D, S, P);
         }
         "qdldl" => {
             kktshape = QDLDLDirectLDLSolver::<T>::required_matrix_shape();
-            ldlptr = |M, D, S| Box::new(QDLDLDirectLDLSolver::<T>::new(M, D, S));
+            ldlptr = |M, D, S, P| Box::new(QDLDLDirectLDLSolver::<T>::new(M, D, S, P));
         }
         #[cfg(feature = "faer-sparse")]
         "faer" => {
             kktshape = FaerDirectLDLSolver::<T>::required_matrix_shape();
-            ldlptr = |M, D, S| Box::new(FaerDirectLDLSolver::<T>::new(M, D, S));
+            ldlptr = |M, D, S, P| Box::new(FaerDirectLDLSolver::<T>::new(M, D, S, P));
         }
         _ => {
             panic! {"Unrecognized LDL solver type"};

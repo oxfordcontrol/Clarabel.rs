@@ -27,12 +27,13 @@ where
         KKT: &CscMatrix<T>,
         Dsigns: &[i8],
         settings: &CoreSettings<T>,
+        _perm: Option<Vec<usize>>,
     ) -> BoxedDirectLDLSolver<T> {
         cfg_if::cfg_if! {
             if #[cfg(feature = "faer-sparse")] {
                 ldl_auto_select(KKT, Dsigns, settings)
             } else {
-                let solver = QDLDLDirectLDLSolver::<T>::new(KKT, Dsigns, settings);
+                let solver = QDLDLDirectLDLSolver::<T>::new(KKT, Dsigns, settings, None);
                 Box::new(solver)
             }
         }
@@ -61,8 +62,7 @@ where
     // QDLDL appears to be faster than faer's simplicial method.
 
     // manually compute an AMD ordering for the KKT matrix
-    let amd_dense_scale = 1.5; // magic number from QDLDL
-    let (_perm, _iperm, info) = crate::qdldl::get_amd_ordering(KKT, amd_dense_scale);
+    let (perm, _iperm, info) = super::amd_order(KKT);
 
     // estimate flops and then use the faer switching rule
     let flops = (info.n_div + info.n_mult_subs_ldl) as f64;
@@ -74,11 +74,11 @@ where
 
     if (flops / Lnnz) < thresh {
         // use QDLDL
-        let solver = QDLDLDirectLDLSolver::<T>::new(KKT, Dsigns, settings);
+        let solver = QDLDLDirectLDLSolver::<T>::new(KKT, Dsigns, settings, Some(perm));
         Box::new(solver)
     } else {
         // use faer
-        let solver = FaerDirectLDLSolver::<T>::new(KKT, Dsigns, settings);
+        let solver = FaerDirectLDLSolver::<T>::new(KKT, Dsigns, settings, Some(perm));
         Box::new(solver)
     }
 }

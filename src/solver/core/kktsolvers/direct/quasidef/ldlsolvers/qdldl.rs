@@ -13,7 +13,12 @@ impl<T> QDLDLDirectLDLSolver<T>
 where
     T: FloatT,
 {
-    pub fn new(KKT: &CscMatrix<T>, Dsigns: &[i8], settings: &CoreSettings<T>) -> Self {
+    pub fn new(
+        KKT: &CscMatrix<T>,
+        Dsigns: &[i8],
+        settings: &CoreSettings<T>,
+        perm: Option<Vec<usize>>,
+    ) -> Self {
         assert!(KKT.is_square(), "KKT matrix is not square");
 
         // occasionally we find that the default AMD parameters give a bad ordering, particularly
@@ -25,7 +30,7 @@ where
 
         //make a logical factorization to determine memory allocations
 
-        let opts = QDLDLSettingsBuilder::default()
+        let mut opts = QDLDLSettingsBuilder::default()
             .logical(true) //allocate memory only on init
             .Dsigns(Dsigns.to_vec())
             .regularize_enable(true)
@@ -34,6 +39,7 @@ where
             .amd_dense_scale(1.5)
             .build()
             .unwrap();
+        opts.perm = perm;
 
         let factors = QDLDLFactorisation::<T>::new(KKT, Some(opts)).unwrap();
 

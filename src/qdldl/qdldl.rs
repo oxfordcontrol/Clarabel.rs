@@ -33,7 +33,7 @@ pub struct QDLDLSettings<T: FloatT> {
     #[builder(default = "1.0")]
     pub amd_dense_scale: f64,
 
-    /// optional ueser-supplied custom permutation vector for the matrix
+    /// optional user-supplied custom permutation vector for the matrix
     #[builder(default = "None", setter(strip_option))]
     pub perm: Option<Vec<usize>>,
 
