@@ -20,11 +20,12 @@ pub trait KKTSolver<T: FloatT>: HasLinearSolverInfo {
 pub trait HasLinearSolverInfo {
     fn linear_solver_info(&self) -> LinearSolverInfo;
 }
+#[repr(C)]
 #[derive(Debug, Default, Clone)]
 pub struct LinearSolverInfo {
     pub name: String,
     pub threads: usize,
     pub direct: bool,
-    pub nnzA: usize, // nnz in A = LDL^T
-    pub nnzL: usize, // nnz in P = LDL^T
+    pub nnzA: usize, // nnz in A for A = LDL^T
+    pub nnzL: usize, // nnz in L for A = LDL^T
 }
