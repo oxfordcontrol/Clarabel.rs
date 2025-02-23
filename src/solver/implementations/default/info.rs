@@ -1,6 +1,7 @@
 use super::*;
 use crate::algebra::*;
 use crate::io::PrintTarget;
+use crate::solver::core::kktsolvers::LinearSolverInfo;
 use crate::solver::core::{traits::Info, SolverStatus};
 use crate::solver::traits::Variables;
 use crate::timers::*;
@@ -53,6 +54,9 @@ pub struct DefaultInfo<T> {
     pub solve_time: f64,
     /// solver status
     pub status: SolverStatus,
+
+    /// linear solver information
+    pub linsolver: LinearSolverInfo,
 
     // target stream for printing
     pub(crate) stream: PrintTarget,

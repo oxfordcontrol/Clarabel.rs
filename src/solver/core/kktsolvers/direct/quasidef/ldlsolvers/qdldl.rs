@@ -2,6 +2,8 @@
 use crate::algebra::*;
 use crate::qdldl::*;
 use crate::solver::core::kktsolvers::direct::{DirectLDLSolver, DirectLDLSolverReqs};
+use crate::solver::core::kktsolvers::HasLinearSolverInfo;
+use crate::solver::core::kktsolvers::LinearSolverInfo;
 use crate::solver::core::CoreSettings;
 
 pub struct QDLDLDirectLDLSolver<T> {
@@ -53,6 +55,21 @@ where
 {
     fn required_matrix_shape() -> MatrixTriangle {
         MatrixTriangle::Triu
+    }
+}
+
+impl<T> HasLinearSolverInfo for QDLDLDirectLDLSolver<T>
+where
+    T: FloatT,
+{
+    fn linear_solver_info(&self) -> LinearSolverInfo {
+        LinearSolverInfo {
+            name: "qdldl".to_string(),
+            threads: 1,
+            direct: true,
+            nnzA: self.factors.nnzA(),
+            nnzL: self.factors.nnzL(),
+        }
     }
 }
 

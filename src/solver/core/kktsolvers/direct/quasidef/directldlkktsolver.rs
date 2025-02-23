@@ -5,7 +5,7 @@ use super::ldlsolvers::faer_ldl::*;
 
 use super::ldlsolvers::{auto::*, qdldl::*};
 use super::*;
-use crate::solver::core::kktsolvers::KKTSolver;
+use crate::solver::core::kktsolvers::{HasLinearSolverInfo, KKTSolver, LinearSolverInfo};
 use crate::solver::core::{cones::*, CoreSettings};
 use std::iter::zip;
 
@@ -114,6 +114,15 @@ where
             ldlsolver,
             diagonal_regularizer,
         }
+    }
+}
+
+impl<T> HasLinearSolverInfo for DirectLDLKKTSolver<T>
+where
+    T: FloatT,
+{
+    fn linear_solver_info(&self) -> LinearSolverInfo {
+        self.ldlsolver.linear_solver_info()
     }
 }
 

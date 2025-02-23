@@ -7,6 +7,7 @@ pub mod faer_ldl;
 pub mod auto;
 pub mod qdldl;
 
+#[allow(dead_code)]
 pub(crate) fn amd_order<T>(KKT: &CscMatrix<T>) -> (Vec<usize>, Vec<usize>, Info)
 where
     T: FloatT,

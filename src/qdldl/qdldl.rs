@@ -198,6 +198,16 @@ where
             self.is_symbolic,
         )
     }
+
+    /// Returns the number of nonzeros in A for A = LDL^T
+    pub fn nnzA(&self) -> usize {
+        self.workspace.triuA.nnz()
+    }
+
+    /// Returns the number of nonzeros in L for A = LDL^T
+    pub fn nnzL(&self) -> usize {
+        self.L.nnz()
+    }
 }
 
 fn check_structure<T: FloatT>(A: &CscMatrix<T>) -> Result<(), QDLDLError> {

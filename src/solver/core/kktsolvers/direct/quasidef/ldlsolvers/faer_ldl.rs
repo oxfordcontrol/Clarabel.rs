@@ -20,6 +20,7 @@ use faer::{
 
 use crate::algebra::*;
 use crate::solver::core::kktsolvers::direct::{DirectLDLSolver, DirectLDLSolverReqs};
+use crate::solver::core::kktsolvers::{HasLinearSolverInfo, LinearSolverInfo};
 use crate::solver::core::CoreSettings;
 use std::iter::zip;
 
@@ -80,10 +81,6 @@ impl<T> FaerDirectLDLSolver<T>
 where
     T: FloatT,
 {
-    pub fn nthreads_from_settings(setting: usize) -> usize {
-        faer::utils::thread::parallelism_degree(faer::Par::rayon(setting))
-    }
-
     pub fn new(
         KKT: &CscMatrix<T>,
         Dsigns: &[i8],
@@ -197,6 +194,21 @@ where
 {
     fn required_matrix_shape() -> MatrixTriangle {
         MatrixTriangle::Triu
+    }
+}
+
+impl<T> HasLinearSolverInfo for FaerDirectLDLSolver<T>
+where
+    T: FloatT,
+{
+    fn linear_solver_info(&self) -> LinearSolverInfo {
+        LinearSolverInfo {
+            name: "faer".to_string(),
+            threads: self.parallelism.degree(),
+            direct: true,
+            nnzA: self.perm_kkt.nnz(),
+            nnzL: self.ld_vals.len() - self.perm_kkt.n,
+        }
     }
 }
 

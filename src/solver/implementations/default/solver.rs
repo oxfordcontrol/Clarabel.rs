@@ -3,6 +3,7 @@ use crate::{
     io::ConfigurablePrintTarget,
     solver::core::{
         cones::{CompositeCone, SupportedConeT},
+        kktsolvers::HasLinearSolverInfo,
         traits::ProblemData,
         Solver,
     },
@@ -40,7 +41,7 @@ where
 
         let mut timers = Timers::default();
         let mut output;
-        let info = DefaultInfo::<T>::new();
+        let mut info = DefaultInfo::<T>::new();
 
         timeit! {timers => "setup"; {
 
@@ -70,6 +71,7 @@ where
         timeit!{timers => "kktinit"; {
             kktsystem = DefaultKKTSystem::<T>::new(&data,&cones,&settings);
         }}
+        info.linsolver = kktsystem.linear_solver_info();
 
         // work variables for assembling step direction LHS/RHS
         let step_rhs  = DefaultVariables::<T>::new(data.n,data.m);

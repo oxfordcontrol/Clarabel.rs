@@ -1,4 +1,4 @@
-use crate::algebra::*;
+use crate::{algebra::*, solver::core::kktsolvers::HasLinearSolverInfo};
 
 //ldl linear solvers kept in a submodule (not flattened)
 pub mod ldlsolvers;
@@ -16,7 +16,7 @@ pub trait DirectLDLSolverReqs<T: FloatT> {
     where
         Self: Sized;
 }
-pub trait DirectLDLSolver<T: FloatT>: DirectLDLSolverReqs<T> {
+pub trait DirectLDLSolver<T: FloatT>: DirectLDLSolverReqs<T> + HasLinearSolverInfo {
     fn update_values(&mut self, index: &[usize], values: &[T]);
     fn scale_values(&mut self, index: &[usize], scale: T);
     #[allow(dead_code)] //PJG: could be removed.
