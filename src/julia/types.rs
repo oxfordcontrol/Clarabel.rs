@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::algebra::CscMatrix;
+use crate::solver::core::kktsolvers::LinearSolverInfo;
 use crate::solver::implementations::default::*;
 use num_derive::FromPrimitive;
 use std::slice;
@@ -136,6 +137,28 @@ impl From<&DefaultSolution<f64>> for SolutionJLRS {
 
 #[repr(C)]
 #[derive(Debug)]
+pub struct LinearSolverInfoJLRS {
+    pub name: VectorJLRS<u8>,
+    pub threads: usize,
+    pub direct: bool,
+    pub nnzA: usize,
+    pub nnzL: usize,
+}
+
+impl From<&LinearSolverInfo> for LinearSolverInfoJLRS {
+    fn from(sol: &LinearSolverInfo) -> Self {
+        LinearSolverInfoJLRS {
+            name: VectorJLRS::<u8>::from(&sol.name.as_bytes().to_vec()),
+            threads: sol.threads,
+            direct: sol.direct,
+            nnzA: sol.nnzA,
+            nnzL: sol.nnzL,
+        }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug)]
 pub(crate) struct InfoJLRS {
     pub μ: f64,
     pub sigma: f64,
@@ -158,7 +181,8 @@ pub(crate) struct InfoJLRS {
     pub prev_gap_rel: f64,
     pub solve_time: f64,
     pub status: u32, //0 indexed enum in RS/JL
-                     //NB : print stream left out because it is not FFI safe
+    //NB : print stream left out because it is not FFI safe
+    pub linsolver: LinearSolverInfoJLRS,
 }
 
 impl From<&DefaultInfo<f64>> for InfoJLRS {
@@ -185,6 +209,7 @@ impl From<&DefaultInfo<f64>> for InfoJLRS {
             prev_gap_rel: sol.prev_gap_rel,
             solve_time: sol.solve_time,
             status: sol.status as u32,
+            linsolver: LinearSolverInfoJLRS::from(&sol.linsolver),
         }
     }
 }
