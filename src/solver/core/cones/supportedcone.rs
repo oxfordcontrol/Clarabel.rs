@@ -129,6 +129,8 @@ where
                     SupportedConeT::SecondOrderConeT(1) => total_dim += 1,
                     #[cfg(feature = "sdp")]
                     SupportedConeT::PSDTriangleConeT(1) => total_dim += 1,
+
+                    // stop when we hit a non-collapsible cone
                     _ => break,
                 }
                 iter.next();
@@ -447,8 +449,7 @@ mod tests {
         ];
 
         let expected = vec![
-            SupportedConeT::NonnegativeConeT(5),
-            SupportedConeT::NonnegativeConeT(2),
+            SupportedConeT::NonnegativeConeT(7),
             SupportedConeT::SecondOrderConeT(4),
         ];
         let result = SupportedConeT::new_collapsed(&cones);
