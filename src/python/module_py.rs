@@ -62,6 +62,8 @@ fn clarabel(_py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PySolverStatus>()?;
     m.add_class::<PyDefaultSolution>()?;
     m.add_class::<PyDefaultSettings>()?;
+    m.add_class::<PyDefaultInfo>()?;
+    m.add_class::<PyLinearSolverInfo>()?;
 
     // Main solver object
     m.add_class::<PyDefaultSolver>()?;

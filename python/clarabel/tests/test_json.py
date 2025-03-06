@@ -1,4 +1,5 @@
-import clarabel, os
+import clarabel
+import os
 
 
 def test_json_solve():
@@ -6,7 +7,8 @@ def test_json_solve():
     datafile = "hs35.json"
 
     # load and solve with settings in file
-    datadir = os.path.join(os.path.dirname(__file__), "../../../examples/data/")
+    thisdir = os.path.dirname(__file__)
+    datadir = os.path.join(thisdir, "../../../examples/data/")
     file = os.path.join(datadir, datafile)
 
     solver = clarabel.load_from_file(file)
