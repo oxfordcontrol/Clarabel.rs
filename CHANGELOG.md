@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Version numbering in this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).  We aim to keep the core solver functionality and minor releases in sync between the Rust/Python and Julia implementations.  Small fixes that affect one implementation only may result in the patch release versions differing.
 
+## [0.11.0] - 2024-07-03
+
+### What's Changed
+
+- Implemented LDL :auto select as default [#162](https://github.com/oxfordcontrol/Clarabel.rs/pull/162)
+
+- Consecutive 1D cones are collapsed and aggregated to a nonnegative cone [#163](https://github.com/oxfordcontrol/Clarabel.rs/pull/163)
+
+### Rust-specific changes
+
+- Configurable print streams [#160](https://github.com/oxfordcontrol/Clarabel.rs/pull/160)
+
+- Update to latest blas and lapack src crates by @bnaras in [#161](https://github.com/oxfordcontrol/Clarabel.rs/pull/161)
+
+
+
 ## [0.10.0] - 2024-03-02
 
 ## What's Changed
@@ -13,7 +29,7 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 - norm unscaling bug fix [#136](https://github.com/oxfordcontrol/Clarabel.rs/pull/136)
 - added `max_threads` to settings
 
-## Rust-specific changed
+## Rust-specific changes
 - force mkl LP64 format (32 bit ints) [#130](https://github.com/oxfordcontrol/Clarabel.rs/pull/130)
 - python 3.7/3.8 EOL updates [#147](https://github.com/oxfordcontrol/Clarabel.rs/pull/147)
 - enable CSC diagonal counting for triu/tril [#145](https://github.com/oxfordcontrol/Clarabel.rs/pull/145)
@@ -183,6 +199,7 @@ offline against the Julia-based benchmark problem suite, but this will not appea
 
 - Ported all documentation to the common site [here](https://github.com/oxfordcontrol/ClarabelDocs)
 
+[0.11.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.8.0...v0.8.1
