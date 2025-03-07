@@ -1,6 +1,8 @@
 # The types defined here are for exchanging data
 # between Rust and Julia.   
 
+using Clarabel
+
 struct VectorJLRS{T} 
 
     p::Ptr{T}
@@ -88,7 +90,85 @@ function DefaultSolution(sol::SolutionJLRS)
         sol.r_prim,
         sol.r_dual
     )
+end
 
+struct LinearSolverInfoJLRS
+    name::VectorJLRS{UInt8}
+    threads::UInt64
+    direct::Bool
+    nnzA::UInt64 
+    nnzL::UInt64 
+end
+
+function LinearSolverInfo(info::LinearSolverInfoJLRS)
+
+    Clarabel.LinearSolverInfo(
+        Symbol(String(Vector(info.name))),
+        info.threads,
+        info.direct,
+        info.nnzA,
+        info.nnzL
+    )
+end
+
+
+mutable struct DefaultInfoJLRS
+
+    μ::Float64
+    sigma::Float64
+    step_length::Float64
+    iterations::UInt32
+    cost_primal::Float64
+    cost_dual::Float64
+    res_primal::Float64
+    res_dual::Float64
+    res_primal_inf::Float64
+    res_dual_inf::Float64
+    gap_abs::Float64
+    gap_rel::Float64
+    ktratio::Float64
+
+    # previous iterate
+    prev_cost_primal::Float64
+    prev_cost_dual::Float64
+    prev_res_primal::Float64
+    prev_res_dual::Float64
+    prev_gap_abs::Float64
+    prev_gap_rel::Float64
+
+    solve_time::Float64
+    status::Clarabel.SolverStatus
+
+    # linear solver information
+    linsolver::LinearSolverInfoJLRS
+
+end
+
+function DefaultInfo(info::DefaultInfoJLRS)
+    Clarabel.DefaultInfo{Float64}(
+        info.μ,
+        info.sigma,
+        info.step_length,
+        info.iterations,
+        info.cost_primal,
+        info.cost_dual,
+        info.res_primal,
+        info.res_dual,
+        info.res_primal_inf,
+        info.res_dual_inf,
+        info.gap_abs,
+        info.gap_rel,
+        info.ktratio,
+        info.prev_cost_primal,
+        info.prev_cost_dual,
+        info.prev_res_primal,
+        info.prev_res_dual,
+        info.prev_gap_abs,
+        info.prev_gap_rel,
+        info.solve_time,
+        info.status,
+        LinearSolverInfo(info.linsolver)
+    )
 end
 
 

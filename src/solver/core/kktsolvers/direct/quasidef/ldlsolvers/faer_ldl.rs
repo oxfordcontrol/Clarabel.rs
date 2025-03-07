@@ -1,15 +1,7 @@
 #![allow(non_snake_case)]
 
 use faer::dyn_stack::{MemBuffer, MemStack, StackReq};
-// use faer::{
-//     dyn_stack::{GlobalPodBuffer, PodStack, StackReq},
-//     linalg::cholesky::ldlt::compute::LdltRegularization,
-//     sparse::{
-//         linalg::{amd::Control, cholesky::*, SupernodalThreshold},
-//         SparseColMatRef, SymbolicSparseColMatRef,
-//     },
-//     Conj, Parallelism, Side,
-// };
+
 use faer::{
     linalg::cholesky::ldlt::factor::{LdltParams, LdltRegularization},
     sparse::{
@@ -27,7 +19,8 @@ use faer::{
 };
 
 use crate::algebra::*;
-use crate::solver::core::kktsolvers::direct::DirectLDLSolver;
+use crate::solver::core::kktsolvers::direct::{DirectLDLSolver, DirectLDLSolverReqs};
+use crate::solver::core::kktsolvers::{HasLinearSolverInfo, LinearSolverInfo};
 use crate::solver::core::CoreSettings;
 use std::iter::zip;
 
@@ -88,11 +81,12 @@ impl<T> FaerDirectLDLSolver<T>
 where
     T: FloatT,
 {
-    pub fn nthreads_from_settings(setting: usize) -> usize {
-        faer::utils::thread::parallelism_degree(faer::Par::rayon(setting))
-    }
-
-    pub fn new(KKT: &CscMatrix<T>, Dsigns: &[i8], settings: &CoreSettings<T>) -> Self {
+    pub fn new(
+        KKT: &CscMatrix<T>,
+        Dsigns: &[i8],
+        settings: &CoreSettings<T>,
+        perm: Option<Vec<usize>>,
+    ) -> Self {
         assert!(KKT.is_square(), "KKT matrix is not square");
 
         // -----------------------------
@@ -106,10 +100,17 @@ where
             }
         };
 
-        // manually compute an AMD ordering for the KKT matrix
-        // and permute it to match the ordering used in QDLDL
-        let amd_dense_scale = 1.5; // magic number from QDLDL
-        let (perm, iperm) = crate::qdldl::get_amd_ordering(KKT, amd_dense_scale);
+        // perm has possibly been passed by LDL auto selector.
+        // If not, find an ordering now
+        let (perm, iperm) = {
+            if let Some(perm) = perm {
+                let iperm = invperm(&perm);
+                (perm, iperm)
+            } else {
+                let (perm, iperm, _) = super::amd_order(KKT);
+                (perm, iperm)
+            }
+        };
 
         let (mut perm_kkt, mut perm_map) = crate::qdldl::permute_symmetric(KKT, &iperm);
 
@@ -183,6 +184,30 @@ where
             ld_vals,
             work,
             parallelism,
+        }
+    }
+}
+
+impl<T> DirectLDLSolverReqs<T> for FaerDirectLDLSolver<T>
+where
+    T: FloatT,
+{
+    fn required_matrix_shape() -> MatrixTriangle {
+        MatrixTriangle::Triu
+    }
+}
+
+impl<T> HasLinearSolverInfo for FaerDirectLDLSolver<T>
+where
+    T: FloatT,
+{
+    fn linear_solver_info(&self) -> LinearSolverInfo {
+        LinearSolverInfo {
+            name: "faer".to_string(),
+            threads: self.parallelism.degree(),
+            direct: true,
+            nnzA: self.perm_kkt.nnz(),
+            nnzL: self.ld_vals.len() - self.perm_kkt.n,
         }
     }
 }
@@ -266,10 +291,6 @@ where
             )
             .is_ok() // PJG: convert to bool for consistency with qdldl.   Should really return Result here and elsewhere
     }
-
-    fn required_matrix_shape() -> MatrixTriangle {
-        MatrixTriangle::Triu
-    }
 }
 
 // ---------------------------------------------------------------------
@@ -336,7 +357,7 @@ fn test_faer_ldl() {
 
     let Dsigns = vec![1, 1, -1, -1, -1, -1];
 
-    let mut solver = FaerDirectLDLSolver::new(&KKT, &Dsigns, &CoreSettings::default());
+    let mut solver = FaerDirectLDLSolver::new(&KKT, &Dsigns, &CoreSettings::default(), None);
 
     let mut x = vec![0.0; 6];
     let b = vec![1.0, 2.0, 3.0, 4., 5., 6.];

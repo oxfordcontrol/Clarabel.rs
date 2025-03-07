@@ -118,8 +118,8 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub direct_kkt_solver: bool,
 
-    ///direct linear solver (e.g. "qdldl")
-    #[builder(default = r#""qdldl".to_string()"#)]
+    ///direct linear solver method(e.g. "faer-sparse", "qdldl", "auto")
+    #[builder(default = r#""auto".to_string()"#)]
     pub direct_solve_method: String,
 
     ///enable KKT static regularization
@@ -270,6 +270,7 @@ where
 
 fn validate_direct_solve_method(direct_solve_method: &str) -> Result<(), String> {
     match direct_solve_method {
+        "auto" => Ok(()),
         "qdldl" => Ok(()),
         #[cfg(feature = "faer-sparse")]
         "faer" => Ok(()),

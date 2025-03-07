@@ -87,6 +87,15 @@ where
     }
 }
 
+impl<T> HasLinearSolverInfo for DefaultKKTSystem<T>
+where
+    T: FloatT,
+{
+    fn linear_solver_info(&self) -> LinearSolverInfo {
+        self.kktsolver.linear_solver_info()
+    }
+}
+
 impl<T> KKTSystem<T> for DefaultKKTSystem<T>
 where
     T: FloatT,

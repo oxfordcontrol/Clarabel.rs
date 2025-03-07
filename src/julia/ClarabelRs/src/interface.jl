@@ -28,8 +28,8 @@ end
 
 function get_info(solver::Solver)
 
-    info = solver_get_info_jlrs(solver::Solver)
-    return info
+    info_jlrs = solver_get_info_jlrs(solver)
+    DefaultInfo(info_jlrs)
 
 end
 
@@ -105,7 +105,7 @@ end
 
 function solver_get_info_jlrs(solver::Solver)
 
-    ccall(Libdl.dlsym(librust,:solver_get_info_jlrs),Clarabel.DefaultInfo{Float64},
+    ccall(Libdl.dlsym(librust,:solver_get_info_jlrs),DefaultInfoJLRS,
         (Ptr{Cvoid},), solver.ptr)
 
 end

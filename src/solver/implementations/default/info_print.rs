@@ -97,8 +97,8 @@ where
         _print_conedims_by_type(out, cones, SupportedConeTag::PSDTriangleCone)?;
 
         writeln!(out,)?;
-        _print_settings(out, settings)?;
-        writeln!(out,)?;
+
+        self.print_settings(settings)?;
 
         std::io::Result::Ok(())
     }
@@ -183,6 +183,98 @@ where
     }
 }
 
+impl<T> DefaultInfo<T>
+where
+    T: FloatT,
+{
+    fn print_settings(&mut self, settings: &DefaultSettings<T>) -> std::io::Result<()> {
+        let out = &mut self.stream;
+
+        let set = settings;
+
+        writeln!(out, "settings:")?;
+
+        write!(out, "  linear algebra: ")?;
+        if self.linsolver.direct {
+            write!(out, "direct / {}, ", self.linsolver.name)?;
+        } else {
+            write!(out, "indirect / {}, ", self.linsolver.name)?;
+        }
+
+        write!(out, "precision: {} bit ", _get_precision_string::<T>())?;
+
+        print_nthreads(out, self.linsolver.threads)?;
+        writeln!(out)?;
+
+        let time_lim_str = {
+            if set.time_limit.is_infinite() {
+                "Inf".to_string()
+            } else {
+                format!("{:?}", set.time_limit)
+            }
+        };
+        writeln!(
+            out,
+            "  max iter = {}, time limit = {},  max step = {:.3}",
+            set.max_iter, time_lim_str, set.max_step_fraction
+        )?;
+
+        writeln!(
+            out,
+            "  tol_feas = {:.1e}, tol_gap_abs = {:.1e}, tol_gap_rel = {:.1e},",
+            set.tol_feas, set.tol_gap_abs, set.tol_gap_rel
+        )?;
+
+        writeln!(
+            out,
+            "  static reg : {}, ϵ1 = {:.1e}, ϵ2 = {:.1e}",
+            _bool_on_off(set.static_regularization_enable),
+            set.static_regularization_constant,
+            set.static_regularization_proportional,
+        )?;
+
+        writeln!(
+            out,
+            "  dynamic reg: {}, ϵ = {:.1e}, δ = {:.1e}",
+            _bool_on_off(set.dynamic_regularization_enable),
+            set.dynamic_regularization_eps,
+            set.dynamic_regularization_delta
+        )?;
+
+        writeln!(
+            out,
+            "  iter refine: {}, reltol = {:.1e}, abstol = {:.1e},",
+            _bool_on_off(set.iterative_refinement_enable),
+            set.iterative_refinement_reltol,
+            set.iterative_refinement_abstol
+        )?;
+
+        writeln!(
+            out,
+            "               max iter = {}, stop ratio = {:.1}",
+            set.iterative_refinement_max_iter, set.iterative_refinement_stop_ratio
+        )?;
+
+        writeln!(
+            out,
+            "  equilibrate: {}, min_scale = {:.1e}, max_scale = {:.1e}",
+            _bool_on_off(set.equilibrate_enable),
+            set.equilibrate_min_scaling,
+            set.equilibrate_max_scaling
+        )?;
+
+        writeln!(
+            out,
+            "               max iter = {}",
+            set.equilibrate_max_iter,
+        )?;
+
+        writeln!(out,)?;
+
+        std::io::Result::Ok(())
+    }
+}
+
 fn _bool_on_off(v: bool) -> &'static str {
     match v {
         true => "on",
@@ -190,110 +282,11 @@ fn _bool_on_off(v: bool) -> &'static str {
     }
 }
 
-fn _print_settings<T: FloatT>(
-    out: &mut PrintTarget,
-    settings: &DefaultSettings<T>,
-) -> std::io::Result<()> {
-    let set = settings;
-
-    writeln!(out, "settings:")?;
-
-    if set.direct_kkt_solver {
-        write!(
-            out,
-            "  linear algebra: direct / {}, precision: {} bit",
-            set.direct_solve_method,
-            _get_precision_string::<T>()
-        )?;
-        print_nthreads(out, settings)?;
-        writeln!(out)?;
-    }
-
-    let time_lim_str = {
-        if set.time_limit.is_infinite() {
-            "Inf".to_string()
-        } else {
-            format!("{:?}", set.time_limit)
-        }
-    };
-    writeln!(
-        out,
-        "  max iter = {}, time limit = {},  max step = {:.3}",
-        set.max_iter, time_lim_str, set.max_step_fraction
-    )?;
-
-    writeln!(
-        out,
-        "  tol_feas = {:.1e}, tol_gap_abs = {:.1e}, tol_gap_rel = {:.1e},",
-        set.tol_feas, set.tol_gap_abs, set.tol_gap_rel
-    )?;
-
-    writeln!(
-        out,
-        "  static reg : {}, ϵ1 = {:.1e}, ϵ2 = {:.1e}",
-        _bool_on_off(set.static_regularization_enable),
-        set.static_regularization_constant,
-        set.static_regularization_proportional,
-    )?;
-
-    writeln!(
-        out,
-        "  dynamic reg: {}, ϵ = {:.1e}, δ = {:.1e}",
-        _bool_on_off(set.dynamic_regularization_enable),
-        set.dynamic_regularization_eps,
-        set.dynamic_regularization_delta
-    )?;
-
-    writeln!(
-        out,
-        "  iter refine: {}, reltol = {:.1e}, abstol = {:.1e},",
-        _bool_on_off(set.iterative_refinement_enable),
-        set.iterative_refinement_reltol,
-        set.iterative_refinement_abstol
-    )?;
-
-    writeln!(
-        out,
-        "               max iter = {}, stop ratio = {:.1}",
-        set.iterative_refinement_max_iter, set.iterative_refinement_stop_ratio
-    )?;
-
-    writeln!(
-        out,
-        "  equilibrate: {}, min_scale = {:.1e}, max_scale = {:.1e}",
-        _bool_on_off(set.equilibrate_enable),
-        set.equilibrate_min_scaling,
-        set.equilibrate_max_scaling
-    )?;
-
-    writeln!(
-        out,
-        "               max iter = {}",
-        set.equilibrate_max_iter,
-    )?;
-
-    std::io::Result::Ok(())
-}
-
-#[allow(unused_variables)] //out is unused if faer-sparse is not enabled
-fn print_nthreads<T: FloatT>(
-    out: &mut PrintTarget,
-    settings: &DefaultSettings<T>,
-) -> std::io::Result<()> {
-    match settings.direct_solve_method.as_str() {
-        #[cfg(feature = "faer-sparse")]
-        "faer" => {
-            let nthreads =
-                crate::solver::core::kktsolvers::direct::ldlsolvers::faer_ldl::FaerDirectLDLSolver::<
-                    T,
-                >::nthreads_from_settings(settings.max_threads as usize);
-            if nthreads == 1 {
-                write!(out, " ({nthreads} thread) ")
-            } else {
-                write!(out, " ({nthreads} threads) ")
-            }
-        }
-        _ => std::io::Result::Ok(()),
+fn print_nthreads(out: &mut PrintTarget, nthreads: usize) -> std::io::Result<()> {
+    match nthreads {
+        0 => Ok(()),
+        1 => write!(out, "(1 thread)"),
+        _ => write!(out, "({nthreads} threads)"),
     }
 }
 
