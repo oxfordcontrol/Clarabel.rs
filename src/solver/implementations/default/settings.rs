@@ -118,7 +118,7 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub direct_kkt_solver: bool,
 
-    ///direct linear solver method(e.g. "faer-sparse", "qdldl", "auto")
+    ///direct linear solver method(e.g. "faer", "qdldl", "auto")
     #[builder(default = r#""auto".to_string()"#)]
     pub direct_solve_method: String,
 
