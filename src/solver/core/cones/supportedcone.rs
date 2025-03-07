@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 /// API type describing the type of a conic constraint.
 ///
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SupportedConeT<T> {
     /// The zero cone (used for equality constraints).
     ///
@@ -95,6 +95,69 @@ pub fn make_cone<T: FloatT>(cone: &SupportedConeT<T>) -> SupportedCone<T> {
         }
         #[cfg(feature = "sdp")]
         SupportedConeT::PSDTriangleConeT(dim) => PSDTriangleCone::<T>::new(*dim).into(),
+    }
+}
+
+impl<T> SupportedConeT<T>
+where
+    T: FloatT,
+{
+    pub(crate) fn new_collapsed(cones: &[SupportedConeT<T>]) -> Vec<SupportedConeT<T>> {
+        let mut newcones = Vec::with_capacity(cones.len());
+        let mut iter = cones.iter().peekable();
+
+        // rollup a subsequence of nonnegative cones or SOC/PSD singleton
+        fn collapse<T>(
+            iter: &mut std::iter::Peekable<std::slice::Iter<'_, SupportedConeT<T>>>,
+            newcones: &mut Vec<SupportedConeT<T>>,
+            init_dim: usize,
+        ) where
+            T: FloatT,
+        {
+            let mut total_dim = init_dim;
+            while let Some(next_cone) = iter.peek() {
+                // skip empty cones
+                if next_cone.nvars() != 0 {
+                    match next_cone {
+                        // collapsible cones.
+                        SupportedConeT::NonnegativeConeT(dim) => total_dim += dim,
+                        SupportedConeT::SecondOrderConeT(1) => total_dim += 1,
+                        #[cfg(feature = "sdp")]
+                        SupportedConeT::PSDTriangleConeT(1) => total_dim += 1,
+
+                        // stop when we hit a non-collapsible cone
+                        _ => break,
+                    }
+                }
+                iter.next();
+            }
+            newcones.push(SupportedConeT::NonnegativeConeT(total_dim));
+        }
+
+        while let Some(cone) = iter.next() {
+            if cone.nvars() != 0 {
+                match cone {
+                    // collapsible cones.   These are cones that can serve
+                    // as the first term in a sequence of cones to be collapsed
+                    // into a single nonnegative cone.
+                    SupportedConeT::NonnegativeConeT(dim) => {
+                        collapse(&mut iter, &mut newcones, *dim)
+                    }
+                    SupportedConeT::SecondOrderConeT(dim) if *dim == 1 => {
+                        collapse(&mut iter, &mut newcones, *dim)
+                    }
+                    #[cfg(feature = "sdp")]
+                    SupportedConeT::PSDTriangleConeT(dim) if *dim == 1 => {
+                        collapse(&mut iter, &mut newcones, *dim)
+                    }
+
+                    // everything else
+                    _ => newcones.push(cone.clone()),
+                }
+            }
+        }
+        newcones.shrink_to_fit();
+        newcones
     }
 }
 
@@ -255,5 +318,135 @@ fn test_cone_ranges() {
 
     for (rng, conerng) in std::iter::zip(rngs.iter(), cones.rng_cones_iter()) {
         assert_eq!(*rng, conerng);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new_collapsed_no_changes() {
+        let cones = vec![
+            SupportedConeT::<f64>::NonnegativeConeT(3),
+            SupportedConeT::SecondOrderConeT(4),
+            SupportedConeT::ExponentialConeT(),
+        ];
+
+        let expected = cones.clone();
+        let result = SupportedConeT::new_collapsed(&cones);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_new_collapsed_consolidate_nonnegative() {
+        let cones = vec![
+            SupportedConeT::<f64>::NonnegativeConeT(3),
+            SupportedConeT::NonnegativeConeT(2),
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+
+        let expected = vec![
+            SupportedConeT::<f64>::NonnegativeConeT(5),
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+        let result = SupportedConeT::new_collapsed(&cones);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_new_collapsed_remove_empty() {
+        let cones = vec![
+            SupportedConeT::<f64>::NonnegativeConeT(3),
+            SupportedConeT::ZeroConeT(0),
+            SupportedConeT::SecondOrderConeT(4),
+            SupportedConeT::NonnegativeConeT(0),
+        ];
+
+        let expected = vec![
+            SupportedConeT::NonnegativeConeT(3),
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+        let result = SupportedConeT::new_collapsed(&cones);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_new_collapsed_soc_to_nonnegative() {
+        let cones = vec![
+            SupportedConeT::<f64>::SecondOrderConeT(1),
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+
+        let expected = vec![
+            SupportedConeT::NonnegativeConeT(1),
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+        let result = SupportedConeT::new_collapsed(&cones);
+
+        assert_eq!(result, expected);
+    }
+
+    #[cfg(feature = "sdp")]
+    #[test]
+    fn test_new_collapsed_psd_to_nonnegative() {
+        let cones = vec![
+            SupportedConeT::<f64>::PSDTriangleConeT(1),
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+
+        let expected = vec![
+            SupportedConeT::NonnegativeConeT(1),
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+        let result = SupportedConeT::new_collapsed(&cones);
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_new_collapsed_mixed() {
+        let cones = vec![
+            SupportedConeT::<f64>::SecondOrderConeT(1),
+            SupportedConeT::NonnegativeConeT(3),
+            SupportedConeT::NonnegativeConeT(2),
+            SupportedConeT::ExponentialConeT(),
+            SupportedConeT::NonnegativeConeT(0),
+            SupportedConeT::SecondOrderConeT(1),
+        ];
+
+        let expected = vec![
+            SupportedConeT::NonnegativeConeT(6),
+            SupportedConeT::ExponentialConeT(),
+            SupportedConeT::NonnegativeConeT(1),
+        ];
+        let result = SupportedConeT::new_collapsed(&cones);
+
+        assert_eq!(result, expected);
+    }
+
+    #[cfg(feature = "sdp")]
+    #[test]
+    fn test_new_collapsed_mixed_sdp() {
+        let cones = vec![
+            SupportedConeT::<f64>::NonnegativeConeT(3),
+            SupportedConeT::NonnegativeConeT(2),
+            SupportedConeT::ZeroConeT(0),
+            SupportedConeT::SecondOrderConeT(1),
+            SupportedConeT::PSDTriangleConeT(1),
+            SupportedConeT::SecondOrderConeT(4),
+            SupportedConeT::NonnegativeConeT(0),
+        ];
+
+        let expected = vec![
+            SupportedConeT::NonnegativeConeT(7),
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+        let result = SupportedConeT::new_collapsed(&cones);
+
+        assert_eq!(result, expected);
     }
 }
