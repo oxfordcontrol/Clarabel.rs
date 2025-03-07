@@ -8,7 +8,7 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 
 ## [0.11.0] - 2024-07-03
 
-### What's Changed
+### Changed
 
 - Implemented LDL :auto select as default [#162](https://github.com/oxfordcontrol/Clarabel.rs/pull/162)
 
@@ -24,12 +24,12 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 
 ## [0.10.0] - 2024-03-02
 
-## What's Changed
+### Changed
 - fix socp line search failure case [#141](https://github.com/oxfordcontrol/Clarabel.rs/pull/141)
 - norm unscaling bug fix [#136](https://github.com/oxfordcontrol/Clarabel.rs/pull/136)
 - added `max_threads` to settings
 
-## Rust-specific changes
+### Rust-specific changes
 - force mkl LP64 format (32 bit ints) [#130](https://github.com/oxfordcontrol/Clarabel.rs/pull/130)
 - python 3.7/3.8 EOL updates [#147](https://github.com/oxfordcontrol/Clarabel.rs/pull/147)
 - enable CSC diagonal counting for triu/tril [#145](https://github.com/oxfordcontrol/Clarabel.rs/pull/145)
@@ -49,10 +49,10 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 
 ## [0.9.0] - 2024-01-06
 
-## What's Changed
+### Changed
 - Read/write problems to JSON files [#111](https://github.com/oxfordcontrol/Clarabel.rs/pull/111)
 
-## Rust specific changes
+### Rust specific changes
 - validation tools for solver settings [#113](https://github.com/oxfordcontrol/Clarabel.rs/pull/113)
 
 - adds feature to include supernodal LDL solver from `faer-rs` [#112](https://github.com/oxfordcontrol/Clarabel.rs/pull/112)
