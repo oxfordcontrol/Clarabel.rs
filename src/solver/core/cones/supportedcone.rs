@@ -116,22 +116,18 @@ where
         {
             let mut total_dim = init_dim;
             while let Some(next_cone) = iter.peek() {
-                match next_cone {
-                    // empty cones
-                    SupportedConeT::ZeroConeT(0)
-                    | SupportedConeT::NonnegativeConeT(0)
-                    | SupportedConeT::SecondOrderConeT(0) => {}
-                    #[cfg(feature = "sdp")]
-                    SupportedConeT::PSDTriangleConeT(0) => {}
+                // skip empty cones
+                if next_cone.nvars() != 0 {
+                    match next_cone {
+                        // collapsible cones.
+                        SupportedConeT::NonnegativeConeT(dim) => total_dim += dim,
+                        SupportedConeT::SecondOrderConeT(1) => total_dim += 1,
+                        #[cfg(feature = "sdp")]
+                        SupportedConeT::PSDTriangleConeT(1) => total_dim += 1,
 
-                    // collapsible cones.
-                    SupportedConeT::NonnegativeConeT(dim) => total_dim += dim,
-                    SupportedConeT::SecondOrderConeT(1) => total_dim += 1,
-                    #[cfg(feature = "sdp")]
-                    SupportedConeT::PSDTriangleConeT(1) => total_dim += 1,
-
-                    // stop when we hit a non-collapsible cone
-                    _ => break,
+                        // stop when we hit a non-collapsible cone
+                        _ => break,
+                    }
                 }
                 iter.next();
             }
@@ -139,28 +135,25 @@ where
         }
 
         while let Some(cone) = iter.next() {
-            match cone {
-                // empty cones
-                SupportedConeT::ZeroConeT(0)
-                | SupportedConeT::NonnegativeConeT(0)
-                | SupportedConeT::SecondOrderConeT(0) => {}
-                #[cfg(feature = "sdp")]
-                SupportedConeT::PSDTriangleConeT(0) => {}
+            if cone.nvars() != 0 {
+                match cone {
+                    // collapsible cones.   These are cones that can serve
+                    // as the first term in a sequence of cones to be collapsed
+                    // into a single nonnegative cone.
+                    SupportedConeT::NonnegativeConeT(dim) => {
+                        collapse(&mut iter, &mut newcones, *dim)
+                    }
+                    SupportedConeT::SecondOrderConeT(dim) if *dim == 1 => {
+                        collapse(&mut iter, &mut newcones, *dim)
+                    }
+                    #[cfg(feature = "sdp")]
+                    SupportedConeT::PSDTriangleConeT(dim) if *dim == 1 => {
+                        collapse(&mut iter, &mut newcones, *dim)
+                    }
 
-                // collapsible cones.   These are cones that can serve
-                // as the first term in a sequence of cones to be collapsed
-                // into a single nonnegative cone.
-                SupportedConeT::NonnegativeConeT(dim) => collapse(&mut iter, &mut newcones, *dim),
-                SupportedConeT::SecondOrderConeT(dim) if *dim == 1 => {
-                    collapse(&mut iter, &mut newcones, *dim)
+                    // everything else
+                    _ => newcones.push(cone.clone()),
                 }
-                #[cfg(feature = "sdp")]
-                SupportedConeT::PSDTriangleConeT(dim) if *dim == 1 => {
-                    collapse(&mut iter, &mut newcones, *dim)
-                }
-
-                // everything else
-                _ => newcones.push(cone.clone()),
             }
         }
         newcones.shrink_to_fit();
