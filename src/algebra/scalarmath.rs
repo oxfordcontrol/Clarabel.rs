@@ -20,7 +20,7 @@ impl<T: FloatT> ScalarMath for T {
     }
 }
 
-pub(crate) fn triangular_number(k: usize) -> usize {
+pub(crate) const fn triangular_number(k: usize) -> usize {
     (k * (k + 1)) >> 1
 }
 

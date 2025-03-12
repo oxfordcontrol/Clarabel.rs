@@ -88,7 +88,7 @@ where
 
     //convert row col coordinate to triu index
     #[inline]
-    pub fn index_linear(idx: (usize, usize)) -> usize {
+    pub const fn index_linear(idx: (usize, usize)) -> usize {
         let (r, c) = idx;
         if r < c {
             r + triangular_number(c)
@@ -107,9 +107,6 @@ where
     //
     //  NB: this is only marginally slower than the explicit
     //  3x3 LDL decomposition, which would avoid sqrts.
-    //  This might be faster if the double indexing were also
-    //  unrolled to the underlying linear index, but it would
-    //  then be even more unreadable and probably not worth it.
 
     pub fn cholesky_3x3_explicit_factor(&mut self, A: &DenseMatrixSym3<T>) -> bool {
         // PJG: This should return Result
