@@ -20,12 +20,14 @@ pub(crate) struct DenseMatrixSym3<T> {
 impl<T: FloatT> Index<(usize, usize)> for DenseMatrixSym3<T> {
     type Output = T;
 
+    #[inline]
     fn index(&self, idx: (usize, usize)) -> &Self::Output {
         &self.data[Self::index_linear(idx)]
     }
 }
 
 impl<T: FloatT> IndexMut<(usize, usize)> for DenseMatrixSym3<T> {
+    #[inline]
     fn index_mut(&mut self, idx: (usize, usize)) -> &mut Self::Output {
         &mut self.data[Self::index_linear(idx)]
     }
