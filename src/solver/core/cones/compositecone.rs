@@ -312,7 +312,7 @@ where
         let mut innerfcn = |α: T, symcond: bool| -> T {
             let mut α = α;
             for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
-                if cone.is_symmetric() == symcond {
+                if cone.is_symmetric() != symcond {
                     continue;
                 }
                 let (dzi, dsi) = (&dz[rng.clone()], &ds[rng.clone()]);
