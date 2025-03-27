@@ -161,6 +161,24 @@ where
         self.κ += α * step.κ;
     }
 
+    fn get_variables(&self) -> &[T] {
+        &self.x
+    }
+
+    fn clone(&self) -> Self {
+        let x = self.x.clone();
+        let s = self.s.clone();
+        let z = self.z.clone();
+        let τ = self.τ;
+        let κ = self.κ;
+
+        Self { x, s, z, τ, κ }
+    }
+
+    fn unscale(&mut self, data: &DefaultProblemData<T>, is_infeasible: bool) {
+        DefaultVariables::unscale(self, data, is_infeasible);
+    }
+
     fn symmetric_initialization(&mut self, cones: &mut CompositeCone<T>) {
         _shift_to_cone_interior(&mut self.s, cones, PrimalOrDualCone::PrimalCone);
         _shift_to_cone_interior(&mut self.z, cones, PrimalOrDualCone::DualCone);

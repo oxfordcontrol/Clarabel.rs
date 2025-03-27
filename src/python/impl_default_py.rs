@@ -331,7 +331,7 @@ impl PySolverStatus {
 // Solver Settings
 // ----------------------------------
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 #[pyclass(name = "DefaultSettings")]
 pub struct PyDefaultSettings {
     #[pyo3(get, set)]
@@ -438,6 +438,59 @@ pub struct PyDefaultSettings {
     pub chordal_decomposition_compact: bool,
     #[pyo3(get, set)]
     pub chordal_decomposition_complete_dual: bool,
+    // Added callback field so Python can supply a callback.
+    #[pyo3(get, set)]
+    pub callback: Option<PyObject>,
+}
+
+impl Clone for PyDefaultSettings {
+    fn clone(&self) -> Self {
+        Python::with_gil(|py| PyDefaultSettings {
+            max_iter: self.max_iter,
+            time_limit: self.time_limit,
+            verbose: self.verbose,
+            max_step_fraction: self.max_step_fraction,
+            tol_gap_abs: self.tol_gap_abs,
+            tol_gap_rel: self.tol_gap_rel,
+            tol_feas: self.tol_feas,
+            tol_infeas_abs: self.tol_infeas_abs,
+            tol_infeas_rel: self.tol_infeas_rel,
+            tol_ktratio: self.tol_ktratio,
+            reduced_tol_gap_abs: self.reduced_tol_gap_abs,
+            reduced_tol_gap_rel: self.reduced_tol_gap_rel,
+            reduced_tol_feas: self.reduced_tol_feas,
+            reduced_tol_infeas_abs: self.reduced_tol_infeas_abs,
+            reduced_tol_infeas_rel: self.reduced_tol_infeas_rel,
+            reduced_tol_ktratio: self.reduced_tol_ktratio,
+            equilibrate_enable: self.equilibrate_enable,
+            equilibrate_max_iter: self.equilibrate_max_iter,
+            equilibrate_min_scaling: self.equilibrate_min_scaling,
+            equilibrate_max_scaling: self.equilibrate_max_scaling,
+            linesearch_backtrack_step: self.linesearch_backtrack_step,
+            min_switch_step_length: self.min_switch_step_length,
+            min_terminate_step_length: self.min_terminate_step_length,
+            max_threads: self.max_threads,
+            direct_kkt_solver: self.direct_kkt_solver,
+            direct_solve_method: self.direct_solve_method.clone(),
+            static_regularization_enable: self.static_regularization_enable,
+            static_regularization_constant: self.static_regularization_constant,
+            static_regularization_proportional: self.static_regularization_proportional,
+            dynamic_regularization_enable: self.dynamic_regularization_enable,
+            dynamic_regularization_eps: self.dynamic_regularization_eps,
+            dynamic_regularization_delta: self.dynamic_regularization_delta,
+            iterative_refinement_enable: self.iterative_refinement_enable,
+            iterative_refinement_reltol: self.iterative_refinement_reltol,
+            iterative_refinement_abstol: self.iterative_refinement_abstol,
+            iterative_refinement_max_iter: self.iterative_refinement_max_iter,
+            iterative_refinement_stop_ratio: self.iterative_refinement_stop_ratio,
+            presolve_enable: self.presolve_enable,
+            chordal_decomposition_enable: self.chordal_decomposition_enable,
+            chordal_decomposition_merge_method: self.chordal_decomposition_merge_method.clone(),
+            chordal_decomposition_compact: self.chordal_decomposition_compact,
+            chordal_decomposition_complete_dual: self.chordal_decomposition_complete_dual,
+            callback: self.callback.as_ref().map(|cb| cb.clone_ref(py)),
+        })
+    }
 }
 
 #[pymethods]
@@ -512,13 +565,55 @@ impl From<&DefaultSettings<f64>> for PyDefaultSettings {
             chordal_decomposition_merge_method: set.chordal_decomposition_merge_method.clone(),
             chordal_decomposition_compact: set.chordal_decomposition_compact,
             chordal_decomposition_complete_dual: set.chordal_decomposition_complete_dual,
+            // Cannot recover a Python callback from the internal settings.
+            callback: None,
         }
     }
+}
+
+/// --- Helper Function ---
+/// Convert a Python callback (PyObject) into a Rust CallbackWrapper<f64>
+fn python_callback_to_rust(py_callback: PyObject) -> CallbackWrapper<f64> {
+    CallbackWrapper(Some(Box::new(move |x: &[f64], iter: u32| -> bool {
+        Python::with_gil(|py| {
+            // Convert the slice to a Python list using into_pyobject and handle errors
+            let x_py = match x.to_vec().into_pyobject(py) {
+                Ok(obj) => obj,
+                Err(err) => {
+                    err.print(py);
+                    return false;
+                }
+            };
+            // Build the arguments tuple: (x, iteration)
+            let args = (x_py, iter);
+            // Call the Python callback and try to extract an Option<bool>
+            match py_callback.call1(py, args) {
+                Ok(result) => {
+                    // Extract Option<bool>: if the callback returns None, opt_b will be None.
+                    match result.extract::<Option<bool>>(py) {
+                        Ok(opt_b) => opt_b.unwrap_or(false),
+                        Err(err) => {
+                            err.print(py);
+                            false
+                        }
+                    }
+                }
+                Err(e) => {
+                    e.print(py);
+                    false
+                }
+            }
+        })
+    })))
 }
 
 impl PyDefaultSettings {
     pub(crate) fn to_internal(&self) -> Result<DefaultSettings<f64>, PyErr> {
         // convert python settings -> Rust
+        let callback_converted = self
+            .callback
+            .as_ref()
+            .map(|cb| Python::with_gil(|py| python_callback_to_rust(cb.clone_ref(py).into())));
 
         let settings = DefaultSettings::<f64> {
             max_iter: self.max_iter,
@@ -563,6 +658,7 @@ impl PyDefaultSettings {
             chordal_decomposition_merge_method: self.chordal_decomposition_merge_method.clone(),
             chordal_decomposition_compact: self.chordal_decomposition_compact,
             chordal_decomposition_complete_dual: self.chordal_decomposition_complete_dual,
+            callback: callback_converted,
         };
 
         //manually validate settings from Python side

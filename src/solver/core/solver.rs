@@ -66,7 +66,7 @@ pub enum StepDirection {
 }
 
 /// Scaling strategy used by the solver when
-/// linearizing centrality conditions.  
+/// linearizing centrality conditions.
 #[repr(u32)]
 #[derive(PartialEq, Eq, Clone, Debug, Copy)]
 pub enum ScalingStrategy {
@@ -373,6 +373,24 @@ where
 
             // Copy previous iterate in case the next one is a dud
             self.info.save_prev_iterate(&self.variables,&mut self.prev_vars);
+
+            // Obtain the scaled decision vector.
+            let mut current_variables = self.variables.clone();
+            current_variables.unscale(&self.data, self.info.get_status().is_infeasible());
+
+            let current_x = current_variables.get_variables();
+
+
+            // if callback is provided, call it, use current_x and iter
+            if let Some(ref mut callback_wrapper) = self.settings.core_mut().callback {
+                if let Some(ref mut callback) = callback_wrapper.0 {
+                    // Call the callback with the current decision vector and iteration count.
+                    // If the callback returns `true`, then break out of the loop early.
+                    if callback(current_x, iter) {
+                        break;
+                    }
+                }
+            }
 
             self.variables.add_step(&self.step_lhs, α);
 

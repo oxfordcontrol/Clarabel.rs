@@ -176,7 +176,7 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub chordal_decomposition_enable: bool,
 
-    ///chordal decomposition merge method ("none", "parent_child" or "clique_graph").  
+    ///chordal decomposition merge method ("none", "parent_child" or "clique_graph").
     /// [requires "sdp" feature.]
     #[cfg(feature = "sdp")]
     #[builder(default = r#""clique_graph".to_string()"#)]
@@ -193,6 +193,38 @@ pub struct DefaultSettings<T: FloatT> {
     #[cfg(feature = "sdp")]
     #[builder(default = "true")]
     pub chordal_decomposition_complete_dual: bool,
+
+    /// The callback receives a slice of the decision vector `x` and the iteration number.
+    #[builder(default = "None")]
+    #[serde(skip)]
+    pub callback: Option<CallbackWrapper<T>>,
+}
+
+/// A wrapper for the callback to implement Debug and Clone
+#[derive(Default)]
+pub struct CallbackWrapper<T>(pub Option<Box<dyn FnMut(&[T], u32) -> bool + Send + Sync>>);
+
+impl<T> CallbackWrapper<T> {
+    /// Creates a new `CallbackWrapper` with the provided callback function.
+    pub fn new<F>(callback: F) -> Self
+    where
+        F: FnMut(&[T], u32) -> bool + Send + Sync + 'static,
+    {
+        CallbackWrapper(Some(Box::new(callback)))
+    }
+}
+
+impl<T> Clone for CallbackWrapper<T> {
+    fn clone(&self) -> Self {
+        // Cloning a `Box<dyn FnMut>` is not directly possible, so we clone the `Option` as `None`.
+        CallbackWrapper(None)
+    }
+}
+
+impl<T> std::fmt::Debug for CallbackWrapper<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CallbackWrapper").finish()
+    }
 }
 
 impl<T> Default for DefaultSettings<T>
