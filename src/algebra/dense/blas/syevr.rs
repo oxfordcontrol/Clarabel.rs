@@ -88,7 +88,7 @@ where
         let vl = T::zero(); // eig value lb (range = A => not used)
         let vu = T::zero(); // eig value ub (range = A => not used)
         let il = 0_i32; // eig interval lb (range = A => not used)
-        let iu = 0_i32; // eig interval lb (range = A => not used)
+        let iu = 0_i32; // eig interval ub (range = A => not used)
         let abstol = -T::one(); // forces default tolerance
         let m = &mut 0_i32; // returns # of computed eigenvalues
         let w = &mut self.λ; // eigenvalues go here

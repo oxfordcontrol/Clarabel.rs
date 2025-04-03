@@ -94,7 +94,7 @@ where
         for i in 0..2 {
             // iwork is only used for the DivideAndConquer BLAS call
             // and should always be 8*min(m,n) elements in that case.
-            // This will *not* shrink iwork in the case that the engines
+            // This will *not* shrink iwork in the case that the engine's
             // algorithm is switched back and forth
             if self.algorithm == SVDEngineAlgorithm::DivideAndConquer {
                 iwork.resize(8 * min(m, n) as usize, 0);
