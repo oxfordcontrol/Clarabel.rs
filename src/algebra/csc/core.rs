@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::permute;
 use crate::algebra::utils::sortperm_by;
+use crate::algebra::{permute, MatrixTriangle, TriangularMatrixChecks};
 use crate::algebra::{Adjoint, MatrixShape, ShapedMatrix, SparseFormatError, Symmetric};
 use num_traits::Num;
 use std::iter::{repeat, zip};
@@ -294,10 +294,26 @@ where
         Adjoint { src: self }
     }
 
-    /// symmetric view
-    pub fn sym(&self) -> Symmetric<'_, Self> {
-        debug_assert!(self.is_triu());
-        Symmetric { src: self }
+    /// symmetric view (selects upper or lower triangle source)
+    pub fn sym(&self, uplo: MatrixTriangle) -> Symmetric<'_, Self> {
+        match uplo {
+            MatrixTriangle::Triu => {
+                debug_assert!(self.is_triu());
+            }
+            MatrixTriangle::Tril => {
+                debug_assert!(self.is_tril());
+            }
+        }
+        Symmetric { src: self, uplo }
+    }
+
+    /// symmetric view (assume upper triangle source)
+    pub fn sym_up(&self) -> Symmetric<'_, Self> {
+        self.sym(MatrixTriangle::Triu)
+    }
+    /// symmetric view (assume lower triangle source)
+    pub fn sym_lo(&self) -> Symmetric<'_, Self> {
+        self.sym(MatrixTriangle::Tril)
     }
 
     /// Check that matrix data is canonically formatted.
@@ -524,25 +540,6 @@ where
         CscMatrix::new(m, n, colptr, rowval, nzval)
     }
 
-    /// True if the matrix is upper triangular
-    pub fn is_triu(&self) -> bool {
-        // check lower triangle for any structural entries, regardless
-        // of the values that may be assigned to them
-        for col in 0..self.ncols() {
-            //start / stop indices for the current column
-            let first = self.colptr[col];
-            let last = self.colptr[col + 1];
-            let rows = &self.rowval[first..last];
-
-            // number of entries on or above diagonal in this column,
-            // shifted by 1 (i.e. colptr keeps a 0 in the first column)
-            if rows.iter().any(|&row| row > col) {
-                return false;
-            }
-        }
-        true
-    }
-
     /// Returns the value at the given (row,col) index as an Option.
     /// Returns None if the given index is not a structural nonzero.
     ///
@@ -609,6 +606,39 @@ where
     }
 }
 
+impl<T> TriangularMatrixChecks for CscMatrix<T> {
+    fn is_triu(&self) -> bool {
+        // check lower triangle for any structural entries, regardless
+        // of the values that may be assigned to them
+        for col in 0..self.ncols() {
+            //start / stop indices for the current column
+            let first = self.colptr[col];
+            let last = self.colptr[col + 1];
+            let rows = &self.rowval[first..last];
+
+            if rows.iter().any(|&row| row > col) {
+                return false;
+            }
+        }
+        true
+    }
+    fn is_tril(&self) -> bool {
+        // check upper triangle for any structural entries, regardless
+        // of the values that may be assigned to them
+        for col in 0..self.ncols() {
+            //start / stop indices for the current column
+            let first = self.colptr[col];
+            let last = self.colptr[col + 1];
+            let rows = &self.rowval[first..last];
+
+            if rows.iter().any(|&row| row < col) {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 impl<T> ShapedMatrix for CscMatrix<T> {
     fn nrows(&self) -> usize {
         self.m
@@ -672,6 +702,39 @@ where
         A.backshift_colptrs();
         A
     }
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_matrix_istriu_istril() {
+    
+    let A = CscMatrix::from(&[
+        [1., 2., 3.], 
+        [0., 2., 0.], 
+        [0., 0., 1.]]); 
+
+    assert!(A.is_triu());
+    assert!(!A.is_tril());
+    assert!(A.sym_up().is_triu_src());
+    assert!(!A.sym_up().is_tril_src());
+
+    let A = CscMatrix::from(&[
+        [1., 2., 3.], 
+        [0., 2., 0.], 
+        [1., 0., 1.]]); 
+
+    assert!(!A.is_triu());
+    assert!(!A.is_tril());
+
+    let A = CscMatrix::from(&[
+        [1., 0., 0.], 
+        [0., 2., 0.], 
+        [1., 1., 1.]]); 
+
+    assert!(!A.is_triu());
+    assert!(A.is_tril());
+    assert!(!A.sym_lo().is_triu_src());
+    assert!(A.sym_lo().is_tril_src());
 }
 
 #[test]

@@ -60,30 +60,6 @@ impl<T: FloatT> MatrixMath<T> for Matrix<T> {
             }
         }
     }
-
-    // PJG: this should probably only be implemented as part of
-    // some SymmetricMatrixMath trait.  Uses upper triangle only
-    // and assumes that the rest is symmetric.
-    fn quad_form(&self, y: &[T], x: &[T]) -> T {
-        assert!(self.is_square());
-        let mut out = T::zero();
-        for col in 0..self.ncols() {
-            let mut tmp1 = T::zero();
-            let mut tmp2 = T::zero();
-            for row in 0..=col {
-                let Mv = self[(row, col)];
-                if row < col {
-                    tmp1 += Mv * x[row];
-                    tmp2 += Mv * y[row];
-                } else {
-                    //diagonal term
-                    out += Mv * x[col] * y[col];
-                }
-            }
-            out += tmp1 * y[col] + tmp2 * x[col];
-        }
-        out
-    }
 }
 
 impl<T: FloatT> MatrixMathMut<T> for Matrix<T> {
@@ -187,23 +163,6 @@ MATM: DenseMatrix<T>,
     }
 }
 
-
-#[test]
-fn test_quad_form() {
-    let mut A = Matrix::from(&[
-        [1., 4.], //
-        [4., 5.], //
-    ]);
-
-    let x = vec![1.0, 2.0];
-    let y = vec![3.0, 4.0];
-    assert!(A.quad_form(&x, &y) == 83.0);
-
-    //remove lower triangle part and check again.
-    //should not change the result.
-    A[(1, 0)] = 0.0;
-    assert!(A.quad_form(&x, &y) == 83.0);
-}
 
 #[test]
 fn test_row_col_sums_and_norms() {

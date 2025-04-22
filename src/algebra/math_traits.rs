@@ -124,10 +124,14 @@ pub(crate) trait MatrixVectorMultiply<T> {
     fn gemv(&self, y: &mut [T], x: &[T], a: T, b: T);
 }
 
-pub(crate) trait SymMatrixVectorMultiply<T> {
+pub(crate) trait SymMatrixMath<T> {
     /// BLAS-like symmetric matrix-vector multiply.  Produces `y = a*self*x + b*y`.  
     /// The matrix source data should be triu.
     fn symv(&self, y: &mut [T], x: &[T], a: T, b: T);
+
+    /// Produces `y^T*M*x` for a symmetric `M`.
+    ///
+    fn quad_form(&self, y: &[T], x: &[T]) -> T;
 }
 
 /// Operations on matrices of [`FloatT`](crate::algebra::FloatT)
@@ -167,13 +171,6 @@ pub trait MatrixMath<T> {
     /// a matrix and assign the results to the vector `norms`
     /// without reset
     fn row_norms_no_reset(&self, norms: &mut [T]);
-
-    /// Quadratic form for a symmetric matrix.  Assumes that the
-    /// matrix `M = self` is in upper triangular form, and produces
-    /// `y^T*M*x`
-    ///
-    /// PJG: Maybe this should be on symmetric only.
-    fn quad_form(&self, y: &[T], x: &[T]) -> T;
 }
 
 /// Operations on mutable matrices of [`FloatT`](crate::algebra::FloatT)
