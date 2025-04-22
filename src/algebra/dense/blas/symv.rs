@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::algebra::{
-    DenseMatrix, FloatT, Matrix, MatrixTriangle, MultiplySYMV, ShapedMatrix, Symmetric,
+    DenseMatrix, FloatT, Matrix, MultiplySYMV, ShapedMatrix, Symmetric,
 };
 
 impl<T> MultiplySYMV for Symmetric<'_, Matrix<T>>
@@ -15,7 +15,7 @@ where
         assert!(m == n);
 
         // standard BLAS ?symv arguments for computing matrix-vector product
-        let uplo = MatrixTriangle::Triu.as_blas_char();
+        let uplo = self.uplo.as_blas_char();
         let n = n.try_into().unwrap();
         let a = self.src.data();
         let lda = n;
@@ -38,7 +38,19 @@ macro_rules! generate_test_gsymv {
 
             let x = vec![1., -2., 3.];
             let mut y = vec![-4., -1., 3.];
-            A.sym().symv(&x, &mut y, 2.0, 3.0);
+            A.sym_up().symv(&x, &mut y, 2.0, 3.0);
+            assert_eq!(y, [6.0, 19.0, 33.0]);
+
+            #[rustfmt::skip]
+            let A = Matrix::<$fxx>::from(&[
+                [ 1.,  0.,   0.], 
+                [ 2.,  3.,   0.], 
+                [ 4.,  5.,   6.],
+            ]);
+
+            let x = vec![1., -2., 3.];
+            let mut y = vec![-4., -1., 3.];
+            A.sym_lo().symv(&x, &mut y, 2.0, 3.0);
             assert_eq!(y, [6.0, 19.0, 33.0]);
         } 
     };

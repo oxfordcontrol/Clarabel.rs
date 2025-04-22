@@ -104,6 +104,35 @@ where
     }
 }
 
+impl<S,T> TriangularMatrixChecks for DenseStorageMatrix<S,T>
+where
+    S: AsMut<[T]> + AsRef<[T]>,
+    T: Sized + Num + Copy,
+
+{
+    fn is_triu(&self) -> bool {
+        for c in 0..self.ncols() {
+            for r in (c + 1)..self.nrows() {
+                if self[(r, c)] != T::zero() {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    fn is_tril(&self) -> bool {
+        for c in 0..self.ncols() {
+            for r in 0..c {
+                if self[(r, c)] != T::zero() {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+}
+
 // Methods that required mutable access to the matrix
 
 impl<S,T> DenseStorageMatrix<S,T>
@@ -127,21 +156,26 @@ where
         Adjoint { src: self }
     }
 
-    /// Returns a Symmetric view of a triu matrix
-    pub fn sym(&self) -> Symmetric<'_, Self> {
-        debug_assert!(self.is_triu());
-        Symmetric { src: self }
-    }
-
-    pub fn is_triu(&self) -> bool {
-        for c in 0..self.ncols() {
-            for r in (c + 1)..self.nrows() {
-                if self[(r, c)] != T::zero() {
-                    return false;
-                }
+    /// symmetric view (selects upper or lower triangle source)
+    pub fn sym(&self, uplo: MatrixTriangle) -> Symmetric<'_, Self> {
+        match uplo {
+            MatrixTriangle::Triu => {
+                debug_assert!(self.is_triu());
+            }
+            MatrixTriangle::Tril => {
+                debug_assert!(self.is_tril());
             }
         }
-        true
+        Symmetric { src: self, uplo }
+    }
+
+    /// symmetric view (assume upper triangle source)
+    pub fn sym_up(&self) -> Symmetric<'_, Self> {
+        self.sym(MatrixTriangle::Triu)
+    }
+    /// symmetric view (assume lower triangle source)
+    pub fn sym_lo(&self) -> Symmetric<'_, Self> {
+        self.sym(MatrixTriangle::Tril)
     }
 
     /// self.subsagn(rows,cols,B) sets self[rows,cols] = B
@@ -211,7 +245,9 @@ fn test_matrix_istriu_istril() {
         [0., 0., 1.]]); 
 
     assert!(A.is_triu());
-    assert!(!A.is_triu());
+    assert!(!A.is_tril());
+    assert!(A.sym_up().is_triu_src());
+    assert!(!A.sym_up().is_tril_src());
 
     let A = Matrix::from(&[
         [1., 2., 3.], 
@@ -228,6 +264,8 @@ fn test_matrix_istriu_istril() {
 
     assert!(!A.is_triu());
     assert!(A.is_tril());
+    assert!(!A.sym_lo().is_triu_src());
+    assert!(A.sym_lo().is_tril_src());
 }
 
 #[test]

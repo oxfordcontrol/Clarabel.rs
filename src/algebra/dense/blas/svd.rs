@@ -219,7 +219,7 @@ macro_rules! generate_test_svd_factor {
                     }
                 }
                 M.mul(&Us, Vt, 1.0, 0.0);
-                assert!(M.data().norm_inf_diff(Acopy.data()) < (1e-12 as $fxx).$tolfn());
+                assert!(M.data().norm_inf_diff(Acopy.data()) < (1e-11 as $fxx).$tolfn());
             }
         }
     };

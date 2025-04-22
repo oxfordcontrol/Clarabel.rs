@@ -18,6 +18,14 @@ pub(crate) trait ShapedMatrix {
     }
 }
 
+/// Checks for upper and lower triangular matrix data
+pub trait TriangularMatrixChecks {
+    /// True if the matrix is lower triangular
+    fn is_triu(&self) -> bool;
+    /// True if the matrix is lower triangular
+    fn is_tril(&self) -> bool;
+}
+
 /// Blockwise matrix concatenation
 pub trait BlockConcatenate: Sized {
     /// horizontal matrix concatenation

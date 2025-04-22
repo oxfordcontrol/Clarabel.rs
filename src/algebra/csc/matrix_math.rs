@@ -223,8 +223,8 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, uplo: MatrixTriangle, y: &[T], x:
     let mut out = T::zero();
 
     let cmp = match uplo {
-        MatrixTriangle::Triu => |row: usize, col: usize| row < col,
-        MatrixTriangle::Tril => |row: usize, col: usize| row > col,
+        MatrixTriangle::Triu => usize::lt,
+        MatrixTriangle::Tril => usize::gt,
     };
 
     for col in 0..M.n {
@@ -241,7 +241,7 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, uplo: MatrixTriangle, y: &[T], x:
         let rows = &M.rowval[first..last];
 
         for (&Mv, &row) in zip(values, rows) {
-            if cmp(row, col) {
+            if cmp(&row, &col) {
                 //triangular terms only
                 tmp1 += Mv * x[row];
                 tmp2 += Mv * y[row];
