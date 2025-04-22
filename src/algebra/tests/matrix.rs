@@ -273,11 +273,15 @@ fn test_quad_form() {
     let x = vec![1., 2., -3., -4.];
     let y = vec![0., 1., -1., 2.];
 
-    let val = Aup.sym_up().quad_form(&y, &x);
-    assert_eq!(val, 15.);
+    let val1 = Aup.sym_up().quad_form(&y, &x);
+    let val2 = Aup.sym(MatrixTriangle::Triu).quad_form(&y, &x);
+    assert_eq!(val1, 15.);
+    assert_eq!(val2, 15.);
 
-    let val = Alo.sym_lo().quad_form(&y, &x);
-    assert_eq!(val, 15.);
+    let val1 = Alo.sym_lo().quad_form(&y, &x);
+    let val2 = Alo.sym(MatrixTriangle::Tril).quad_form(&y, &x);
+    assert_eq!(val1, 15.);
+    assert_eq!(val2, 15.);
 }
 
 #[test]
