@@ -334,10 +334,10 @@ fn _compute_regularizer<T: FloatT>(diag_kkt: &[T], settings: &CoreSettings<T>) -
 //  computes e = b - Kξ, overwriting the first argument
 //  and returning its norm
 
-fn _get_refine_error<'a, T: FloatT>(
+fn _get_refine_error<T: FloatT>(
     e: &mut [T],
     b: &[T],
-    KKTsym: &Symmetric<'a, CscMatrix<T>>,
+    KKTsym: &Symmetric<CscMatrix<T>>,
     ξ: &mut [T],
 ) -> T {
     // Note that K is only triu data, so need to
