@@ -203,7 +203,7 @@ where
 
 #[test]
 #[rustfmt::skip]
-fn test_matrix_istriu() {
+fn test_matrix_istriu_istril() {
     
     let A = Matrix::from(&[
         [1., 2., 3.], 
@@ -211,6 +211,7 @@ fn test_matrix_istriu() {
         [0., 0., 1.]]); 
 
     assert!(A.is_triu());
+    assert!(!A.is_triu());
 
     let A = Matrix::from(&[
         [1., 2., 3.], 
@@ -218,6 +219,15 @@ fn test_matrix_istriu() {
         [1., 0., 1.]]); 
 
     assert!(!A.is_triu());
+    assert!(!A.is_tril());
+
+    let A = Matrix::from(&[
+        [1., 0., 0.], 
+        [0., 2., 0.], 
+        [1., 1., 1.]]); 
+
+    assert!(!A.is_triu());
+    assert!(A.is_tril());
 }
 
 #[test]

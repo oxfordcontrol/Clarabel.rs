@@ -43,8 +43,11 @@ pub struct DirectLDLKKTSolver<T> {
     // on the KKT matrix block diagonal
     Hsblocks: Vec<T>,
 
-    //unpermuted KKT matrix
+    // unpermuted KKT matrix
     KKT: CscMatrix<T>,
+
+    // triangular storage shape for KKT
+    KKTuplo: MatrixTriangle,
 
     // the direct linear LDL solver
     ldlsolver: BoxedDirectLDLSolver<T>,
@@ -111,6 +114,7 @@ where
             dsigns,
             Hsblocks,
             KKT,
+            KKTuplo: kktshape,
             ldlsolver,
             diagonal_regularizer,
         }
@@ -272,11 +276,13 @@ where
         let maxiter = settings.iterative_refinement_max_iter;
         let stopratio = settings.iterative_refinement_stop_ratio;
 
-        let K = &self.KKT;
+        let KKT = &self.KKT;
+        let KKTsym = KKT.sym(self.KKTuplo);
+
         let normb = b.norm_inf();
 
         //compute the initial error
-        let mut norme = _get_refine_error(e, b, K, x);
+        let mut norme = _get_refine_error(e, b, &KKTsym, x);
 
         if !norme.is_finite() {
             return false;
@@ -291,13 +297,13 @@ where
             let lastnorme = norme;
 
             //make a refinement
-            self.ldlsolver.solve(K, dx, e);
+            self.ldlsolver.solve(KKT, dx, e);
 
             //prospective solution is x + dx.  Use dx space to
             // hold it for a check before applying to x
             dx.axpby(T::one(), x, T::one());
 
-            norme = _get_refine_error(e, b, K, dx);
+            norme = _get_refine_error(e, b, &KKTsym, dx);
 
             if !norme.is_finite() {
                 return false;
@@ -328,13 +334,17 @@ fn _compute_regularizer<T: FloatT>(diag_kkt: &[T], settings: &CoreSettings<T>) -
 //  computes e = b - Kξ, overwriting the first argument
 //  and returning its norm
 
-fn _get_refine_error<T: FloatT>(e: &mut [T], b: &[T], K: &CscMatrix<T>, ξ: &mut [T]) -> T {
+fn _get_refine_error<'a, T: FloatT>(
+    e: &mut [T],
+    b: &[T],
+    KKTsym: &Symmetric<'a, CscMatrix<T>>,
+    ξ: &mut [T],
+) -> T {
     // Note that K is only triu data, so need to
     // be careful when computing the residual here
 
     e.copy_from(b);
-    let Ksym = K.sym();
-    Ksym.symv(e, ξ, -T::one(), T::one()); //#  e = b - Kξ
+    KKTsym.symv(e, ξ, -T::one(), T::one()); //#  e = b - Kξ
 
     e.norm_inf()
 }
