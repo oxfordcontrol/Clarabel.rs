@@ -49,7 +49,7 @@ where
     }
 }
 
-impl<T> DirectLDLSolverReqs<T> for QDLDLDirectLDLSolver<T>
+impl<T> DirectLDLSolverReqs for QDLDLDirectLDLSolver<T>
 where
     T: FloatT,
 {
@@ -91,7 +91,7 @@ where
         self.factors.offset_values(index, offset, signs);
     }
 
-    fn solve(&mut self, _kkt: &CscMatrix<T>, x: &mut [T], b: &[T]) {
+    fn solve(&mut self, _kkt: &CscMatrix<T>, x: &mut [T], b: &mut [T]) {
         // NB: QDLDL solves in place
         x.copy_from(b);
         self.factors.solve(x);

@@ -1,9 +1,6 @@
 #![allow(non_snake_case)]
 
-#[cfg(feature = "faer-sparse")]
-use super::ldlsolvers::faer_ldl::*;
-
-use super::ldlsolvers::{auto::*, qdldl::*};
+use super::ldlsolvers::config::LDLConfiguration;
 use super::*;
 use crate::solver::core::kktsolvers::{HasLinearSolverInfo, KKTSolver, LinearSolverInfo};
 use crate::solver::core::{cones::*, CoreSettings};
@@ -70,7 +67,7 @@ where
     ) -> Self {
         // get a constructor for the LDL solver we should use,
         // and also the matrix shape it requires
-        let (kktshape, ldl_ctor) = get_ldlsolver_config(settings);
+        let (kktshape, ldl_ctor) = T::get_ldlsolver_config(settings);
 
         //construct a KKT matrix of the right shape
         let (KKT, map) = assemble_kkt_matrix(P, A, cones, kktshape);
@@ -174,7 +171,7 @@ where
         lhsz: Option<&mut [T]>,
         settings: &CoreSettings<T>,
     ) -> bool {
-        self.ldlsolver.solve(&self.KKT, &mut self.x, &self.b);
+        self.ldlsolver.solve(&self.KKT, &mut self.x, &mut self.b);
 
         let is_success = {
             if settings.iterative_refinement_enable {
@@ -347,46 +344,6 @@ fn _get_refine_error<T: FloatT>(
     KKTsym.symv(e, ξ, -T::one(), T::one()); //#  e = b - Kξ
 
     e.norm_inf()
-}
-
-type LDLConstructor<T> =
-    fn(&CscMatrix<T>, &[i8], &CoreSettings<T>, Option<Vec<usize>>) -> BoxedDirectLDLSolver<T>;
-
-fn get_ldlsolver_config<T>(settings: &CoreSettings<T>) -> (MatrixTriangle, LDLConstructor<T>)
-where
-    T: FloatT,
-{
-    //The Julia version implements this using a module scope dictionary,
-    //which allows users to register custom solver types.  That seems much
-    //harder to do in Rust since a static mutable Hashmap is unsafe.  For
-    //now, we use a fixed lookup table, so any new supported solver types
-    //supported must be added here.   It should be possible to allow a
-    //"custom" LDL solver in the settings in well, whose constructor and
-    //and matrix shape could then be registered as some (probably hidden)
-    //options in the settings.
-
-    let ldlptr: LDLConstructor<T>;
-    let kktshape: MatrixTriangle;
-
-    match settings.direct_solve_method.as_str() {
-        "auto" => {
-            kktshape = AutoDirectLDLSolver::<T>::required_matrix_shape();
-            ldlptr = |M, D, S, P| AutoDirectLDLSolver::<T>::new(M, D, S, P);
-        }
-        "qdldl" => {
-            kktshape = QDLDLDirectLDLSolver::<T>::required_matrix_shape();
-            ldlptr = |M, D, S, P| Box::new(QDLDLDirectLDLSolver::<T>::new(M, D, S, P));
-        }
-        #[cfg(feature = "faer-sparse")]
-        "faer" => {
-            kktshape = FaerDirectLDLSolver::<T>::required_matrix_shape();
-            ldlptr = |M, D, S, P| Box::new(FaerDirectLDLSolver::<T>::new(M, D, S, P));
-        }
-        _ => {
-            panic! {"Unrecognized LDL solver type"};
-        }
-    }
-    (kktshape, ldlptr)
 }
 
 // update entries of the KKT matrix using the given index into its CSC representation.

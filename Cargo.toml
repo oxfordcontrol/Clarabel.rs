@@ -59,8 +59,13 @@ julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse", "buildinf
 
 python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde", "faer-sparse", "buildinfo"]
 
-#compile with faer supernodal solver option
+# compile with faer supernodal solver option
 faer-sparse = ["dep:faer", "dep:faer-traits"]
+
+# various pardiso options
+pardiso-panua = ["pardiso-wrapper/panua"]
+pardiso-mkl = ["pardiso-wrapper/mkl"]
+pardiso = ["pardiso-panua", "pardiso-mkl"]
 
 # -------------------------------
 # SDP configuration
@@ -102,6 +107,11 @@ optional = true
 [dependencies.faer-traits]
 version = "0.21"
 optional = true 
+
+[dependencies.pardiso-wrapper]
+version = "0.1"
+optional = true
+path = "../pardiso-wrapper"
 
 
 # -------------------------------
