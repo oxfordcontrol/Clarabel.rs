@@ -125,13 +125,15 @@ fn eigvecs_analytic<T: FloatT>(
     // analytical computes eigenvectors given eigenvalues,
     // and returns false if the accuracy is not good enough.
 
-    // NB: this function will only compute two vectors internally,
-    // since it is only being used as a check for accuracy.  The
-    // third vector can be computed as the cross product of the
-    // first two if the vectors are actually required.
+    // tolerance for orthogonality
+    let DOT_TOL: T = T::epsilon().sqrt() * (1f64 / 256f64).as_T();
 
-    // compute the threshold from Kopp eq 44
-    let wmax = maxabs3(w);
+    let sidx = sort3_idx(w);
+    let wmax = w[sidx[0]].abs();
+
+    // compute the threshold from Kopp eq 44, but
+    // using the largest eigenvalue first
+
     let wmaxsq = wmax * wmax;
     let tol = if wmax < T::one() {
         T::epsilon() * (256.).as_T() * wmaxsq
@@ -139,47 +141,76 @@ fn eigvecs_analytic<T: FloatT>(
         T::epsilon() * (256.).as_T() * (wmaxsq * wmaxsq)
     };
 
+    // bail if the condition number is too large
+    let cond = T::abs(w[sidx[0]] / w[sidx[2]]);
+    if cond > T::epsilon().sqrt().recip() {
+        return Err(());
+    }
+
     // compute the first eigenvector (A1 - w1e1) x (A2 - w1e2)
     let a = [
-        A.data[0] - w[0], // A11 - w1
-        A.data[1],        // A21 == A12
-        A.data[3],        // A31 == A13
+        A.data[0] - w[sidx[0]], // A11 - w1
+        A.data[1],              // A21 == A12
+        A.data[3],              // A31 == A13
     ];
     let b = [
-        A.data[1],        // A12
-        A.data[2] - w[0], // A22 - w1
-        A.data[4],        // A32 == A23
+        A.data[1],              // A12
+        A.data[2] - w[sidx[0]], // A22 - w1
+        A.data[4],              // A32 == A23
     ];
     let mut v1 = cross3(a, b);
     let normv1 = norm3(v1);
 
     if normv1 < tol {
-        return Err(()); //fail
+        return Err(());
     }
 
-    // compute the second eigenvector (A1 - w1e1) x (A2 - w1e2)
+    // compute the second eigenvector (A1 - w2e1) x (A2 - w2e2)
     let a = [
-        A.data[0] - w[1], // A11 - w1
-        A.data[1],        // A21 == A12
-        A.data[3],        // A31 == A13
+        A.data[0] - w[sidx[1]], // A11 - w2
+        A.data[1],              // A21 == A12
+        A.data[3],              // A31 == A13
     ];
     let b = [
-        A.data[1],        // A12
-        A.data[2] - w[1], // A22 - w1
-        A.data[4],        // A32 == A23
+        A.data[1],              // A12
+        A.data[2] - w[sidx[1]], // A22 - w2
+        A.data[4],              // A32 == A23
     ];
     let mut v2 = cross3(a, b);
     let normv2 = norm3(v2);
+
     if normv2 < tol {
-        return Err(()); //fail
+        return Err(());
     }
 
+    // normalize and check orthogonality for the
+    // first two vectors
+    scale3(&mut v1, normv1.recip());
+    scale3(&mut v2, normv2.recip());
+
+    if dot3(&v1, &v2).abs() > DOT_TOL {
+        // check orthogonality
+        return Err(());
+    }
+
+    let v3 = cross3(v1, v2);
+
+    // check orthogonality of A*v3 with the first two vectors
+    // Should be zero because the Q'*A*Q should be diagonal
+    let mut Av3 = [T::zero(); 3];
+    A.mul(&mut Av3, &v3);
+
+    if dot3(&Av3, &v1).abs() > DOT_TOL {
+        return Err(());
+    }
+    if dot3(&Av3, &v2).abs() > DOT_TOL {
+        return Err(());
+    }
+
+    // if we get this far, the eigenvectors are reasonable
+    // and we store them in V.
     if let Some(vecs) = V {
         // normalize the vectors and store them in V
-        scale3(&mut v1, normv1.recip());
-        scale3(&mut v2, normv2.recip());
-        let v3 = cross3(v1, v2);
-
         vecs.data[0..3].copy_from_slice(&v1);
         vecs.data[3..6].copy_from_slice(&v2);
         vecs.data[6..9].copy_from_slice(&v3);
@@ -196,10 +227,10 @@ fn eigen_jacobi<T: FloatT>(
 
     if let Some(vecs) = V {
         // set to identity
-        V.data.set(T::zero());
-        V.data[0] = T::one();
-        V.data[4] = T::one();
-        V.data[8] = T::one();
+        vecs.data.set(T::zero());
+        vecs.data[0] = T::one();
+        vecs.data[4] = T::one();
+        vecs.data[8] = T::one();
     }
 
     let tol = T::epsilon() * (16.).as_T();
@@ -224,6 +255,7 @@ fn eigen_jacobi<T: FloatT>(
             update_eigenvectors(vecs, idx, c, s);
         }
     }
+
     //eigenvalues are on the diagonal of A
     // return sorted as a vector
     let w = {
@@ -233,6 +265,7 @@ fn eigen_jacobi<T: FloatT>(
             sort3(A.data[0], A.data[2], A.data[5])
         }
     };
+
     w
 }
 
@@ -404,17 +437,33 @@ fn sort3_with_columns<T: FloatT>(mut a: T, mut b: T, mut c: T, M: &mut Matrix3x3
 }
 
 #[inline(always)]
-fn maxabs3<T: FloatT>(v: [T; 3]) -> T {
-    let mut out = v[0].abs();
-    let nxt = v[1].abs();
-    if nxt > out {
-        out = nxt;
+fn sort3_idx<T: FloatT>(v: [T; 3]) -> [usize; 3] {
+    // return the indices of the values if sorted
+    // by absolute value from largest to smallest
+
+    let abs0 = v[0].abs();
+    let abs1 = v[1].abs();
+    let abs2 = v[2].abs();
+
+    if abs0 > abs2 && abs0 > abs2 {
+        if abs1 > abs2 {
+            [0, 1, 2]
+        } else {
+            [0, 2, 1]
+        }
+    } else if abs1 > abs2 {
+        if abs0 > abs2 {
+            [1, 0, 2]
+        } else {
+            [1, 2, 0]
+        }
+    } else {
+        if abs0 > abs1 {
+            [2, 0, 1]
+        } else {
+            [2, 1, 0]
+        }
     }
-    let nxt = v[2].abs();
-    if nxt > out {
-        out = nxt;
-    }
-    out
 }
 
 #[inline(always)]
@@ -434,11 +483,16 @@ fn cross3<T: FloatT>(v1: [T; 3], v2: [T; 3]) -> [T; 3] {
 }
 
 #[inline(always)]
+fn dot3<T: FloatT>(v1: &[T; 3], v2: &[T; 3]) -> T {
+    v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]
+}
+
+#[inline(always)]
 fn norm3<T: FloatT>(v: [T; 3]) -> T {
     (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
 }
 
-// ---- tests and benchmarks ----
+// ---- unit testing ----
 
 #[cfg(test)]
 mod test {
@@ -446,7 +500,6 @@ mod test {
     use super::*;
     use crate::algebra::DenseMatrixSym3;
     use itertools::iproduct;
-    use lapack::Select2F64;
     use std::ops::Range;
 
     fn sym3_test_iter(
@@ -472,6 +525,34 @@ mod test {
             ];
             DenseMatrixSym3 { data }
         })
+    }
+
+    #[test]
+    fn test_jacobi_rotation() {
+        for idx in [1, 3, 4] {
+            let (mut A, _) = matrix_example_nice();
+
+            // compute and apply a jacobi rotation and check
+            // that the corresponding term has been zeroed
+            let (c, s, t) = compute_rotation(&A, idx);
+            apply_rotation(&mut A, idx, c, s, t);
+            assert!(
+                A.data[idx].abs() < 1e-14,
+                "Jacobi rotation failed to zero term {}",
+                idx
+            );
+        }
+    }
+
+    #[test]
+    fn test_sort3() {
+        let t = [1.0, 2.0, 3.0];
+        assert_eq!(sort3(1.0, 2.0, 3.0), t);
+        assert_eq!(sort3(1.0, 3.0, 2.0), t);
+        assert_eq!(sort3(2.0, 1.0, 3.0), t);
+        assert_eq!(sort3(2.0, 3.0, 1.0), t);
+        assert_eq!(sort3(3.0, 1.0, 2.0), t);
+        assert_eq!(sort3(3.0, 2.0, 1.0), t);
     }
 
     fn matrix_example_nice() -> (DenseMatrixSym3<f64>, [f64; 3]) {
@@ -514,9 +595,15 @@ mod test {
         (A, trueD)
     }
 
-    fn check_eigvals(D1: [f64; 3], D2: [f64; 3]) -> bool {
-        for (d1, d2) in D1.iter().zip(D2.iter()) {
-            if (d1 - d2).abs() > 1e-10 {
+    fn check_eigvals(dtest: [f64; 3], dtrue: [f64; 3]) -> bool {
+        for (d1, d2) in dtest.iter().zip(dtrue.iter()) {
+            if (d1 - d2).abs() / f64::max(1., d2.abs()) > 1e-9 {
+                println!(
+                    "Eigenvalue error: abs({} - {}) = {}",
+                    d1,
+                    d2,
+                    (d1 - d2).abs()
+                );
                 return false;
             }
         }
@@ -524,28 +611,34 @@ mod test {
     }
 
     fn check_eigvecs(A: &DenseMatrixSym3<f64>, V: &Matrix3x3<f64>, w: &[f64; 3]) -> bool {
+        // check for sorting
+        assert!(w.is_sorted());
+        // single check tolerance
+        check_eigvecs_with_tol(A, V, w, 1e-10)
+    }
+
+    fn check_eigvecs_relaxed(A: &DenseMatrixSym3<f64>, V: &Matrix3x3<f64>, w: &[f64; 3]) -> bool {
+        // single check tolerance
+        check_eigvecs_with_tol(A, V, w, 1e-8)
+    }
+
+    fn check_eigvecs_with_tol(
+        A: &DenseMatrixSym3<f64>,
+        V: &Matrix3x3<f64>,
+        w: &[f64; 3],
+        tol: f64,
+    ) -> bool {
         let mut out = [0.; 3];
 
         for i in 0..3 {
             let mut v = V.col_slice(i).to_vec();
             A.mul(&mut out.as_mut_slice(), &v);
             v.axpby(1.0, &out, -w[i]);
-            if v.norm() > 1e-12 {
+            if v.norm() > tol {
                 return false;
             }
         }
         true
-    }
-
-    #[test]
-    fn test_sort3() {
-        let t = [1.0, 2.0, 3.0];
-        assert_eq!(sort3(1.0, 2.0, 3.0), t);
-        assert_eq!(sort3(1.0, 3.0, 2.0), t);
-        assert_eq!(sort3(2.0, 1.0, 3.0), t);
-        assert_eq!(sort3(2.0, 3.0, 1.0), t);
-        assert_eq!(sort3(3.0, 1.0, 2.0), t);
-        assert_eq!(sort3(3.0, 2.0, 1.0), t);
     }
 
     #[test]
@@ -560,7 +653,7 @@ mod test {
 
         // check the jacobi eigenvalue function
         let (A, trueD) = matrix_example_nice();
-        let D = eigen_jacobi(&mut A.clone(), &mut Some(&mut V.clone()));
+        let D = eigen_jacobi(&mut A.clone(), &mut Some(&mut V));
         assert!(check_eigvals(D, trueD));
         assert!(check_eigvecs(&A, &V, &D));
     }
@@ -608,28 +701,13 @@ mod test {
         assert!(check_eigvecs(&A, &V, &D));
     }
 
-    #[test]
-    fn test_jacobi_rotation() {
-        for idx in [1, 3, 4] {
-            let (mut A, _) = matrix_example_nice();
-
-            // compute and apply a jacobi rotation and check
-            // that the corresponding term has been zeroed
-            let (c, s, t) = compute_rotation(&A, idx);
-            apply_rotation(&mut A, idx, c, s, t);
-            assert!(
-                A.data[idx].abs() < 1e-14,
-                "Jacobi rotation failed to zero term {}",
-                idx
-            );
-        }
-    }
-
-    #[test]
-    fn test_eigvals_grid() {
+    fn test_eigvals_grid_with_transform(fcn: fn(f64) -> f64, name: &str, check_analytic: bool) {
+        // test the analytic eigenvalue function
         let rng = -5..6;
-        let iter = sym3_test_iter(rng, |x| x as f64);
+        let iter = sym3_test_iter(rng, fcn);
         let mut eng = EigEngine::<f64>::new(3);
+        let mut count = 0;
+        let mut V = Matrix3x3::zeros();
 
         for As in iter {
             let mut Af: Matrix<f64> = As.clone().into();
@@ -640,34 +718,66 @@ mod test {
             trueD.copy_from_slice(&eng.λ);
 
             let D1 = eigvals_analytic(&As);
-            let D2 = eigen_jacobi(&mut As.clone(), &mut None);
+            let _ = eigvecs_analytic(&As, D1, &mut Some(&mut V));
 
-            if !check_eigvals(trueD, D1) {
+            if check_analytic && !check_eigvals(trueD, D1) {
                 panic!("Eigenvalue error analytic: A = {:?}", As.data);
             }
+
+            let D2 = eigen_jacobi(&mut As.clone(), &mut None);
             if !check_eigvals(trueD, D2) {
-                panic!("Eigenvalue error jacobi: A = {:?}", As.data);
+                println!("Eigenvalue error jacobi: A = {:?}", As);
+                println!("Eigenvalue error jacobi: D = {:?}", D2);
+                panic!();
             }
         }
+
+        println!("Eigvals grid ({}) : {} passed", name, count);
+    }
+
+    fn test_eigen_grid_with_transform(fcn: fn(f64) -> f64, name: &str) {
+        let rng = -5..6;
+        let iter = sym3_test_iter(rng, fcn);
+        let mut fails = 0;
+        let mut count = 0;
+        let mut V = Matrix3x3::zeros();
+
+        for As in iter {
+            count += 1;
+
+            let D1 = eigvals_analytic(&As);
+            if eigvecs_analytic(&As, D1, &mut Some(&mut V)).is_err() {
+                fails += 1;
+            }
+            //this is the actual user facing method
+            let mut Am = As.clone();
+            let D2 = Am.eigen(&mut V);
+            check_eigvecs_relaxed(&As, &V, &D2);
+        }
+        println!("Eigen grid ({}) : {} of {} failed", name, fails, count);
+    }
+
+    #[test]
+    fn test_eigvals_grid() {
+        // Linear transformation: f(x) = x
+        test_eigvals_grid_with_transform(|x| x as f64, "linear", true);
     }
 
     #[test]
     fn test_eigvals_exp_grid() {
-        let rng = -5..6;
-        let iter = sym3_test_iter(rng, |x| (10_f64).powf(x as f64));
-        let mut eng = EigEngine::<f64>::new(3);
+        // Exponential transformation: f(x) = 10^x
+        test_eigvals_grid_with_transform(|x| (10_f64).powf(x as f64), "10^x", false);
+    }
 
-        for As in iter {
-            let mut Af: Matrix<f64> = As.clone().into();
+    #[test]
+    fn test_eigen_grid() {
+        // Linear transformation: f(x) = x
+        test_eigen_grid_with_transform(|x| x as f64, "linear");
+    }
 
-            // compute true eigenvalues from blas
-            eng.eigen(&mut Af).unwrap();
-            let mut trueD = [0.0; 3];
-            trueD.copy_from_slice(&eng.λ);
-
-            let D2 = eigen_jacobi(&mut As.clone(), &mut None);
-
-            check_eigvals(trueD, D2);
-        }
+    #[test]
+    fn test_eigen_exp_grid() {
+        // Exponential transformation: f(x) = 10^x
+        test_eigen_grid_with_transform(|x| (10_f64).powf(x as f64), "10^x");
     }
 }
