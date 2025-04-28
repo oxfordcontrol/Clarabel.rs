@@ -121,6 +121,54 @@ where
     }
 }
 
+// convert from a 3x3 matrix to the packed
+// upper triangle representation.  lower 
+// triangular data is ignored 
+impl<S,T> From<&DenseStorageMatrix<S, T>> for DenseMatrixSym3<T>
+where
+    T: FloatT,
+    S: AsRef<[T]>,
+{
+    fn from(S: &DenseStorageMatrix<S, T>) -> Self {
+
+        assert!(
+            S.size() == (3, 3),
+            "Matrix must be 3x3 to convert to DenseMatrixSym3",
+        );
+
+        let vals = S.data();  
+        let a = vals[0];
+        let b = vals[3];
+        let c = vals[4];
+        let d = vals[6];
+        let e = vals[7];
+        let f = vals[8];
+
+        Self {data: [a, b, c, d, e, f]}
+        
+    }
+}
+
+impl<S,T> From<&mut DenseStorageMatrix<S, T>> for DenseMatrixSym3<T>
+where
+    T: FloatT,
+    S: AsRef<[T]> + AsMut<[T]>,
+{
+    fn from(S: &mut DenseStorageMatrix<S, T>) -> Self{
+       Self::from(&*S)     
+    }
+}
+
+impl<S,T> From<DenseStorageMatrix<S, T>> for DenseMatrixSym3<T>
+where
+    T: FloatT,
+    S: AsRef<[T]>,
+{
+    fn from(S: DenseStorageMatrix<S, T>) -> Self{
+       Self::from(&S)     
+    }
+}
+
 // internal unit tests
 #[test]
 fn test_3x3_matrix_index() {

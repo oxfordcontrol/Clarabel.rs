@@ -1,6 +1,27 @@
 #![allow(non_snake_case)]
-
 use crate::algebra::*;
+
+pub(crate) struct EigBlasWorkVectors<T> {
+    isuppz: Vec<i32>,
+    work: Vec<T>,
+    iwork: Vec<i32>,
+}
+
+impl<T> EigBlasWorkVectors<T>
+where
+    T: FloatT,
+{
+    fn new(n: usize) -> Self {
+        let isuppz = vec![0; 2 * n];
+        let work = vec![T::one()];
+        let iwork = vec![1];
+        Self {
+            isuppz,
+            work,
+            iwork,
+        }
+    }
+}
 
 pub(crate) struct EigEngine<T> {
     /// Computed eigenvalues in ascending order
@@ -10,9 +31,7 @@ pub(crate) struct EigEngine<T> {
     pub V: Option<Matrix<T>>,
 
     // BLAS workspace (allocated vecs only)
-    isuppz: Vec<i32>,
-    work: Vec<T>,
-    iwork: Vec<i32>,
+    pub blas: Option<EigBlasWorkVectors<T>>,
 }
 
 impl<T> EigEngine<T>
@@ -22,16 +41,18 @@ where
     pub fn new(n: usize) -> Self {
         let λ = vec![T::zero(); n];
         let V = None;
-        let isuppz = vec![0; 2 * n];
-        let work = vec![T::one()];
-        let iwork = vec![1];
-        Self {
-            λ,
-            V,
-            isuppz,
-            work,
-            iwork,
+
+        // PJG: should implement n == 2 special case also
+        if n == 3 {
+            Self { λ, V, blas: None }
+        } else {
+            let blas = Some(EigBlasWorkVectors::new(n));
+            Self { λ, V, blas }
         }
+    }
+
+    pub fn n(&self) -> usize {
+        self.λ.len()
     }
 }
 
@@ -46,20 +67,83 @@ where
     where
         S: AsMut<[T]> + AsRef<[T]>,
     {
-        self.syevr(A, b'N')
+        self.checkdim(A)?;
+        match self.n() {
+            3 => self.eigvals3(A),
+            _ => self.syevr(A, b'N'),
+        }
     }
+
+    #[allow(dead_code)] //for future use in projection
     fn eigen<S>(&mut self, A: &mut DenseStorageMatrix<S, T>) -> Result<(), DenseFactorizationError>
     where
         S: AsMut<[T]> + AsRef<[T]>,
     {
-        self.syevr(A, b'V')
+        self.checkdim(A)?;
+        match self.n() {
+            3 => self.eigen3(A),
+            _ => self.syevr(A, b'V'),
+        }
     }
 }
+
+// implementation for 3x3 matrices
 
 impl<T> EigEngine<T>
 where
     T: FloatT,
 {
+    fn eigvals3<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        // symmetric 3x3, stack allocated
+        let mut As: DenseMatrixSym3<T> = A.into();
+        let e = As.eigvals();
+        self.λ.copy_from_slice(&e);
+        Ok(())
+    }
+
+    fn eigen3<S>(&mut self, A: &mut DenseStorageMatrix<S, T>) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        if self.V.is_none() {
+            self.V = Some(Matrix::<T>::zeros((3, 3)));
+        }
+
+        // symmetric 3x3, stack allocated
+        let mut As = DenseMatrixSym3::<T>::from(A);
+        let e = As.eigen(self.V.as_mut().unwrap());
+        self.λ.copy_from_slice(&e);
+
+        Ok(())
+    }
+}
+
+// implementation for arbitrary size matrices
+
+impl<T> EigEngine<T>
+where
+    T: FloatT,
+{
+    fn checkdim<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        if !A.is_square() || A.nrows() != self.n() {
+            Err(DenseFactorizationError::IncompatibleDimension)
+        } else {
+            Ok(())
+        }
+    }
+
     fn syevr<S>(
         &mut self,
         A: &mut DenseStorageMatrix<S, T>,
@@ -68,15 +152,14 @@ where
     where
         S: AsMut<[T]> + AsRef<[T]>,
     {
-        if !A.is_square() || A.nrows() != self.λ.len() {
-            return Err(DenseFactorizationError::IncompatibleDimension);
-        }
-        let An = A.nrows();
+        let An = self.n();
 
         // allocate for eigenvectors on first request
         if jobz == b'V' && self.V.is_none() {
             self.V = Some(Matrix::<T>::zeros((An, An)));
         }
+
+        let blaswork = self.blas.as_mut().unwrap();
 
         // standard BLAS ?syevr arguments for computing a full set of eigenvalues.
 
@@ -93,10 +176,10 @@ where
         let m = &mut 0_i32; // returns # of computed eigenvalues
         let w = &mut self.λ; // eigenvalues go here
         let ldz = n; // leading dim of eigenvector matrix
-        let isuppz = &mut self.isuppz;
-        let work = &mut self.work;
+        let isuppz = &mut blaswork.isuppz;
+        let work = &mut blaswork.work;
         let mut lwork = -1_i32; // -1 => config to request required work size
-        let iwork = &mut self.iwork;
+        let iwork = &mut blaswork.iwork;
         let mut liwork = -1_i32; // -1 => config to request required work size
         let info = &mut 0_i32; // output info
 
