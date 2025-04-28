@@ -37,7 +37,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
     }
 
     fn set(&mut self, c: T) -> &mut Self {
-        self.scalarop(|_x| c)
+        self.fill(c)
     }
 
     fn scale(&mut self, c: T) -> &mut Self {

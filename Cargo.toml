@@ -29,7 +29,7 @@ itertools      = "0.11"
 # -------------------------------
 
 [features]
-default = ["serde"]
+default = ["serde","sdp-mkl"]
 
 # enable reading / writing of problems from json files 
 serde = ["dep:serde", "dep:serde_json"]
@@ -235,4 +235,7 @@ features = ["build", "cargo", "rustc", "si"]
 # ------------------------------
 [dev-dependencies]
 tempfile = "3"
+
+
+
 
