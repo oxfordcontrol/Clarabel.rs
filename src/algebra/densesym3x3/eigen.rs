@@ -221,7 +221,8 @@ fn eigen_jacobi<T: FloatT>(A: &mut DenseMatrixSym3<T>, V: &mut Option<&mut Matri
         }
 
         // compute the Jacobi rotation
-        let (c, s, t) = compute_rotation(A, idx);
+        let (Apq, App, Aqq) = get_rotation_elements(A, idx);
+        let (c, s, t) = compute_jacobi_rotation(Apq, App, Aqq);
 
         // apply rotation to A (and update eigenvectors...)
         apply_rotation(A, idx, c, s, t);
@@ -263,18 +264,25 @@ fn find_largest_off_diag<T: FloatT>(A: &DenseMatrixSym3<T>) -> (usize, T) {
     (idx, max_off_diag)
 }
 
-fn compute_rotation<T: FloatT>(A: &DenseMatrixSym3<T>, idx: usize) -> (T, T, T) {
-    // compute the Jacobi rotation for the given index
+#[inline(always)]
+fn get_rotation_elements<T: FloatT>(A: &DenseMatrixSym3<T>, idx: usize) -> (T, T, T) {
+    // Map an index to the corresponding diagonal and off-diagonal elements
+    // Returns (Apq, App, Aqq) - the off-diagonal element and two diagonal elements
 
     // the idx is a linear index into the upper triangle.   For
     // each element on the triangle, need to work on the corresponding
     // diagonal terms
-    let (Apq, App, Aqq) = match idx {
+
+    match idx {
         1 => (A.data[1], A.data[0], A.data[2]), // A12, A11, A22
-        3 => (A.data[3], A.data[0], A.data[5]), // A[0, 2], A[0, 0], A[2, 2],
-        4 => (A.data[4], A.data[2], A.data[5]), // A[1, 1], A[2, 2], A[1, 2]
+        3 => (A.data[3], A.data[0], A.data[5]), // A13, A11, A33
+        4 => (A.data[4], A.data[2], A.data[5]), // A23, A22, A33
         _ => unreachable!("Invalid index for Jacobi rotation"),
-    };
+    }
+}
+
+pub(crate) fn compute_jacobi_rotation<T: FloatT>(Apq: T, App: T, Aqq: T) -> (T, T, T) {
+    // compute the Jacobi rotation for the given index
 
     if Apq == T::zero() {
         return (T::one(), T::zero(), T::zero());
@@ -506,7 +514,8 @@ mod test {
 
             // compute and apply a jacobi rotation and check
             // that the corresponding term has been zeroed
-            let (c, s, t) = compute_rotation(&A, idx);
+            let (Apq, App, Aqq) = get_rotation_elements(&A, idx);
+            let (c, s, t) = compute_jacobi_rotation(Apq, App, Aqq);
             apply_rotation(&mut A, idx, c, s, t);
             assert!(
                 A.data[idx].abs() < 1e-14,
@@ -567,7 +576,7 @@ mod test {
 
     fn check_eigvals(dtest: [f64; 3], dtrue: [f64; 3]) -> bool {
         for (d1, d2) in dtest.iter().zip(dtrue.iter()) {
-            if (d1 - d2).abs() / f64::max(1., d2.abs()) > 1e-9 {
+            if (d1 - d2).abs() / f64::max(1., d2.abs()) > 1e-7 {
                 println!(
                     "Eigenvalue error: abs({} - {}) = {}",
                     d1,

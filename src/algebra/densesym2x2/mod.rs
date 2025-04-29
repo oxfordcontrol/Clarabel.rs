@@ -3,4 +3,3 @@ mod core;
 mod eigen;
 
 pub(crate) use core::*;
-pub(crate) use eigen::*;

@@ -1,22 +1,22 @@
 #![allow(non_snake_case)]
 
-use super::DenseMatrixSym3;
+use super::DenseMatrixSym2;
 use crate::algebra::*;
 
-impl<T> DenseMatrixSym3<T>
+impl<T> DenseMatrixSym2<T>
 where
     T: FloatT,
 {
-    //  Unrolled 3x3 cholesky decomposition without pivoting
+    //  Unrolled 2x2 cholesky decomposition without pivoting
     //  Returns an error for a non-positive pivot and the
     //  factorization is not completed
     //
     //  NB: this is only marginally slower than the explicit
     //  3x3 LDL decomposition, which would avoid sqrts.
 
-    pub fn cholesky_3x3_explicit_factor(
+    pub fn cholesky_2x2_explicit_factor(
         &mut self,
-        A: &DenseMatrixSym3<T>,
+        A: &DenseMatrixSym2<T>,
     ) -> Result<(), DenseFactorizationError> {
         let L = self;
 
@@ -36,32 +36,21 @@ where
         }
 
         L[(1, 1)] = t.sqrt();
-        L[(2, 0)] = A[(2, 0)] / L[(0, 0)];
-        L[(2, 1)] = (A[(2, 1)] - L[(1, 0)] * L[(2, 0)]) / L[(1, 1)];
-
-        let t = A[(2, 2)] - L[(2, 0)] * L[(2, 0)] - L[(2, 1)] * L[(2, 1)];
-
-        if t <= T::zero() {
-            return Err(DenseFactorizationError::Cholesky(3));
-        }
-        L[(2, 2)] = t.sqrt();
 
         Ok(())
     }
 
-    // Unrolled 3x3 forward/backward substition for a Cholesky factor
+    // Unrolled 2x2 forward/backward substition for a Cholesky factor
 
-    pub fn cholesky_3x3_explicit_solve(&self, x: &mut [T], b: &[T]) {
+    pub fn cholesky_2x2_explicit_solve(&self, x: &mut [T], b: &[T]) {
         let L = self;
 
-        // Forward substitution: Solve Lc = b
+        // Solve Lc = b
         let c0 = b[0] / L[(0, 0)];
         let c1 = (b[1] - L[(1, 0)] * c0) / L[(1, 1)];
-        let c2 = (b[2] - L[(2, 0)] * c0 - L[(2, 1)] * c1) / L[(2, 2)];
 
-        // Backward substitution: Solve L^T x = c
-        x[2] = c2 / L[(2, 2)];
-        x[1] = (c1 - L[(2, 1)] * x[2]) / L[(1, 1)];
-        x[0] = (c0 - L[(1, 0)] * x[1] - L[(2, 0)] * x[2]) / L[(0, 0)];
+        // Solve L^T x = c
+        x[1] = c1 / L[(1, 1)];
+        x[0] = (c0 - L[(1, 0)] * x[1]) / L[(0, 0)];
     }
 }

@@ -19,6 +19,38 @@ where
     pub fn resize(&mut self, n: usize) {
         self.L.resize((n, n));
     }
+
+    pub fn n(&self) -> usize {
+        self.L.nrows()
+    }
+
+    fn checkdim_factor<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        if !A.is_square() || A.nrows() != self.n() {
+            Err(DenseFactorizationError::IncompatibleDimension)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn checkdim_solve<S>(
+        &mut self,
+        B: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        if B.nrows() != self.n() {
+            Err(DenseFactorizationError::IncompatibleDimension)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 impl<T> FactorCholesky<T> for CholeskyEngine<T>
@@ -29,10 +61,146 @@ where
     where
         S: AsMut<[T]> + AsRef<[T]>,
     {
-        if A.size() != self.L.size() {
-            return Err(DenseFactorizationError::IncompatibleDimension);
+        self.checkdim_factor(A)?;
+        match self.n() {
+            2 => self.factor2(A),
+            3 => self.factor3(A),
+            _ => self.factorN(A),
         }
+    }
 
+    fn solve<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        self.checkdim_solve(B).unwrap();
+        match self.n() {
+            2 => self.solve2(B),
+            3 => self.solve3(B),
+            _ => self.solveN(B),
+        }
+    }
+
+    fn logdet(&self) -> T {
+        let mut ld = T::zero();
+        let n = self.L.nrows();
+        for i in 0..n {
+            ld += T::ln(self.L[(i, i)]);
+        }
+        ld + ld
+    }
+}
+
+// implementation for 2x2 matrices
+
+impl<T> CholeskyEngine<T>
+where
+    T: FloatT,
+{
+    fn factor2<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        // symmetric 3x3, stack allocated
+        let As = DenseMatrixSym2::<T>::from(A.sym_up());
+        let mut L = DenseMatrixSym2::<T>::zeros();
+
+        L.cholesky_2x2_explicit_factor(&As)?;
+
+        // push the result into our internal factor matrix
+        // internal representation is lower triangular
+        self.L[(0, 0)] = L.data[0];
+        self.L[(1, 0)] = L.data[1];
+        self.L[(1, 1)] = L.data[2];
+
+        // check for positive definite
+        Ok(())
+    }
+
+    fn solve2<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        let L = DenseMatrixSym2::<T>::from(self.L.sym_lo());
+        let mut x = [T::zero(); 2];
+
+        for col in 0..B.ncols() {
+            let b = B.col_slice_mut(col);
+
+            // solve for x
+            L.cholesky_2x2_explicit_solve(&mut x, b);
+            // expected behaviour is to solve in place
+            b.copy_from_slice(&x);
+        }
+    }
+}
+
+// implementation for 3x3 matrices
+
+impl<T> CholeskyEngine<T>
+where
+    T: FloatT,
+{
+    fn factor3<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        // symmetric 3x3, stack allocated
+        let As = DenseMatrixSym3::<T>::from(A.sym_up());
+        let mut L = DenseMatrixSym3::<T>::zeros();
+
+        L.cholesky_3x3_explicit_factor(&As)?;
+
+        // push the result into our internal factor matrix
+        // internal representation is lower triangular
+        self.L[(0, 0)] = L.data[0];
+        self.L[(1, 0)] = L.data[1];
+        self.L[(2, 0)] = L.data[3];
+        self.L[(1, 1)] = L.data[2];
+        self.L[(2, 1)] = L.data[4];
+        self.L[(2, 2)] = L.data[5];
+
+        // check for positive definite
+        Ok(())
+    }
+
+    fn solve3<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        let L = DenseMatrixSym3::<T>::from(self.L.sym_lo());
+        let mut x = [T::zero(); 3];
+
+        for col in 0..B.ncols() {
+            let b = B.col_slice_mut(col);
+
+            // solve for x
+            L.cholesky_3x3_explicit_solve(&mut x, b);
+            // expected behaviour is to solve in place
+            b.copy_from_slice(&x);
+        }
+    }
+}
+
+// implementation for arbitrary size matrices
+
+impl<T> CholeskyEngine<T>
+where
+    T: FloatT,
+{
+    fn factorN<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
         // ?potrf factors in place, so first copy A onto
         // our internal factor matrix L.  We reference the
         // upper triangle of A, but want a lower triangular
@@ -61,12 +229,10 @@ where
             return Err(DenseFactorizationError::Cholesky(*info));
         }
 
-        // A will now have L^T in its upper triangle.
-
         Ok(())
     }
 
-    fn solve<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
+    fn solveN<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
     where
         S: AsMut<[T]> + AsRef<[T]>,
     {
@@ -90,78 +256,147 @@ where
 
         assert_eq!(*info, 0);
     }
+}
 
-    fn logdet(&self) -> T {
-        let mut ld = T::zero();
-        let n = self.L.nrows();
-        for i in 0..n {
-            ld += T::ln(self.L[(i, i)]);
-        }
-        ld + ld
+// ---- unit testing ----
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    fn test_data_2x2<T: FloatT>() -> (Matrix<T>, Matrix<T>, Matrix<T>) {
+        // Create a symmetric matrix S
+        let S = Matrix::<T>::from(&[
+            [(4.0).as_T(), (1.0).as_T()],
+            [(1.0).as_T(), (3.0).as_T()],
+        ]);
+    
+        // Solution matrix X with 2 columns
+        let X = Matrix::<T>::from(&[
+            [(2.0).as_T(), (3.0).as_T()],
+            [(1.0).as_T(), (2.0).as_T()],
+        ]);
+    
+        // Right-hand side B = S*X
+        let B = Matrix::<T>::from(&[
+            [(9.0).as_T(), (14.0).as_T()],
+            [(5.0).as_T(), (9.0).as_T()],
+        ]);
+    
+        (S, X, B)
     }
-}
+ 
+    #[rustfmt::skip]
+    fn test_data_3x3<T: FloatT>() -> (Matrix<T>, Matrix<T>, Matrix<T>) {
+        let S = Matrix::<T>::from(&[
+            [(8.0).as_T(), (-2.0).as_T(), (4.0).as_T()], 
+            [(-2.0).as_T(), (12.0).as_T(), (2.0).as_T()], 
+            [(4.0).as_T(), (2.0).as_T(), (6.0).as_T()]
+        ]);
 
-macro_rules! generate_test_cholesky {
-    ($fxx:ty, $test_name:ident, $tolfn:ident) => {
-        #[test]
-        fn $test_name() {
-            use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
+        let X = Matrix::<T>::from(&[
+            [(1.0).as_T(), (2.0).as_T()], //
+            [(3.0).as_T(), (4.0).as_T()], //
+            [(5.0).as_T(), (6.0).as_T()],
+        ]);
 
-            #[rustfmt::skip]
-            let mut S = Matrix::<$fxx>::from(
-            &[[ 8., -2., 4.],
-            [-2., 12., 2.],
-            [ 4.,  2., 6.]]);
+        let B = Matrix::<T>::from(&[
+            [(22.0).as_T(), (32.0).as_T()], //
+            [(44.0).as_T(), (56.0).as_T()], //
+            [(40.0).as_T(), (52.0).as_T()],
+        ]);
 
-            let Scopy = S.clone(); //S is corrupted after factorization
+        (S, X, B)
+    }
 
-            let mut eng = CholeskyEngine::<$fxx>::new(3);
-            assert!(eng.factor(&mut S).is_ok());
+       
+    #[rustfmt::skip]
+    fn test_data_4x4<T: FloatT>() -> (Matrix<T>, Matrix<T>, Matrix<T>) {
+        // Create a symmetric matrix S
+        let S = Matrix::<T>::from(&[
+            [(10.0).as_T(), (2.0).as_T(),  (3.0).as_T(),  (1.0).as_T()],
+            [(2.0).as_T(),  (8.0).as_T(),  (0.0).as_T(),  (3.0).as_T()],
+            [(3.0).as_T(),  (0.0).as_T(),  (6.0).as_T(),  (2.0).as_T()],
+            [(1.0).as_T(),  (3.0).as_T(),  (2.0).as_T(),  (9.0).as_T()],
+        ]);
 
-            let mut M = Matrix::<$fxx>::zeros((3, 3));
-            M.mul(&eng.L, &eng.L.t(), 1.0, 0.0);
+        // Solution matrix X with 2 columns
+        let X = Matrix::<T>::from(&[
+            [(1.0).as_T(), (2.0).as_T()],
+            [(2.0).as_T(), (3.0).as_T()],
+            [(3.0).as_T(), (1.0).as_T()],
+            [(4.0).as_T(), (2.0).as_T()],
+        ]);
 
-            assert!(M.data().norm_inf_diff(Scopy.data()) < (1e-8 as $fxx).$tolfn());
+        // Right-hand side B = S*X
+        let B = Matrix::<T>::from(&[
+            [(27.0).as_T(), (31.0).as_T()],
+            [(30.0).as_T(), (34.0).as_T()],
+            [(29.0).as_T(), (16.0).as_T()],
+            [(49.0).as_T(), (31.0).as_T()],
+        ]);
 
-            // now try to solve with multiple RHS
-            let X = Matrix::<$fxx>::from(&[
-                [1., 2.], //
-                [3., 4.], //
-                [5., 6.],
-            ]);
-            let mut B = Matrix::<$fxx>::from(&[
-                [22., 32.], //
-                [44., 56.], //
-                [40., 52.],
-            ]);
+        (S, X, B)
+    }
 
-            eng.solve(&mut B);
+    fn run_test<T>(S: &mut Matrix<T>, X: &Matrix<T>, B: &mut Matrix<T>, tolfn: fn(T) -> T)
+    where
+        T: FloatT,
+    {
+        use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
 
-            assert!(B.data.norm_inf_diff(X.data()) <= (1e-12 as $fxx).$tolfn());
-        }
-    };
-}
+        let n = S.nrows();
+        let Scopy = S.clone(); //S is corrupted after factorization
 
-generate_test_cholesky!(f32, test_cholesky_f32, sqrt);
-generate_test_cholesky!(f64, test_cholesky_f64, abs);
+        let mut eng = CholeskyEngine::<T>::new(n);
+        assert!(eng.factor(S).is_ok());
 
-macro_rules! generate_test_cholesky_logdet {
-    ($fxx:ty, $test_name:ident, $tolfn:ident) => {
-        #[test]
-        #[allow(clippy::excessive_precision)]
-        fn $test_name() {
-            #[rustfmt::skip]
+        let mut M = Matrix::<T>::zeros((n, n));
+        M.mul(&eng.L, &eng.L.t(), T::one(), T::zero());
+        assert!(M.data().norm_inf_diff(Scopy.data()) < tolfn((1e-8).as_T()));
+        eng.solve(B);
+
+        assert!(B.data.norm_inf_diff(X.data()) <= tolfn((1e-12).as_T()));
+    }
+
+    macro_rules! generate_test_cholesky {
+        ($fxx:ty, $test_name:ident, $tolfn:ident) => {
+            #[test]
+            fn $test_name() {
+                let (mut S, X, mut B) = test_data_2x2::<$fxx>();
+                run_test(&mut S, &X, &mut B, |x| x.$tolfn());
+
+                let (mut S, X, mut B) = test_data_3x3::<$fxx>();
+                run_test(&mut S, &X, &mut B, |x| x.$tolfn());
+
+                let (mut S, X, mut B) = test_data_4x4::<$fxx>();
+                run_test(&mut S, &X, &mut B, |x| x.$tolfn());
+            }
+        };
+    }
+
+    generate_test_cholesky!(f32, test_cholesky_f32, sqrt);
+    generate_test_cholesky!(f64, test_cholesky_f64, abs);
+
+    macro_rules! generate_test_cholesky_logdet {
+        ($fxx:ty, $test_name:ident, $tolfn:ident) => {
+            #[test]
+            #[allow(clippy::excessive_precision)]
+            fn $test_name() {
+                #[rustfmt::skip]
             let mut S = Matrix::<$fxx>::from(
             &[[ 8., -2., 4.],
               [-2., 12., 2.],
               [ 4.,  2., 6.]]);
 
-            let mut eng = CholeskyEngine::<$fxx>::new(3);
-            assert!(eng.factor(&mut S).is_ok());
-            assert!((eng.logdet() - 5.69035945432406).abs() < (1e-10 as $fxx).$tolfn());
-        }
-    };
-}
+                let mut eng = CholeskyEngine::<$fxx>::new(3);
+                assert!(eng.factor(&mut S).is_ok());
+                assert!((eng.logdet() - 5.69035945432406).abs() < (1e-10 as $fxx).$tolfn());
+            }
+        };
+    }
 
-generate_test_cholesky_logdet!(f32, test_cholesky_logdet_f32, sqrt);
-generate_test_cholesky_logdet!(f64, test_cholesky_logdet_f64, abs);
+    generate_test_cholesky_logdet!(f32, test_cholesky_logdet_f32, sqrt);
+    generate_test_cholesky_logdet!(f64, test_cholesky_logdet_f64, abs);
+}

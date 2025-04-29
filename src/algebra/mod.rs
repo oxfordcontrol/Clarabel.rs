@@ -31,6 +31,8 @@ pub(crate) use utils::*;
 mod csc;
 pub use csc::*;
 
+mod densesym2x2;
+pub(crate) use densesym2x2::*;
 mod densesym3x3;
 pub(crate) use densesym3x3::*;
 

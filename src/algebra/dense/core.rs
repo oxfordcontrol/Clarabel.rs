@@ -158,14 +158,6 @@ where
 
     /// symmetric view (selects upper or lower triangle source)
     pub fn sym(&self, uplo: MatrixTriangle) -> Symmetric<'_, Self> {
-        match uplo {
-            MatrixTriangle::Triu => {
-                debug_assert!(self.is_triu());
-            }
-            MatrixTriangle::Tril => {
-                debug_assert!(self.is_tril());
-            }
-        }
         Symmetric { src: self, uplo }
     }
 

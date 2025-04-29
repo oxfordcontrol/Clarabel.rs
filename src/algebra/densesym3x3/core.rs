@@ -5,7 +5,8 @@ use std::ops::{Index, IndexMut};
 
 // 3x3 Dense matrix types are restricted to the crate
 // NB: Implements a symmetric 3x3 type to support
-// power and exponential cones.
+// power and exponential cones, plus special methods 
+// for 3x3 matrix decompositions.
 //
 // Data is stored as an array of 6 values belonging
 // the upper triangle of a 3x3 matrix.   Lower triangle
@@ -121,53 +122,52 @@ where
     }
 }
 
-// convert from a 3x3 matrix to the packed
-// upper triangle representation.  lower 
-// triangular data is ignored 
-impl<S,T> From<&DenseStorageMatrix<S, T>> for DenseMatrixSym3<T>
+// convert from a 3x3 symmetric matrix to the packed
+// upper triangle representation.  
+
+impl<M,T> From<Symmetric<'_,M>> for DenseMatrixSym3<T>
 where
     T: FloatT,
-    S: AsRef<[T]>,
+    M: DenseMatrix<T>,
 {
-    fn from(S: &DenseStorageMatrix<S, T>) -> Self {
+    fn from(S: Symmetric<'_,M>) -> Self {
 
-        assert!(
-            S.size() == (3, 3),
+        debug_assert!(
+            S.src.size() == (3, 3),
             "Matrix must be 3x3 to convert to DenseMatrixSym3",
         );
 
-        let vals = S.data();  
-        let a = vals[0];
-        let b = vals[3];
-        let c = vals[4];
-        let d = vals[6];
-        let e = vals[7];
-        let f = vals[8];
+        let vals = S.src.data();  
+        match S.uplo{
+            MatrixTriangle::Triu => {
+                //read from upper triangle
+                let a = vals[0];
+                let b = vals[3];
+                let c = vals[4];
+                let d = vals[6];
+                let e = vals[7];
+                let f = vals[8];
 
-        Self {data: [a, b, c, d, e, f]}
-        
+                //pack upper triangle
+                Self {data: [a, b, c, d, e, f]}
+            },
+            MatrixTriangle::Tril => {
+                //read from lower triangle
+                let a = vals[0];
+                let b = vals[1];
+                let c = vals[4];
+                let d = vals[2];
+                let e = vals[5];
+                let f = vals[8];
+
+                //pack upper triangle
+                Self {data: [a, b, c, d, e, f]}
+            }
+        }
     }
 }
 
-impl<S,T> From<&mut DenseStorageMatrix<S, T>> for DenseMatrixSym3<T>
-where
-    T: FloatT,
-    S: AsRef<[T]> + AsMut<[T]>,
-{
-    fn from(S: &mut DenseStorageMatrix<S, T>) -> Self{
-       Self::from(&*S)     
-    }
-}
 
-impl<S,T> From<DenseStorageMatrix<S, T>> for DenseMatrixSym3<T>
-where
-    T: FloatT,
-    S: AsRef<[T]>,
-{
-    fn from(S: DenseStorageMatrix<S, T>) -> Self{
-       Self::from(&S)     
-    }
-}
 
 // internal unit tests
 #[test]

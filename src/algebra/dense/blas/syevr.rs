@@ -54,6 +54,20 @@ where
     pub fn n(&self) -> usize {
         self.λ.len()
     }
+
+    fn checkdim<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        if !A.is_square() || A.nrows() != self.n() {
+            Err(DenseFactorizationError::IncompatibleDimension)
+        } else {
+            Ok(())
+        }
+    }
 }
 
 impl<T> FactorEigen<T> for EigEngine<T>
@@ -69,6 +83,7 @@ where
     {
         self.checkdim(A)?;
         match self.n() {
+            2 => self.eigvals2(A),
             3 => self.eigvals3(A),
             _ => self.syevr(A, b'N'),
         }
@@ -81,9 +96,46 @@ where
     {
         self.checkdim(A)?;
         match self.n() {
+            2 => self.eigen2(A),
             3 => self.eigen3(A),
             _ => self.syevr(A, b'V'),
         }
+    }
+}
+
+// implementation for 2x2 matrices
+
+impl<T> EigEngine<T>
+where
+    T: FloatT,
+{
+    fn eigvals2<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        // symmetric 2x2, stack allocated
+        let mut As = DenseMatrixSym2::<T>::from(A.sym_up());
+        let e = As.eigvals();
+        self.λ.copy_from_slice(&e);
+        Ok(())
+    }
+
+    fn eigen2<S>(&mut self, A: &mut DenseStorageMatrix<S, T>) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        if self.V.is_none() {
+            self.V = Some(Matrix::<T>::zeros((3, 3)));
+        }
+
+        // symmetric 2x2, stack allocated
+        let mut As = DenseMatrixSym2::<T>::from(A.sym_up());
+        let e = As.eigen(self.V.as_mut().unwrap());
+        self.λ.copy_from_slice(&e);
+        Ok(())
     }
 }
 
@@ -101,7 +153,7 @@ where
         S: AsMut<[T]> + AsRef<[T]>,
     {
         // symmetric 3x3, stack allocated
-        let mut As: DenseMatrixSym3<T> = A.into();
+        let mut As = DenseMatrixSym3::<T>::from(A.sym_up());
         let e = As.eigvals();
         self.λ.copy_from_slice(&e);
         Ok(())
@@ -116,10 +168,9 @@ where
         }
 
         // symmetric 3x3, stack allocated
-        let mut As = DenseMatrixSym3::<T>::from(A);
+        let mut As = DenseMatrixSym3::<T>::from(A.sym_up());
         let e = As.eigen(self.V.as_mut().unwrap());
         self.λ.copy_from_slice(&e);
-
         Ok(())
     }
 }
@@ -130,20 +181,6 @@ impl<T> EigEngine<T>
 where
     T: FloatT,
 {
-    fn checkdim<S>(
-        &mut self,
-        A: &mut DenseStorageMatrix<S, T>,
-    ) -> Result<(), DenseFactorizationError>
-    where
-        S: AsMut<[T]> + AsRef<[T]>,
-    {
-        if !A.is_square() || A.nrows() != self.n() {
-            Err(DenseFactorizationError::IncompatibleDimension)
-        } else {
-            Ok(())
-        }
-    }
-
     fn syevr<S>(
         &mut self,
         A: &mut DenseStorageMatrix<S, T>,
@@ -215,27 +252,29 @@ macro_rules! generate_test_eigen {
         fn $test_name() {
             use crate::algebra::{DenseMatrix, MultiplyGEMM, VectorMath};
 
+            // has to be 4x4 to avoid the special case
             let mut S = Matrix::<$fxx>::from(&[
-                [3., 2., 4.], //
-                [2., 0., 2.], //
-                [4., 2., 3.], //
+                [3., 2., 4., 0.], //
+                [2., 0., 2., 0.], //
+                [4., 2., 3., 0.], //
+                [0., 0., 0., 9.], //
             ]);
 
             let Scopy = S.clone(); //S is corrupted after factorization
 
-            let mut eng = EigEngine::<$fxx>::new(3);
+            let mut eng = EigEngine::<$fxx>::new(4);
             assert!(eng.eigvals(&mut S).is_ok());
-            let sol = [-1.0, -1.0, 8.];
+            let sol = [-1.0, -1.0, 8., 9.];
             assert!(eng.λ.norm_inf_diff(&sol) < 1e-6);
 
             let mut S = Scopy.clone(); //S is corrupted after factorization
             assert!(eng.eigen(&mut S).is_ok());
             let λ = &eng.λ;
-            let mut M = Matrix::<$fxx>::zeros((3, 3));
+            let mut M = Matrix::<$fxx>::zeros((4, 4));
             let V = eng.V.unwrap();
             let mut Vs = V.clone();
-            for c in 0..3 {
-                for r in 0..3 {
+            for c in 0..4 {
+                for r in 0..4 {
                     Vs[(r, c)] *= λ[c];
                 }
             }
@@ -248,3 +287,17 @@ macro_rules! generate_test_eigen {
 
 generate_test_eigen!(f32, test_eigen_f32, sqrt);
 generate_test_eigen!(f64, test_eigen_f64, abs);
+
+#[test]
+fn test_eig2() {
+    let mut S = Matrix::<f64>::from(&[
+        [3., 2.], //
+        [2., 0.], //
+    ]);
+
+    let mut eng = EigEngine::<f64>::new(2);
+    assert!(eng.eigen(&mut S).is_ok());
+
+    println!("\nEigenvalues: {:?}", eng.λ);
+    println!("\nEigenvectors: {:?}", eng.V);
+}
