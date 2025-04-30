@@ -15,6 +15,7 @@ use crate::timers::*;
 
 /// Solver for problems in standard conic program form
 pub type DefaultSolver<T = f64> = Solver<
+    T,
     DefaultProblemData<T>,
     DefaultVariables<T>,
     DefaultResiduals<T>,
@@ -80,9 +81,14 @@ where
         let prev_vars = DefaultVariables::<T>::new(data.n,data.m);
 
         // configure empty user callbacks
-        let callbacks = SolverCallbacks::<DefaultInfo<T>>::default();
 
-        output = Self{data,variables,residuals,kktsystem,step_lhs,step_rhs,prev_vars,info,solution,cones,settings,timers:None, callbacks };
+        output = Self{
+            data,variables,residuals,kktsystem,
+            step_lhs,step_rhs,prev_vars,info,
+            solution,cones,settings,
+            timers: None,
+            callbacks: SolverCallbacks::default(),
+            phantom: std::marker::PhantomData };
 
         }} //end "setup" timer.
 
