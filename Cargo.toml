@@ -133,6 +133,10 @@ name = "box"
 path = "examples/rust/example_box.rs"
 
 [[example]]
+name = "callback"
+path = "examples/rust/example_callback.rs"
+
+[[example]]
 name = "sdp"
 path = "examples/rust/example_sdp.rs"
 required-features = ["sdp"]
