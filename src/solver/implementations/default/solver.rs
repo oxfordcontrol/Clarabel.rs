@@ -1,4 +1,5 @@
 use super::*;
+use crate::solver::core::callbacks::SolverCallbacks;
 use crate::{
     io::ConfigurablePrintTarget,
     solver::core::{
@@ -78,8 +79,10 @@ where
         let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
         let prev_vars = DefaultVariables::<T>::new(data.n,data.m);
 
-        output = Self{data,variables,residuals,kktsystem,step_lhs,
-             step_rhs,prev_vars,info,solution,cones,settings,timers: None};
+        // configure empty user callbacks
+        let callbacks = SolverCallbacks::<DefaultInfo<T>>::default();
+
+        output = Self{data,variables,residuals,kktsystem,step_lhs,step_rhs,prev_vars,info,solution,cones,settings,timers:None, callbacks };
 
         }} //end "setup" timer.
 

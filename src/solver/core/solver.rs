@@ -2,6 +2,7 @@ use self::internal::*;
 use super::cones::Cone;
 use super::traits::*;
 use crate::algebra::*;
+use crate::solver::core::callbacks::SolverCallbacks;
 use crate::solver::DefaultSettings;
 use crate::timers::*;
 use std::io::Write;
@@ -127,6 +128,7 @@ pub struct Solver<D, V, R, K, C, I, SO, SE> {
     pub solution: SO,
     pub settings: SE,
     pub timers: Option<Timers>,
+    pub callbacks: SolverCallbacks<I>,
 }
 
 fn _print_banner(out: &mut dyn Write, is_verbose: bool) -> std::io::Result<()> {

@@ -6,6 +6,7 @@
 // : user settings
 // : main solver implementation
 
+pub mod callbacks;
 pub mod cones;
 pub mod kktsolvers;
 pub mod traits;

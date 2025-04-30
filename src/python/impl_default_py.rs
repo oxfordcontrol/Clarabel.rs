@@ -282,6 +282,7 @@ pub enum PySolverStatus {
     MaxTime,
     NumericalError,
     InsufficientProgress,
+    UserCallbackTerminated,
 }
 
 impl From<&SolverStatus> for PySolverStatus {
