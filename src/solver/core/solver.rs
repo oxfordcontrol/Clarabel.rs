@@ -4,6 +4,7 @@ use super::cones::Cone;
 use super::traits::*;
 use crate::algebra::*;
 use crate::solver::core::callbacks::SolverCallbacks;
+use crate::solver::core::ffi::*;
 use crate::solver::DefaultSettings;
 use crate::timers::*;
 use std::io::Write;
@@ -13,12 +14,12 @@ use std::io::Write;
 // ---------------------------------
 
 /// Status of solver at termination
-#[repr(u32)]
+#[repr(C)]
 #[derive(PartialEq, Eq, Clone, Debug, Copy, Default)]
 pub enum SolverStatus {
     /// Problem is not solved (solver hasn't run).
     #[default]
-    Unsolved,
+    Unsolved = 0,
     /// Solver terminated with a solution.
     Solved,
     /// Problem is primal infeasible.  Solution returned is a certificate of primal infeasibility.
@@ -118,7 +119,10 @@ where
 // This trait is defined with a collection of mutually interacting associated types.
 // See the [`DefaultSolver`](crate::solver::implementations::default) for an example.
 
-pub struct Solver<T, D, V, R, K, C, I, SO, SE> {
+pub struct Solver<T, D, V, R, K, C, I, SO, SE>
+where
+    I: ClarabelFFI<I>,
+{
     pub data: D,
     pub variables: V,
     pub residuals: R,
@@ -131,7 +135,7 @@ pub struct Solver<T, D, V, R, K, C, I, SO, SE> {
     pub solution: SO,
     pub settings: SE,
     pub timers: Option<Timers>,
-    pub(crate) callbacks: SolverCallbacks<I>,
+    pub(crate) callbacks: SolverCallbacks<I, I::FFI>,
     pub(crate) phantom: std::marker::PhantomData<T>,
 }
 
@@ -181,7 +185,7 @@ where
         self.callbacks.termination_callback = Callback::Rust(callback);
     }
 
-    pub fn set_termination_callback_c(&mut self, callback: CallbackFcnFFI<I>) {
+    pub fn set_termination_callback_c(&mut self, callback: CallbackFcnFFI<I::FFI>) {
         self.callbacks.termination_callback = Callback::C(callback);
     }
 

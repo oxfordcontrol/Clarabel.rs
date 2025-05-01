@@ -3,6 +3,9 @@
 
 #![allow(non_snake_case)]
 
+/// C compatible FFI interfaces for the default solver implementation
+pub mod ffi;
+
 mod data_updating;
 mod equilibration;
 mod info;
