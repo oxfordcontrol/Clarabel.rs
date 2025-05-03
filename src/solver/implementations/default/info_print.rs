@@ -360,7 +360,7 @@ fn _print_conedims_by_type<T: FloatT>(
 
     // drops trailing "Cone" part of name
     let name = &name[0..name.len() - 4];
-    let name = format!("{:>11}", name);
+    let name = format!("{name:>11}");
 
     let mut nvars = Vec::with_capacity(count);
     for cone in cones.iter() {
@@ -368,7 +368,7 @@ fn _print_conedims_by_type<T: FloatT>(
             nvars.push(cone.numel());
         }
     }
-    write!(out, "    : {} = {}, ", name, count)?;
+    write!(out, "    : {name} = {count}, ")?;
 
     if count == 1 {
         write!(out, " numel = {}", nvars[0])?;
@@ -376,14 +376,14 @@ fn _print_conedims_by_type<T: FloatT>(
         //print them all
         write!(out, " numel = (")?;
         for nvar in nvars.iter().take(nvars.len() - 1) {
-            write!(out, "{},", nvar)?;
+            write!(out, "{nvar},")?;
         }
         write!(out, "{})", nvars[nvars.len() - 1])?;
     } else {
         // print first (maxlistlen-1) and the final one
         write!(out, " numel = (")?;
         for nvar in nvars.iter().take(maxlistlen - 1) {
-            write!(out, "{},", nvar)?;
+            write!(out, "{nvar},")?;
         }
         write!(out, "...,{})", nvars[nvars.len() - 1])?;
     }
