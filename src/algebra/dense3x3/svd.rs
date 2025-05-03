@@ -163,7 +163,7 @@ fn compute_polar_2x2<T: FloatT>(App: T, Aqp: T, Apq: T, Aqq: T) -> (T, T, T, T, 
     let x = App + Aqq;
     let y = Aqp - Apq;
 
-    let d = hypot_fast(x, y); // fastest, and probably robust enough
+    let d = hypot_fast(x, y); 
 
     let (c, s) = {
         if d == T::zero() {
