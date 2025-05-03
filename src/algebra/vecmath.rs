@@ -112,7 +112,25 @@ impl<T: FloatT> VectorMath<T> for [T] {
 
     // 2-norm
     fn norm(&self) -> T {
-        T::sqrt(self.sumsq())
+        // T::sqrt(self.sumsq()) // not robust
+
+        let mut scale = T::zero();
+        let mut sumsq = T::one();
+
+        for &xi in self {
+            if xi != T::zero() {
+                let absxi = xi.abs();
+                if scale < absxi {
+                    let r = scale / absxi;
+                    sumsq = T::one() + sumsq * r * r;
+                    scale = absxi;
+                } else {
+                    let r = absxi / scale;
+                    sumsq += r * r;
+                }
+            }
+        }
+        scale * sumsq.sqrt()
     }
 
     // Returns infinity norm

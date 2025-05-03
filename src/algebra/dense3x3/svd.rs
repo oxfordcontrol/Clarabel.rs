@@ -136,16 +136,34 @@ fn apply_two_sided_rotation<T: FloatT>(
     A[(q, p)] = T::zero();
 }
 
+#[inline]
+fn hypot_fast<T: FloatT>(x: T, y: T) -> T {
+
+    // NB: avoids overflow in x^2 + y^2, and also faster 
+    // bc it reduces the range of the sqrt to [1,2]
+    // marginally faster than [x,y].norm(), which is 
+    // equivalent and amounts to the same method
+
+    let x = x.abs();
+    let y = y.abs();
+
+    let (maxval, minval) = if x > y {
+        (x, y)
+    } else {
+        (y, x)
+    };
+    let r = minval / maxval;
+    maxval * T::sqrt(T::one() + r * r)
+
+}
+
 fn compute_polar_2x2<T: FloatT>(App: T, Aqp: T, Apq: T, Aqq: T) -> (T, T, T, T, T) {
     // computes a rotation such that Q'A is symmetric
 
     let x = App + Aqq;
     let y = Aqp - Apq;
 
-    // sqrt method is faster but less accurate,
-    // particular for ill conditioned cases / huge values
-    //let d = T::sqrt(x * x + y * y);
-    let d = T::hypot(x, y);
+    let d = hypot_fast(x, y); // fastest, and probably robust enough
 
     let (c, s) = {
         if d == T::zero() {
