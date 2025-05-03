@@ -312,7 +312,7 @@ where
         let mut innerfcn = |α: T, symcond: bool| -> T {
             let mut α = α;
             for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
-                if cone.is_symmetric() == symcond {
+                if cone.is_symmetric() != symcond {
                     continue;
                 }
                 let (dzi, dsi) = (&dz[rng.clone()], &ds[rng.clone()]);
@@ -329,7 +329,8 @@ where
         // if we have any nonsymmetric cones, then back off from full steps slightly
         // so that centrality checks and logarithms don't fail right at the boundaries
         if !all_symmetric {
-            α = T::min(settings.max_step_fraction, α);
+            let ceil = T::one() - T::sqrt(T::epsilon()); 
+            α = T::min(α, ceil);
         }
 
         // Force asymmetric cones last.

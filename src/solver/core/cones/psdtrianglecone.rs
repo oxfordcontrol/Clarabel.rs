@@ -190,7 +190,7 @@ where
         // compute R*R^T (upper triangular part only)
         let RRt = &mut f.workmat1;
         RRt.data_mut().set(T::zero());
-        RRt.syrk(&f.R, T::one(), T::zero());
+        RRt.syrk(&f.R, T::one(), T::zero(), MatrixTriangle::Triu);
 
         // PJG: it is possibly faster to compute the whole of RRt, and not
         // just the upper triangle using syrk!, because then skron! can be
@@ -198,7 +198,7 @@ where
         // indexing within skron! is then more straightforward and probably
         // faster.   Possibly also worth considering a version of skron!
         // that uses unchecked indexing.
-        skron(&mut f.Hs, &RRt.sym());
+        skron(&mut f.Hs, &RRt.sym_up());
 
         true //PJG: Should return result, with "?" operators above
     }
@@ -208,7 +208,7 @@ where
     }
 
     fn get_Hs(&self, Hsblock: &mut [T]) {
-        self.data.Hs.sym().pack_triu(Hsblock);
+        self.data.Hs.sym_up().pack_triu(Hsblock);
     }
 
     fn mul_Hs(&mut self, y: &mut [T], x: &[T], work: &mut [T]) {
@@ -414,9 +414,9 @@ where
 
         // X .= (Y*Z + Z*Y)/2
         // NB: works b/c Y and Z are both symmetric
-        X.data_mut().set(T::zero()); //X.sym() will assert is_triu
+        X.data_mut().set(T::zero()); //X.sym_up() will assert is_triu
         X.syr2k(Y, Z, (0.5).as_T(), T::zero());
-        mat_to_svec(x, &X.sym());
+        mat_to_svec(x, &X.sym_up());
     }
 
     fn inv_circ_op(&mut self, _x: &mut [T], _y: &[T], _z: &[T]) {
@@ -468,6 +468,9 @@ fn skron<T>(out: &mut Matrix<T>, A: &Symmetric<Matrix<T>>)
 where
     T: FloatT,
 {
+    // A is symmetric, so we can use the triu() method
+    assert!(A.is_triu_src());
+
     let sqrt2 = T::SQRT_2();
     let n = A.nrows();
 

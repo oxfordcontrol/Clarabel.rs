@@ -185,11 +185,11 @@ fn test_print_target_debug_and_clone() {
 
     //stream
     let target = PrintTarget::Stream(Box::new(Cursor::new(Vec::new())));
-    assert_eq!(format!("{:?}", target), "PrintTarget::Stream");
+    assert_eq!(format!("{target:?}"), "PrintTarget::Stream");
     assert_eq!(format!("{:?}", target.clone()), "PrintTarget::Sink");
 
     // sink
     let target = PrintTarget::Sink(std::io::sink());
     let cloned_target = target.clone();
-    assert_eq!(format!("{:?}", cloned_target), "PrintTarget::Sink");
+    assert_eq!(format!("{cloned_target:?}"), "PrintTarget::Sink");
 }

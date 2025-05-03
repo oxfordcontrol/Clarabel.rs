@@ -275,8 +275,7 @@ fn validate_direct_solve_method(direct_solve_method: &str) -> Result<(), String>
         #[cfg(feature = "faer-sparse")]
         "faer" => Ok(()),
         _ => Err(format!(
-            "Invalid direct_solve_method: {:?}",
-            direct_solve_method
+            "Invalid direct_solve_method: {direct_solve_method:?}"
         )),
     }
 }
