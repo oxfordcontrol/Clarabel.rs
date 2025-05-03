@@ -39,8 +39,6 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 ///        [0.0, 4.0, 7.0]]);
 ///
 /// ```
-///
-
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = "T: Serialize + DeserializeOwned"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
