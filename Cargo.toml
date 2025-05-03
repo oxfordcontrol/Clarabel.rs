@@ -3,7 +3,7 @@ name = "clarabel"
 version = "0.11.0"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.71"
 license = "Apache-2.0"
 description = "Clarabel Conic Interior Point Solver for Rust / Python"
 readme = "README.md"
@@ -142,6 +142,10 @@ name = "box"
 path = "examples/rust/example_box.rs"
 
 [[example]]
+name = "callback"
+path = "examples/rust/example_callback.rs"
+
+[[example]]
 name = "sdp"
 path = "examples/rust/example_sdp.rs"
 required-features = ["sdp"]
@@ -155,7 +159,6 @@ required-features = ["faer-sparse"]
 name = "json"
 path = "examples/rust/example_json.rs"
 required-features = ["serde"]
-
 
 
 

@@ -1,4 +1,5 @@
 use super::*;
+use crate::solver::core::callbacks::SolverCallbacks;
 use crate::{
     io::ConfigurablePrintTarget,
     solver::core::{
@@ -14,6 +15,7 @@ use crate::timers::*;
 
 /// Solver for problems in standard conic program form
 pub type DefaultSolver<T = f64> = Solver<
+    T,
     DefaultProblemData<T>,
     DefaultVariables<T>,
     DefaultResiduals<T>,
@@ -78,8 +80,15 @@ where
         let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
         let prev_vars = DefaultVariables::<T>::new(data.n,data.m);
 
-        output = Self{data,variables,residuals,kktsystem,step_lhs,
-             step_rhs,prev_vars,info,solution,cones,settings,timers: None};
+        // configure empty user callbacks
+
+        output = Self{
+            data,variables,residuals,kktsystem,
+            step_lhs,step_rhs,prev_vars,info,
+            solution,cones,settings,
+            timers: None,
+            callbacks: SolverCallbacks::default(),
+            phantom: std::marker::PhantomData };
 
         }} //end "setup" timer.
 

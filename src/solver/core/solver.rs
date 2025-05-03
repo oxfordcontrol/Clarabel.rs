@@ -1,7 +1,10 @@
 use self::internal::*;
+use super::callbacks::{Callback, CallbackFcnFFI};
 use super::cones::Cone;
 use super::traits::*;
 use crate::algebra::*;
+use crate::solver::core::callbacks::SolverCallbacks;
+use crate::solver::core::ffi::*;
 use crate::solver::DefaultSettings;
 use crate::timers::*;
 use std::io::Write;
@@ -11,12 +14,12 @@ use std::io::Write;
 // ---------------------------------
 
 /// Status of solver at termination
-#[repr(u32)]
+#[repr(C)]
 #[derive(PartialEq, Eq, Clone, Debug, Copy, Default)]
 pub enum SolverStatus {
     /// Problem is not solved (solver hasn't run).
     #[default]
-    Unsolved,
+    Unsolved = 0,
     /// Solver terminated with a solution.
     Solved,
     /// Problem is primal infeasible.  Solution returned is a certificate of primal infeasibility.
@@ -37,6 +40,8 @@ pub enum SolverStatus {
     NumericalError,
     /// Solver terminated due to lack of progress.
     InsufficientProgress,
+    /// Solver terminated by user callback
+    CallbackTerminated,
 }
 
 impl SolverStatus {
@@ -114,7 +119,10 @@ where
 // This trait is defined with a collection of mutually interacting associated types.
 // See the [`DefaultSolver`](crate::solver::implementations::default) for an example.
 
-pub struct Solver<D, V, R, K, C, I, SO, SE> {
+pub struct Solver<T, D, V, R, K, C, I, SO, SE>
+where
+    I: ClarabelFFI<I>,
+{
     pub data: D,
     pub variables: V,
     pub residuals: R,
@@ -127,6 +135,8 @@ pub struct Solver<D, V, R, K, C, I, SO, SE> {
     pub solution: SO,
     pub settings: SE,
     pub timers: Option<Timers>,
+    pub(crate) callbacks: SolverCallbacks<I, I::FFI>,
+    pub(crate) phantom: std::marker::PhantomData<T>,
 }
 
 fn _print_banner(out: &mut dyn Write, is_verbose: bool) -> std::io::Result<()> {
@@ -165,6 +175,25 @@ fn _print_banner(out: &mut dyn Write, is_verbose: bool) -> std::io::Result<()> {
     std::io::Result::Ok(())
 }
 
+impl<T, D, V, R, K, C, I, SO, SE> Solver<T, D, V, R, K, C, I, SO, SE>
+where
+    I: Info<T, D = D, V = V, R = R, C = C, SE = SE>,
+    T: FloatT,
+{
+    /// Create a new solver object
+    pub fn set_termination_callback(&mut self, callback: fn(&I) -> bool) {
+        self.callbacks.termination_callback = Callback::Rust(callback);
+    }
+
+    pub fn set_termination_callback_c(&mut self, callback: CallbackFcnFFI<I::FFI>) {
+        self.callbacks.termination_callback = Callback::C(callback);
+    }
+
+    pub fn unset_termination_callback(&mut self) {
+        self.callbacks.termination_callback = Callback::None;
+    }
+}
+
 // ---------------------------------
 // IPSolver trait and its standard implementation.
 // ---------------------------------
@@ -181,7 +210,7 @@ pub trait IPSolver<T, D, V, R, K, C, I, SO, SE> {
 }
 
 impl<T, D, V, R, K, C, I, SO, SE> IPSolver<T, D, V, R, K, C, I, SO, SE>
-    for Solver<D, V, R, K, C, I, SO, SE>
+    for Solver<T, D, V, R, K, C, I, SO, SE>
 where
     T: FloatT,
     D: ProblemData<T, V = V>,
@@ -258,10 +287,19 @@ where
                 self.info.print_status(&self.settings).unwrap();
             }}
 
-            let isdone = self.info.check_termination(&self.residuals, &self.settings, iter);
+            // termination checks
+            // --------------
+
+            // user defined termination checks
+            if self.callbacks.check_termination(&self.info) {
+                self.info.set_status(SolverStatus::CallbackTerminated);
+                break;
+            }
+            // internal termination checks
+            let is_done = self.info.check_termination(&self.residuals, &self.settings, iter);
 
             // check for termination due to slow progress and update strategy
-            if isdone{
+            if is_done{
                     match self.strategy_checkpoint_insufficient_progress(scaling){
                         StrategyCheckpoint::NoUpdate | StrategyCheckpoint::Fail => {break}
                         StrategyCheckpoint::Update(s) => {scaling = s; continue}
@@ -455,7 +493,7 @@ mod internal {
     }
 
     impl<T, D, V, R, K, C, I, SO, SE> IPSolverInternals<T, D, V, R, K, C, I, SO, SE>
-        for Solver<D, V, R, K, C, I, SO, SE>
+        for Solver<T, D, V, R, K, C, I, SO, SE>
     where
         T: FloatT,
         D: ProblemData<T, V = V>,
