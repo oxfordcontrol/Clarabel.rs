@@ -111,7 +111,6 @@ optional = true
 [dependencies.pardiso-wrapper]
 version = "0.1"
 optional = true
-path = "../pardiso-wrapper"
 
 
 # -------------------------------
