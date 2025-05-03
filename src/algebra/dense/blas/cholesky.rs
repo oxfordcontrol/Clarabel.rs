@@ -63,6 +63,7 @@ where
     {
         self.checkdim_factor(A)?;
         match self.n() {
+            1 => self.factor1(A),
             2 => self.factor2(A),
             3 => self.factor3(A),
             _ => self.factorblas(A),
@@ -75,6 +76,7 @@ where
     {
         self.checkdim_solve(B).unwrap();
         match self.n() {
+            1 => self.solve1(B),
             2 => self.solve2(B),
             3 => self.solve3(B),
             _ => self.solveblas(B),
@@ -88,6 +90,44 @@ where
             ld += T::ln(self.L[(i, i)]);
         }
         ld + ld
+    }
+}
+
+// trivial implementation for 1x1 matrices
+
+impl<T> CholeskyEngine<T>
+where
+    T: FloatT,
+{
+    fn factor1<S>(
+        &mut self,
+        A: &mut DenseStorageMatrix<S, T>,
+    ) -> Result<(), DenseFactorizationError>
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        let A = A.data()[0];
+        if A <= T::zero() {
+            // check for positive definite
+            Err(DenseFactorizationError::Cholesky(1))
+        }
+        else {
+            self.L[(0, 0)] = A.sqrt();
+            Ok(())
+        }
+    }
+
+    fn solve1<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
+    where
+        S: AsMut<[T]> + AsRef<[T]>,
+    {
+        let L = self.L.data()[0];
+        let A = L * L;
+
+        for col in 0..B.ncols() {
+            let b = B.col_slice_mut(col);
+            b[0] /= A;
+        }
     }
 }
 
