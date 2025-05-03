@@ -48,3 +48,16 @@ impl<T: FloatT> From<DefaultInfo<T>> for DefaultInfoFFI<T> {
         }
     }
 }
+
+#[test]
+fn test_info_ffi() {
+    use super::*;
+
+    let info = DefaultInfo::<f64> {
+        ktratio: 2.0,
+        ..Default::default()
+    };
+    let info_ffi: DefaultInfoFFI<f64> = info.clone().into();
+
+    assert_eq!(info_ffi.ktratio, info.ktratio);
+}

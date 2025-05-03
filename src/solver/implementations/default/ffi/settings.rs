@@ -148,3 +148,16 @@ macro_rules! impl_from {
 // DefaultSettingsFFI -> DefaultSettings
 impl_from!(DefaultSettingsFFI, DefaultSettings);
 impl_from!(DefaultSettings, DefaultSettingsFFI);
+
+#[test]
+fn test_settings_ffi() {
+    use super::*;
+
+    let settings = DefaultSettings::<f64> {
+        max_iter: 123,
+        ..Default::default()
+    };
+    let settings_ffi: DefaultSettingsFFI<f64> = settings.clone().into();
+
+    assert_eq!(settings.max_iter, settings_ffi.max_iter);
+}

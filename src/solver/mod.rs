@@ -54,7 +54,3 @@ pub use crate::solver::core::SolverJSONReadWrite;
 
 pub use crate::solver::implementations::default;
 pub use crate::solver::implementations::default::*;
-
-//configure tests of internals
-#[cfg(test)]
-mod tests;
