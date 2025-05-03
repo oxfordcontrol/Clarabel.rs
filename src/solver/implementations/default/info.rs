@@ -1,6 +1,7 @@
 use super::*;
 use crate::algebra::*;
 use crate::io::PrintTarget;
+use crate::solver::core::ffi::*;
 use crate::solver::core::kktsolvers::LinearSolverInfo;
 use crate::solver::core::{traits::Info, SolverStatus};
 use crate::solver::traits::Variables;
@@ -70,6 +71,10 @@ where
     pub fn new() -> Self {
         Self::default()
     }
+}
+
+impl<T: FloatT> ClarabelFFI<Self> for DefaultInfo<T> {
+    type FFI = super::ffi::DefaultInfoFFI<T>;
 }
 
 impl<T> Info<T> for DefaultInfo<T>

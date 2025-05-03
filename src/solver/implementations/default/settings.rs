@@ -1,4 +1,5 @@
 use crate::algebra::*;
+use crate::solver::core::ffi::*;
 use crate::solver::core::traits::Settings;
 use derive_builder::Builder;
 
@@ -217,6 +218,10 @@ where
     }
 }
 
+impl<T: FloatT> ClarabelFFI<Self> for DefaultSettings<T> {
+    type FFI = super::ffi::DefaultSettingsFFI<T>;
+}
+
 // pre build checker (for auto-validation when using the builder)
 
 /// Automatic pre-build settings validation
@@ -275,8 +280,7 @@ fn validate_direct_solve_method(direct_solve_method: &str) -> Result<(), String>
         #[cfg(feature = "faer-sparse")]
         "faer" => Ok(()),
         _ => Err(format!(
-            "Invalid direct_solve_method: {:?}",
-            direct_solve_method
+            "Invalid direct_solve_method: {direct_solve_method:?}"
         )),
     }
 }

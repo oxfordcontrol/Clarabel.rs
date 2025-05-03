@@ -282,6 +282,7 @@ pub enum PySolverStatus {
     MaxTime,
     NumericalError,
     InsufficientProgress,
+    CallbackTerminated,
 }
 
 impl From<&SolverStatus> for PySolverStatus {
@@ -298,6 +299,7 @@ impl From<&SolverStatus> for PySolverStatus {
             SolverStatus::MaxTime => PySolverStatus::MaxTime,
             SolverStatus::NumericalError => PySolverStatus::NumericalError,
             SolverStatus::InsufficientProgress => PySolverStatus::InsufficientProgress,
+            SolverStatus::CallbackTerminated => PySolverStatus::CallbackTerminated,
         }
     }
 }
@@ -317,6 +319,7 @@ impl PySolverStatus {
             PySolverStatus::MaxTime => "MaxTime",
             PySolverStatus::NumericalError => "NumericalError",
             PySolverStatus::InsufficientProgress => "InsufficientProgress",
+            PySolverStatus::CallbackTerminated => "CallbackTerminated",
         }
         .to_string()
     }
