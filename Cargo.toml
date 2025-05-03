@@ -67,6 +67,9 @@ pardiso-panua = ["pardiso-wrapper/panua"]
 pardiso-mkl = ["pardiso-wrapper/mkl"]
 pardiso = ["pardiso-panua", "pardiso-mkl"]
 
+# compile with more exhaustive benchmarking tests 
+bench = []
+
 # -------------------------------
 # SDP configuration
 # -------------------------------

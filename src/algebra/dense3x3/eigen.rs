@@ -17,13 +17,16 @@ where
         eigen_hybrid(self, &mut None)
     }
 
-    pub(crate) fn eigen(&mut self, V: &mut Matrix<T>) -> [T; 3] {
+    pub(crate) fn eigen(&mut self, V: &mut DenseMatrix3<T>) -> [T; 3] {
         // compute eigenvalues and eigenvectors
         eigen_hybrid(self, &mut Some(V))
     }
 }
 
-fn eigen_hybrid<T: FloatT>(A: &mut DenseMatrixSym3<T>, V: &mut Option<&mut Matrix<T>>) -> [T; 3] {
+fn eigen_hybrid<T: FloatT>(
+    A: &mut DenseMatrixSym3<T>,
+    V: &mut Option<&mut DenseMatrix3<T>>,
+) -> [T; 3] {
     //first try analytic eigenvalues
     let w = eigvals_analytic(A);
 
@@ -99,7 +102,7 @@ fn eigvals_analytic<T: FloatT>(A: &DenseMatrixSym3<T>) -> [T; 3] {
 fn eigvecs_analytic<T: FloatT>(
     A: &DenseMatrixSym3<T>,
     w: [T; 3],
-    V: &mut Option<&mut Matrix<T>>,
+    V: &mut Option<&mut DenseMatrix3<T>>,
 ) -> Result<(), ()> {
     // analytical computes eigenvectors given eigenvalues,
     // and returns false if the accuracy is not good enough.
@@ -198,22 +201,21 @@ fn eigvecs_analytic<T: FloatT>(
     Ok(()) //success
 }
 
-fn eigen_jacobi<T: FloatT>(A: &mut DenseMatrixSym3<T>, V: &mut Option<&mut Matrix<T>>) -> [T; 3] {
+fn eigen_jacobi<T: FloatT>(
+    A: &mut DenseMatrixSym3<T>,
+    V: &mut Option<&mut DenseMatrix3<T>>,
+) -> [T; 3] {
     // Jacobi method for eigenvalue computation
 
     if let Some(vecs) = V {
-        // set to identity
-        vecs.data.set(T::zero());
-        vecs.data[0] = T::one();
-        vecs.data[4] = T::one();
-        vecs.data[8] = T::one();
+        vecs.set_identity();
     }
 
-    let tol = T::epsilon() * (16.).as_T();
+    let tol = T::epsilon() * (256.).as_T();
 
     // benchmarks never exceed 12 iterations in f64
-    for _ in 1..=100 {
-        let (idx, max_off_diag) = find_largest_off_diag(A);
+    for _ in 1..=25 {
+        let (idx, p, q, max_off_diag) = find_largest_off_diag(A);
 
         // check convergence
         if max_off_diag < tol {
@@ -229,7 +231,7 @@ fn eigen_jacobi<T: FloatT>(A: &mut DenseMatrixSym3<T>, V: &mut Option<&mut Matri
 
         if let Some(vecs) = V {
             // update the eigenvectors
-            update_eigenvectors(vecs, idx, c, s);
+            update_eigenvectors(vecs, p, q, c, s);
         }
     }
 
@@ -242,9 +244,12 @@ fn eigen_jacobi<T: FloatT>(A: &mut DenseMatrixSym3<T>, V: &mut Option<&mut Matri
     }
 }
 
-fn find_largest_off_diag<T: FloatT>(A: &DenseMatrixSym3<T>) -> (usize, T) {
+fn find_largest_off_diag<T: FloatT>(A: &DenseMatrixSym3<T>) -> (usize, usize, usize, T) {
     // here the idx will be index into the 6 element upper
-    // triangle data of the 3x3 matrix
+    // triangle data of the 3x3 matrix.   The p,q values are
+    // the corresponding row/col indices.   Done this way
+    // because indexing into the 6 element array is faster with
+    // idx, but we still need row/col for the eigenvector rotation
 
     let abs12 = A.data[1].abs();
     let abs13 = A.data[3].abs();
@@ -252,16 +257,19 @@ fn find_largest_off_diag<T: FloatT>(A: &DenseMatrixSym3<T>) -> (usize, T) {
 
     let mut idx = 1;
     let mut max_off_diag = abs12;
+    let (mut p, mut q) = (0, 1);
 
     if abs13 > max_off_diag {
         (idx, max_off_diag) = (3, abs13);
+        (p, q) = (0, 2);
     }
 
     if abs23 > max_off_diag {
         (idx, max_off_diag) = (4, abs23);
+        (p, q) = (1, 2);
     }
 
-    (idx, max_off_diag)
+    (idx, p, q, max_off_diag)
 }
 
 #[inline(always)]
@@ -358,15 +366,13 @@ fn apply_rotation<T: FloatT>(A: &mut DenseMatrixSym3<T>, idx: usize, c: T, s: T,
     A.data[idx] = T::zero();
 }
 
-fn update_eigenvectors<T: FloatT>(V: &mut Matrix<T>, idx: usize, c: T, s: T) {
-    // update the eigenvectors in V
-    let (p, q) = match idx {
-        1 => (0, 1),
-        3 => (0, 2),
-        4 => (1, 2),
-        _ => unreachable!("Invalid index for Jacobi rotation"),
-    };
-
+pub(crate) fn update_eigenvectors<T: FloatT>(
+    V: &mut DenseMatrix3<T>,
+    p: usize,
+    q: usize,
+    c: T,
+    s: T,
+) {
     for i in 0..3 {
         let Vip = V[(i, p)];
         let Viq = V[(i, q)];
@@ -391,7 +397,7 @@ fn sort3<T: FloatT>(mut a: T, mut b: T, mut c: T) -> [T; 3] {
 }
 
 #[inline(always)]
-fn sort3_with_columns<T: FloatT>(mut a: T, mut b: T, mut c: T, M: &mut Matrix<T>) -> [T; 3] {
+fn sort3_with_columns<T: FloatT>(mut a: T, mut b: T, mut c: T, M: &mut DenseMatrix3<T>) -> [T; 3] {
     // sort three values in ascending order, quickly
     // apply the same sorting to the columns of a matrix
 
@@ -479,33 +485,6 @@ mod test {
 
     use super::*;
     use crate::algebra::DenseMatrixSym3;
-    use itertools::iproduct;
-    use std::ops::Range;
-
-    fn sym3_test_iter(
-        rng: Range<i32>,
-        fcn: fn(f64) -> f64,
-    ) -> impl Iterator<Item = DenseMatrixSym3<f64>> {
-        iproduct!(
-            rng.clone(),
-            rng.clone(),
-            rng.clone(),
-            rng.clone(),
-            rng.clone(),
-            rng.clone()
-        )
-        .map(move |(a, b, c, d, e, f)| {
-            let data = [
-                fcn(a as f64), // Convert Item -> f64, then apply f
-                fcn(b as f64),
-                fcn(c as f64),
-                fcn(d as f64),
-                fcn(e as f64),
-                fcn(f as f64),
-            ];
-            DenseMatrixSym3 { data }
-        })
-    }
 
     #[test]
     fn test_jacobi_rotation() {
@@ -574,7 +553,7 @@ mod test {
         (A, trueD)
     }
 
-    fn check_eigvals(dtest: [f64; 3], dtrue: [f64; 3]) -> bool {
+    pub(super) fn check_eigvals(dtest: [f64; 3], dtrue: [f64; 3]) -> bool {
         for (d1, d2) in dtest.iter().zip(dtrue.iter()) {
             if (d1 - d2).abs() / f64::max(1., d2.abs()) > 1e-7 {
                 println!(
@@ -589,21 +568,16 @@ mod test {
         true
     }
 
-    fn check_eigvecs(A: &DenseMatrixSym3<f64>, V: &Matrix<f64>, w: &[f64; 3]) -> bool {
+    fn check_eigvecs(A: &DenseMatrixSym3<f64>, V: &DenseMatrix3<f64>, w: &[f64; 3]) -> bool {
         // check for sorting
         assert!(w.is_sorted());
         // single check tolerance
         check_eigvecs_with_tol(A, V, w, 1e-10)
     }
 
-    fn check_eigvecs_relaxed(A: &DenseMatrixSym3<f64>, V: &Matrix<f64>, w: &[f64; 3]) -> bool {
-        // single check tolerance
-        check_eigvecs_with_tol(A, V, w, 1e-8)
-    }
-
-    fn check_eigvecs_with_tol(
+    pub(super) fn check_eigvecs_with_tol(
         A: &DenseMatrixSym3<f64>,
-        V: &Matrix<f64>,
+        V: &DenseMatrix3<f64>,
         w: &[f64; 3],
         tol: f64,
     ) -> bool {
@@ -622,7 +596,7 @@ mod test {
 
     #[test]
     fn test_eigen_nice() {
-        let mut V = Matrix::<f64>::zeros((3, 3));
+        let mut V = DenseMatrix3::<f64>::zeros();
 
         // check the analytic eigenvalue function
         let (A, trueD) = matrix_example_nice();
@@ -639,7 +613,7 @@ mod test {
 
     #[test]
     fn test_eigen_degen() {
-        let mut V = Matrix::<f64>::zeros((3, 3));
+        let mut V = DenseMatrix3::<f64>::zeros();
 
         // check the analytic eigenvalue function
         let (A, trueD) = matrix_example_degen();
@@ -671,7 +645,7 @@ mod test {
 
     #[test]
     fn test_eigvals_hard_jacobi() {
-        let mut V = Matrix::<f64>::zeros((3, 3));
+        let mut V = DenseMatrix3::<f64>::zeros();
 
         // check the jacobi eigenvalue function
         let (A, trueD) = matrix_example_hard();
@@ -679,14 +653,58 @@ mod test {
         assert!(check_eigvals(D, trueD));
         assert!(check_eigvecs(&A, &V, &D));
     }
+}
 
-    fn test_eigvals_grid_with_transform(fcn: fn(f64) -> f64, name: &str, check_analytic: bool) {
+#[cfg(all(test, feature = "bench"))]
+mod bench {
+
+    use super::test::{check_eigvals, check_eigvecs_with_tol};
+    use super::*;
+    use crate::algebra::DenseMatrixSym3;
+    use itertools::iproduct;
+    use std::ops::Range;
+
+    fn sym3_test_iter(
+        rng: Range<i32>,
+        fcn: fn(f64) -> f64,
+    ) -> impl Iterator<Item = DenseMatrixSym3<f64>> {
+        iproduct!(
+            rng.clone(),
+            rng.clone(),
+            rng.clone(),
+            rng.clone(),
+            rng.clone(),
+            rng.clone()
+        )
+        .map(move |(a, b, c, d, e, f)| {
+            let data = [
+                fcn(a as f64), // Convert Item -> f64, then apply f
+                fcn(b as f64),
+                fcn(c as f64),
+                fcn(d as f64),
+                fcn(e as f64),
+                fcn(f as f64),
+            ];
+            DenseMatrixSym3 { data }
+        })
+    }
+
+    fn check_eigvecs_relaxed(
+        A: &DenseMatrixSym3<f64>,
+        V: &DenseMatrix3<f64>,
+        w: &[f64; 3],
+    ) -> bool {
+        // single check tolerance
+        check_eigvecs_with_tol(A, V, w, 1e-8)
+    }
+
+    fn bench_eigvals_grid_with_transform(fcn: fn(f64) -> f64, name: &str, check_analytic: bool) {
         // test the analytic eigenvalue function
         let rng = -5..6;
         let iter = sym3_test_iter(rng, fcn);
         let mut eng = EigEngine::<f64>::new(3);
         let mut count = 0;
-        let mut V = Matrix::zeros((3, 3));
+        let mut V = DenseMatrix3::zeros();
 
         for As in iter {
             count += 1;
@@ -715,12 +733,12 @@ mod test {
         println!("Eigvals grid ({}) : {} passed", name, count);
     }
 
-    fn test_eigen_grid_with_transform(fcn: fn(f64) -> f64, name: &str) {
+    fn bench_eigen_grid_with_transform(fcn: fn(f64) -> f64, name: &str) {
         let rng = -5..6;
         let iter = sym3_test_iter(rng, fcn);
         let mut fails = 0;
         let mut count = 0;
-        let mut V = Matrix::zeros((3, 3));
+        let mut V = DenseMatrix3::zeros();
 
         for As in iter {
             count += 1;
@@ -738,26 +756,26 @@ mod test {
     }
 
     #[test]
-    fn test_eigvals_grid() {
+    fn bench_eigvals_grid() {
         // Linear transformation: f(x) = x
-        test_eigvals_grid_with_transform(|x| x, "linear", true);
+        bench_eigvals_grid_with_transform(|x| x, "linear", true);
     }
 
     #[test]
-    fn test_eigvals_exp_grid() {
+    fn bench_eigvals_exp_grid() {
         // Exponential transformation: f(x) = 10^x
-        test_eigvals_grid_with_transform(|x| (10_f64).powf(x), "10^x", false);
+        bench_eigvals_grid_with_transform(|x| (10_f64).powf(x), "10^x", false);
     }
 
     #[test]
-    fn test_eigen_grid() {
+    fn bench_eigen_grid() {
         // Linear transformation: f(x) = x
-        test_eigen_grid_with_transform(|x| x, "linear");
+        bench_eigen_grid_with_transform(|x| x, "linear");
     }
 
     #[test]
-    fn test_eigen_exp_grid() {
+    fn bench_eigen_exp_grid() {
         // Exponential transformation: f(x) = 10^x
-        test_eigen_grid_with_transform(|x| (10_f64).powf(x), "10^x");
+        bench_eigen_grid_with_transform(|x| (10_f64).powf(x), "10^x");
     }
 }

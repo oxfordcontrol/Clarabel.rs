@@ -65,7 +65,7 @@ where
         match self.n() {
             2 => self.factor2(A),
             3 => self.factor3(A),
-            _ => self.factorN(A),
+            _ => self.factorblas(A),
         }
     }
 
@@ -77,7 +77,7 @@ where
         match self.n() {
             2 => self.solve2(B),
             3 => self.solve3(B),
-            _ => self.solveN(B),
+            _ => self.solveblas(B),
         }
     }
 
@@ -194,7 +194,7 @@ impl<T> CholeskyEngine<T>
 where
     T: FloatT,
 {
-    fn factorN<S>(
+    fn factorblas<S>(
         &mut self,
         A: &mut DenseStorageMatrix<S, T>,
     ) -> Result<(), DenseFactorizationError>
@@ -232,7 +232,7 @@ where
         Ok(())
     }
 
-    fn solveN<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
+    fn solveblas<S>(&mut self, B: &mut DenseStorageMatrix<S, T>)
     where
         S: AsMut<[T]> + AsRef<[T]>,
     {
@@ -399,4 +399,43 @@ mod test {
 
     generate_test_cholesky_logdet!(f32, test_cholesky_logdet_f32, sqrt);
     generate_test_cholesky_logdet!(f64, test_cholesky_logdet_f64, abs);
+}
+
+
+
+
+#[cfg(all(test, feature = "bench"))]
+mod bench {
+
+    use super::*;
+
+    fn cholesky3_bench_iter() -> impl Iterator<Item = Matrix<f64>> {
+        use itertools::iproduct;
+
+        let v: Vec<f64> = (-100..=100).map(|i| i as f64).collect();
+
+        iproduct!(v.clone(), v.clone(), v.clone()).map(move |(b,d,e)| {
+            // new matrices that are positive definite, 
+            // so choose a,c,e so that the matrix is 
+            // diagonally dominant
+            let a = b.abs() + d.abs() + 0.1;
+            let c = b.abs() + e.abs() + 0.1;
+            let f = d.abs() + e.abs() + 0.1;
+            let data = [a,b,d,b,c,e,d,e,f];
+            Matrix::new_from_slice((3,3), &data)
+        })
+    }
+
+    #[test]
+    fn bench_cholesky3_vs_blas() {
+        let mut eng = CholeskyEngine::<f64>::new(3);
+
+        for mut A in cholesky3_bench_iter() {
+            let _ = eng.factor3(&mut A);
+        }
+
+        for mut A in cholesky3_bench_iter() {
+            let _ = eng.factorblas(&mut A);
+        }
+    }
 }

@@ -54,3 +54,43 @@ where
         x[0] = (c0 - L[(1, 0)] * x[1]) / L[(0, 0)];
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use crate::algebra::*;
+
+    #[test]
+    fn test_cholesky_2x2() {
+        let As = DenseMatrixSym2 {
+            data: [4.0, -2.0, 6.0],
+        };
+
+        let xtrue = vec![1.0, 2.0];
+        let mut b = vec![0.0; 3];
+        As.mul(&mut b, &xtrue);
+
+        let mut L = DenseMatrixSym2::zeros();
+        L.cholesky_2x2_explicit_factor(&As).unwrap();
+
+        // reconstuct M = LL^T
+        let mut Lfull: Matrix<f64> = L.clone().into();
+
+        // PJG: L is not actually symmetric, but is rather
+        // the cholesky factor packed into a a triangle.
+        // Zero out the upper triangle explicitly.   Probably
+        // a tril function would be better, or some
+        // TriangularMatrix type wrapper.
+        Lfull[(0, 1)] = 0.0;
+
+        let mut M = Matrix::zeros((2, 2));
+        M.mul(&Lfull, &Lfull.t(), 1.0, 0.0);
+
+        // solve
+        let mut xsolve = vec![0.0; 2];
+        L.cholesky_2x2_explicit_solve(&mut xsolve, &b);
+
+        assert!(xsolve.norm_inf_diff(&xtrue) < 1e-10);
+    }
+}

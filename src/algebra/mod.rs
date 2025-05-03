@@ -31,10 +31,11 @@ pub(crate) use utils::*;
 mod csc;
 pub use csc::*;
 
-mod densesym2x2;
-pub(crate) use densesym2x2::*;
-mod densesym3x3;
-pub(crate) use densesym3x3::*;
+mod dense2x2;
+mod smatrix;
+pub(crate) use dense2x2::*;
+mod dense3x3;
+pub(crate) use dense3x3::*;
 
 #[cfg(feature = "sdp")]
 mod dense;

@@ -4,9 +4,8 @@
 // This uses Jacobi rotations from the 3x3 method, but
 // only one rotation is required
 
-use crate::algebra::{compute_jacobi_rotation, DenseMatrixMut, FloatT, Matrix};
-
-use super::DenseMatrixSym2;
+use crate::algebra::{compute_jacobi_rotation, FloatT};
+use crate::algebra::{DenseMatrix2, DenseMatrixSym2};
 
 impl<T> DenseMatrixSym2<T>
 where
@@ -16,12 +15,12 @@ where
         eig2(self, None)
     }
 
-    pub(crate) fn eigen(&mut self, V: &mut Matrix<T>) -> [T; 2] {
+    pub(crate) fn eigen(&mut self, V: &mut DenseMatrix2<T>) -> [T; 2] {
         eig2(self, Some(V))
     }
 }
 
-fn eig2<T>(A: &DenseMatrixSym2<T>, V: Option<&mut Matrix<T>>) -> [T; 2]
+fn eig2<T>(A: &DenseMatrixSym2<T>, V: Option<&mut DenseMatrix2<T>>) -> [T; 2]
 where
     T: FloatT,
 {
@@ -38,18 +37,17 @@ where
     let e = if noswap { [e1, e2] } else { [e2, e1] };
 
     // compute eigenvectors if needed
-    if let Some(V) = V {
-        let Vp = V.data_mut();
+    if let Some(Vp) = V {
         if noswap {
-            Vp[0] = c;
-            Vp[1] = -s;
-            Vp[2] = s;
-            Vp[3] = c;
+            Vp[(0, 0)] = c;
+            Vp[(1, 0)] = -s;
+            Vp[(0, 1)] = s;
+            Vp[(1, 1)] = c;
         } else {
-            Vp[0] = s;
-            Vp[1] = c;
-            Vp[2] = c;
-            Vp[3] = -s;
+            Vp[(0, 0)] = s;
+            Vp[(1, 0)] = c;
+            Vp[(0, 1)] = c;
+            Vp[(1, 1)] = -s;
         }
     }
     e
@@ -57,12 +55,11 @@ where
 
 // ---- unit testing ----
 
-#[cfg(test)]
-mod test {
+#[cfg(all(test, feature = "bench"))]
+mod bench {
 
-    use super::*;
     use crate::algebra::math_traits::VectorMath;
-    use crate::algebra::DenseMatrixSym2;
+    use crate::algebra::{DenseMatrix2, DenseMatrixSym2};
     use itertools::iproduct;
     use std::ops::Range;
 
@@ -82,7 +79,7 @@ mod test {
 
     fn check_eigvecs_with_tol(
         A: &DenseMatrixSym2<f64>,
-        V: &Matrix<f64>,
+        V: &DenseMatrix2<f64>,
         w: &[f64; 2],
         tol: f64,
     ) -> bool {
@@ -100,10 +97,10 @@ mod test {
     }
 
     #[test]
-    fn test_eigen_grid() {
+    fn bench_eigen_grid() {
         let rng = -5..6;
         let iter = sym2_test_iter(rng, |x| x);
-        let mut V = Matrix::zeros((2, 2));
+        let mut V = DenseMatrix2::zeros();
 
         for As in iter {
             //this is the actual user facing method

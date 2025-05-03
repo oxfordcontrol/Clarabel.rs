@@ -1,6 +1,14 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
 
+
+// PJG : MatrixMath<T> should be implemented for a more 
+// general type, e.g. the DenseStorageMatrix<S,T> type 
+// or similar.   That would provide math functionality
+// for more types, e.g. statically size matrices or 
+// the ones on borrowed data.   
+
+
 impl<T: FloatT> MatrixMath<T> for Matrix<T> {
 
     fn col_sums(&self, sums: &mut [T]) {
