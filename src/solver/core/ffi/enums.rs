@@ -115,3 +115,23 @@ impl From<CliqueMergeMethodsFFI> for String {
 #[allow(missing_docs)]
 /// FFI interface for [`SolverStatus`](crate::solver::SolverStatus)
 pub type SolverStatusFFI = SolverStatus;
+
+#[test]
+
+fn test_enum_ffis() {
+    let obj = LinearSolverInfo::default();
+    let obj_ffi = LinearSolverInfoFFI::from(obj.clone());
+
+    let obj = "qdldl".to_string();
+    let obj_ffi = DirectSolveMethodsFFI::from(obj.clone());
+    let obj_ffi = String::from(obj_ffi.clone());
+    assert_eq!(obj, obj_ffi);
+}
+
+#[cfg(feature = "sdp")]
+fn test_enum_ffis_sdps() {
+    let obj = "clique_graph".to_string();
+    let obj_ffi = CliqueMergeMethodsFFI::from(obj.clone());
+    let obj_ffi = String::from(obj_ffi.clone());
+    assert_eq!(obj, obj_ffi);
+}
