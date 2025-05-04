@@ -257,7 +257,9 @@ where
         // target for computed eigenvectors (if any)
         let z = match self.V.as_mut() {
             Some(V) => V.data_mut(),
-            None => &mut [T::zero()], // fake target
+            None => {
+                &mut [T::zero()] // fake target
+            }
         };
 
         for i in 0..2 {
