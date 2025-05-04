@@ -37,7 +37,8 @@ impl<T: FloatT> VectorMath<T> for [T] {
     }
 
     fn set(&mut self, c: T) -> &mut Self {
-        self.scalarop(|_x| c)
+        self.fill(c);
+        self
     }
 
     fn scale(&mut self, c: T) -> &mut Self {
@@ -111,7 +112,23 @@ impl<T: FloatT> VectorMath<T> for [T] {
 
     // 2-norm
     fn norm(&self) -> T {
-        T::sqrt(self.sumsq())
+        // T::sqrt(self.sumsq()) // not robust
+
+        let (scale, sumsq);
+        (scale, sumsq) = self.iter().filter(|&x| *x != T::zero()).fold(
+            (T::zero(), T::one()),
+            |(scale, sumsq), &xi| {
+                let absxi = xi.abs();
+                if scale < absxi {
+                    let r = scale / absxi;
+                    (absxi, T::one() + sumsq * r * r)
+                } else {
+                    let r = absxi / scale;
+                    (scale, sumsq + r * r)
+                }
+            },
+        );
+        scale * sumsq.sqrt()
     }
 
     // Returns infinity norm
@@ -134,11 +151,23 @@ impl<T: FloatT> VectorMath<T> for [T] {
     //two-norm of elementwise product self.*v
     fn norm_scaled(&self, v: &[T]) -> T {
         assert_eq!(self.len(), v.len());
-        let total = zip(self, v).fold(T::zero(), |acc, (&x, &y)| {
-            let prod = x * y;
-            acc + prod * prod
-        });
-        T::sqrt(total)
+
+        let (scale, sumsq) = self
+            .iter()
+            .zip(v)
+            .map(|(&yi, &vi)| yi * vi)
+            .filter(|&xi| xi != T::zero())
+            .fold((T::zero(), T::one()), |(scale, sumsq), xi| {
+                let absxi = xi.abs();
+                if scale < absxi {
+                    let r = scale / absxi;
+                    (absxi, T::one() + sumsq * r * r)
+                } else {
+                    let r = absxi / scale;
+                    (scale, sumsq + r * r)
+                }
+            });
+        scale * sumsq.sqrt()
     }
 
     //inf-norm of elementwise product self.*v

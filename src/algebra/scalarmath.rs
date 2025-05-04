@@ -66,7 +66,7 @@ pub(crate) fn coord_to_upper_triangular_index(coord: (usize, usize)) -> usize {
 // For now, implement a simple truncation method, which works
 // for inputs < 2^53 or so (otherwise possibly off-by-one).
 #[cfg_attr(not(feature = "sdp"), allow(dead_code))]
-fn isqrt(v: usize) -> usize {
+pub(crate) fn isqrt(v: usize) -> usize {
     (v as f64).sqrt() as usize
 }
 

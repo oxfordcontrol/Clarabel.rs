@@ -3,7 +3,7 @@ name = "clarabel"
 version = "0.11.0"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
-rust-version = "1.71"
+rust-version = "1.70.0"
 license = "Apache-2.0"
 description = "Clarabel Conic Interior Point Solver for Rust / Python"
 readme = "README.md"
@@ -67,6 +67,9 @@ pardiso-panua = ["pardiso-wrapper/panua"]
 pardiso-mkl = ["pardiso-wrapper/mkl"]
 pardiso = ["pardiso-panua", "pardiso-mkl"]
 
+# compile with more exhaustive benchmarking tests 
+bench = []
+
 # -------------------------------
 # SDP configuration
 # -------------------------------
@@ -101,11 +104,11 @@ optional = true
 # -------------------------------
 
 [dependencies.faer]
-version = "0.21"
+version = "0.22"
 optional = true 
 
 [dependencies.faer-traits]
-version = "0.21"
+version = "0.22"
 optional = true 
 
 [dependencies.pardiso-wrapper]
@@ -237,4 +240,7 @@ features = ["build", "cargo", "rustc", "si"]
 # ------------------------------
 [dev-dependencies]
 tempfile = "3"
+
+
+
 

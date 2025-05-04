@@ -2,7 +2,7 @@ use crate::algebra::*;
 use crate::solver::core::ffi::*;
 use crate::solver::DefaultSettings;
 
-/// FFI interface for [`DefaultSettings`](crate::solver::settings::settingsSettings)
+/// FFI interface for [`DefaultSettings`](crate::solver::implementations::default::DefaultSettings)
 #[allow(missing_docs)]
 #[derive(Debug, Clone)]
 #[repr(C)]

@@ -1,4 +1,4 @@
-name: MSRV default features build test (1.71)
+name: MSRV default features build test (1.70)
 
 on:
   workflow_dispatch:
@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         toolchain:
-          - 1.71
+          - 1.70.0
           - stable
           - beta
     steps:
