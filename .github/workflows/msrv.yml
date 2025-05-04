@@ -17,7 +17,7 @@ jobs:
     strategy:
       matrix:
         toolchain:
-          - "1.70"
+          - "1.66"
           - stable
           - beta
     steps:
