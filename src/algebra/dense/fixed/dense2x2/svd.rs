@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
+use crate::algebra::dense::fixed::dense3x3::svd::compute_two_sided_rotation;
 
 // 2x2 SVD using a two-sided Jacobi method.
 

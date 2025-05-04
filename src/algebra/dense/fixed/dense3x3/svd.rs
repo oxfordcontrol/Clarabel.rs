@@ -1,5 +1,6 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
+use super::eigen::*;
 
 // 3x3 SVD using a two-sided Jacobi method.
 

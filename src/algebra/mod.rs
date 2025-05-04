@@ -31,15 +31,7 @@ pub(crate) use utils::*;
 mod csc;
 pub use csc::*;
 
-mod dense2x2;
-mod smatrix;
-pub(crate) use dense2x2::*;
-mod dense3x3;
-pub(crate) use dense3x3::*;
-
-#[cfg(feature = "sdp")]
 mod dense;
-#[cfg(feature = "sdp")]
 pub(crate) use dense::*;
 // sparse vectors implementations (for chordal decomp only)
 #[cfg(feature = "sdp")]

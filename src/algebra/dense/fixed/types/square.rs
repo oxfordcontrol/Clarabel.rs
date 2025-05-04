@@ -1,4 +1,7 @@
 #![allow(non_snake_case)]
+// some functions are only used with 3x3 eigen or svd
+// decompositions, which are only used in the sdp feature
+#![allow(dead_code)]
 
 use crate::algebra::*;
 use std::ops::{Index, IndexMut};

@@ -119,12 +119,16 @@ pub type SolverStatusFFI = SolverStatus;
 #[test]
 
 fn test_enum_ffis() {
-    let obj = LinearSolverInfo::default();
+    let obj = LinearSolverInfo {
+        threads: 4,
+        ..Default::default()
+    };
     let obj_ffi = LinearSolverInfoFFI::from(obj.clone());
+    assert_eq!(obj.threads, obj_ffi.threads as usize);
 
     let obj = "qdldl".to_string();
     let obj_ffi = DirectSolveMethodsFFI::from(obj.clone());
-    let obj_ffi = String::from(obj_ffi.clone());
+    let obj_ffi = String::from(obj_ffi);
     assert_eq!(obj, obj_ffi);
 }
 
@@ -132,6 +136,6 @@ fn test_enum_ffis() {
 fn test_enum_ffis_sdps() {
     let obj = "clique_graph".to_string();
     let obj_ffi = CliqueMergeMethodsFFI::from(obj.clone());
-    let obj_ffi = String::from(obj_ffi.clone());
+    let obj_ffi = String::from(obj_ffi);
     assert_eq!(obj, obj_ffi);
 }

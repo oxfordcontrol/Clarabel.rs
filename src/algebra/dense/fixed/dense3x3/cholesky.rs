@@ -14,7 +14,7 @@ where
     //  NB: this is only marginally slower than the explicit
     //  3x3 LDL decomposition, which would avoid sqrts.
 
-    pub fn cholesky_3x3_explicit_factor(
+    pub(crate) fn cholesky_3x3_explicit_factor(
         &mut self,
         A: &DenseMatrixSym3<T>,
     ) -> Result<(), DenseFactorizationError> {
@@ -51,7 +51,7 @@ where
 
     // Unrolled 3x3 forward/backward substition for a Cholesky factor
 
-    pub fn cholesky_3x3_explicit_solve(&self, x: &mut [T], b: &[T]) {
+    pub(crate) fn cholesky_3x3_explicit_solve(&self, x: &mut [T], b: &[T]) {
         let L = self;
 
         // Forward substitution: Solve Lc = b
@@ -96,9 +96,6 @@ mod test {
         Lfull[(0, 1)] = 0.0;
         Lfull[(0, 2)] = 0.0;
         Lfull[(1, 2)] = 0.0;
-
-        let mut M = Matrix::zeros((3, 3));
-        M.mul(&Lfull, &Lfull.t(), 1.0, 0.0);
 
         // solve
         let mut xsolve = vec![0.0; 3];

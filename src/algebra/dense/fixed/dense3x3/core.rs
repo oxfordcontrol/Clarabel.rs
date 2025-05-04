@@ -1,9 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{
-    smatrix::{DenseMatrixN, DenseMatrixSymN},
-    *,
-};
+use crate::algebra::*;
 
 // 3x3 Dense matrix types are restricted to the crate
 // NB: Implements square and symmetric 3x3 types to support
@@ -11,10 +8,11 @@ use crate::algebra::{
 // for 3x3 matrix decompositions.
 
 // NB: S = 9 here because the matrix has 3^2 elements
-pub type DenseMatrix3<T> = DenseMatrixN<9, T>;
+#[allow(dead_code)] // used in tests even with `sdp` not selected
+pub(crate) type DenseMatrix3<T> = DenseMatrixN<9, T>;
 
 // NB: S = 6 here because the upper triangle has 6 elements
-pub type DenseMatrixSym3<T> = DenseMatrixSymN<6, T>;
+pub(crate) type DenseMatrixSym3<T> = DenseMatrixSymN<6, T>;
 
 // hand implemented DenseMatrixSym3<T> to make sure
 // everything is properly unrolled

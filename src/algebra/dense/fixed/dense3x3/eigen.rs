@@ -568,9 +568,14 @@ mod test {
         true
     }
 
+    fn is_ascending_order<T: FloatT>(s: &[T]) -> bool {
+        // is_sorted is only available post v1.82
+        s.windows(2).all(|w| w[0] <= w[1])
+    }
+
     fn check_eigvecs(A: &DenseMatrixSym3<f64>, V: &DenseMatrix3<f64>, w: &[f64; 3]) -> bool {
         // check for sorting
-        assert!(w.is_sorted());
+        assert!(is_ascending_order(w));
         // single check tolerance
         check_eigvecs_with_tol(A, V, w, 1e-10)
     }

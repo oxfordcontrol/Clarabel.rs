@@ -255,11 +255,10 @@ where
         let info = &mut 0_i32; // output info
 
         // target for computed eigenvectors (if any)
+        let mut tmpz = [T::zero()]; //placeholder if V empty
         let z = match self.V.as_mut() {
             Some(V) => V.data_mut(),
-            None => {
-                &mut [T::zero()] // fake target
-            }
+            None => tmpz.as_mut_slice(), // fake target
         };
 
         for i in 0..2 {

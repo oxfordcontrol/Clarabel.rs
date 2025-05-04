@@ -3,8 +3,8 @@
 // 2z2 symmetric eigendecomposition using Jacobi method.
 // This uses Jacobi rotations from the 3x3 method, but
 // only one rotation is required
-
-use crate::algebra::{compute_jacobi_rotation, FloatT};
+use crate::algebra::dense::fixed::dense3x3::eigen::compute_jacobi_rotation;
+use crate::algebra::FloatT;
 use crate::algebra::{DenseMatrix2, DenseMatrixSym2};
 
 impl<T> DenseMatrixSym2<T>

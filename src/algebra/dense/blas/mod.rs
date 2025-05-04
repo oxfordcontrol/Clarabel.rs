@@ -12,7 +12,6 @@ pub(crate) use lu::*;
 
 mod gemm;
 mod gemv;
-
 mod symv;
 mod syr2k;
 mod syrk;

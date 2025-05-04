@@ -5,7 +5,6 @@ use super::traits::*;
 use crate::algebra::*;
 use crate::solver::core::callbacks::SolverCallbacks;
 use crate::solver::core::ffi::*;
-use crate::solver::DefaultSettings;
 use crate::timers::*;
 use std::io::Write;
 
@@ -106,7 +105,7 @@ where
     /// load problem data from a JSON file previously saved using [`save_to_file`](self::SolverJSONReadWrite::save_to_file)
     fn load_from_file(
         file: &mut std::fs::File,
-        settings: Option<DefaultSettings<T>>,
+        settings: Option<crate::solver::DefaultSettings<T>>,
     ) -> Result<Self, std::io::Error>;
 }
 

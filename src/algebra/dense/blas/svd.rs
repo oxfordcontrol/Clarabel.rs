@@ -517,6 +517,11 @@ mod test {
         ])
     }
 
+    fn is_descending_order<T: FloatT>(s: &[T]) -> bool {
+        // is_sorted is only available post v1.82
+        s.windows(2).all(|w| w[0] >= w[1])
+    }
+
 
     fn run_svd_factor_test<T>(A: &mut Matrix<T>, tolfn: fn(T) -> T)
     where
@@ -545,7 +550,7 @@ mod test {
             let s = &eng.s;
             let Vt = &eng.Vt;
 
-            assert!(s.iter().rev().is_sorted());
+            assert!(is_descending_order(s));
 
             //reconstruct matrix from SVD
             let mut Us = U.clone();
