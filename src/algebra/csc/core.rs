@@ -231,8 +231,8 @@ where
         CscMatrix::new(n, n, colptr, rowval, nzval)
     }
 
-    /// squeeze out entries that are == T::zero()
-    pub fn dropzeros(&mut self) {
+    /// squeeze out entries that are == T::zero().  Returns a count of dropped entries.
+    pub fn dropzeros(&mut self) -> usize {
         // this function could possibly be generalized to allow filtering
         // on a more general test, similar to fkeep! in Julia sparse matrix
         // internals.  Then could be used as a filter for triu matrix etc
@@ -263,8 +263,12 @@ where
             self.colptr[col + 1] = writeidx;
         }
 
+        let dropcount = writeidx - self.nzval.len();
+
         self.rowval.resize(writeidx, 0);
         self.nzval.resize(writeidx, T::zero());
+
+        dropcount
     }
 
     /// Return matrix data in triplet format.
@@ -928,7 +932,7 @@ fn test_drop_zeros() {
     ]);
 
     // same, but with 2,6,7,8 set to zero
-    let B = CscMatrix::from(&[
+    let mut B = CscMatrix::from(&[
         [0.0, 3.0, 0.0, 0.0],
         [1.0, 0.0, 0.0, 0.0],
         [0.0, 4.0, 0.0, 0.0],
@@ -943,9 +947,14 @@ fn test_drop_zeros() {
     }
 
     //squeeze out the zeros
-    A.dropzeros();
+    let count = A.dropzeros();
 
+    assert_eq!(count, 4);
     assert_eq!(A, B);
+
+    // nothing to drop
+    let count = B.dropzeros();
+    assert_eq!(count, 0);
 }
 
 #[test]

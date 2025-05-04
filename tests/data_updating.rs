@@ -35,6 +35,7 @@ fn updating_test_data() -> (
 
     let settings = DefaultSettingsBuilder::default()
         .presolve_enable(false)
+        .input_sparse_dropzeros(false)
         .equilibrate_enable(true)
         .build()
         .unwrap();

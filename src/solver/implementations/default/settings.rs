@@ -171,6 +171,14 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "true")]
     pub presolve_enable: bool,
 
+    ///explicitly drop structural zeros from sparse data inputs
+    ///Caution: this will disable parametric updating functionality
+    ///See also ['dropzeros'][crate::algebra::CscMatrix::dropzeros]
+    ///for dropping structural zeros before passing to the solver
+    ///
+    #[builder(default = "false")]
+    pub input_sparse_dropzeros: bool,
+
     /// enable chordal decomposition.
     /// [requires "sdp" feature.]
     #[cfg(feature = "sdp")]

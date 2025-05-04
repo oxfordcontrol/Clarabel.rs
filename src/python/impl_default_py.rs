@@ -432,6 +432,9 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub presolve_enable: bool,
 
+    #[pyo3(get, set)]
+    pub input_sparse_dropzeros: bool,
+
     //chordal decomposition (python must be built with "sdp" feature)
     #[pyo3(get, set)]
     pub chordal_decomposition_enable: bool,
@@ -511,6 +514,7 @@ impl From<&DefaultSettings<f64>> for PyDefaultSettings {
             iterative_refinement_max_iter: set.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
             presolve_enable: set.presolve_enable,
+            input_sparse_dropzeros: set.input_sparse_dropzeros,
             chordal_decomposition_enable: set.chordal_decomposition_enable,
             chordal_decomposition_merge_method: set.chordal_decomposition_merge_method.clone(),
             chordal_decomposition_compact: set.chordal_decomposition_compact,
@@ -562,6 +566,7 @@ impl PyDefaultSettings {
             iterative_refinement_max_iter: self.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: self.iterative_refinement_stop_ratio,
             presolve_enable: self.presolve_enable,
+            input_sparse_dropzeros: self.input_sparse_dropzeros,
             chordal_decomposition_enable: self.chordal_decomposition_enable,
             chordal_decomposition_merge_method: self.chordal_decomposition_merge_method.clone(),
             chordal_decomposition_compact: self.chordal_decomposition_compact,
