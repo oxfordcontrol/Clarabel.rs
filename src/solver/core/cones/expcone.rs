@@ -1,5 +1,15 @@
-use super::*;
-use crate::algebra::*;
+use crate::{
+    algebra::{AsFloatT, DenseMatrixSym3, FloatT, ScalarMath, VectorMath},
+    solver::{core::ScalingStrategy, CoreSettings},
+};
+
+use super::{
+    nonsymmetric_common::{backtrack_search, Nonsymmetric3DCone, NonsymmetricCone},
+    Cone, Nonsymmetric3DConeUtils, PrimalOrDualCone,
+};
+
+//use super::*;
+//use crate::algebra::*;
 
 // -------------------------------------
 // Exponential Cone
@@ -257,8 +267,8 @@ where
         let mut cholH = DenseMatrixSym3::zeros();
 
         // solve H*u = ds
-        let issuccess = cholH.cholesky_3x3_explicit_factor(H);
-        if issuccess {
+        let is_success = cholH.cholesky_3x3_explicit_factor(H).is_ok();
+        if is_success {
             cholH.cholesky_3x3_explicit_solve(&mut u[..], ds);
         } else {
             η.set(T::zero());

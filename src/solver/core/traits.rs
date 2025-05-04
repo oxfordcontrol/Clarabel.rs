@@ -10,6 +10,7 @@
 //!  which collectively implement support for the problem format described in the top
 //! level crate documentation.
 
+use super::ffi::*;
 use super::{cones::Cone, CoreSettings, ScalingStrategy};
 use super::{SolverStatus, StepDirection};
 use crate::algebra::*;
@@ -176,7 +177,7 @@ where
 }
 
 /// Internal information for the solver to monitor progress and check for termination.
-pub trait Info<T>: InfoPrint<T>
+pub trait Info<T>: InfoPrint<T> + ClarabelFFI<Self> + Sized + Clone
 where
     T: FloatT,
 {
@@ -252,7 +253,7 @@ pub trait Solution<T: FloatT> {
 /// specific settings they wish.   They must, however, also maintain
 /// a settings object of type [`CoreSettings`](crate::solver::core::CoreSettings)
 /// and return this to the solver internally.   
-pub trait Settings<T: FloatT> {
+pub trait Settings<T: FloatT>: ClarabelFFI<Self> + Sized + Clone {
     /// Return the core settings.
     fn core(&self) -> &CoreSettings<T>;
 

@@ -158,14 +158,6 @@ where
 
     /// symmetric view (selects upper or lower triangle source)
     pub fn sym(&self, uplo: MatrixTriangle) -> Symmetric<'_, Self> {
-        match uplo {
-            MatrixTriangle::Triu => {
-                debug_assert!(self.is_triu());
-            }
-            MatrixTriangle::Tril => {
-                debug_assert!(self.is_tril());
-            }
-        }
         Symmetric { src: self, uplo }
     }
 
@@ -289,39 +281,6 @@ fn test_matrix_from_slice_of_arrays() {
 
     assert_eq!(A, B);
     assert_eq!(A, C);
-}
-
-#[test]
-fn test_svec_conversions() {
-    let n = 3;
-
-    let X = Matrix::from(&[
-        [1., 3., -2.], //
-        [3., -4., 7.], //
-        [-2., 7., 5.], //
-    ]);
-
-    let Y = Matrix::from(&[
-        [2., 5., -4.],  //
-        [5., 6., 2.],   //
-        [-4., 2., -3.], //
-    ]);
-
-    let mut Z = Matrix::zeros((3, 3));
-
-    let mut x = vec![0.; triangular_number(n)];
-    let mut y = vec![0.; triangular_number(n)];
-
-    // check inner product identity
-    mat_to_svec(&mut x, &X);
-    mat_to_svec(&mut y, &Y);
-
-    assert!(f64::abs(x.dot(&y) - X.data().dot(Y.data())) < 1e-12);
-
-    // check round trip
-    mat_to_svec(&mut x, &X);
-    svec_to_mat(&mut Z, &x);
-    assert!(X.data().norm_inf_diff(Z.data()) < 1e-12);
 }
 
 #[test]

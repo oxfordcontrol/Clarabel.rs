@@ -1,4 +1,5 @@
 use crate::algebra::*;
+use crate::solver::core::ffi::*;
 use crate::solver::core::traits::Settings;
 use derive_builder::Builder;
 
@@ -215,6 +216,10 @@ where
     fn core_mut(&mut self) -> &mut DefaultSettings<T> {
         self
     }
+}
+
+impl<T: FloatT> ClarabelFFI<Self> for DefaultSettings<T> {
+    type FFI = super::ffi::DefaultSettingsFFI<T>;
 }
 
 // pre build checker (for auto-validation when using the builder)

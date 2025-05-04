@@ -58,7 +58,7 @@ pub trait LDLConfiguration: FloatT {
                 ldlptr = |M, D, S, P| Box::new(FaerDirectLDLSolver::new(M, D, S, P));
             }
             _ => {
-                panic!("Unrecognized LDL solver type: \"{case}\"");
+                panic!("Unrecognized LDL solver type: \"{}\"", case);
             }
         }
         (kktshape, ldlptr)

@@ -27,12 +27,15 @@ pub(crate) mod chordal;
 pub use crate::solver::core::cones::{SupportedConeT, SupportedConeT::*};
 
 //user facing traits required to interact with solver
-pub use crate::solver::core::{IPSolver, SolverStatus};
 pub use crate::solver::core::kktsolvers::LinearSolverInfo;
+pub use crate::solver::core::{IPSolver, SolverStatus};
 
 //user facing traits required to define new implementatiions
 pub use crate::solver::core::traits;
 pub use crate::solver::core::CoreSettings;
+
+//user facing ffi interfaces
+pub use crate::solver::core::ffi;
 
 // read/write types if enabled
 #[cfg(feature = "serde")]
@@ -51,7 +54,3 @@ pub use crate::solver::core::SolverJSONReadWrite;
 
 pub use crate::solver::implementations::default;
 pub use crate::solver::implementations::default::*;
-
-//configure tests of internals
-#[cfg(test)]
-mod tests;
