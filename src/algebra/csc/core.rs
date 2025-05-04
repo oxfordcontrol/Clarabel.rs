@@ -263,7 +263,7 @@ where
             self.colptr[col + 1] = writeidx;
         }
 
-        let dropcount = writeidx - self.nzval.len();
+        let dropcount = self.nzval.len() - writeidx;
 
         self.rowval.resize(writeidx, 0);
         self.nzval.resize(writeidx, T::zero());
