@@ -64,6 +64,7 @@ pub struct DefaultSettingsFFI<T: FloatT> {
 
     // preprocessing
     pub presolve_enable: bool,
+    pub input_sparse_dropzeros: bool,
 
     // chordal decomposition
     #[cfg(feature = "sdp")]
@@ -127,6 +128,7 @@ macro_rules! impl_from {
                     iterative_refinement_max_iter: settings.iterative_refinement_max_iter,
                     iterative_refinement_stop_ratio: settings.iterative_refinement_stop_ratio,
                     presolve_enable: settings.presolve_enable,
+                    input_sparse_dropzeros: settings.input_sparse_dropzeros,
                     #[cfg(feature = "sdp")]
                     chordal_decomposition_enable: settings.chordal_decomposition_enable,
                     #[cfg(feature = "sdp")]
