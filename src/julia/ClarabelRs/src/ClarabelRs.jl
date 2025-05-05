@@ -22,6 +22,9 @@ module ClarabelRs
         global libpath
         global librust
         
+        # force garbage collection to try to prevent (or at least discourage...)
+        # segfaults when releasing old objects with a different build
+        GC.gc()
         result = false
         while !result
             result = Libdl.dlclose(librust)
