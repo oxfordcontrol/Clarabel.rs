@@ -31,16 +31,16 @@ impl PardisoMatrixIndices32 {
     }
 }
 
-pub struct PardisoDirectLDLSolver<P>
+pub(crate) struct PardisoDirectLDLSolver<P>
 where
-    P: PardisoInterface,
+    P: PardisoInterface + PardisoCustomInitialize,
 {
     ps: P,
     nnzA: usize,
 
     // Panua wants 32 bit CSC indices, 1 indexed
     // implemented as Option since I want to keep
-    // to door open for a 64 bit 0-indexed version
+    // the door open for a 64 bit 0-indexed version
     // of pardiso to pass matrix indices through
     // directly from the CscMatrix
     index32: Option<PardisoMatrixIndices32>,
@@ -64,9 +64,37 @@ trait PardisoDirectLDLSolverInterface {
     );
 }
 
+// this trait is implement on the MKL and and Panua wrappers to
+// allow for setting of different base defaults after pardisoinit
+// initialization but before the user settings are applied
+pub(crate) trait PardisoCustomInitialize {
+    fn custom_iparm_initialize(&mut self, settings: &CoreSettings<f64>);
+}
+
+#[cfg(feature = "pardiso-panua")]
+impl PardisoCustomInitialize for PanuaPardisoSolver {
+    fn custom_iparm_initialize(&mut self, settings: &CoreSettings<f64>) {
+        // disable internal iterative refinement if user enabled
+        // iterative refinement is enabled in the settings.   It is
+        // seemingly not possible to disable this completely within
+        // MKL, and setting -99 there would mean "execute 99 high
+        // accuracy refinements steps".   Not good.
+        if settings.iterative_refinement_enable {
+            self.set_iparm(7, -99); //# NB: 0 indexed
+        }
+    }
+}
+
+#[cfg(feature = "pardiso-mkl")]
+impl PardisoCustomInitialize for MKLPardisoSolver {
+    fn custom_iparm_initialize(&mut self, _settings: &CoreSettings<f64>) {
+        // nothing special to do
+    }
+}
+
 impl<P> PardisoDirectLDLSolverInterface for PardisoDirectLDLSolver<P>
 where
-    P: PardisoInterface,
+    P: PardisoInterface + PardisoCustomInitialize,
 {
     fn pardiso_kkt<'a>(
         &self,
@@ -83,28 +111,59 @@ where
         &mut self,
         kkt: &CscMatrix<f64>,
         _Dsigns: &[i8],
-        _settings: &CoreSettings<f64>,
+        settings: &CoreSettings<f64>,
         _perm: Option<Vec<usize>>,
     ) {
         // NB: ignore Dsigns here because pardiso doesn't
         // use information about the expected signs
 
-        // perform logical factor
-
         let (nzvals, rowvals, colptrs) = self.pardiso_kkt(kkt, &self.index32);
         let ps = &mut self.ps;
 
+        // matrix is quasidefinite
         ps.set_matrix_type(MatrixType::RealSymmetricIndefinite);
+
+        //init here gets the defaults
         ps.pardisoinit().unwrap();
 
-        // sets pardiso to solve the transposed system since we are supplying
-        // CSC data and it expects CSR data.   I don't think this matters for
-        // a symmetric system, but check here first for failed solves
-        ps.set_iparm(11, 1);
+        // overlay custom iparm initializations that might
+        // be specific to MKL or Panua
+        ps.custom_iparm_initialize(settings);
 
-        ps.set_phase(Phase::Analysis);
+        // now apply user defined iparm settings if they exist, and set
+        // iparm[0] to 1 if any are provided.  Check here first for
+        // failed solves, because misuse off this setting would
+        // likely be a disaster.
+        let mut is_user_iparm_set = false;
+        for (i, &iparm) in settings.pardiso_iparm.iter().enumerate() {
+            if iparm != i32::MIN {
+                ps.set_iparm(i, iparm);
+                is_user_iparm_set = true;
+            }
+        }
 
+        // disable use of all default settings
+        if is_user_iparm_set {
+            // NB: 0 indexed
+            ps.set_iparm(0, 1);
+        }
+
+        if settings.pardiso_verbose {
+            ps.set_message_level(MessageLevel::On);
+        } else {
+            ps.set_message_level(MessageLevel::Off);
+        }
+
+        // PJG: catching of bad iparm parameters should instead
+        // be implemented into the settings constructor and
+        // settings validation code, so that bad parameters
+        // can be rejected or filtered without causing a panic
+
+        // check for very bad parameters here
         assert_pardiso_const_rhs_config(ps);
+
+        //perform logical factorization
+        ps.set_phase(Phase::Analysis);
 
         ps.pardiso(
             nzvals,
@@ -173,12 +232,9 @@ impl PanuaPardisoDirectLDLSolver {
             "Panua Pardiso is not available"
         );
 
-        let mut ps = PanuaPardisoSolver::new().unwrap();
+        let ps = PanuaPardisoSolver::new().unwrap();
         let nnzA = KKT.nnz();
         let index32 = Some(PardisoMatrixIndices32::new(KKT));
-
-        // disable internal iterative refinement (available in Panua only)
-        ps.set_iparm(7, -99);
 
         let mut solver = Self { ps, nnzA, index32 };
 
@@ -193,7 +249,7 @@ impl PanuaPardisoDirectLDLSolver {
 
 impl<P> DirectLDLSolverReqs for PardisoDirectLDLSolver<P>
 where
-    P: PardisoInterface,
+    P: PardisoInterface + PardisoCustomInitialize,
 {
     fn required_matrix_shape() -> MatrixTriangle {
         MatrixTriangle::Tril
@@ -202,7 +258,7 @@ where
 
 impl<P> HasLinearSolverInfo for PardisoDirectLDLSolver<P>
 where
-    P: PardisoInterface,
+    P: PardisoInterface + PardisoCustomInitialize,
 {
     fn linear_solver_info(&self) -> LinearSolverInfo {
         LinearSolverInfo {
@@ -217,7 +273,7 @@ where
 
 impl<P> DirectLDLSolver<f64> for PardisoDirectLDLSolver<P>
 where
-    P: PardisoInterface,
+    P: PardisoInterface + PardisoCustomInitialize,
 {
     fn update_values(&mut self, _index: &[usize], _values: &[f64]) {
         //no-op.  Will just use KKT matrix as passed to refactor
@@ -272,7 +328,7 @@ where
 
 fn assert_pardiso_const_rhs_config<P>(ps: &P)
 where
-    P: PardisoInterface,
+    P: PardisoInterface + PardisoCustomInitialize,
 {
     // pardiso wants b to be mutable since there is an option
     // to store the solution on b instead of x. We always want

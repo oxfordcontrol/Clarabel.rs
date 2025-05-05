@@ -97,7 +97,8 @@ impl<T: FloatT> LDLConfiguration for T {
                                 |M, D, S, P| Box::new(PanuaPardisoDirectLDLSolver::new(M, D, S, P));
                         }
                         _ => {
-                            unreachable!();
+                            // since one, but not both, might be enabled
+                            panic!("Unrecognized LDL solver type: \"{}\"", case);
                         }
                     }
                     // force cast back to generic FloatT, which should be safe

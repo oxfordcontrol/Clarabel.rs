@@ -75,6 +75,12 @@ pub struct DefaultSettingsFFI<T: FloatT> {
     pub chordal_decomposition_compact: bool,
     #[cfg(feature = "sdp")]
     pub chordal_decomposition_complete_dual: bool,
+
+    //pardiso settings
+    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+    pub pardiso_iparm: [i32; 64],
+    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+    pub pardiso_verbose: bool,
 }
 
 // implement From in both directions, since we need to both send
@@ -140,6 +146,10 @@ macro_rules! impl_from {
                     #[cfg(feature = "sdp")]
                     chordal_decomposition_complete_dual: settings
                         .chordal_decomposition_complete_dual,
+                    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+                    pardiso_iparm: settings.pardiso_iparm,
+                    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+                    pardiso_verbose: settings.pardiso_verbose,
                 }
             }
         }

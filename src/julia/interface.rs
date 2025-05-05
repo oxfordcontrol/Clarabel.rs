@@ -213,7 +213,11 @@ pub(crate) fn settings_from_json(json: *const std::os::raw::c_char) -> DefaultSe
         slice.to_str().unwrap()
     };
 
+    println!("calling settings_from_json with json: {}", json);
+
     let mut settings: DefaultSettings<f64> = from_str(json).unwrap();
+
+    println!("converted setting are {:?}", settings);
 
     // Julia serializes Inf => None, so Julia side
     // converts to f64::MAX before serialization

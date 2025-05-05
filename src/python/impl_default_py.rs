@@ -444,6 +444,14 @@ pub struct PyDefaultSettings {
     pub chordal_decomposition_compact: bool,
     #[pyo3(get, set)]
     pub chordal_decomposition_complete_dual: bool,
+
+    // pardiso settings (requires pardiso features enabled)
+    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+    #[pyo3(get, set)]
+    pub pardiso_iparm: [i32; 64],
+    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+    #[pyo3(get, set)]
+    pub pardiso_verbose: bool,
 }
 
 #[pymethods]
@@ -519,6 +527,10 @@ impl From<&DefaultSettings<f64>> for PyDefaultSettings {
             chordal_decomposition_merge_method: set.chordal_decomposition_merge_method.clone(),
             chordal_decomposition_compact: set.chordal_decomposition_compact,
             chordal_decomposition_complete_dual: set.chordal_decomposition_complete_dual,
+            #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+            pardiso_iparm: set.pardiso_iparm,
+            #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+            pardiso_verbose: set.pardiso_verbose,
         }
     }
 }
@@ -571,6 +583,10 @@ impl PyDefaultSettings {
             chordal_decomposition_merge_method: self.chordal_decomposition_merge_method.clone(),
             chordal_decomposition_compact: self.chordal_decomposition_compact,
             chordal_decomposition_complete_dual: self.chordal_decomposition_complete_dual,
+            #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+            pardiso_iparm: self.pardiso_iparm,
+            #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+            pardiso_verbose: self.pardiso_verbose,
         };
 
         //manually validate settings from Python side
