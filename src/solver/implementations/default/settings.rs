@@ -2,7 +2,6 @@ use crate::algebra::*;
 use crate::solver::core::ffi::*;
 use crate::solver::core::traits::Settings;
 use derive_builder::Builder;
-use derive_more::Debug;
 
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -236,7 +235,6 @@ pub struct DefaultSettings<T: FloatT> {
     /// Requires the "pardiso-mkl" or "pardiso-panua" feature.
     #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
     #[builder(default = "[i32::MIN; 64]")]
-    #[debug("iparm array [i32; 64]")]
     #[cfg_attr(feature = "serde", serde(with = "BigArray"))]
     pub pardiso_iparm: [i32; 64],
 
