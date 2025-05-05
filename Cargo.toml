@@ -32,7 +32,7 @@ itertools      = "0.11"
 default = ["serde"]
 
 # enable reading / writing of problems from json files 
-serde = ["dep:serde", "dep:serde_json"]
+serde = ["dep:serde", "dep:serde_json", "dep:serde-big-array"]
 
 # enables blas/lapack for SDP support, with blas/lapack src unspecified
 # also enable packages required for chordal decomposition 
@@ -190,6 +190,12 @@ features = ["derive"]
 optional = true 
 version = "1"
 features = ["float_roundtrip"]
+
+# serde_big_array is used to serialize/deserialize 64 element pardiso iparm settings.
+# Could de dropped once https://github.com/serde-rs/serde/issues/1937 is resolved.
+[dependencies.serde-big-array]
+optional = true 
+version = "0.5"
 
 [dependencies.libc]
 optional = true 

@@ -64,6 +64,7 @@ pub struct DefaultSettingsFFI<T: FloatT> {
 
     // preprocessing
     pub presolve_enable: bool,
+    pub input_sparse_dropzeros: bool,
 
     // chordal decomposition
     #[cfg(feature = "sdp")]
@@ -74,6 +75,12 @@ pub struct DefaultSettingsFFI<T: FloatT> {
     pub chordal_decomposition_compact: bool,
     #[cfg(feature = "sdp")]
     pub chordal_decomposition_complete_dual: bool,
+
+    //pardiso settings
+    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+    pub pardiso_iparm: [i32; 64],
+    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+    pub pardiso_verbose: bool,
 }
 
 // implement From in both directions, since we need to both send
@@ -127,6 +134,7 @@ macro_rules! impl_from {
                     iterative_refinement_max_iter: settings.iterative_refinement_max_iter,
                     iterative_refinement_stop_ratio: settings.iterative_refinement_stop_ratio,
                     presolve_enable: settings.presolve_enable,
+                    input_sparse_dropzeros: settings.input_sparse_dropzeros,
                     #[cfg(feature = "sdp")]
                     chordal_decomposition_enable: settings.chordal_decomposition_enable,
                     #[cfg(feature = "sdp")]
@@ -138,6 +146,10 @@ macro_rules! impl_from {
                     #[cfg(feature = "sdp")]
                     chordal_decomposition_complete_dual: settings
                         .chordal_decomposition_complete_dual,
+                    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+                    pardiso_iparm: settings.pardiso_iparm,
+                    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+                    pardiso_verbose: settings.pardiso_verbose,
                 }
             }
         }
