@@ -15,14 +15,15 @@ categories = ["mathematics"]
 resolver = "1"     
 
 [dependencies]
-lazy_static    = "1.4"
-num-traits     = "0.2"
-derive_builder = "0.11"
-enum_dispatch  = "0.3.8"
 amd            = "0.2.2"
-thiserror      = "1.0"
 cfg-if         = "1.0"
 itertools      = "0.11"
+derive_builder = "0.11"
+derive_more    = {version = "2.0", features = ["debug"] }
+enum_dispatch  = "0.3.8"
+lazy_static    = "1.4"
+num-traits     = "0.2"
+thiserror      = "1.0"
 
 # -------------------------------
 # features
@@ -232,6 +233,7 @@ features = ["sdp","sdp-mkl"]
 web-time = "0.2.3"
 [target.'cfg(target_family = "wasm")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
+
 
 # ------------------------------
 # detailed build info

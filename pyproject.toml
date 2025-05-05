@@ -16,5 +16,4 @@ classifiers = [
 ]
 
 [tool.maturin]
-python-source = "python"
 features = ["python"]
