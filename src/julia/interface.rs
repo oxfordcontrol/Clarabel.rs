@@ -179,11 +179,9 @@ pub(crate) extern "C" fn solver_load_from_file_jlrs(
         }
     };
 
-    // None on the julia size is serialized as "",
+    // None on the julia side is serialized as "",
     let settings = unsafe {
-        if json_settings.is_null() {
-            None
-        } else if CStr::from_ptr(json_settings).to_bytes().is_empty() {
+        if json_settings.is_null() || CStr::from_ptr(json_settings).to_bytes().is_empty() {
             None
         } else {
             Some(settings_from_json(json_settings))

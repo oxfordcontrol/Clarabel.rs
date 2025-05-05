@@ -1,10 +1,11 @@
 #![allow(non_snake_case)]
 
-use clarabel::{algebra::*, solver::*};
-use std::io::{Seek, SeekFrom};
-
+#[cfg(feature = "serde")]
 #[test]
 fn test_json_io() {
+    use clarabel::{algebra::*, solver::*};
+    use std::io::{Seek, SeekFrom};
+
     let P = CscMatrix {
         m: 1,
         n: 1,
