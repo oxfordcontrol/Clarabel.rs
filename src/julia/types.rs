@@ -160,7 +160,7 @@ impl From<&LinearSolverInfo> for LinearSolverInfoJLRS {
 #[repr(C)]
 #[derive(Debug)]
 pub(crate) struct InfoJLRS {
-    pub μ: f64,
+    pub mu: f64,
     pub sigma: f64,
     pub step_length: f64,
     pub iterations: u32,
@@ -188,7 +188,7 @@ pub(crate) struct InfoJLRS {
 impl From<&DefaultInfo<f64>> for InfoJLRS {
     fn from(sol: &DefaultInfo<f64>) -> Self {
         InfoJLRS {
-            μ: sol.μ,
+            mu: sol.mu,
             sigma: sol.sigma,
             step_length: sol.step_length,
             iterations: sol.iterations,

@@ -143,7 +143,7 @@ where
         write!(out, "{}  ", expformat!("{:6.2e}", self.res_primal))?;
         write!(out, "{}  ", expformat!("{:6.2e}", self.res_dual))?;
         write!(out, "{}  ", expformat!("{:6.2e}", self.ktratio))?;
-        write!(out, "{}  ", expformat!("{:6.2e}", self.μ))?;
+        write!(out, "{}  ", expformat!("{:6.2e}", self.mu))?;
 
         if self.iterations > 0 {
             write!(out, "{}  ", expformat!("{:>.2e}", self.step_length))?;

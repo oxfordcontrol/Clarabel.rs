@@ -93,7 +93,7 @@ impl PyLinearSolverInfo {
 #[pyclass(name = "DefaultInfo")]
 pub struct PyDefaultInfo {
     #[pyo3(get)]
-    pub μ: f64,
+    pub mu: f64,
     #[pyo3(get)]
     pub sigma: f64,
     #[pyo3(get)]
@@ -136,7 +136,7 @@ impl From<&DefaultInfo<f64>> for PyDefaultInfo {
         let status = (&info.status).into();
         let linsolver = (&info.linsolver).into();
         Self {
-            μ: info.μ,
+            mu: info.mu,
             sigma: info.sigma,
             step_length: info.step_length,
             iterations: info.iterations,
