@@ -160,7 +160,7 @@ where
         for (&s, &ds, &z, &dz) in izip!(s, ds, z, dz) {
             let si = s + α * ds;
             let zi = z + α * dz;
-            barrier += (si * zi).logsafe();
+            barrier -= (si * zi).logsafe();
         }
         barrier
     }
