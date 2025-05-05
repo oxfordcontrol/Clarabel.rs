@@ -5,9 +5,7 @@ use std::fs::File;
 use std::path::PathBuf;
 
 fn main() {
-    // HS35 is a small problem QP problem
-    // from the Maros-Meszaros test set
-    let filename = "hs35.json";
+    let filename = "Foundation_3D_1099.json";
 
     // Get the path to the crate root using the CARGO_MANIFEST_DIR environment variable
     let cargo_dir = env::var("CARGO_MANIFEST_DIR").expect("Failed to get CARGO_MANIFEST_DIR");
@@ -17,7 +15,15 @@ fn main() {
     let filename = data_path.join(filename);
     let mut file = File::open(&filename).unwrap();
 
-    let mut solver = DefaultSolver::<f64>::load_from_file(&mut file, None).unwrap();
+    // override the settings in the loaded file
+    let settings = DefaultSettings {
+        input_sparse_dropzeros: true,
+        iterative_refinement_enable: false,
+        direct_solve_method: "faer".to_string(),
+        ..DefaultSettings::default()
+    };
+
+    let mut solver = DefaultSolver::<f64>::load_from_file(&mut file, Some(settings)).unwrap();
     solver.solve();
 
     // to write the back to a new file
