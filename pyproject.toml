@@ -8,12 +8,12 @@ requires-python = ">=3.9"
 dynamic = ["version"]
 dependencies = [
     "numpy",
-    "scipy"
+    "scipy",
+    "cffi",
 ] 
 classifiers = [
     "Programming Language :: Rust",
 ]
 
 [tool.maturin]
-python-source = "python"
 features = ["python"]

@@ -12,7 +12,7 @@ use crate::timers::*;
 #[derive(Default, Debug, Clone)]
 pub struct DefaultInfo<T> {
     /// interior point path parameter μ
-    pub μ: T,
+    pub mu: T,
     /// interior point path parameter reduction ratio σ
     pub sigma: T,
     /// step length for the current iteration
@@ -253,7 +253,7 @@ where
     }
 
     fn save_scalars(&mut self, μ: T, α: T, σ: T, iter: u32) {
-        self.μ = μ;
+        self.mu = μ;
         self.step_length = α;
         self.sigma = σ;
         self.iterations = iter;

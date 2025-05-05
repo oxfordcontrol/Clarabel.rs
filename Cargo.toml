@@ -15,14 +15,15 @@ categories = ["mathematics"]
 resolver = "1"     
 
 [dependencies]
-lazy_static    = "1.4"
-num-traits     = "0.2"
-derive_builder = "0.11"
-enum_dispatch  = "0.3.8"
 amd            = "0.2.2"
-thiserror      = "1.0"
 cfg-if         = "1.0"
 itertools      = "0.11"
+derive_builder = "0.11"
+enum_dispatch  = "0.3.8"
+lazy_static    = "1.4"
+num-traits     = "0.2"
+thiserror      = "1.0"
+
 
 # -------------------------------
 # features
@@ -49,7 +50,14 @@ sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl","intel-mkl
 sdp-r          = ["sdp", "blas-src/r", "lapack-src/r"]
 
 # build as the julia interface 
-julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse", "buildinfo"] 
+julia = [
+    "dep:libc",
+    "dep:num-derive",
+    "buildinfo",
+    "faer-sparse",
+    "serde",
+    "sdp",
+] 
  
 # build as the python interface via maturin.
 # python builds will default to use scipy shared libraries
@@ -57,7 +65,16 @@ julia = ["sdp", "dep:libc", "dep:num-derive",  "serde", "faer-sparse", "buildinf
 # This is the behaviour used when building the python wheels
 # for distribution on pypi
 
-python = ["sdp", "dep:libc", "dep:pyo3", "dep:num-derive", "serde", "faer-sparse", "buildinfo"]
+python = [
+    "dep:derive_more",
+    "dep:num-derive",
+    "dep:libc",
+    "dep:pyo3",
+    "buildinfo",
+    "faer-sparse",
+    "serde",
+    "sdp",
+]
 
 # compile with faer supernodal solver option
 faer-sparse = ["dep:faer", "dep:faer-traits"]
@@ -191,6 +208,15 @@ optional = true
 version = "1"
 features = ["float_roundtrip"]
 
+
+# derive_more is used to implement the Debug trait
+# used for display python objects.  Increases MSRV
+# to 1.75, so not used by default.
+[dependencies.derive_more]
+optional = true
+version = "2.0"
+features = ["debug"]
+
 # serde_big_array is used to serialize/deserialize 64 element pardiso iparm settings.
 # Could de dropped once https://github.com/serde-rs/serde/issues/1937 is resolved.
 [dependencies.serde-big-array]
@@ -203,7 +229,7 @@ version = "0.2"
 
 [dependencies.pyo3]
 optional = true
-version = "0.23"
+version = "0.24.2"
 # "extension-module" tells pyo3 we want to build an extension module (skips linking against libpython.so)
 # "abi3-py39" tells pyo3 (and maturin) to build using the stable ABI with minimum Python version 3.9
 features = ["extension-module", "abi3-py39"]
@@ -232,6 +258,7 @@ features = ["sdp","sdp-mkl"]
 web-time = "0.2.3"
 [target.'cfg(target_family = "wasm")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
+
 
 # ------------------------------
 # detailed build info

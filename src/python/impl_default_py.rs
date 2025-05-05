@@ -17,8 +17,9 @@ use crate::{
         SolverJSONReadWrite,
     },
 };
+use derive_more::with_trait::Debug;
 use pyo3::{exceptions::PyException, prelude::*, types::PyDict};
-use std::fmt::{Debug, Write};
+use std::fmt::Write;
 
 //Here we end up repeating several datatypes defined internally
 //in the Clarabel default implementation.   We would prefer
@@ -93,7 +94,7 @@ impl PyLinearSolverInfo {
 #[pyclass(name = "DefaultInfo")]
 pub struct PyDefaultInfo {
     #[pyo3(get)]
-    pub μ: f64,
+    pub mu: f64,
     #[pyo3(get)]
     pub sigma: f64,
     #[pyo3(get)]
@@ -136,7 +137,7 @@ impl From<&DefaultInfo<f64>> for PyDefaultInfo {
         let status = (&info.status).into();
         let linsolver = (&info.linsolver).into();
         Self {
-            μ: info.μ,
+            mu: info.mu,
             sigma: info.sigma,
             step_length: info.step_length,
             iterations: info.iterations,
@@ -447,6 +448,7 @@ pub struct PyDefaultSettings {
 
     // pardiso settings (requires pardiso features enabled)
     #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+    #[debug("iparm array [i32; 64]")]
     #[pyo3(get, set)]
     pub pardiso_iparm: [i32; 64],
     #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]

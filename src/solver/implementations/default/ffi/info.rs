@@ -7,7 +7,7 @@ use crate::{
 #[repr(C)]
 #[allow(missing_docs)]
 pub struct DefaultInfoFFI<T> {
-    pub μ: T,
+    pub mu: T,
     pub sigma: T,
     pub step_length: T,
     pub iterations: u32,
@@ -29,7 +29,7 @@ pub struct DefaultInfoFFI<T> {
 impl<T: FloatT> From<DefaultInfo<T>> for DefaultInfoFFI<T> {
     fn from(info: DefaultInfo<T>) -> Self {
         Self {
-            μ: info.μ,
+            mu: info.mu,
             sigma: info.sigma,
             step_length: info.step_length,
             iterations: info.iterations,
