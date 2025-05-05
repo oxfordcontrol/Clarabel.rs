@@ -130,22 +130,13 @@ where
         // be specific to MKL or Panua
         ps.custom_iparm_initialize(settings);
 
-        // now apply user defined iparm settings if they exist, and set
-        // iparm[0] to 1 if any are provided.  Check here first for
-        // failed solves, because misuse off this setting would
-        // likely be a disaster.
-        let mut is_user_iparm_set = false;
+        // now apply user defined iparm settings if they exist.
+        // Check here first for failed solves, because misuse of
+        // this setting would likely be a disaster.
         for (i, &iparm) in settings.pardiso_iparm.iter().enumerate() {
             if iparm != i32::MIN {
                 ps.set_iparm(i, iparm);
-                is_user_iparm_set = true;
             }
-        }
-
-        // disable use of all default settings
-        if is_user_iparm_set {
-            // NB: 0 indexed
-            ps.set_iparm(0, 1);
         }
 
         if settings.pardiso_verbose {
