@@ -37,6 +37,7 @@ where
 {
     ps: P,
     nnzA: usize,
+    nvars: usize,
 
     // Panua wants 32 bit CSC indices, 1 indexed
     // implemented as Option since I want to keep
@@ -82,13 +83,16 @@ impl PardisoCustomInitialize for PanuaPardisoSolver {
         if settings.iterative_refinement_enable {
             self.set_iparm(7, -99); //# NB: 0 indexed
         }
+        // request non-zeros in the factorization
+        self.set_iparm(17, -1);
     }
 }
 
 #[cfg(feature = "pardiso-mkl")]
 impl PardisoCustomInitialize for MKLPardisoSolver {
     fn custom_iparm_initialize(&mut self, _settings: &CoreSettings<f64>) {
-        // nothing special to do
+        // request non-zeros in the factorization
+        self.set_iparm(17, -1);
     }
 }
 
@@ -189,9 +193,15 @@ impl MKLPardisoDirectLDLSolver {
 
         let ps = MKLPardisoSolver::new().unwrap();
         let nnzA = KKT.nnz();
+        let nvars = KKT.n;
         let index32 = Some(PardisoMatrixIndices32::new(KKT));
 
-        let mut solver = Self { ps, nnzA, index32 };
+        let mut solver = Self {
+            ps,
+            nnzA,
+            nvars,
+            index32,
+        };
 
         solver.initialize(KKT, Dsigns, settings, perm);
         let nthreads = settings.max_threads as i32;
@@ -257,7 +267,7 @@ where
             threads: self.ps.get_num_threads().unwrap() as usize,
             direct: true,
             nnzA: self.nnzA,
-            nnzL: 0, // TODO: Implement this
+            nnzL: self.ps.get_iparm(17) as usize - ps.self.nvars,
         }
     }
 }
