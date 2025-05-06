@@ -1,5 +1,6 @@
 use super::{FloatT, ScalarMath, VectorMath};
 use itertools::izip;
+use std::borrow::Borrow;
 use std::iter::zip;
 
 impl<T: FloatT> VectorMath<T> for [T] {
@@ -113,22 +114,18 @@ impl<T: FloatT> VectorMath<T> for [T] {
     // 2-norm
     fn norm(&self) -> T {
         // T::sqrt(self.sumsq()) // not robust
+        stable_norm(self.iter())
+    }
 
-        let (scale, sumsq);
-        (scale, sumsq) = self.iter().filter(|&x| *x != T::zero()).fold(
-            (T::zero(), T::one()),
-            |(scale, sumsq), &xi| {
-                let absxi = xi.abs();
-                if scale < absxi {
-                    let r = scale / absxi;
-                    (absxi, T::one() + sumsq * r * r)
-                } else {
-                    let r = absxi / scale;
-                    (scale, sumsq + r * r)
-                }
-            },
-        );
-        scale * sumsq.sqrt()
+    //2-norm of elementwise product self.*v
+    fn norm_scaled(&self, v: &[T]) -> T {
+        assert_eq!(self.len(), v.len());
+        stable_norm(izip!(self, v).map(|(&yi, &vi)| yi * vi))
+    }
+
+    // 2-norm of (self + α.dz)
+    fn norm_shifted(&self, dz: &[T], α: T) -> T {
+        stable_norm(izip!(self, dz).map(|(&zi, &dzi)| zi + α * dzi))
     }
 
     // Returns infinity norm
@@ -146,28 +143,6 @@ impl<T: FloatT> VectorMath<T> for [T] {
     // Returns one norm
     fn norm_one(&self) -> T {
         self.iter().fold(T::zero(), |acc, v| acc + v.abs())
-    }
-
-    //two-norm of elementwise product self.*v
-    fn norm_scaled(&self, v: &[T]) -> T {
-        assert_eq!(self.len(), v.len());
-
-        let (scale, sumsq) = self
-            .iter()
-            .zip(v)
-            .map(|(&yi, &vi)| yi * vi)
-            .filter(|&xi| xi != T::zero())
-            .fold((T::zero(), T::one()), |(scale, sumsq), xi| {
-                let absxi = xi.abs();
-                if scale < absxi {
-                    let r = scale / absxi;
-                    (absxi, T::one() + sumsq * r * r)
-                } else {
-                    let r = absxi / scale;
-                    (scale, sumsq + r * r)
-                }
-            });
-        scale * sumsq.sqrt()
     }
 
     //inf-norm of elementwise product self.*v
@@ -225,4 +200,27 @@ impl<T: FloatT> VectorMath<T> for [T] {
         }
         self
     }
+}
+
+// numerically more stable 2-norm that avoids overflow/underflow
+fn stable_norm<T, I, B>(x: I) -> T
+where
+    T: FloatT,
+    I: Iterator<Item = B>,
+    B: Borrow<T>,
+{
+    let (scale, sumsq) =
+        x.filter(|b| *b.borrow() != T::zero())
+            .fold((T::zero(), T::one()), |(scale, sumsq), b| {
+                let xi = *b.borrow();
+                let absxi = xi.abs();
+                if scale < absxi {
+                    let r = scale / absxi;
+                    (absxi, T::one() + sumsq * r * r)
+                } else {
+                    let r = absxi / scale;
+                    (scale, sumsq + r * r)
+                }
+            });
+    scale * sumsq.sqrt()
 }
