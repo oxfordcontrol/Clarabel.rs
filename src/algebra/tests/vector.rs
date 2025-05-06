@@ -131,6 +131,9 @@ fn test_norm() {
     assert_eq!(x.norm(), 13.);
     let x = [-12., 3., 4.];
     assert_eq!(x.norm(), 13.);
+
+    let x: Vec<f64> = vec![];
+    assert_eq!(x.norm(), 0.);
 }
 
 #[test]
@@ -141,6 +144,10 @@ fn test_norm_shifted() {
     let dx = [1. / 2., -2. / 2., -4. / 2.];
 
     assert_eq!(x.norm_shifted(&dx, a), 13.);
+
+    let x: Vec<f64> = vec![];
+    let dx: Vec<f64> = vec![];
+    assert_eq!(x.norm_shifted(&dx, 1.), 0.);
 }
 
 #[test]
@@ -156,6 +163,10 @@ fn test_norm_scaled() {
     let x = [-12. / 4., 3. / 2., 4. / 3.];
     let s = [4., 2., -3.];
     assert_eq!(x.norm_scaled(&s), 13.);
+
+    let x: Vec<f64> = vec![];
+    let s: Vec<f64> = vec![];
+    assert_eq!(x.norm_scaled(&s), 0.);
 }
 
 #[test]
