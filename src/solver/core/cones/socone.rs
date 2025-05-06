@@ -412,9 +412,7 @@ where
     T: FloatT,
 {
     let x0 = z[0] + α * dz[0];
-    let x1sq = <[T] as VectorMath<T>>::dot_shifted(&z[1..], &z[1..], &dz[1..], &dz[1..], α);
-    let x1norm = x1sq.sqrt();
-
+    let x1norm = z[1..].norm_shifted(&dz[1..], α);
     (x0 - x1norm) * (x0 + x1norm)
 }
 

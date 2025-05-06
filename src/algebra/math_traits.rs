@@ -78,14 +78,17 @@ pub trait VectorMath<T> {
     /// 2-norm
     fn norm(&self) -> T;
 
+    /// 2-norm of an elementwise scaling of `self` by `v`
+    fn norm_scaled(&self, v: &Self) -> T;
+
+    /// computes 2 norm of (self + α.dz)
+    fn norm_shifted(&self, dz: &[T], α: T) -> T;
+
     /// Infinity norm
     fn norm_inf(&self) -> T;
 
     /// One norm
     fn norm_one(&self) -> T;
-
-    /// 2-norm of an elementwise scaling of `self` by `v`
-    fn norm_scaled(&self, v: &Self) -> T;
 
     /// Inf-norm of an elementwise scaling of `self` by `v`
     fn norm_inf_scaled(&self, v: &Self) -> T;

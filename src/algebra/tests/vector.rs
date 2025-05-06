@@ -134,6 +134,16 @@ fn test_norm() {
 }
 
 #[test]
+fn test_norm_shifted() {
+    let a = 2.;
+
+    let x = [-4., -2., -8.];
+    let dx = [1. / 2., -2. / 2., -4. / 2.];
+
+    assert_eq!(x.norm_shifted(&dx, a), 13.);
+}
+
+#[test]
 fn test_norm_scaled() {
     let x = [-3. / 2., -4. / 3., -12. / 4.];
     let s = [-2., 3., 4.];
