@@ -235,9 +235,15 @@ impl PanuaPardisoDirectLDLSolver {
 
         let ps = PanuaPardisoSolver::new().unwrap();
         let nnzA = KKT.nnz();
+        let nvars = KKT.n;
         let index32 = Some(PardisoMatrixIndices32::new(KKT));
 
-        let mut solver = Self { ps, nnzA, index32 };
+        let mut solver = Self {
+            ps,
+            nnzA,
+            nvars,
+            index32,
+        };
 
         solver.initialize(KKT, Dsigns, settings, perm);
 
@@ -267,7 +273,7 @@ where
             threads: self.ps.get_num_threads().unwrap() as usize,
             direct: true,
             nnzA: self.nnzA,
-            nnzL: self.ps.get_iparm(17) as usize - ps.self.nvars,
+            nnzL: self.ps.get_iparm(17) as usize - self.nvars,
         }
     }
 }
