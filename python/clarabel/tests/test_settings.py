@@ -33,7 +33,7 @@ def test_settings(get_settings_qp_data):
     solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
     solver.solve()
 
-    # make and apply bad settings 
+    # make and apply bad settings
     settings = clarabel.DefaultSettings()
     settings.direct_solve_method = "foo"
     with pytest.raises(Exception) as e:
@@ -52,12 +52,3 @@ def test_settings(get_settings_qp_data):
         solver.update(settings=settings)
 
     print(e)
-
-
-
-
-
-
-
-
-
