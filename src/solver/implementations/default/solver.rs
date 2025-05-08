@@ -1,14 +1,16 @@
 use super::*;
 use crate::solver::core::callbacks::SolverCallbacks;
+use crate::solver::traits::Settings;
 use crate::{
     io::ConfigurablePrintTarget,
     solver::core::{
         cones::{CompositeCone, SupportedConeT},
         kktsolvers::HasLinearSolverInfo,
         traits::ProblemData,
-        Solver,
+        SettingsError, Solver,
     },
 };
+use thiserror::Error;
 
 use crate::algebra::*;
 use crate::timers::*;
@@ -26,6 +28,28 @@ pub type DefaultSolver<T = f64> = Solver<
     DefaultSettings<T>,
 >;
 
+/// Error types returned by the DefaultSolver
+
+#[derive(Error, Debug)]
+/// Error type returned by settings validation
+pub enum SolverError {
+    /// An error attributable to one of the fields
+    #[error("Bad input data: {0}")]
+    BadInputData(&'static str),
+
+    /// Error from settings validation with details
+    #[error("Bad settings: {0}")]
+    SettingsError(#[from] SettingsError),
+
+    /// Error from I/O operations
+    #[error("I/O error: {0}")]
+    IoError(#[from] std::io::Error),
+
+    /// Error from JSON parsing/serialization
+    #[error("JSON error: {0}")]
+    JsonError(#[from] serde_json::Error),
+}
+
 impl<T> DefaultSolver<T>
 where
     T: FloatT,
@@ -37,9 +61,11 @@ where
         b: &[T],
         cones: &[SupportedConeT<T>],
         settings: DefaultSettings<T>,
-    ) -> Self {
+    ) -> Result<Self, SolverError> {
         //sanity check problem dimensions
-        _check_dimensions(P, q, A, b, cones);
+        check_dimensions(P, q, A, b, cones)?;
+        //sanity check settings
+        settings.validate()?;
 
         let mut timers = Timers::default();
         let mut output;
@@ -96,29 +122,40 @@ where
         //timer object into the solver structure
         output.timers.replace(timers);
 
-        output
+        Ok(output)
     }
 }
 
-fn _check_dimensions<T: FloatT>(
+fn check_dimensions<T: FloatT>(
     P: &CscMatrix<T>,
     q: &[T],
     A: &CscMatrix<T>,
     b: &[T],
     cone_types: &[SupportedConeT<T>],
-) {
+) -> Result<(), SolverError> {
     let m = b.len();
     let n = q.len();
     let p = cone_types.iter().fold(0, |acc, cone| acc + cone.nvars());
 
-    assert!(m == A.nrows(), "A and b incompatible dimensions.");
-    assert!(
-        p == m,
-        "Constraint dimensions inconsistent with size of cones."
-    );
-    assert!(n == A.ncols(), "A and q incompatible dimensions.");
-    assert!(n == P.ncols(), "P and q incompatible dimensions.");
-    assert!(P.is_square(), "P not square.");
+    if m != A.nrows() {
+        return Err(SolverError::BadInputData("A and b incompatible dimensions"));
+    }
+    if p != m {
+        return Err(SolverError::BadInputData(
+            "Constraint dimensions inconsistent with size of cones",
+        ));
+    }
+    if n != A.ncols() {
+        return Err(SolverError::BadInputData("A and q incompatible dimensions"));
+    }
+    if n != P.ncols() {
+        return Err(SolverError::BadInputData("P and q incompatible dimensions"));
+    }
+    if !P.is_square() {
+        return Err(SolverError::BadInputData("P not square"));
+    }
+
+    Ok(())
 }
 
 impl<T> ConfigurablePrintTarget for DefaultSolver<T>

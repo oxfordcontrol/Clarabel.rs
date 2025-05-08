@@ -11,7 +11,7 @@ use crate::{
         core::{
             kktsolvers::LinearSolverInfo,
             traits::{InfoPrint, Settings},
-            IPSolver, SolverStatus,
+            IPSolver, SettingsError, SolverStatus,
         },
         implementations::default::*,
         SolverJSONReadWrite,
@@ -269,6 +269,12 @@ impl PyDefaultSolution {
 // Solver Status
 // ----------------------------------
 
+impl From<SolverError> for PyErr {
+    fn from(err: SolverError) -> Self {
+        PyException::new_err(err.to_string())
+    }
+}
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 #[pyclass(eq, eq_int, name = "SolverStatus")]
 pub enum PySolverStatus {
@@ -334,6 +340,12 @@ impl PySolverStatus {
 // ----------------------------------
 // Solver Settings
 // ----------------------------------
+
+impl From<SettingsError> for PyErr {
+    fn from(err: SettingsError) -> Self {
+        PyException::new_err(err.to_string())
+    }
+}
 
 #[derive(Debug, Clone)]
 #[pyclass(name = "DefaultSettings")]
@@ -525,9 +537,13 @@ impl From<&DefaultSettings<f64>> for PyDefaultSettings {
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
             presolve_enable: set.presolve_enable,
             input_sparse_dropzeros: set.input_sparse_dropzeros,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_enable: set.chordal_decomposition_enable,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_merge_method: set.chordal_decomposition_merge_method.clone(),
+            #[cfg(feature = "sdp")]
             chordal_decomposition_compact: set.chordal_decomposition_compact,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_complete_dual: set.chordal_decomposition_complete_dual,
             #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
             pardiso_iparm: set.pardiso_iparm,
@@ -581,21 +597,20 @@ impl PyDefaultSettings {
             iterative_refinement_stop_ratio: self.iterative_refinement_stop_ratio,
             presolve_enable: self.presolve_enable,
             input_sparse_dropzeros: self.input_sparse_dropzeros,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_enable: self.chordal_decomposition_enable,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_merge_method: self.chordal_decomposition_merge_method.clone(),
+            #[cfg(feature = "sdp")]
             chordal_decomposition_compact: self.chordal_decomposition_compact,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_complete_dual: self.chordal_decomposition_complete_dual,
             #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
             pardiso_iparm: self.pardiso_iparm,
             #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
             pardiso_verbose: self.pardiso_verbose,
         };
-
-        //manually validate settings from Python side
-        match settings.validate() {
-            Ok(_) => Ok(settings),
-            Err(e) => Err(PyException::new_err(format!("Invalid settings: {}", e))),
-        }
+        Ok(settings)
     }
 }
 
@@ -627,7 +642,9 @@ impl PyDefaultSolver {
         let cones = _py_to_native_cones(cones);
         let settings = settings.to_internal()?;
 
-        let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+        // Handle the Result returned by DefaultSolver::new
+        let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings)?;
+
         Ok(Self { inner: solver })
     }
 
@@ -737,7 +754,7 @@ impl PyDefaultSolver {
                 "settings" => {
                     let settings: PyDefaultSettings = value.extract()?;
                     let settings = settings.to_internal()?;
-                    self.inner.settings = settings;
+                    self.inner.update_settings(settings)?;
                 }
                 _ => {
                     println!("unrecognized key: {}", key);

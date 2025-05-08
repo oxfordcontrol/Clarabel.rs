@@ -1,10 +1,11 @@
 use self::internal::*;
 use super::callbacks::{Callback, CallbackFcnFFI};
 use super::cones::Cone;
-use super::traits::*;
+use super::{traits::*, SettingsError};
 use crate::algebra::*;
 use crate::solver::core::callbacks::SolverCallbacks;
 use crate::solver::core::ffi::*;
+use crate::solver::SolverError;
 use crate::timers::*;
 use std::io::Write;
 
@@ -106,7 +107,7 @@ where
     fn load_from_file(
         file: &mut std::fs::File,
         settings: Option<crate::solver::DefaultSettings<T>>,
-    ) -> Result<Self, std::io::Error>;
+    ) -> Result<Self, SolverError>;
 }
 
 // ---------------------------------
@@ -121,6 +122,8 @@ where
 pub struct Solver<T, D, V, R, K, C, I, SO, SE>
 where
     I: ClarabelFFI<I>,
+    SE: Settings<T>,
+    T: FloatT,
 {
     pub data: D,
     pub variables: V,
@@ -132,7 +135,7 @@ where
     pub prev_vars: V,
     pub info: I,
     pub solution: SO,
-    pub settings: SE,
+    pub(crate) settings: SE, // not public to avoid unchecked modifications
     pub timers: Option<Timers>,
     pub(crate) callbacks: SolverCallbacks<I, I::FFI>,
     pub(crate) phantom: std::marker::PhantomData<T>,
@@ -177,6 +180,7 @@ fn _print_banner(out: &mut dyn Write, is_verbose: bool) -> std::io::Result<()> {
 impl<T, D, V, R, K, C, I, SO, SE> Solver<T, D, V, R, K, C, I, SO, SE>
 where
     I: Info<T, D = D, V = V, R = R, C = C, SE = SE>,
+    SE: Settings<T>,
     T: FloatT,
 {
     /// Create a new solver object
@@ -190,6 +194,16 @@ where
 
     pub fn unset_termination_callback(&mut self) {
         self.callbacks.termination_callback = Callback::None;
+    }
+
+    pub fn settings(&self) -> &SE {
+        &self.settings
+    }
+
+    pub fn update_settings(&mut self, settings: SE) -> Result<(), SettingsError> {
+        settings.validate_as_update(&self.settings)?;
+        self.settings = settings;
+        Ok(())
     }
 }
 

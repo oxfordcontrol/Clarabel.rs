@@ -37,7 +37,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
 
     // setup a custom termination function
     let f = |info: &DefaultInfo<f64>| {

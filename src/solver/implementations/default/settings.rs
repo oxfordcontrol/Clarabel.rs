@@ -1,10 +1,13 @@
-use crate::algebra::*;
 use crate::solver::core::ffi::*;
 use crate::solver::core::traits::Settings;
+use crate::{algebra::*, solver::core::SettingsError};
 use derive_builder::Builder;
 
+#[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+use pardiso_wrapper::PardisoInterface;
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
+
 #[cfg(all(
     feature = "serde",
     any(feature = "pardiso-mkl", feature = "pardiso-panua")
@@ -253,6 +256,14 @@ where
     }
 }
 
+macro_rules! check_immutable_setting {
+    ($self:expr, $prev:expr, $field:ident) => {
+        if $self.$field != $prev.$field {
+            return Err(SettingsError::ImmutableSetting(stringify!($field)));
+        }
+    };
+}
+
 impl<T> Settings<T> for DefaultSettings<T>
 where
     T: FloatT,
@@ -264,6 +275,64 @@ where
     fn core_mut(&mut self) -> &mut DefaultSettings<T> {
         self
     }
+
+    /// Checks that the settings are valid.  This only ensures that fields specified
+    /// by strings contain valid options.   It does not sanity check numerical values
+    fn validate(&self) -> Result<(), SettingsError> {
+        // this direct check avoids an internal panic since indirect
+        // solvers are not yet available at all
+        if !self.direct_kkt_solver {
+            return Err(SettingsError::BadFieldValue("direct_kkt_solver"));
+        }
+
+        //check that the choice of LDL solver (string) is valid
+        validate_direct_solve_method(&self.direct_solve_method)?;
+
+        // check that the chordal decomposition merge method (string) is valid
+        #[cfg(feature = "sdp")]
+        validate_chordal_decomposition_merge_method(&self.chordal_decomposition_merge_method)?;
+
+        // check the pardiso iparm settings.   Currently a no-op
+        #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+        validate_pardiso_iparm(&self.pardiso_iparm)?;
+
+        Ok(())
+    }
+
+    /// check that a settings object is valid as an updated collection
+    /// of settings for a solver that has already been initialized.   This
+    /// should reject changed to parameters that are only applicable during
+    /// solver initialization.  Calls `validate()` internally to check
+    /// that values are also legal.
+    fn validate_as_update(&self, prev: &Self) -> Result<(), SettingsError> {
+        self.validate()?;
+
+        check_immutable_setting!(self, prev, equilibrate_enable);
+        check_immutable_setting!(self, prev, equilibrate_max_iter);
+        check_immutable_setting!(self, prev, equilibrate_min_scaling);
+        check_immutable_setting!(self, prev, equilibrate_max_scaling);
+        check_immutable_setting!(self, prev, max_threads);
+        check_immutable_setting!(self, prev, direct_kkt_solver);
+        check_immutable_setting!(self, prev, direct_solve_method);
+        check_immutable_setting!(self, prev, presolve_enable);
+        check_immutable_setting!(self, prev, input_sparse_dropzeros);
+
+        #[cfg(feature = "sdp")]
+        {
+            check_immutable_setting!(self, prev, chordal_decomposition_enable);
+            check_immutable_setting!(self, prev, chordal_decomposition_merge_method);
+            check_immutable_setting!(self, prev, chordal_decomposition_compact);
+            check_immutable_setting!(self, prev, chordal_decomposition_complete_dual);
+        }
+
+        #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+        {
+            check_immutable_setting!(self, prev, pardiso_iparm);
+            check_immutable_setting!(self, prev, pardiso_verbose);
+        }
+
+        Ok(())
+    }
 }
 
 impl<T: FloatT> ClarabelFFI<Self> for DefaultSettings<T> {
@@ -272,15 +341,21 @@ impl<T: FloatT> ClarabelFFI<Self> for DefaultSettings<T> {
 
 // pre build checker (for auto-validation when using the builder)
 
+impl From<SettingsError> for DefaultSettingsBuilderError {
+    fn from(e: SettingsError) -> Self {
+        DefaultSettingsBuilderError::ValidationError(e.to_string())
+    }
+}
+
 /// Automatic pre-build settings validation
 impl<T> DefaultSettingsBuilder<T>
 where
     T: FloatT,
 {
     /// check that the specified direct_solve_method is valid
-    pub fn validate(&self) -> Result<(), String> {
+    pub fn validate(&self) -> Result<(), SettingsError> {
         if let Some(ref direct_solve_method) = self.direct_solve_method {
-            validate_direct_solve_method(direct_solve_method.as_str())?;
+            validate_direct_solve_method(direct_solve_method)?;
         }
 
         // check that the chordal decomposition merge method is valid
@@ -288,30 +363,8 @@ where
         if let Some(ref chordal_decomposition_merge_method) =
             self.chordal_decomposition_merge_method
         {
-            validate_chordal_decomposition_merge_method(
-                chordal_decomposition_merge_method.as_str(),
-            )?;
+            validate_chordal_decomposition_merge_method(chordal_decomposition_merge_method)?;
         }
-
-        Ok(())
-    }
-}
-
-// post build checker (for ad-hoc validation, e.g. when passing from python/Julia)
-// this is not used directly in the solver, but can be called manually by the user
-
-/// Manual post-build settings validation
-impl<T> DefaultSettings<T>
-where
-    T: FloatT,
-{
-    /// Checks that the settings are valid
-    pub fn validate(&self) -> Result<(), String> {
-        validate_direct_solve_method(&self.direct_solve_method)?;
-
-        // check that the chordal decomposition merge method is valid
-        #[cfg(feature = "sdp")]
-        validate_chordal_decomposition_merge_method(&self.chordal_decomposition_merge_method)?;
 
         Ok(())
     }
@@ -321,34 +374,62 @@ where
 // individual validation functions go here
 // ---------------------------------------------------------
 
-fn validate_direct_solve_method(direct_solve_method: &str) -> Result<(), String> {
+fn validate_direct_solve_method(direct_solve_method: &str) -> Result<(), SettingsError> {
     match direct_solve_method {
         "auto" => Ok(()),
         "qdldl" => Ok(()),
         #[cfg(feature = "faer-sparse")]
         "faer" => Ok(()),
         #[cfg(feature = "pardiso-mkl")]
-        "mkl" => Ok(()),
+        "mkl" => {
+            if pardiso_wrapper::MKLPardisoSolver::is_available() {
+                Ok(())
+            } else {
+                Err(SettingsError::LinearSolverProblem {
+                    solver: "mkl",
+                    problem: "not available",
+                })
+            }
+        }
         #[cfg(feature = "pardiso-panua")]
-        "panua" => Ok(()),
-        _ => Err(format!(
-            "Invalid direct_solve_method: {direct_solve_method:?}"
-        )),
+        "panua" => {
+            if pardiso_wrapper::PanuaPardisoSolver::is_available() {
+                Ok(())
+            } else {
+                Err(SettingsError::LinearSolverProblem {
+                    solver: "panua",
+                    problem: "not available",
+                })
+            }
+        }
+        _ => Err(SettingsError::BadFieldValue("direct_solve_method")),
     }
 }
 
 #[cfg(feature = "sdp")]
 fn validate_chordal_decomposition_merge_method(
     chordal_decomposition_merge_method: &str,
-) -> Result<(), String> {
+) -> Result<(), SettingsError> {
     match chordal_decomposition_merge_method {
         "none" => Ok(()),
         "parent_child" => Ok(()),
         "clique_graph" => Ok(()),
-        _ => Err(format!(
-            "Invalid chordal_decomposition_merge_method: {}",
-            chordal_decomposition_merge_method
+        _ => Err(SettingsError::BadFieldValue(
+            "chordal_decomposition_merge_method",
         )),
+    }
+}
+
+#[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+fn validate_pardiso_iparm(iparm: &[i32; 64]) -> Result<(), SettingsError> {
+    use crate::solver::core::kktsolvers::direct::ldlsolvers::pardiso::pardiso_iparm_is_valid;
+
+    // check for very bad parm parameters here
+
+    if pardiso_iparm_is_valid(iparm) {
+        Ok(())
+    } else {
+        Err(SettingsError::BadFieldValue("pardiso_iparm"))
     }
 }
 
@@ -375,11 +456,41 @@ fn test_settings_validate() {
             assert!(builder.is_err());
         }
     }
-
     #[cfg(feature = "sdp")]
     // fail on unknown chordal decomposition merge method
     assert!(DefaultSettingsBuilder::<f64>::default()
         .chordal_decomposition_merge_method("foo".to_string())
         .build()
         .is_err());
+
+    // directly construct a bad DefaultSettings and manually check
+    let settings = DefaultSettings::<f64> {
+        direct_solve_method: "foo".to_string(),
+        ..DefaultSettings::default()
+    };
+    assert!(settings.validate().is_err());
+
+    // try to overlay prohibited update values
+    let oldsettings = DefaultSettings::<f64> {
+        presolve_enable: false,
+        ..DefaultSettings::default()
+    };
+
+    let newsettings = DefaultSettings::<f64> {
+        presolve_enable: true,
+        ..DefaultSettings::default()
+    };
+    assert!(newsettings.validate_as_update(&oldsettings).is_err());
+
+    // try to overlay allowed update values
+    let oldsettings = DefaultSettings::<f64> {
+        max_iter: 10,
+        ..DefaultSettings::default()
+    };
+
+    let newsettings = DefaultSettings::<f64> {
+        max_iter: 11,
+        ..DefaultSettings::default()
+    };
+    assert!(newsettings.validate_as_update(&oldsettings).is_ok());
 }

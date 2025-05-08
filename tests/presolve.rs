@@ -34,7 +34,7 @@ fn test_presolve_single_unbounded() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -55,7 +55,7 @@ fn test_presolve_single_unbounded_2() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -73,7 +73,7 @@ fn test_presolve_completely_redundant_cone() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -94,7 +94,7 @@ fn test_presolve_every_constraint_redundant() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 

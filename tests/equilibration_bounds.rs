@@ -47,7 +47,7 @@ fn test_equilibrate_lower_bound() {
 
     P.nzval[0] = 1e-15;
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone());
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone()).unwrap();
 
     solver.solve();
 
@@ -71,7 +71,7 @@ fn test_equilibrate_upper_bound() {
         .build()
         .unwrap();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone());
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone()).unwrap();
 
     let d = &solver.data.equilibration.d;
     let e = &solver.data.equilibration.e;
@@ -93,7 +93,7 @@ fn test_equilibrate_zero_rows() {
 
     A.nzval.set(0.0);
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
