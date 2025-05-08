@@ -243,7 +243,7 @@ where
                 let dest = self.colptr[i + initcol];
                 self.rowval[dest] = i + initcol;
                 self.nzval[dest] = T::zero(); //structural zero
-                self.colptr[i] += 1;
+                self.colptr[i + initcol] += 1;
             }
         }
     }
