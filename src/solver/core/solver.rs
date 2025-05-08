@@ -1,5 +1,5 @@
 use self::internal::*;
-use super::callbacks::{Callback, CallbackFcnFFI};
+use super::callbacks::{Callback, CallbackFcnFFI, ClarabelCallbackFn};
 use super::cones::Cone;
 use super::{traits::*, SettingsError};
 use crate::algebra::*;
@@ -184,8 +184,8 @@ where
     T: FloatT,
 {
     /// Create a new solver object
-    pub fn set_termination_callback(&mut self, callback: fn(&I) -> bool) {
-        self.callbacks.termination_callback = Callback::Rust(callback);
+    pub fn set_termination_callback(&mut self, callback: impl ClarabelCallbackFn<I> + 'static) {
+        self.callbacks.termination_callback = Callback::Rust(Box::new(callback));
     }
 
     pub fn set_termination_callback_c(&mut self, callback: CallbackFcnFFI<I::FFI>) {

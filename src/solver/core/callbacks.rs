@@ -3,13 +3,25 @@
 // ---------------------------------
 
 pub(crate) type CallbackFcnFFI<FFI> = extern "C" fn(info: *const FFI) -> std::ffi::c_int;
+pub trait ClarabelCallbackFn<I>: Fn(&I) -> bool + Send + Sync {}
+impl<I, T: Fn(&I) -> bool + Send + Sync> ClarabelCallbackFn<I> for T {}
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub(crate) enum Callback<I, FFI> {
     #[default]
     None,
-    Rust(fn(&I) -> bool),
+    Rust(Box<dyn ClarabelCallbackFn<I>>),
     C(CallbackFcnFFI<FFI>),
+}
+
+impl<I, FFI> std::fmt::Debug for Callback<I, FFI> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Callback::None => write!(f, "Callback::None"),
+            Callback::Rust(_) => write!(f, "Callback::Rust(<closure>)"),
+            Callback::C(fcn) => write!(f, "Callback::C({:?})", fcn),
+        }
+    }
 }
 
 impl<I, FFI> Callback<I, FFI>

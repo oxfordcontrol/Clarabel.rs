@@ -2,13 +2,13 @@
 // implementation and its related types.
 
 #![allow(non_snake_case)]
-
 use super::*;
 use crate::{
     algebra::CscMatrix,
     io::*,
     solver::{
         core::{
+            callbacks::ClarabelCallbackFn,
             kktsolvers::LinearSolverInfo,
             traits::{InfoPrint, Settings},
             IPSolver, SettingsError, SolverStatus,
@@ -775,12 +775,38 @@ impl PyDefaultSolver {
         (&self.inner.info).into()
     }
 
+    fn set_termination_callback(&mut self, callback: PyObject) {
+        let callback = make_termination_callback(callback);
+        self.inner.set_termination_callback(callback);
+    }
+
+    fn unset_termination_callback(&mut self) {
+        self.inner.unset_termination_callback()
+    }
+
     fn get_solution(&self) -> PyDefaultSolution {
         (&self.inner.solution).into()
     }
 
     fn is_data_update_allowed(&self) -> bool {
         self.inner.is_data_update_allowed()
+    }
+}
+
+// Create a Rust closure that wraps the Python callback
+pub fn make_termination_callback(
+    py_callback: PyObject,
+) -> impl ClarabelCallbackFn<DefaultInfo<f64>> {
+    move |info: &DefaultInfo<f64>| {
+        let py_info = PyDefaultInfo::from(info);
+
+        Python::with_gil(|py| match py_callback.call1(py, (py_info,)) {
+            Ok(result) => result.extract::<bool>(py).unwrap_or(false),
+            Err(e) => {
+                e.print(py);
+                false
+            }
+        })
     }
 }
 
