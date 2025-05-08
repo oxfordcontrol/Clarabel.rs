@@ -436,7 +436,7 @@ fn test_faer_qp() {
         .build()
         .unwrap();
 
-    let mut solver = crate::solver::DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+    let mut solver = crate::solver::DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 

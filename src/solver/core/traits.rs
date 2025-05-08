@@ -11,7 +11,7 @@
 //! level crate documentation.
 
 use super::ffi::*;
-use super::{cones::Cone, CoreSettings, ScalingStrategy};
+use super::{cones::Cone, CoreSettings, ScalingStrategy, SettingsError};
 use super::{SolverStatus, StepDirection};
 use crate::algebra::*;
 use crate::timers::*;
@@ -259,4 +259,12 @@ pub trait Settings<T: FloatT>: ClarabelFFI<Self> + Sized + Clone {
 
     /// Return the core settings (mutably).
     fn core_mut(&mut self) -> &mut CoreSettings<T>;
+
+    /// sanity check the settings
+    fn validate(&self) -> Result<(), SettingsError>;
+
+    /// check that the settings are a valid update to some previous
+    /// version.   Used to ensure that settings used only at solver
+    /// initialization are not changed during the solve.
+    fn validate_as_update(&self, prev: &Self) -> Result<(), SettingsError>;
 }

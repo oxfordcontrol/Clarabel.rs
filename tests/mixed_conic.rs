@@ -31,7 +31,7 @@ fn test_mixed_conic_feasible() {
     let b = vec![0.; 5 * n];
 
     let settings = DefaultSettings::default();
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
     assert_eq!(solver.solution.status, SolverStatus::Solved);
@@ -41,8 +41,12 @@ fn test_mixed_conic_feasible() {
     // it forces the solver to use the barrier method for
     // non-symmetric cones.   This hits some code paths
     // that are otherwise not tested
-    solver.settings.min_switch_step_length = 0.999;
+    let new_settings = DefaultSettings {
+        min_switch_step_length: 0.999,
+        ..DefaultSettings::default()
+    };
 
+    solver.update_settings(new_settings).unwrap();
     solver.solve();
     assert_eq!(solver.solution.status, SolverStatus::Solved);
     assert!(f64::abs(solver.info.cost_primal - 0.) <= 1e-8);

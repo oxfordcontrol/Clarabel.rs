@@ -69,17 +69,15 @@ pub(crate) extern "C" fn solver_new_jlrs(
     let cones = ccall_arrays_to_cones(jlcones);
     let settings = settings_from_json(json_settings);
 
-    // manually validate settings from Julia side
-    match settings.validate() {
-        Ok(_) => (),
+    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+
+    match solver {
+        Ok(solver) => to_ptr(Box::new(solver)),
         Err(e) => {
-            println!("Invalid settings: {}", e);
+            println!("Error creating solver: {}", e);
             return std::ptr::null_mut();
         }
-    };
-
-    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
-    to_ptr(Box::new(solver))
+    }
 }
 
 #[no_mangle]

@@ -32,7 +32,7 @@ fn test_lp_feasible() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -55,7 +55,7 @@ fn test_lp_primal_infeasible() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -73,7 +73,7 @@ fn test_lp_dual_infeasible() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -92,7 +92,7 @@ fn test_lp_dual_infeasible_ill_cond() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 

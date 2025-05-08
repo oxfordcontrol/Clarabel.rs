@@ -51,7 +51,7 @@ fn test_expcone_feasible() {
     let (P, c, A, b, cones) = basic_expcone_data();
 
     let settings = DefaultSettings::default();
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -78,7 +78,7 @@ fn test_expcone_primal_infeasible() {
     b[4] = -1.; //
 
     let settings = DefaultSettings::default();
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -102,7 +102,7 @@ fn test_expcone_dual_infeasible() {
     let cones = vec![ExponentialConeT()];
 
     let settings = DefaultSettings::default();
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 

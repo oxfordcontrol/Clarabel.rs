@@ -38,6 +38,6 @@ fn main() {
         max_iter: 100,
         ..DefaultSettings::default()
     };
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
     solver.solve();
 }

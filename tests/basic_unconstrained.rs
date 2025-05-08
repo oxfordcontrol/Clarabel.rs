@@ -11,7 +11,7 @@ fn test_unconstrained_feasible() {
     let cones = [];
 
     let settings = DefaultSettings::default();
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -29,7 +29,7 @@ fn test_unconstrained_dual_infeasible() {
     let cones = [];
 
     let settings = DefaultSettings::default();
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
     assert_eq!(solver.solution.status, SolverStatus::DualInfeasible);

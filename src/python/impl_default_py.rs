@@ -269,6 +269,12 @@ impl PyDefaultSolution {
 // Solver Status
 // ----------------------------------
 
+impl From<SolverError> for PyErr {
+    fn from(err: SolverError) -> Self {
+        PyException::new_err(err.to_string())
+    }
+}
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 #[pyclass(eq, eq_int, name = "SolverStatus")]
 pub enum PySolverStatus {
@@ -627,7 +633,12 @@ impl PyDefaultSolver {
         let cones = _py_to_native_cones(cones);
         let settings = settings.to_internal()?;
 
-        let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+        // Handle the Result returned by DefaultSolver::new
+        // match DefaultSolver::new(&P, &q, &A, &b, &cones, settings) {
+        //     Ok(solver) => Ok(Self { inner: solver }),
+        //     Err(e) => Err(e.into()),
+        // }
+        let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
         Ok(Self { inner: solver })
     }
 

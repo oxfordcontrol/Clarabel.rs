@@ -47,7 +47,7 @@ fn test_sdp_feasible() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -65,7 +65,7 @@ fn test_sdp_empty_cone() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -87,7 +87,7 @@ fn test_sdp_primal_infeasible() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 

@@ -104,7 +104,8 @@ fn test_sdp_chordal() {
                 settings.chordal_decomposition_compact = compact;
                 settings.chordal_decomposition_complete_dual = complete_dual;
                 settings.chordal_decomposition_merge_method = merge_method.to_string();
-                let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone());
+                let mut solver =
+                    DefaultSolver::new(&P, &c, &A, &b, &cones, settings.clone()).unwrap();
                 solver.solve();
                 assert_eq!(solver.solution.status, SolverStatus::Solved);
             }
