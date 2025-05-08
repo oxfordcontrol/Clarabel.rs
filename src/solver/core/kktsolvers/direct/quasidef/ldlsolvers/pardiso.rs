@@ -149,14 +149,6 @@ where
             ps.set_message_level(MessageLevel::Off);
         }
 
-        // PJG: catching of bad iparm parameters should instead
-        // be implemented into the settings constructor and
-        // settings validation code, so that bad parameters
-        // can be rejected or filtered without causing a panic
-
-        // check for very bad parameters here
-        assert_pardiso_const_rhs_config(ps);
-
         //perform logical factorization
         ps.set_phase(Phase::Analysis);
 
@@ -300,8 +292,6 @@ where
         ps.set_phase(Phase::SolveIterativeRefine);
         let n = b.len() as i32;
 
-        assert_pardiso_const_rhs_config(ps);
-
         ps.pardiso(nzvals, colptrs, rowvals, b, x, n, 1_i32)
             .unwrap();
     }
@@ -318,8 +308,6 @@ where
         let ps = &mut self.ps;
         ps.set_phase(Phase::NumFact);
 
-        assert_pardiso_const_rhs_config(ps);
-
         ps.pardiso(
             nzvals,
             colptrs,
@@ -333,15 +321,13 @@ where
     }
 }
 
-fn assert_pardiso_const_rhs_config<P>(ps: &P)
+// returns true if the pardiso iparm settings are configured
+// in a way that makes sense for clarabel
+pub(crate) fn pardiso_iparm_is_valid(_iparm: &[i32; 64]) -> bool
 where
-    P: PardisoInterface + PardisoCustomInitialize,
 {
-    // pardiso wants b to be mutable since there is an option
-    // to store the solution on b instead of x. We always want
-    // to ensure that b is constant when calling pardiso
-    assert!(
-        ps.get_iparm(5) == 0,
-        "Pardiso should be set to store its solution in x, not b [iparm[5] != 0 error]"
-    );
+    // placeholder for possible pardiso iparm checks.
+    // NB: call comes from user settings, so need
+    // to all u32:MIN values to be treated as "unset"
+    true
 }

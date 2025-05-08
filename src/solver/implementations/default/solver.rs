@@ -1,5 +1,6 @@
 use super::*;
 use crate::solver::core::callbacks::SolverCallbacks;
+use crate::solver::traits::Settings;
 use crate::{
     io::ConfigurablePrintTarget,
     solver::core::{
@@ -63,6 +64,8 @@ where
     ) -> Result<Self, SolverError> {
         //sanity check problem dimensions
         check_dimensions(P, q, A, b, cones)?;
+        //sanity check settings
+        settings.validate()?;
 
         let mut timers = Timers::default();
         let mut output;

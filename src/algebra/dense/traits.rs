@@ -10,7 +10,7 @@ pub(crate) trait FactorEigen<T> {
     where
         S: AsMut<[T]> + AsRef<[T]>;
     // computes eigenvalues and vectors (full set)
-    #[allow(dead_code)] //PJG: not currently used anywhere
+    #[allow(dead_code)] //PJG: implemented for some future projection method
     fn eigen<S>(&mut self, A: &mut DenseStorageMatrix<S, T>) -> Result<(), DenseFactorizationError>
     where
         S: AsMut<[T]> + AsRef<[T]>;

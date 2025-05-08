@@ -256,10 +256,10 @@ where
     }
 }
 
-macro_rules! check_equal_field {
+macro_rules! check_immutable_setting {
     ($self:expr, $prev:expr, $field:ident) => {
         if $self.$field != $prev.$field {
-            return Err(SettingsError::BadField(stringify!($field)));
+            return Err(SettingsError::ImmutableSetting(stringify!($field)));
         }
     };
 }
@@ -279,11 +279,22 @@ where
     /// Checks that the settings are valid.  This only ensures that fields specified
     /// by strings contain valid options.   It does not sanity check numerical values
     fn validate(&self) -> Result<(), SettingsError> {
+        // this direct check avoids an internal panic since indirect
+        // solvers are not yet available at all
+        if !self.direct_kkt_solver {
+            return Err(SettingsError::BadFieldValue("direct_kkt_solver"));
+        }
+
+        //check that the choice of LDL solver (string) is valid
         validate_direct_solve_method(&self.direct_solve_method)?;
 
-        // check that the chordal decomposition merge method is valid
+        // check that the chordal decomposition merge method (string) is valid
         #[cfg(feature = "sdp")]
         validate_chordal_decomposition_merge_method(&self.chordal_decomposition_merge_method)?;
+
+        // check the pardiso iparm settings.   Currently a no-op
+        #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+        validate_pardiso_iparm(&self.pardiso_iparm)?;
 
         Ok(())
     }
@@ -291,30 +302,33 @@ where
     /// check that a settings object is valid as an updated collection
     /// of settings for a solver that has already been initialized.   This
     /// should reject changed to parameters that are only applicable during
-    /// solver initialization
+    /// solver initialization.  Calls `validate()` internally to check
+    /// that values are also legal.
     fn validate_as_update(&self, prev: &Self) -> Result<(), SettingsError> {
-        check_equal_field!(self, prev, equilibrate_enable);
-        check_equal_field!(self, prev, equilibrate_max_iter);
-        check_equal_field!(self, prev, equilibrate_min_scaling);
-        check_equal_field!(self, prev, equilibrate_max_scaling);
-        check_equal_field!(self, prev, max_threads);
-        check_equal_field!(self, prev, direct_kkt_solver);
-        check_equal_field!(self, prev, direct_solve_method);
-        check_equal_field!(self, prev, presolve_enable);
-        check_equal_field!(self, prev, input_sparse_dropzeros);
+        self.validate()?;
+
+        check_immutable_setting!(self, prev, equilibrate_enable);
+        check_immutable_setting!(self, prev, equilibrate_max_iter);
+        check_immutable_setting!(self, prev, equilibrate_min_scaling);
+        check_immutable_setting!(self, prev, equilibrate_max_scaling);
+        check_immutable_setting!(self, prev, max_threads);
+        check_immutable_setting!(self, prev, direct_kkt_solver);
+        check_immutable_setting!(self, prev, direct_solve_method);
+        check_immutable_setting!(self, prev, presolve_enable);
+        check_immutable_setting!(self, prev, input_sparse_dropzeros);
 
         #[cfg(feature = "sdp")]
         {
-            check_equal_field!(self, prev, chordal_decomposition_enable);
-            check_equal_field!(self, prev, chordal_decomposition_merge_method);
-            check_equal_field!(self, prev, chordal_decomposition_compact);
-            check_equal_field!(self, prev, chordal_decomposition_complete_dual);
+            check_immutable_setting!(self, prev, chordal_decomposition_enable);
+            check_immutable_setting!(self, prev, chordal_decomposition_merge_method);
+            check_immutable_setting!(self, prev, chordal_decomposition_compact);
+            check_immutable_setting!(self, prev, chordal_decomposition_complete_dual);
         }
 
         #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
         {
-            check_equal_field!(self, prev, pardiso_iparm);
-            check_equal_field!(self, prev, pardiso_verbose);
+            check_immutable_setting!(self, prev, pardiso_iparm);
+            check_immutable_setting!(self, prev, pardiso_verbose);
         }
 
         Ok(())
@@ -388,7 +402,7 @@ fn validate_direct_solve_method(direct_solve_method: &str) -> Result<(), Setting
                 })
             }
         }
-        _ => Err(SettingsError::BadField("direct_solve_method")),
+        _ => Err(SettingsError::BadFieldValue("direct_solve_method")),
     }
 }
 
@@ -400,9 +414,22 @@ fn validate_chordal_decomposition_merge_method(
         "none" => Ok(()),
         "parent_child" => Ok(()),
         "clique_graph" => Ok(()),
-        _ => Err(SettingsError::BadField(
+        _ => Err(SettingsError::BadFieldValue(
             "chordal_decomposition_merge_method",
         )),
+    }
+}
+
+#[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+fn validate_pardiso_iparm(iparm: &[i32; 64]) -> Result<(), SettingsError> {
+    use crate::solver::core::kktsolvers::direct::ldlsolvers::pardiso::pardiso_iparm_is_valid;
+
+    // check for very bad parm parameters here
+
+    if pardiso_iparm_is_valid(iparm) {
+        Ok(())
+    } else {
+        Err(SettingsError::BadFieldValue("pardiso_iparm"))
     }
 }
 

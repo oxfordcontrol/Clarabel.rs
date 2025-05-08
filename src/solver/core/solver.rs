@@ -201,7 +201,6 @@ where
     }
 
     pub fn update_settings(&mut self, settings: SE) -> Result<(), SettingsError> {
-        settings.validate()?;
         settings.validate_as_update(&self.settings)?;
         self.settings = settings;
         Ok(())
