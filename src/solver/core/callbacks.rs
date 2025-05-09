@@ -3,8 +3,8 @@
 // ---------------------------------
 
 pub(crate) type CallbackFcnFFI<FFI> = extern "C" fn(info: *const FFI) -> std::ffi::c_int;
-pub trait ClarabelCallbackFn<I>: Fn(&I) -> bool + Send + Sync {}
-impl<I, T: Fn(&I) -> bool + Send + Sync> ClarabelCallbackFn<I> for T {}
+pub trait ClarabelCallbackFn<I>: FnMut(&I) -> bool + Send + Sync {}
+impl<I, T: FnMut(&I) -> bool + Send + Sync> ClarabelCallbackFn<I> for T {}
 
 #[derive(Default)]
 pub(crate) enum Callback<I, FFI> {
@@ -30,10 +30,10 @@ where
     I: Clone + Sized,
 {
     // Call the callback function
-    fn call(&self, info: &I) -> bool {
+    fn call(&mut self, info: &I) -> bool {
         match self {
             Callback::None => false,
-            Callback::Rust(f) => f(info),
+            Callback::Rust(ref mut f) => f(info),
             Callback::C(f) => {
                 let ffi_info = FFI::from(info.clone());
                 f(&ffi_info as *const FFI) != (0 as std::ffi::c_int)
@@ -62,7 +62,7 @@ where
     FFI: From<I>,
     I: Clone + Sized,
 {
-    pub(crate) fn check_termination(&self, info: &I) -> bool {
+    pub(crate) fn check_termination(&mut self, info: &I) -> bool {
         // check termination conditions
         self.termination_callback.call(info)
     }
