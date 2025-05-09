@@ -188,8 +188,12 @@ where
         self.callbacks.termination_callback = Callback::Rust(Box::new(callback));
     }
 
-    pub fn set_termination_callback_c(&mut self, callback: CallbackFcnFFI<I::FFI>) {
-        self.callbacks.termination_callback = Callback::C(callback);
+    pub fn set_termination_callback_c(
+        &mut self,
+        callback: CallbackFcnFFI<I::FFI>,
+        data_ptr: *mut std::ffi::c_void,
+    ) {
+        self.callbacks.termination_callback = Callback::C(callback, data_ptr);
     }
 
     pub fn unset_termination_callback(&mut self) {
