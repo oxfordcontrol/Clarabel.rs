@@ -292,7 +292,7 @@ fn get_rotation_elements<T: FloatT>(A: &DenseMatrixSym3<T>, idx: usize) -> (T, T
 pub(crate) fn compute_jacobi_rotation<T: FloatT>(Apq: T, App: T, Aqq: T) -> (T, T, T) {
     // compute the Jacobi rotation for the given index
 
-    if Apq == T::zero() {
+    if Apq.is_zero() {
         return (T::one(), T::zero(), T::zero());
     }
 
