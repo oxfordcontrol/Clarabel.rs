@@ -73,7 +73,7 @@ impl<T: FloatT> VectorMath<T> for [T] {
 
     fn normalize(&mut self) -> T {
         let norm = self.norm();
-        if norm == T::zero() {
+        if norm.is_zero() {
             return T::zero();
         }
         self.scale(norm.recip());

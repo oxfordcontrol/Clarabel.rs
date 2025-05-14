@@ -451,14 +451,14 @@ where
         //all negative roots / complex root pair
         //-> infinite step length
         return αmax;
-    } else if a == T::zero() {
+    } else if a.is_zero() {
         // edge case with only one root.  This corresponds to
         // the case where the search direction is exactly on the
         // cone boundary.   The root should be -c/b, but b can't
         // be negative since both (x,y) are in the cone and it is
         // self dual, so <x,y> \ge 0 necessarily.
         return αmax;
-    } else if c == T::zero() {
+    } else if c.is_zero() {
         // Edge case with one of the roots at 0.   This corresponds
         // to the case where the initial point is exactly on the
         // cone boundary.  The other root is -b/a.   If the search

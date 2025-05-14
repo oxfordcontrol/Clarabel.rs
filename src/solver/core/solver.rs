@@ -441,7 +441,7 @@ where
 
         // Check we if actually took a final step.  If not, we need
         // to recapture the scalars and print one last line
-        if α == T::zero() {
+        if α.is_zero() {
             self.info.save_scalars(μ, α, σ, iter);
             notimeit! {timers; {self.info.print_status(&self.settings).unwrap();}}
         }

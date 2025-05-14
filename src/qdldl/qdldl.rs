@@ -524,7 +524,7 @@ fn _factor_inner<T: FloatT>(
             }
         }
 
-        if D[0] == T::zero() {
+        if D[0].is_zero() {
             return Err(QDLDLError::ZeroPivot);
         }
         if D[0] > T::zero() {
@@ -653,7 +653,7 @@ fn _factor_inner<T: FloatT>(
             // Maintain a count of the positive entries
             // in D.  If we hit a zero, we can't factor
             // this matrix, so abort
-            if D[k] == T::zero() {
+            if D[k].is_zero() {
                 return Err(QDLDLError::ZeroPivot);
             }
             if D[k] > T::zero() {

@@ -178,7 +178,7 @@ fn compute_polar_2x2<T: FloatT>(App: T, Aqp: T, Apq: T, Aqq: T) -> (T, T, T, T, 
     let d = hypot_fast(x, y); 
 
     let (c, s) = {
-        if d == T::zero() {
+        if d.is_zero() {
             (T::one(), T::zero())
         } else {
             (x / d, -y / d)
