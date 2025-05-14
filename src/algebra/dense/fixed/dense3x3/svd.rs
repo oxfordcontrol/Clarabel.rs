@@ -143,7 +143,9 @@ fn hypot_fast<T: FloatT>(x: T, y: T) -> T {
     // NB: avoids overflow in x^2 + y^2, and also faster 
     // bc it reduces the range of the sqrt to [1,2]
     // marginally faster than [x,y].norm(), which is 
-    // equivalent and amounts to the same method
+    // equivalent and amounts to the same method. Faster 
+    // than hypot(x,y) since it doesn't check nan or inf 
+    // edge cases
 
     let x = x.abs();
     let y = y.abs();
@@ -153,6 +155,15 @@ fn hypot_fast<T: FloatT>(x: T, y: T) -> T {
     } else {
         (y, x)
     };
+
+    if minval.is_zero() {
+         if maxval.is_zero() {
+            return T::zero();
+        } else {
+            return maxval;
+        }
+    }
+
     let r = minval / maxval;
     maxval * T::sqrt(T::one() + r * r)
 
@@ -248,6 +259,36 @@ mod tests {
         );
 
         let strue = [9.970195528775319, 4.087406544070054, 1.374157509706204];
+
+        let mut A: DenseMatrix3<f64> = A.into();
+        let mut U = DenseMatrix3::zeros();
+        let mut V = DenseMatrix3::zeros();
+
+        // A solves in place, so make a copy
+        let Aorig = A.clone();
+
+        let s = A.svd(&mut U, &mut V);
+
+        for i in 0..3 {
+            assert!((s[i] - strue[i]).abs() < 1e-10);
+        }
+
+        for (i, &si) in s.iter().enumerate() {
+            let mut u = U.col_slice(i).to_vec();
+            let v = V.col_slice(i).to_vec();
+            let mut Av = vec![0.0; v.len()];
+            Aorig.mul(&mut Av, &v);
+            u.scale(si);
+            assert!(Av.norm_inf_diff(&u) < 1e-10);
+        }
+    }
+
+    #[test]
+    fn test_svd_3x3_hard() {
+        let mut A = Matrix::zeros((3, 3));
+        A.data.copy_from(&[0.0001, 0.01, 1.0, 0.01, 1.0, 0.0001, 1.0, 0.0001, 0.01]);
+
+        let strue = [1.0101,0.9949869396127771, 0.9949869396127768];
 
         let mut A: DenseMatrix3<f64> = A.into();
         let mut U = DenseMatrix3::zeros();
