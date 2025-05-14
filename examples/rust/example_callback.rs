@@ -53,6 +53,22 @@ fn main() {
     solver.set_termination_callback(f);
     solver.solve();
 
+    // setup a custom termination function that carries internal state
+    let mut counter = 0;
+    let fmut = move |info: &DefaultInfo<f64>| {
+        counter += 1;
+        println!("Iteration {}: counter = {}", info.iterations, counter);
+        if counter < 3 {
+            false // continue
+        } else {
+            println!("BOOM!\n");
+            true // stop
+        }
+    };
+
+    solver.set_termination_callback(fmut);
+    solver.solve();
+
     // turn it off and run again
     solver.unset_termination_callback();
     solver.solve();

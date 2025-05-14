@@ -26,8 +26,7 @@ def callback_qp_data():
     return P, q, A, b, cones, settings
 
 
-@pytest.fixture
-def test_callback(callback_qp_data):
+def test_termination_callback(callback_qp_data):
 
     P, q, A, b, cones, settings = callback_qp_data
 
@@ -36,12 +35,46 @@ def test_callback(callback_qp_data):
 
     # solves
     solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
-    solver.solve()
+    solution = solver.solve()
+    assert solution.status == clarabel.SolverStatus.Solved
 
     # stops early
     solver.set_termination_callback(test_termination_fcn)
-    solver.solve()
+    solution = solver.solve()
+    assert solution.iterations == 3, "Should stop after 3 iterations"
+    assert solution.status == clarabel.SolverStatus.CallbackTerminated
 
     # works again
     solver.unset_termination_callback()
-    solver.solve()
+    solution = solver.solve()
+    assert solution.status == clarabel.SolverStatus.Solved
+
+
+
+def test_termination_callback_with_state(callback_qp_data):
+
+    P, q, A, b, cones, settings = callback_qp_data
+
+    counter = [-1] # list as a mutable container
+
+    def test_termination_with_state_fcn(info: clarabel.DefaultInfo) -> bool:
+        counter[0] += 1
+        if counter[0] >= 3:
+            return True
+        return False
+
+    # solves
+    solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
+    solution = solver.solve()
+    assert solution.status == clarabel.SolverStatus.Solved
+
+    # stops early
+    solver.set_termination_callback(test_termination_with_state_fcn)
+    solution = solver.solve()
+    assert solution.iterations == 3, "Should stop after 3 iterations"
+    assert solution.status == clarabel.SolverStatus.CallbackTerminated
+
+    # works again
+    solver.unset_termination_callback()
+    solution = solver.solve()
+    assert solution.status == clarabel.SolverStatus.Solved
