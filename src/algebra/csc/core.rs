@@ -231,7 +231,7 @@ where
         CscMatrix::new(n, n, colptr, rowval, nzval)
     }
 
-    /// squeeze out entries that are == T::zero().  Returns a count of dropped entries.
+    /// squeeze out zero entries.  Returns a count of dropped entries.
     pub fn dropzeros(&mut self) -> usize {
         // this function could possibly be generalized to allow filtering
         // on a more general test, similar to fkeep! in Julia sparse matrix
@@ -577,7 +577,7 @@ where
 
         if i == rows_in_this_column.len() || rows_in_this_column[i] != row {
             // don't allocate space for insertion of new zeros
-            if value == T::zero() {
+            if value.is_zero() {
                 return;
             }
 

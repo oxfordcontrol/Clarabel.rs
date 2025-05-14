@@ -260,7 +260,7 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, uplo: MatrixTriangle, y: &[T], x:
 #[allow(non_snake_case)]
 fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     //first do the b*y part
-    if b == T::zero() {
+    if b.is_zero() {
         y.fill(T::zero());
     } else if b == T::one() {
     } else if b == -T::one() {
@@ -270,7 +270,7 @@ fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     }
 
     // if a is zero, we're done
-    if a == T::zero() {
+    if a.is_zero() {
         return;
     }
 
@@ -303,7 +303,7 @@ fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
 #[allow(non_snake_case)]
 fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     //first do the b*y part
-    if b == T::zero() {
+    if b.is_zero() {
         y.fill(T::zero());
     } else if b == T::one() {
     } else if b == -T::one() {
@@ -313,7 +313,7 @@ fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     }
 
     // if a is zero, we're done
-    if a == T::zero() {
+    if a.is_zero() {
         return;
     }
 
