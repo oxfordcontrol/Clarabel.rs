@@ -6,13 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Version numbering in this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).  We aim to keep the core solver functionality and minor releases in sync between the Rust/Python and Julia implementations.  Small fixes that affect one implementation only may result in the patch release versions differing.
 
-## [0.11.0] - 2024-07-03
+## [0.11.0] - 2025-21-05
 
 ### Changed
 
-- Implemented LDL :auto select as default [#162](https://github.com/oxfordcontrol/Clarabel.rs/pull/162)
+- Implemented LDL :auto select option [#162](https://github.com/oxfordcontrol/Clarabel.rs/pull/162)
 
 - Consecutive 1D cones are collapsed and aggregated to a nonnegative cone [#163](https://github.com/oxfordcontrol/Clarabel.rs/pull/163)
+
+- Added option to drop structural zeros during problem creation [#180](https://github.com/oxfordcontrol/Clarabel.rs/pull/180)
+
 
 ### Rust-specific changes
 
@@ -20,9 +23,24 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 
 - Update to latest blas and lapack src crates by @bnaras in [#161](https://github.com/oxfordcontrol/Clarabel.rs/pull/161)
 
+- Support for Panua and MKL Pardiso [#170](https://github.com/oxfordcontrol/Clarabel.rs/pull/170) [#175](https://github.com/oxfordcontrol/Clarabel.rs/pull/175) [#181](https://github.com/oxfordcontrol/Clarabel.rs/pull/181)
+
+- Custom termination callback hooks for Rust, Python and C [#176](https://github.com/oxfordcontrol/Clarabel.rs/pull/176) [#182](https://github.com/oxfordcontrol/Clarabel.rs/pull/182) [#189](https://github.com/oxfordcontrol/Clarabel.rs/pull/189)
+
+- Faster implementations for 2x2 and 3x3 matrix decompositions [#176](https://github.com/oxfordcontrol/Clarabel.rs/pull/176)
+
+- Improved robustness of 2-norm computations [#184](https://github.com/oxfordcontrol/Clarabel.rs/pull/184)
+
+- Added settings validation checks during problem creation and updating [#185](https://github.com/oxfordcontrol/Clarabel.rs/pull/176)
+
+- Fixes for issues [#171](https://github.com/oxfordcontrol/Clarabel.rs/issues/171) and [#187](https://github.com/oxfordcontrol/Clarabel.rs/issues/187)
 
 
-## [0.10.0] - 2024-03-02
+
+
+
+
+## [0.10.0] - 2025-03-02
 
 ### Changed
 - fix socp line search failure case [#141](https://github.com/oxfordcontrol/Clarabel.rs/pull/141)
