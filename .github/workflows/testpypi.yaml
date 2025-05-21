@@ -23,6 +23,8 @@ jobs:
             features: "python,pardiso-panua"
     steps:
       - uses: actions/checkout@v4
+      - name: generate Cargo.lock
+        run: cargo generate-lockfile
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -62,6 +64,8 @@ jobs:
             features: "python,pardiso-panua"
     steps:
       - uses: actions/checkout@v4
+      - name: generate Cargo.lock
+        run: cargo generate-lockfile
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -104,6 +108,8 @@ jobs:
           features: "python,pardiso-panua"
     steps:
       - uses: actions/checkout@v4
+      - name: generate Cargo.lock
+        run: cargo generate-lockfile
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
