@@ -2,17 +2,34 @@
 // enum for managing callbacks
 // ---------------------------------
 
+use std::sync::{Arc, Mutex};
+
 pub(crate) type CallbackFcnFFI<FFI> =
     extern "C" fn(info: *const FFI, data: *mut std::ffi::c_void) -> std::ffi::c_int;
 pub trait ClarabelCallbackFn<I>: FnMut(&I) -> bool + Send + Sync {}
 impl<I, T: FnMut(&I) -> bool + Send + Sync> ClarabelCallbackFn<I> for T {}
 
+#[derive(Debug)]
+pub(crate) struct CallbackUserDataFFI {
+    ptr: Mutex<*mut std::ffi::c_void>,
+}
+unsafe impl Send for CallbackUserDataFFI {}
+unsafe impl Sync for CallbackUserDataFFI {}
+
+impl CallbackUserDataFFI {
+    pub fn new(ptr: *mut std::ffi::c_void) -> Self {
+        Self {
+            ptr: Mutex::new(ptr),
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) enum Callback<I, FFI> {
     #[default]
     None,
-    Rust(Box<dyn ClarabelCallbackFn<I>>),
-    C(CallbackFcnFFI<FFI>, *mut std::ffi::c_void),
+    Rust(Box<dyn ClarabelCallbackFn<I> + Send + Sync>),
+    C(CallbackFcnFFI<FFI>, Arc<CallbackUserDataFFI>),
 }
 
 impl<I, FFI> std::fmt::Debug for Callback<I, FFI> {
@@ -32,14 +49,22 @@ where
     FFI: From<I>,
     I: Clone + Sized,
 {
+    pub fn new_c(function: CallbackFcnFFI<FFI>, user_data: *mut std::ffi::c_void) -> Self {
+        Callback::C(function, Arc::new(CallbackUserDataFFI::new(user_data)))
+    }
+
     // Call the callback function
     fn call(&mut self, info: &I) -> bool {
         match self {
             Callback::None => false,
             Callback::Rust(ref mut f) => f(info),
-            Callback::C(f, data_ptr) => {
+            Callback::C(f, data) => {
                 let ffi_info = FFI::from(info.clone());
-                f(&ffi_info as *const FFI, *data_ptr) != (0 as std::ffi::c_int)
+                let rawptr = *data
+                    .ptr
+                    .lock()
+                    .expect("Callback mutex is corrupt / poisoned");
+                f(&ffi_info as *const FFI, rawptr) != (0 as std::ffi::c_int)
             }
         }
     }
