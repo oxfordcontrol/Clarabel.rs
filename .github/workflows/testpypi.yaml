@@ -101,7 +101,7 @@ jobs:
       matrix:
         include:
         - target: x64
-        - features: "python,pardiso-panua"
+          features: "python,pardiso-panua"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
