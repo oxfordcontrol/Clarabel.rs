@@ -58,10 +58,10 @@ jobs:
     strategy:
       matrix:
           include:
-          - target: x86_64
-            features: "python,pardiso"
           - target: aarch64
             features: "python,pardiso-panua"
+          - target: x86_64
+            features: "python,pardiso"
     steps:
       - uses: actions/checkout@v4
       - name: generate Cargo.lock
