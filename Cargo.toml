@@ -121,11 +121,11 @@ optional = true
 # -------------------------------
 
 [dependencies.faer]
-version = "0.22.6"
+version = "0.21.9"
 optional = true 
 
 [dependencies.faer-traits]
-version = "0.22.1"
+version = "0.21.5"
 optional = true 
 
 [dependencies.pardiso-wrapper]
