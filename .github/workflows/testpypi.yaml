@@ -57,16 +57,7 @@ jobs:
             install-rust-toolchain: true
 
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Generate Cargo.lock
-        run: cargo generate-lockfile
-        
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          architecture: ${{ matrix.os == 'windows' && matrix.target || '' }}
-          
+
       - name: Install Rust toolchain
         if: matrix.install-rust-toolchain 
         uses: actions-rs/toolchain@v1
@@ -74,7 +65,16 @@ jobs:
           toolchain: stable
           profile: minimal
           default: true
-          
+
+      - uses: actions/checkout@v4
+      - name: Generate Cargo.lock
+        run: cargo generate-lockfile
+        
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          architecture: ${{ matrix.os == 'windows' && matrix.target || '' }}
+                    
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
