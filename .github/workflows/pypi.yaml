@@ -20,122 +20,80 @@ env:
 
 jobs:
 
-  linux:
-    runs-on: ubuntu-latest
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }} for ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
     strategy:
-       matrix:
-          include:
-          - target: x86_64
-            features: "python,pardiso-panua,pardiso-mkl"
-          - target: aarch64
-            features: "python,pardiso-panua"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          command: build
-          manylinux: auto
-          args: -v --release --out dist -i python${{ env.PYTHON_VERSION }} --features "${{ matrix.features }}"
-
-      - name: Install and test built wheel
-        if: matrix.target == 'x86_64'
-        run: |
-          python -m pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
-          python -c "import clarabel"
-          python examples/python/example_qp.py 
-          python examples/python/example_sdp.py 
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-linux-${{ matrix.target }}
-          path: dist
-
-
-  macos:
-    runs-on: macos-13
-    # if: "startsWith(github.ref, 'refs/tags/v')"
-    strategy:
-      matrix:
-          include:
-          - target: x86_64
-            features: "python,pardiso-panua,pardiso-mkl"
-          - target: aarch64
-            features: "python,pardiso-panua"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          default: true
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          command: build
-          args: --release -i python${{ env.PYTHON_VERSION }} --out dist --features "${{ matrix.features }}" 
-
-      - name: Install and test built wheel
-        run: |
-          pip install --upgrade pip
-          pip install dist/${{ env.PACKAGE_NAME }}-*${{ matrix.target == 'aarch64' && 'aarch64' || '' }}.whl --force-reinstall
-          python -c "import clarabel"
-          python examples/python/example_qp.py 
-          python examples/python/example_sdp.py 
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-macos-${{ matrix.target }}
-          path: dist
-
-  windows:
-    runs-on: windows-latest
-    # if: "startsWith(github.ref, 'refs/tags/v')"
-    strategy:
+      fail-fast: false
       matrix:
         include:
-        - target: x64
-        - features: "python,pardiso-panua"
+          # Linux builds (intel runner)
+          - os: ubuntu-latest
+            target: x86_64
+            features: "python,pardiso"
+            test: true
+
+          - os: ubuntu-latest
+            target: aarch64
+            features: "python,pardiso-panua"
+            test: false
+            
+          # macOS Intel build
+          - os: macos-13
+            target: x86_64
+            features: "python,pardiso"
+            test: true
+            
+          # macOS ARM build
+          - os: macos-latest
+            target: aarch64
+            features: "python,pardiso-panua"
+            test: true
+            
+          # Windows build
+          - os: windows-latest
+            target: x64
+            features: "python,pardiso"
+            test: true
+
+          - os: windows-11-arm
+            target: arm64
+            features: "python,pardiso-panua"
+            test: true
+
     steps:
+
       - uses: actions/checkout@v4
+      - name: Generate Cargo.lock
+        run: cargo generate-lockfile
+        
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          architecture: ${{ matrix.target }}
-
+          architecture: ${{ matrix.os == 'windows' && matrix.target || '' }}
+                    
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          command: build
           target: ${{ matrix.target }}
-          args: --release --out dist -i python${{ env.PYTHON_VERSION }} --features "${{ matrix.features }}"
-
+          command: build
+          manylinux: ${{ matrix.os == 'ubuntu-latest' && 'auto' || '' }}
+          args: -v --release --out dist -i python${{ env.PYTHON_VERSION }} --features "${{ matrix.features }}"
+          
       - name: Install and test built wheel
+        if: matrix.test
         shell: bash
         run: |
+          python -m pip install --upgrade pip
           python -m pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
           python -c "import clarabel"
           python examples/python/example_qp.py 
           python examples/python/example_sdp.py 
-
+          
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows-${{ matrix.target }}
+          name: wheels-${{ matrix.os }}-${{ matrix.target }}
           path: dist
 
   sdist:
@@ -145,13 +103,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          default: true
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1
@@ -177,9 +128,8 @@ jobs:
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/v')"
     needs: 
-      - macos
-      - windows
-      - linux
+      - build-wheels
+      - sdist
     steps:
       - uses: actions/download-artifact@v4
         with:
