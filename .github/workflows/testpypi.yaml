@@ -45,10 +45,6 @@ jobs:
             features: "python,pardiso"
             test: true
 
-          - os: windows-11-arm
-            target: arm64
-            features: "python,pardiso-panua"
-            test: true
 
     steps:
 
