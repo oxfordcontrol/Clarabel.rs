@@ -21,50 +21,36 @@ jobs:
             target: x86_64
             features: "python,pardiso"
             test: true
-            install-rust-toolchain: false
 
           - os: ubuntu-latest
             target: aarch64
             features: "python,pardiso-panua"
             test: false
-            install-rust-toolchain: false
             
           # macOS Intel build
           - os: macos-13
             target: x86_64
             features: "python,pardiso"
             test: true
-            install-rust-toolchain: true
             
           # macOS ARM build
           - os: macos-latest
             target: aarch64
             features: "python,pardiso-panua"
             test: true
-            install-rust-toolchain: true
             
           # Windows build
           - os: windows-latest
             target: x64
             features: "python,pardiso"
             test: true
-            install-rust-toolchain: false
 
           - os: windows-11-arm
             target: arm64
             features: "python,pardiso-panua"
             test: true
-            install-rust-toolchain: true
 
     steps:
-
-      - name: Install Rust toolchain
-        if: matrix.install-rust-toolchain 
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          default: true
 
       - uses: actions/checkout@v4
       - name: Generate Cargo.lock
