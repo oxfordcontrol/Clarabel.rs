@@ -1,7 +1,9 @@
 use crate::algebra::ShapedMatrix;
 
+use super::TriangularMatrixChecks;
+
 /// Matrix shape marker for triangular matrices
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum MatrixTriangle {
     /// Upper triangular matrix
     Triu,
@@ -65,11 +67,24 @@ impl MatrixShape {
 pub struct Adjoint<'a, M> {
     pub src: &'a M,
 }
-/// Symmetric view of a matrix.   Only the upper
-/// triangle of the source matrix will be referenced.
+/// Symmetric view of a matrix.   
 #[derive(Debug, Clone, PartialEq)]
 pub struct Symmetric<'a, M> {
     pub src: &'a M,
+    pub uplo: MatrixTriangle,
+}
+
+#[allow(dead_code)]
+impl<M> Symmetric<'_, M>
+where
+    M: TriangularMatrixChecks,
+{
+    pub(crate) fn is_triu_src(&self) -> bool {
+        self.uplo == MatrixTriangle::Triu
+    }
+    pub(crate) fn is_tril_src(&self) -> bool {
+        self.uplo == MatrixTriangle::Tril
+    }
 }
 
 impl<M> ShapedMatrix for Adjoint<'_, M>

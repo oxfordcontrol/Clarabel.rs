@@ -6,14 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Version numbering in this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).  We aim to keep the core solver functionality and minor releases in sync between the Rust/Python and Julia implementations.  Small fixes that affect one implementation only may result in the patch release versions differing.
 
-## [0.10.0] - 2024-03-02
+## [0.11.0] - 2025-21-05
 
-## What's Changed
+### Changed
+
+- Implemented LDL :auto select option [#162](https://github.com/oxfordcontrol/Clarabel.rs/pull/162)
+
+- Consecutive 1D cones are collapsed and aggregated to a nonnegative cone [#163](https://github.com/oxfordcontrol/Clarabel.rs/pull/163)
+
+- Added option to drop structural zeros during problem creation [#180](https://github.com/oxfordcontrol/Clarabel.rs/pull/180)
+
+
+### Rust-specific changes
+
+- Configurable print streams [#160](https://github.com/oxfordcontrol/Clarabel.rs/pull/160)
+
+- Update to latest blas and lapack src crates by @bnaras in [#161](https://github.com/oxfordcontrol/Clarabel.rs/pull/161)
+
+- Support for Panua and MKL Pardiso [#170](https://github.com/oxfordcontrol/Clarabel.rs/pull/170) [#175](https://github.com/oxfordcontrol/Clarabel.rs/pull/175) [#181](https://github.com/oxfordcontrol/Clarabel.rs/pull/181)
+
+- Custom termination callback hooks for Rust, Python and C [#176](https://github.com/oxfordcontrol/Clarabel.rs/pull/176) [#182](https://github.com/oxfordcontrol/Clarabel.rs/pull/182) [#189](https://github.com/oxfordcontrol/Clarabel.rs/pull/189)
+
+- Faster implementations for 2x2 and 3x3 matrix decompositions [#176](https://github.com/oxfordcontrol/Clarabel.rs/pull/176)
+
+- Improved robustness of 2-norm computations [#184](https://github.com/oxfordcontrol/Clarabel.rs/pull/184)
+
+- Added settings validation checks during problem creation and updating [#185](https://github.com/oxfordcontrol/Clarabel.rs/pull/176)
+
+- Fixes for issues [#171](https://github.com/oxfordcontrol/Clarabel.rs/issues/171) and [#187](https://github.com/oxfordcontrol/Clarabel.rs/issues/187)
+
+
+
+
+
+
+## [0.10.0] - 2025-03-02
+
+### Changed
 - fix socp line search failure case [#141](https://github.com/oxfordcontrol/Clarabel.rs/pull/141)
 - norm unscaling bug fix [#136](https://github.com/oxfordcontrol/Clarabel.rs/pull/136)
 - added `max_threads` to settings
 
-## Rust-specific changed
+### Rust-specific changes
 - force mkl LP64 format (32 bit ints) [#130](https://github.com/oxfordcontrol/Clarabel.rs/pull/130)
 - python 3.7/3.8 EOL updates [#147](https://github.com/oxfordcontrol/Clarabel.rs/pull/147)
 - enable CSC diagonal counting for triu/tril [#145](https://github.com/oxfordcontrol/Clarabel.rs/pull/145)
@@ -33,10 +67,10 @@ Version numbering in this project adheres to [Semantic Versioning](https://semve
 
 ## [0.9.0] - 2024-01-06
 
-## What's Changed
+### Changed
 - Read/write problems to JSON files [#111](https://github.com/oxfordcontrol/Clarabel.rs/pull/111)
 
-## Rust specific changes
+### Rust specific changes
 - validation tools for solver settings [#113](https://github.com/oxfordcontrol/Clarabel.rs/pull/113)
 
 - adds feature to include supernodal LDL solver from `faer-rs` [#112](https://github.com/oxfordcontrol/Clarabel.rs/pull/112)
@@ -183,6 +217,7 @@ offline against the Julia-based benchmark problem suite, but this will not appea
 
 - Ported all documentation to the common site [here](https://github.com/oxfordcontrol/ClarabelDocs)
 
+[0.11.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/oxfordcontrol/Clarabel.rs/compare/v0.8.0...v0.8.1

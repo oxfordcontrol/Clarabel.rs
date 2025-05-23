@@ -1,3 +1,7 @@
+// Some supporting functions are used only for factorization
+// engine objects that support SDPs.
+#![allow(dead_code)]
+
 use crate::algebra::*;
 use std::ops::{Index, IndexMut};
 
@@ -136,11 +140,16 @@ where
     T: Sized,
 {
     fn index_linear(&self, idx: (usize, usize)) -> usize {
-        if idx.0 <= idx.1 {
-            //triu part
+        let cmp = match self.uplo {
+            MatrixTriangle::Triu => usize::le,
+            MatrixTriangle::Tril => usize::ge,
+        };
+
+        if cmp(&idx.0, &idx.1) {
+            //populated triangular part
             self.src.index_linear((idx.0, idx.1))
         } else {
-            //tril part uses triu entry
+            //reflected triangular part
             self.src.index_linear((idx.1, idx.0))
         }
     }
@@ -187,5 +196,143 @@ where
                 k += 1;
             }
         }
+    }
+}
+
+// ------------------------------------------------
+// BorrowedMatrix implementation
+
+impl<'a, T> BorrowedMatrix<'a, T>
+where
+    T: FloatT,
+{
+    pub fn from_slice(data: &'a [T], m: usize, n: usize) -> Self {
+        Self {
+            size: (m, n),
+            data,
+            phantom: std::marker::PhantomData::<T>,
+        }
+    }
+}
+
+impl<'a, T> BorrowedMatrixMut<'a, T>
+where
+    T: FloatT,
+{
+    pub fn from_slice_mut(data: &'a mut [T], m: usize, n: usize) -> Self {
+        Self {
+            size: (m, n),
+            data,
+            phantom: std::marker::PhantomData::<T>,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::algebra::MatrixTriangle;
+
+    fn create_indexing_matrix() -> Matrix<f64> {
+        // Create a 3x3 matrix in column-major order:
+        // [ 1.0  4.0  7.0 ]
+        // [ 2.0  5.0  8.0 ]
+        // [ 3.0  6.0  9.0 ]
+        Matrix::from(&[[1.0, 4.0, 7.0], [2.0, 5.0, 8.0], [3.0, 6.0, 9.0]])
+    }
+
+    #[test]
+    fn test_matrix_indexing() {
+        let matrix = create_indexing_matrix();
+
+        // Test direct indexing
+        assert_eq!(matrix[(0, 0)], 1.0);
+        assert_eq!(matrix[(1, 0)], 2.0);
+        assert_eq!(matrix[(2, 0)], 3.0);
+        assert_eq!(matrix[(0, 1)], 4.0);
+        assert_eq!(matrix[(1, 1)], 5.0);
+        assert_eq!(matrix[(2, 1)], 6.0);
+        assert_eq!(matrix[(0, 2)], 7.0);
+        assert_eq!(matrix[(1, 2)], 8.0);
+        assert_eq!(matrix[(2, 2)], 9.0);
+
+        // Test linear indexing
+        assert_eq!(matrix.index_linear((0, 0)), 0);
+        assert_eq!(matrix.index_linear((1, 0)), 1);
+        assert_eq!(matrix.index_linear((2, 0)), 2);
+        assert_eq!(matrix.index_linear((0, 1)), 3);
+        assert_eq!(matrix.index_linear((1, 1)), 4);
+        assert_eq!(matrix.index_linear((2, 1)), 5);
+        assert_eq!(matrix.index_linear((0, 2)), 6);
+        assert_eq!(matrix.index_linear((1, 2)), 7);
+        assert_eq!(matrix.index_linear((2, 2)), 8);
+    }
+
+    #[test]
+    fn test_adjoint_indexing() {
+        let matrix = create_indexing_matrix();
+        let adjoint = Adjoint { src: &matrix };
+
+        // Test direct indexing (transposed)
+        assert_eq!(adjoint[(0, 0)], 1.0);
+        assert_eq!(adjoint[(0, 1)], 2.0);
+        assert_eq!(adjoint[(0, 2)], 3.0);
+        assert_eq!(adjoint[(1, 0)], 4.0);
+        assert_eq!(adjoint[(1, 1)], 5.0);
+        assert_eq!(adjoint[(1, 2)], 6.0);
+        assert_eq!(adjoint[(2, 0)], 7.0);
+        assert_eq!(adjoint[(2, 1)], 8.0);
+        assert_eq!(adjoint[(2, 2)], 9.0);
+
+        // Test linear indexing (transposed)
+        assert_eq!(adjoint.index_linear((0, 0)), 0);
+        assert_eq!(adjoint.index_linear((0, 1)), 1);
+        assert_eq!(adjoint.index_linear((0, 2)), 2);
+        assert_eq!(adjoint.index_linear((1, 0)), 3);
+        assert_eq!(adjoint.index_linear((1, 1)), 4);
+        assert_eq!(adjoint.index_linear((1, 2)), 5);
+        assert_eq!(adjoint.index_linear((2, 0)), 6);
+        assert_eq!(adjoint.index_linear((2, 1)), 7);
+        assert_eq!(adjoint.index_linear((2, 2)), 8);
+    }
+
+    #[test]
+    fn test_symmetric_triu_indexing() {
+        let matrix = create_indexing_matrix();
+        let symmetric = Symmetric {
+            src: &matrix,
+            uplo: MatrixTriangle::Triu,
+        };
+
+        // Test direct indexing (upper triangular)
+        assert_eq!(symmetric[(0, 0)], 1.0);
+        assert_eq!(symmetric[(0, 1)], 4.0);
+        assert_eq!(symmetric[(1, 0)], 4.0);
+        assert_eq!(symmetric[(0, 2)], 7.0);
+        assert_eq!(symmetric[(2, 0)], 7.0);
+        assert_eq!(symmetric[(1, 1)], 5.0);
+        assert_eq!(symmetric[(1, 2)], 8.0);
+        assert_eq!(symmetric[(2, 1)], 8.0);
+        assert_eq!(symmetric[(2, 2)], 9.0);
+    }
+
+    #[test]
+    fn test_symmetric_tril_indexing() {
+        let matrix = create_indexing_matrix();
+        let symmetric = Symmetric {
+            src: &matrix,
+            uplo: MatrixTriangle::Tril,
+        };
+
+        // Test direct indexing (lower triangular)
+        assert_eq!(symmetric[(0, 0)], 1.0);
+        assert_eq!(symmetric[(1, 0)], 2.0);
+        assert_eq!(symmetric[(0, 1)], 2.0);
+        assert_eq!(symmetric[(2, 0)], 3.0);
+        assert_eq!(symmetric[(0, 2)], 3.0);
+        assert_eq!(symmetric[(1, 1)], 5.0);
+        assert_eq!(symmetric[(2, 1)], 6.0);
+        assert_eq!(symmetric[(1, 2)], 6.0);
+        assert_eq!(symmetric[(2, 2)], 9.0);
     }
 }

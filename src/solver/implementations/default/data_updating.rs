@@ -11,6 +11,9 @@ pub enum DataUpdateError {
     #[error("Data updates are not allowed when presolver is active")]
     /// Data updates are not allowed when presolver is active
     PresolveIsActive,
+    #[error("Data updates are not allowed if structural zeros have been dropped")]
+    /// Data updates are not allowed if structural zeros have been dropped
+    DroppedStructuralZeros,
     #[cfg(feature = "sdp")]
     #[error("Data updates are not allowed when chordal decomposition is active")]
     /// Data updates are not allowed when chordal decomposition is active
@@ -57,7 +60,8 @@ where
     /// data updating functions will return an error when either presolving or chordal
     /// decomposition have modfied the original problem structure.  In order to guarantee
     /// that data updates will be accepted regardless of the original problem data, set
-    /// `presolve_enable = false` and `chordal_decomposition_enable = false` in the solver settings.
+    /// `presolve_enable = false`, `chordal_decomposition_enable = false` and
+    /// `input_sparse_dropzeros = false` in the solver settings.
     /// See also `is_data_update_allowed()`.
     ///
     /// </div>
@@ -162,6 +166,9 @@ where
         if self.data.is_presolved() {
             return Err(DataUpdateError::PresolveIsActive);
         }
+        if self.data.is_dropped_zeros() {
+            return Err(DataUpdateError::DroppedStructuralZeros);
+        }
         #[cfg(feature = "sdp")]
         if self.data.is_chordal_decomposed() {
             return Err(DataUpdateError::ChordalDecompositionIsActive);
@@ -170,7 +177,7 @@ where
     }
 
     /// Returns `true` if problem structure has been modified by
-    /// presolving or chordal decomposition
+    /// presolving, zero dropping or chordal decomposition
     pub fn is_data_update_allowed(&self) -> bool {
         self.check_data_update_allowed().is_ok()
     }

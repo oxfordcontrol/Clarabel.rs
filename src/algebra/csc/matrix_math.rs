@@ -13,9 +13,13 @@ impl<T: FloatT> MatrixVectorMultiply<T> for Adjoint<'_, CscMatrix<T>> {
     }
 }
 
-impl<T: FloatT> SymMatrixVectorMultiply<T> for Symmetric<'_, CscMatrix<T>> {
+impl<T: FloatT> SymMatrixMath<T> for Symmetric<'_, CscMatrix<T>> {
     fn symv(&self, y: &mut [T], x: &[T], a: T, b: T) {
-        _csc_symv_unsafe(self.src, y, x, a, b);
+        _csc_symv_unsafe(self.src, self.uplo, y, x, a, b)
+    }
+
+    fn quad_form(&self, y: &[T], x: &[T]) -> T {
+        _csc_quad_form(self.src, self.uplo, y, x)
     }
 }
 
@@ -84,10 +88,6 @@ impl<T: FloatT> MatrixMath<T> for CscMatrix<T> {
             norms[*row] = T::max(norms[*row], T::abs(*val));
         }
     }
-
-    fn quad_form(&self, y: &[T], x: &[T]) -> T {
-        _csc_quad_form(self, y, x)
-    }
 }
 
 impl<T: FloatT> MatrixMathMut<T> for CscMatrix<T> {
@@ -132,7 +132,17 @@ impl<T: FloatT> MatrixMathMut<T> for CscMatrix<T> {
 }
 
 #[allow(non_snake_case)]
-fn _csc_symv_safe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
+fn _csc_symv_safe<T: FloatT>(
+    A: &CscMatrix<T>,
+    _uplo: MatrixTriangle,
+    y: &mut [T],
+    x: &[T],
+    a: T,
+    b: T,
+) {
+    // NB: this function works identically regardless of uplo.  Implemented
+    // this for for consistency with _csc_quad_form interface
+
     y.scale(b);
 
     assert!(x.len() == A.n);
@@ -165,7 +175,17 @@ fn _csc_symv_safe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T)
 // the symmetric KKT matrix, and is used heavily in iterative refinement of
 // direct linear solves.
 #[allow(non_snake_case)]
-fn _csc_symv_unsafe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
+fn _csc_symv_unsafe<T: FloatT>(
+    A: &CscMatrix<T>,
+    _uplo: MatrixTriangle,
+    y: &mut [T],
+    x: &[T],
+    a: T,
+    b: T,
+) {
+    // NB: this function works identically regardless of uplo.  Implemented
+    // this for for consistency with _csc_quad_form interface
+
     y.scale(b);
 
     assert!(x.len() == A.n);
@@ -189,7 +209,7 @@ fn _csc_symv_unsafe<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: 
 
 #[allow(non_snake_case)]
 #[allow(clippy::comparison_chain)]
-fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T {
+fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, uplo: MatrixTriangle, y: &[T], x: &[T]) -> T {
     assert_eq!(M.n, M.m);
     assert_eq!(x.len(), M.n);
     assert_eq!(y.len(), M.n);
@@ -201,6 +221,11 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T {
     }
 
     let mut out = T::zero();
+
+    let cmp = match uplo {
+        MatrixTriangle::Triu => usize::lt,
+        MatrixTriangle::Tril => usize::gt,
+    };
 
     for col in 0..M.n {
         //column number
@@ -216,14 +241,14 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T {
         let rows = &M.rowval[first..last];
 
         for (&Mv, &row) in zip(values, rows) {
-            if row < col {
-                //triu terms only
+            if cmp(&row, &col) {
+                //triangular terms only
                 tmp1 += Mv * x[row];
                 tmp2 += Mv * y[row];
             } else if row == col {
                 out += Mv * x[col] * y[col];
             } else {
-                panic!("Input matrix should be triu form.");
+                panic!("Input matrix should be in triangular form.");
             }
         }
         out += tmp1 * y[col] + tmp2 * x[col];
@@ -235,7 +260,7 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, y: &[T], x: &[T]) -> T {
 #[allow(non_snake_case)]
 fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     //first do the b*y part
-    if b == T::zero() {
+    if b.is_zero() {
         y.fill(T::zero());
     } else if b == T::one() {
     } else if b == -T::one() {
@@ -245,7 +270,7 @@ fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     }
 
     // if a is zero, we're done
-    if a == T::zero() {
+    if a.is_zero() {
         return;
     }
 
@@ -278,7 +303,7 @@ fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
 #[allow(non_snake_case)]
 fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     //first do the b*y part
-    if b == T::zero() {
+    if b.is_zero() {
         y.fill(T::zero());
     } else if b == T::one() {
     } else if b == -T::one() {
@@ -288,7 +313,7 @@ fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     }
 
     // if a is zero, we're done
-    if a == T::zero() {
+    if a.is_zero() {
         return;
     }
 
@@ -319,22 +344,32 @@ fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
 
 #[test]
 fn test_symv_safe_and_unsafe() {
-    let A = CscMatrix::from(&[
+    let Aup = CscMatrix::from(&[
         [4.0, -3.0, 7.0, 0.0],
         [0.0, 8.0, -1.0, 0.0],
         [0.0, 0.0, 2.0, -3.0],
         [0.0, 0.0, 0.0, 1.0],
     ]);
 
+    let Alo: CscMatrix = Aup.t().into();
+
     let x = vec![1., 2., -3., -4.];
     let a = -2.;
     let b = 3.;
 
     let mut y = vec![0., 1., -1., 2.];
-    _csc_symv_unsafe(&A, &mut y, &x, a, b);
+    _csc_symv_unsafe(&Aup, MatrixTriangle::Triu, &mut y, &x, a, b);
     assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
 
     let mut y = vec![0., 1., -1., 2.];
-    _csc_symv_safe(&A, &mut y, &x, a, b);
+    _csc_symv_unsafe(&Alo, MatrixTriangle::Tril, &mut y, &x, a, b);
+    assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
+
+    let mut y = vec![0., 1., -1., 2.];
+    _csc_symv_safe(&Aup, MatrixTriangle::Triu, &mut y, &x, a, b);
+    assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
+
+    let mut y = vec![0., 1., -1., 2.];
+    _csc_symv_safe(&Alo, MatrixTriangle::Tril, &mut y, &x, a, b);
     assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
 }

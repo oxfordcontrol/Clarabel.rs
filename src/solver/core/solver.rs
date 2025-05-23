@@ -1,8 +1,11 @@
 use self::internal::*;
+use super::callbacks::{Callback, CallbackFcnFFI, ClarabelCallbackFn};
 use super::cones::Cone;
-use super::traits::*;
+use super::{traits::*, SettingsError};
 use crate::algebra::*;
-use crate::solver::DefaultSettings;
+use crate::solver::core::callbacks::SolverCallbacks;
+use crate::solver::core::ffi::*;
+use crate::solver::SolverError;
 use crate::timers::*;
 use std::io::Write;
 
@@ -11,12 +14,12 @@ use std::io::Write;
 // ---------------------------------
 
 /// Status of solver at termination
-#[repr(u32)]
+#[repr(C)]
 #[derive(PartialEq, Eq, Clone, Debug, Copy, Default)]
 pub enum SolverStatus {
     /// Problem is not solved (solver hasn't run).
     #[default]
-    Unsolved,
+    Unsolved = 0,
     /// Solver terminated with a solution.
     Solved,
     /// Problem is primal infeasible.  Solution returned is a certificate of primal infeasibility.
@@ -37,6 +40,8 @@ pub enum SolverStatus {
     NumericalError,
     /// Solver terminated due to lack of progress.
     InsufficientProgress,
+    /// Solver terminated by user callback
+    CallbackTerminated,
 }
 
 impl SolverStatus {
@@ -85,7 +90,7 @@ enum StrategyCheckpoint {
 
 impl std::fmt::Display for SolverStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 
@@ -101,8 +106,8 @@ where
     /// load problem data from a JSON file previously saved using [`save_to_file`](self::SolverJSONReadWrite::save_to_file)
     fn load_from_file(
         file: &mut std::fs::File,
-        settings: Option<DefaultSettings<T>>,
-    ) -> Result<Self, std::io::Error>;
+        settings: Option<crate::solver::DefaultSettings<T>>,
+    ) -> Result<Self, SolverError>;
 }
 
 // ---------------------------------
@@ -114,7 +119,12 @@ where
 // This trait is defined with a collection of mutually interacting associated types.
 // See the [`DefaultSolver`](crate::solver::implementations::default) for an example.
 
-pub struct Solver<D, V, R, K, C, I, SO, SE> {
+pub struct Solver<T, D, V, R, K, C, I, SO, SE>
+where
+    I: ClarabelFFI<I>,
+    SE: Settings<T>,
+    T: FloatT,
+{
     pub data: D,
     pub variables: V,
     pub residuals: R,
@@ -125,8 +135,10 @@ pub struct Solver<D, V, R, K, C, I, SO, SE> {
     pub prev_vars: V,
     pub info: I,
     pub solution: SO,
-    pub settings: SE,
+    pub(crate) settings: SE, // not public to avoid unchecked modifications
     pub timers: Option<Timers>,
+    pub(crate) callbacks: SolverCallbacks<I, I::FFI>,
+    pub(crate) phantom: std::marker::PhantomData<T>,
 }
 
 fn _print_banner(out: &mut dyn Write, is_verbose: bool) -> std::io::Result<()> {
@@ -165,6 +177,40 @@ fn _print_banner(out: &mut dyn Write, is_verbose: bool) -> std::io::Result<()> {
     std::io::Result::Ok(())
 }
 
+impl<T, D, V, R, K, C, I, SO, SE> Solver<T, D, V, R, K, C, I, SO, SE>
+where
+    I: Info<T, D = D, V = V, R = R, C = C, SE = SE>,
+    SE: Settings<T>,
+    T: FloatT,
+{
+    /// Create a new solver object
+    pub fn set_termination_callback(&mut self, callback: impl ClarabelCallbackFn<I> + 'static) {
+        self.callbacks.termination_callback = Callback::Rust(Box::new(callback));
+    }
+
+    pub fn set_termination_callback_c(
+        &mut self,
+        callback: CallbackFcnFFI<I::FFI>,
+        data_ptr: *mut std::ffi::c_void,
+    ) {
+        self.callbacks.termination_callback = Callback::new_c(callback, data_ptr);
+    }
+
+    pub fn unset_termination_callback(&mut self) {
+        self.callbacks.termination_callback = Callback::None;
+    }
+
+    pub fn settings(&self) -> &SE {
+        &self.settings
+    }
+
+    pub fn update_settings(&mut self, settings: SE) -> Result<(), SettingsError> {
+        settings.validate_as_update(&self.settings)?;
+        self.settings = settings;
+        Ok(())
+    }
+}
+
 // ---------------------------------
 // IPSolver trait and its standard implementation.
 // ---------------------------------
@@ -181,7 +227,7 @@ pub trait IPSolver<T, D, V, R, K, C, I, SO, SE> {
 }
 
 impl<T, D, V, R, K, C, I, SO, SE> IPSolver<T, D, V, R, K, C, I, SO, SE>
-    for Solver<D, V, R, K, C, I, SO, SE>
+    for Solver<T, D, V, R, K, C, I, SO, SE>
 where
     T: FloatT,
     D: ProblemData<T, V = V>,
@@ -258,10 +304,19 @@ where
                 self.info.print_status(&self.settings).unwrap();
             }}
 
-            let isdone = self.info.check_termination(&self.residuals, &self.settings, iter);
+            // termination checks
+            // --------------
+
+            // user defined termination checks
+            if self.callbacks.check_termination(&self.info) {
+                self.info.set_status(SolverStatus::CallbackTerminated);
+                break;
+            }
+            // internal termination checks
+            let is_done = self.info.check_termination(&self.residuals, &self.settings, iter);
 
             // check for termination due to slow progress and update strategy
-            if isdone{
+            if is_done{
                     match self.strategy_checkpoint_insufficient_progress(scaling){
                         StrategyCheckpoint::NoUpdate | StrategyCheckpoint::Fail => {break}
                         StrategyCheckpoint::Update(s) => {scaling = s; continue}
@@ -386,7 +441,7 @@ where
 
         // Check we if actually took a final step.  If not, we need
         // to recapture the scalars and print one last line
-        if α == T::zero() {
+        if α.is_zero() {
             self.info.save_scalars(μ, α, σ, iter);
             notimeit! {timers; {self.info.print_status(&self.settings).unwrap();}}
         }
@@ -455,7 +510,7 @@ mod internal {
     }
 
     impl<T, D, V, R, K, C, I, SO, SE> IPSolverInternals<T, D, V, R, K, C, I, SO, SE>
-        for Solver<D, V, R, K, C, I, SO, SE>
+        for Solver<T, D, V, R, K, C, I, SO, SE>
     where
         T: FloatT,
         D: ProblemData<T, V = V>,

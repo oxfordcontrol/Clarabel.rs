@@ -35,6 +35,7 @@ fn updating_test_data() -> (
 
     let settings = DefaultSettingsBuilder::default()
         .presolve_enable(false)
+        .input_sparse_dropzeros(false)
         .equilibrate_enable(true)
         .build()
         .unwrap();
@@ -46,7 +47,7 @@ fn updating_test_data() -> (
 fn test_update_P_matrix_form() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     solver1.solve();
 
     // change P and re-solve
@@ -58,7 +59,7 @@ fn test_update_P_matrix_form() {
     solver1.solve();
 
     //new solver
-    let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -68,7 +69,7 @@ fn test_update_P_matrix_form() {
 fn test_update_P_vector_form() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     solver1.solve();
 
     // change P and re-solve
@@ -80,7 +81,7 @@ fn test_update_P_vector_form() {
     solver1.solve();
 
     //new solver
-    let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -90,7 +91,7 @@ fn test_update_P_vector_form() {
 fn test_update_P_tuple() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     solver1.solve();
 
     // revised original solver
@@ -106,7 +107,7 @@ fn test_update_P_tuple() {
         [P00, 3.], //
         [0., 5.],  //
     ]);
-    let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P2, &q, &A, &b, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -116,7 +117,7 @@ fn test_update_P_tuple() {
 fn test_update_A_matrix_form() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     //solver1.solve();
 
     // change A and re-solve
@@ -131,7 +132,7 @@ fn test_update_A_matrix_form() {
     solver1.solve();
 
     //new solver
-    let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -141,7 +142,7 @@ fn test_update_A_matrix_form() {
 fn test_update_A_vector_form() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     solver1.solve();
 
     // change A and re-solve
@@ -156,7 +157,7 @@ fn test_update_A_vector_form() {
     solver1.solve();
 
     //new solver
-    let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -166,7 +167,7 @@ fn test_update_A_vector_form() {
 fn test_update_A_tuple_form() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     solver1.solve();
 
     // revised original solver
@@ -180,7 +181,7 @@ fn test_update_A_tuple_form() {
     let mut A2 = A;
     A2.nzval[1] = 0.5;
     A2.nzval[2] = -0.5;
-    let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P, &q, &A2, &b, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -190,7 +191,7 @@ fn test_update_A_tuple_form() {
 fn test_update_q() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     solver1.solve();
 
     // change 1 and re-solve
@@ -202,7 +203,7 @@ fn test_update_q() {
     solver1.solve();
 
     //new solver
-    let mut solver2 = DefaultSolver::new(&P, &q2, &A, &b, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P, &q2, &A, &b, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -212,7 +213,7 @@ fn test_update_q() {
 fn test_update_q_tuple() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     solver1.solve();
 
     // revised original solver
@@ -225,7 +226,7 @@ fn test_update_q_tuple() {
     //new solver
     let mut q2 = q;
     q2[1] = 10.;
-    let mut solver2 = DefaultSolver::new(&P, &q2, &A, &b, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P, &q2, &A, &b, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -235,7 +236,7 @@ fn test_update_q_tuple() {
 fn test_update_b() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     solver1.solve();
 
     // change 1 and re-solve
@@ -247,7 +248,7 @@ fn test_update_b() {
     solver1.solve();
 
     //new solver
-    let mut solver2 = DefaultSolver::new(&P, &q, &A, &b2, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P, &q, &A, &b2, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -257,7 +258,7 @@ fn test_update_b() {
 fn test_update_b_tuple() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver1 = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     solver1.solve();
 
     // revised original solver
@@ -269,7 +270,7 @@ fn test_update_b_tuple() {
 
     //new solver
     let b2 = vec![1., 0., 1., 0.];
-    let mut solver2 = DefaultSolver::new(&P, &q, &A, &b2, &cones, settings);
+    let mut solver2 = DefaultSolver::new(&P, &q, &A, &b2, &cones, settings).unwrap();
     solver2.solve();
 
     assert!(solver1.solution.x.dist(&solver2.solution.x) <= 1e-7);
@@ -279,7 +280,7 @@ fn test_update_b_tuple() {
 fn test_update_noops() {
     // original problem
     let (P, q, A, b, cones, settings) = updating_test_data();
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
     solver.solve();
 
     // apply no-op updates to check for crashes
@@ -311,7 +312,7 @@ fn test_fail_on_presolve_enable() {
     // original problem
     let (P, q, A, mut b, cones, mut settings) = updating_test_data();
     settings.presolve_enable = true;
-    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
 
     // presolve enabled but nothing eliminated
     assert!(solver.is_data_update_allowed());
@@ -319,13 +320,13 @@ fn test_fail_on_presolve_enable() {
     // presolved disabled in settings
     b[0] = 1e40;
     settings.presolve_enable = false;
-    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     assert!(solver.is_data_update_allowed());
 
     // should be eliminated
     b[0] = 1e40;
     settings.presolve_enable = true;
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone());
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings.clone()).unwrap();
     assert!(!solver.is_data_update_allowed());
 
     // apply no-op updates to check that updates are rejected

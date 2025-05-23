@@ -34,7 +34,7 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 }

@@ -1,15 +1,19 @@
 #![allow(non_snake_case)]
-use crate::algebra::*;
-use crate::solver::core::kktsolvers::direct::ldlsolvers::qdldl::QDLDLDirectLDLSolver;
-use crate::solver::core::kktsolvers::direct::BoxedDirectLDLSolver;
-use crate::solver::core::kktsolvers::direct::DirectLDLSolverReqs;
-use crate::solver::core::CoreSettings;
+use crate::{
+    algebra::*,
+    solver::core::{
+        kktsolvers::direct::{
+            ldlsolvers::qdldl::QDLDLDirectLDLSolver, BoxedDirectLDLSolver, DirectLDLSolverReqs,
+        },
+        CoreSettings,
+    },
+};
 
 pub struct AutoDirectLDLSolver<T> {
     T: std::marker::PhantomData<T>,
 }
 
-impl<T> DirectLDLSolverReqs<T> for AutoDirectLDLSolver<T>
+impl<T> DirectLDLSolverReqs for AutoDirectLDLSolver<T>
 where
     T: FloatT,
 {

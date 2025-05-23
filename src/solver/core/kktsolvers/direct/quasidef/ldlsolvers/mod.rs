@@ -1,11 +1,15 @@
 use crate::algebra::{CscMatrix, FloatT};
 use amd::Info;
 
+pub mod auto;
+pub mod config;
+pub mod qdldl;
+
 #[cfg(feature = "faer-sparse")]
 pub mod faer_ldl;
 
-pub mod auto;
-pub mod qdldl;
+#[cfg(any(feature = "pardiso-panua", feature = "pardiso-mkl"))]
+pub mod pardiso;
 
 #[allow(dead_code)]
 pub(crate) fn amd_order<T>(KKT: &CscMatrix<T>) -> (Vec<usize>, Vec<usize>, Info)

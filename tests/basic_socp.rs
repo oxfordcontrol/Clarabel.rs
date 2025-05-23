@@ -58,7 +58,7 @@ fn test_socp_feasible() {
 
     let settings = DefaultSettings::<f64>::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -81,7 +81,7 @@ fn test_socp_feasible_sparse() {
 
     let settings = DefaultSettings::<f64>::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 
@@ -97,7 +97,7 @@ fn test_socp_infeasible() {
 
     let settings = DefaultSettings::default();
 
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 

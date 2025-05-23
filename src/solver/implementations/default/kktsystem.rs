@@ -175,14 +175,15 @@ where
         let tau_num = rhs.τ - rhs.κ / variables.τ
             + data.q.dot(x1)
             + data.b.dot(z1)
-            + two * data.P.quad_form(ξ, x1);
+            + two * data.P.sym_up().quad_form(ξ, x1);
 
         // offset ξ for the quadratic form in the denominator
         let ξ_minus_x2 = ξ; //alias to ξ, same as workx
         ξ_minus_x2.axpby(-T::one(), x2, T::one());
 
         let mut tau_den = variables.κ / variables.τ - data.q.dot(x2) - data.b.dot(z2);
-        tau_den += data.P.quad_form(ξ_minus_x2, ξ_minus_x2) - data.P.quad_form(x2, x2);
+        tau_den +=
+            data.P.sym_up().quad_form(ξ_minus_x2, ξ_minus_x2) - data.P.sym_up().quad_form(x2, x2);
 
         // solve for (Δx,Δz)
         // -----------

@@ -2,23 +2,24 @@
 // implementation and its related types.
 
 #![allow(non_snake_case)]
-
 use super::*;
 use crate::{
     algebra::CscMatrix,
     io::*,
     solver::{
         core::{
+            callbacks::ClarabelCallbackFn,
             kktsolvers::LinearSolverInfo,
             traits::{InfoPrint, Settings},
-            IPSolver, SolverStatus,
+            IPSolver, SettingsError, SolverStatus,
         },
         implementations::default::*,
         SolverJSONReadWrite,
     },
 };
+use derive_more::with_trait::Debug;
 use pyo3::{exceptions::PyException, prelude::*, types::PyDict};
-use std::fmt::{Debug, Write};
+use std::fmt::Write;
 
 //Here we end up repeating several datatypes defined internally
 //in the Clarabel default implementation.   We would prefer
@@ -93,7 +94,7 @@ impl PyLinearSolverInfo {
 #[pyclass(name = "DefaultInfo")]
 pub struct PyDefaultInfo {
     #[pyo3(get)]
-    pub μ: f64,
+    pub mu: f64,
     #[pyo3(get)]
     pub sigma: f64,
     #[pyo3(get)]
@@ -136,7 +137,7 @@ impl From<&DefaultInfo<f64>> for PyDefaultInfo {
         let status = (&info.status).into();
         let linsolver = (&info.linsolver).into();
         Self {
-            μ: info.μ,
+            mu: info.mu,
             sigma: info.sigma,
             step_length: info.step_length,
             iterations: info.iterations,
@@ -268,6 +269,12 @@ impl PyDefaultSolution {
 // Solver Status
 // ----------------------------------
 
+impl From<SolverError> for PyErr {
+    fn from(err: SolverError) -> Self {
+        PyException::new_err(err.to_string())
+    }
+}
+
 #[derive(PartialEq, Debug, Clone, Copy)]
 #[pyclass(eq, eq_int, name = "SolverStatus")]
 pub enum PySolverStatus {
@@ -282,6 +289,7 @@ pub enum PySolverStatus {
     MaxTime,
     NumericalError,
     InsufficientProgress,
+    CallbackTerminated,
 }
 
 impl From<&SolverStatus> for PySolverStatus {
@@ -298,6 +306,7 @@ impl From<&SolverStatus> for PySolverStatus {
             SolverStatus::MaxTime => PySolverStatus::MaxTime,
             SolverStatus::NumericalError => PySolverStatus::NumericalError,
             SolverStatus::InsufficientProgress => PySolverStatus::InsufficientProgress,
+            SolverStatus::CallbackTerminated => PySolverStatus::CallbackTerminated,
         }
     }
 }
@@ -317,6 +326,7 @@ impl PySolverStatus {
             PySolverStatus::MaxTime => "MaxTime",
             PySolverStatus::NumericalError => "NumericalError",
             PySolverStatus::InsufficientProgress => "InsufficientProgress",
+            PySolverStatus::CallbackTerminated => "CallbackTerminated",
         }
         .to_string()
     }
@@ -330,6 +340,12 @@ impl PySolverStatus {
 // ----------------------------------
 // Solver Settings
 // ----------------------------------
+
+impl From<SettingsError> for PyErr {
+    fn from(err: SettingsError) -> Self {
+        PyException::new_err(err.to_string())
+    }
+}
 
 #[derive(Debug, Clone)]
 #[pyclass(name = "DefaultSettings")]
@@ -429,6 +445,9 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub presolve_enable: bool,
 
+    #[pyo3(get, set)]
+    pub input_sparse_dropzeros: bool,
+
     //chordal decomposition (python must be built with "sdp" feature)
     #[pyo3(get, set)]
     pub chordal_decomposition_enable: bool,
@@ -438,6 +457,15 @@ pub struct PyDefaultSettings {
     pub chordal_decomposition_compact: bool,
     #[pyo3(get, set)]
     pub chordal_decomposition_complete_dual: bool,
+
+    // pardiso settings (requires pardiso features enabled)
+    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+    #[debug("iparm array [i32; 64]")]
+    #[pyo3(get, set)]
+    pub pardiso_iparm: [i32; 64],
+    #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+    #[pyo3(get, set)]
+    pub pardiso_verbose: bool,
 }
 
 #[pymethods]
@@ -508,10 +536,19 @@ impl From<&DefaultSettings<f64>> for PyDefaultSettings {
             iterative_refinement_max_iter: set.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
             presolve_enable: set.presolve_enable,
+            input_sparse_dropzeros: set.input_sparse_dropzeros,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_enable: set.chordal_decomposition_enable,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_merge_method: set.chordal_decomposition_merge_method.clone(),
+            #[cfg(feature = "sdp")]
             chordal_decomposition_compact: set.chordal_decomposition_compact,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_complete_dual: set.chordal_decomposition_complete_dual,
+            #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+            pardiso_iparm: set.pardiso_iparm,
+            #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+            pardiso_verbose: set.pardiso_verbose,
         }
     }
 }
@@ -559,17 +596,21 @@ impl PyDefaultSettings {
             iterative_refinement_max_iter: self.iterative_refinement_max_iter,
             iterative_refinement_stop_ratio: self.iterative_refinement_stop_ratio,
             presolve_enable: self.presolve_enable,
+            input_sparse_dropzeros: self.input_sparse_dropzeros,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_enable: self.chordal_decomposition_enable,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_merge_method: self.chordal_decomposition_merge_method.clone(),
+            #[cfg(feature = "sdp")]
             chordal_decomposition_compact: self.chordal_decomposition_compact,
+            #[cfg(feature = "sdp")]
             chordal_decomposition_complete_dual: self.chordal_decomposition_complete_dual,
+            #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+            pardiso_iparm: self.pardiso_iparm,
+            #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
+            pardiso_verbose: self.pardiso_verbose,
         };
-
-        //manually validate settings from Python side
-        match settings.validate() {
-            Ok(_) => Ok(settings),
-            Err(e) => Err(PyException::new_err(format!("Invalid settings: {}", e))),
-        }
+        Ok(settings)
     }
 }
 
@@ -601,7 +642,9 @@ impl PyDefaultSolver {
         let cones = _py_to_native_cones(cones);
         let settings = settings.to_internal()?;
 
-        let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+        // Handle the Result returned by DefaultSolver::new
+        let solver = DefaultSolver::new(&P, &q, &A, &b, &cones, settings)?;
+
         Ok(Self { inner: solver })
     }
 
@@ -711,7 +754,7 @@ impl PyDefaultSolver {
                 "settings" => {
                     let settings: PyDefaultSettings = value.extract()?;
                     let settings = settings.to_internal()?;
-                    self.inner.settings = settings;
+                    self.inner.update_settings(settings)?;
                 }
                 _ => {
                     println!("unrecognized key: {}", key);
@@ -732,12 +775,38 @@ impl PyDefaultSolver {
         (&self.inner.info).into()
     }
 
+    fn set_termination_callback(&mut self, callback: PyObject) {
+        let callback = make_termination_callback(callback);
+        self.inner.set_termination_callback(callback);
+    }
+
+    fn unset_termination_callback(&mut self) {
+        self.inner.unset_termination_callback()
+    }
+
     fn get_solution(&self) -> PyDefaultSolution {
         (&self.inner.solution).into()
     }
 
     fn is_data_update_allowed(&self) -> bool {
         self.inner.is_data_update_allowed()
+    }
+}
+
+// Create a Rust closure that wraps the Python callback
+pub fn make_termination_callback(
+    py_callback: PyObject,
+) -> impl ClarabelCallbackFn<DefaultInfo<f64>> {
+    move |info: &DefaultInfo<f64>| {
+        let py_info = PyDefaultInfo::from(info);
+
+        Python::with_gil(|py| match py_callback.call1(py, (py_info,)) {
+            Ok(result) => result.extract::<bool>(py).unwrap_or(false),
+            Err(e) => {
+                e.print(py);
+                false
+            }
+        })
     }
 }
 

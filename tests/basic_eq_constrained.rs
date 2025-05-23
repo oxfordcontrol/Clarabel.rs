@@ -40,7 +40,7 @@ fn test_eq_constrained_feasible() {
     let cones = [ZeroConeT(2)];
 
     let settings = DefaultSettings::default();
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
     let refsol = [0., 1., 1.];
@@ -57,7 +57,7 @@ fn test_eq_constrained_primal_infeasible() {
     let cones = [ZeroConeT(4)];
 
     let settings = DefaultSettings::default();
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
     assert_eq!(solver.solution.status, SolverStatus::PrimalInfeasible);
@@ -73,7 +73,7 @@ fn test_eq_constrained_dual_infeasible() {
     let cones = [ZeroConeT(2)];
 
     let settings = DefaultSettings::default();
-    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
     assert_eq!(solver.solution.status, SolverStatus::DualInfeasible);

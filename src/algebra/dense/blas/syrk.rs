@@ -10,7 +10,7 @@ where
     // The matrix input A can itself be
     // an Adjoint matrix, in which case the
     // result amounts to C = αA'*A + βC
-    fn syrk<MATA>(&mut self, A: &MATA, α: T, β: T)
+    fn syrk<MATA>(&mut self, A: &MATA, α: T, β: T, uplo: MatrixTriangle)
     where
         MATA: DenseMatrix<T>,
     {
@@ -21,7 +21,7 @@ where
             return;
         }
 
-        let uplo = MatrixTriangle::Triu.as_blas_char();
+        let uplo = uplo.as_blas_char();
         let transA = A.shape().as_blas_char();
         let n = A.nrows().try_into().unwrap();
         let k = A.ncols().try_into().unwrap();
@@ -44,9 +44,9 @@ macro_rules! generate_test_syrk {
             ]);
 
             let mut AAt = Matrix::<$fxx>::zeros((m, m));
-            AAt.syrk(&A, 1.0, 0.0);
+            AAt.syrk(&A, 1.0, 0.0, MatrixTriangle::Triu);
 
-            //NB: writes to upper triangle only
+            //NB: wrote to upper triangle only
             let AAt_test = Matrix::<$fxx>::from(&[
                 [14., 32.], //
                 [0., 77.],  //
@@ -56,7 +56,7 @@ macro_rules! generate_test_syrk {
 
             let mut AtA = Matrix::<$fxx>::zeros((n, n));
             AtA.data_mut().fill(1.0);
-            AtA.syrk(&A.t(), 2.0, 1.0);
+            AtA.syrk(&A.t(), 2.0, 1.0, MatrixTriangle::Triu);
 
             //NB: writes to upper triangle only
             let AtA_test = Matrix::<$fxx>::from(&[

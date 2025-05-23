@@ -114,7 +114,7 @@ end
 
 mutable struct DefaultInfoJLRS
 
-    μ::Float64
+    mu::Float64
     sigma::Float64
     step_length::Float64
     iterations::UInt32
@@ -146,7 +146,7 @@ end
 
 function DefaultInfo(info::DefaultInfoJLRS)
     Clarabel.DefaultInfo{Float64}(
-        info.μ,
+        info.mu,
         info.sigma,
         info.step_length,
         info.iterations,

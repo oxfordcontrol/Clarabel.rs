@@ -1,7 +1,7 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::permute;
 use crate::algebra::utils::sortperm_by;
+use crate::algebra::{permute, MatrixTriangle, TriangularMatrixChecks};
 use crate::algebra::{Adjoint, MatrixShape, ShapedMatrix, SparseFormatError, Symmetric};
 use num_traits::Num;
 use std::iter::{repeat, zip};
@@ -39,8 +39,6 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 ///        [0.0, 4.0, 7.0]]);
 ///
 /// ```
-///
-
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = "T: Serialize + DeserializeOwned"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -233,8 +231,8 @@ where
         CscMatrix::new(n, n, colptr, rowval, nzval)
     }
 
-    /// squeeze out entries that are == T::zero()
-    pub fn dropzeros(&mut self) {
+    /// squeeze out zero entries.  Returns a count of dropped entries.
+    pub fn dropzeros(&mut self) -> usize {
         // this function could possibly be generalized to allow filtering
         // on a more general test, similar to fkeep! in Julia sparse matrix
         // internals.  Then could be used as a filter for triu matrix etc
@@ -265,8 +263,12 @@ where
             self.colptr[col + 1] = writeidx;
         }
 
+        let dropcount = self.nzval.len() - writeidx;
+
         self.rowval.resize(writeidx, 0);
         self.nzval.resize(writeidx, T::zero());
+
+        dropcount
     }
 
     /// Return matrix data in triplet format.
@@ -294,10 +296,26 @@ where
         Adjoint { src: self }
     }
 
-    /// symmetric view
-    pub fn sym(&self) -> Symmetric<'_, Self> {
-        debug_assert!(self.is_triu());
-        Symmetric { src: self }
+    /// symmetric view (selects upper or lower triangle source)
+    pub fn sym(&self, uplo: MatrixTriangle) -> Symmetric<'_, Self> {
+        match uplo {
+            MatrixTriangle::Triu => {
+                debug_assert!(self.is_triu());
+            }
+            MatrixTriangle::Tril => {
+                debug_assert!(self.is_tril());
+            }
+        }
+        Symmetric { src: self, uplo }
+    }
+
+    /// symmetric view (assume upper triangle source)
+    pub fn sym_up(&self) -> Symmetric<'_, Self> {
+        self.sym(MatrixTriangle::Triu)
+    }
+    /// symmetric view (assume lower triangle source)
+    pub fn sym_lo(&self) -> Symmetric<'_, Self> {
+        self.sym(MatrixTriangle::Tril)
     }
 
     /// Check that matrix data is canonically formatted.
@@ -524,25 +542,6 @@ where
         CscMatrix::new(m, n, colptr, rowval, nzval)
     }
 
-    /// True if the matrix is upper triangular
-    pub fn is_triu(&self) -> bool {
-        // check lower triangle for any structural entries, regardless
-        // of the values that may be assigned to them
-        for col in 0..self.ncols() {
-            //start / stop indices for the current column
-            let first = self.colptr[col];
-            let last = self.colptr[col + 1];
-            let rows = &self.rowval[first..last];
-
-            // number of entries on or above diagonal in this column,
-            // shifted by 1 (i.e. colptr keeps a 0 in the first column)
-            if rows.iter().any(|&row| row > col) {
-                return false;
-            }
-        }
-        true
-    }
-
     /// Returns the value at the given (row,col) index as an Option.
     /// Returns None if the given index is not a structural nonzero.
     ///
@@ -578,7 +577,7 @@ where
 
         if i == rows_in_this_column.len() || rows_in_this_column[i] != row {
             // don't allocate space for insertion of new zeros
-            if value == T::zero() {
+            if value.is_zero() {
                 return;
             }
 
@@ -606,6 +605,39 @@ where
         let row = self.rowval[idx];
         let col = self.colptr.partition_point(|&c| idx + 1 > c) - 1;
         (row, col)
+    }
+}
+
+impl<T> TriangularMatrixChecks for CscMatrix<T> {
+    fn is_triu(&self) -> bool {
+        // check lower triangle for any structural entries, regardless
+        // of the values that may be assigned to them
+        for col in 0..self.ncols() {
+            //start / stop indices for the current column
+            let first = self.colptr[col];
+            let last = self.colptr[col + 1];
+            let rows = &self.rowval[first..last];
+
+            if rows.iter().any(|&row| row > col) {
+                return false;
+            }
+        }
+        true
+    }
+    fn is_tril(&self) -> bool {
+        // check upper triangle for any structural entries, regardless
+        // of the values that may be assigned to them
+        for col in 0..self.ncols() {
+            //start / stop indices for the current column
+            let first = self.colptr[col];
+            let last = self.colptr[col + 1];
+            let rows = &self.rowval[first..last];
+
+            if rows.iter().any(|&row| row < col) {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -672,6 +704,39 @@ where
         A.backshift_colptrs();
         A
     }
+}
+
+#[test]
+#[rustfmt::skip]
+fn test_matrix_istriu_istril() {
+    
+    let A = CscMatrix::from(&[
+        [1., 2., 3.], 
+        [0., 2., 0.], 
+        [0., 0., 1.]]); 
+
+    assert!(A.is_triu());
+    assert!(!A.is_tril());
+    assert!(A.sym_up().is_triu_src());
+    assert!(!A.sym_up().is_tril_src());
+
+    let A = CscMatrix::from(&[
+        [1., 2., 3.], 
+        [0., 2., 0.], 
+        [1., 0., 1.]]); 
+
+    assert!(!A.is_triu());
+    assert!(!A.is_tril());
+
+    let A = CscMatrix::from(&[
+        [1., 0., 0.], 
+        [0., 2., 0.], 
+        [1., 1., 1.]]); 
+
+    assert!(!A.is_triu());
+    assert!(A.is_tril());
+    assert!(!A.sym_lo().is_triu_src());
+    assert!(A.sym_lo().is_tril_src());
 }
 
 #[test]
@@ -867,7 +932,7 @@ fn test_drop_zeros() {
     ]);
 
     // same, but with 2,6,7,8 set to zero
-    let B = CscMatrix::from(&[
+    let mut B = CscMatrix::from(&[
         [0.0, 3.0, 0.0, 0.0],
         [1.0, 0.0, 0.0, 0.0],
         [0.0, 4.0, 0.0, 0.0],
@@ -882,9 +947,14 @@ fn test_drop_zeros() {
     }
 
     //squeeze out the zeros
-    A.dropzeros();
+    let count = A.dropzeros();
 
+    assert_eq!(count, 4);
     assert_eq!(A, B);
+
+    // nothing to drop
+    let count = B.dropzeros();
+    assert_eq!(count, 0);
 }
 
 #[test]

@@ -11,3 +11,4 @@ ignore:
   - "python/*"      # pyblas wrappers
   - "src/python/*"  # py03 interface 
   - "src/julia/*"   # ClarabelRs wrapper 
+  - "src/solver/core/kktsolvers/direct/quasidef/ldlsolvers/*" #ldl wrappers (can't test all due to licensing)

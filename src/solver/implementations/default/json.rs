@@ -60,11 +60,23 @@ where
     fn load_from_file(
         file: &mut File,
         settings: Option<DefaultSettings<T>>,
-    ) -> Result<Self, io::Error> {
+    ) -> Result<Self, SolverError> {
         // read file
         let mut buffer = String::new();
         file.read_to_string(&mut buffer)?;
-        let mut json_data: JsonProblemData<T> = serde_json::from_str(&buffer)?;
+
+        // Parse JSON and convert any serde_json::Error to SolverError::JsonError
+        let json_data: Result<JsonProblemData<T>, _> = serde_json::from_str(&buffer);
+        let mut json_data = match json_data {
+            Ok(data) => data,
+            Err(e) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("JSON parsing error: {}", e),
+                )
+                .into())
+            }
+        };
 
         // restore sanitized settings to their (likely) original values
         desanitize_settings(&mut json_data.settings);
@@ -76,9 +88,9 @@ where
         let b = json_data.b;
         let cones = json_data.cones;
         let settings = settings.unwrap_or(json_data.settings);
-        let solver = Self::new(&P, &q, &A, &b, &cones, settings);
 
-        Ok(solver)
+        // Convert SolverError to io::Error
+        Self::new(&P, &q, &A, &b, &cones, settings)
     }
 }
 

@@ -119,6 +119,10 @@ where
             } else {
                 //NB: take() is lazy, so must consume this block
                 //to force keep_iter to advance to the next cone
+
+                // this clippy lint is a false positive
+                #[allow(unknown_lints)] // suppress error in old versions
+                #[allow(clippy::double_ended_iterator_last)]
                 markers.last(); // skip this cone
                 cones_new.push(cone.clone());
             }

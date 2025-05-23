@@ -1,10 +1,11 @@
 #![allow(non_snake_case)]
 
-use clarabel::{algebra::*, solver::*};
-use std::io::{Seek, SeekFrom};
-
+#[cfg(feature = "serde")]
 #[test]
 fn test_json_io() {
+    use clarabel::{algebra::*, solver::*};
+    use std::io::{Seek, SeekFrom};
+
     let P = CscMatrix {
         m: 1,
         n: 1,
@@ -25,7 +26,7 @@ fn test_json_io() {
 
     let settings = DefaultSettingsBuilder::default().build().unwrap();
 
-    let mut solver = DefaultSolver::<f64>::new(&P, &q, &A, &b, &cones, settings);
+    let mut solver = DefaultSolver::<f64>::new(&P, &q, &A, &b, &cones, settings).unwrap();
     solver.solve();
 
     // write the problem to a file

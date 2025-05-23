@@ -13,6 +13,11 @@ fn test_matrix_4x4_triu() -> CscMatrix<f64> {
     CscMatrix::new(4, 4, Ap, Ai, Ax)
 }
 
+fn test_matrix_4x4_tril() -> CscMatrix<f64> {
+    let A = test_matrix_4x4_triu();
+    A.t().into()
+}
+
 fn test_matrix_4x4() -> CscMatrix<f64> {
     // A =
     //[ 4.0  -3.0   7.0    ⋅ ]
@@ -243,27 +248,40 @@ fn test_gemv() {
 
 #[test]
 fn test_symv() {
-    let A = test_matrix_4x4_triu();
+    let Aup = test_matrix_4x4_triu();
+    let Alo = test_matrix_4x4_tril();
     let x = vec![1., 2., -3., -4.];
     let mut y = vec![0., 1., -1., 2.];
     let a = -2.;
     let b = 3.;
 
-    let Asym = A.sym();
+    let Asym = Aup.sym_up();
     Asym.symv(&mut y, &x, a, b);
+    assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
 
+    let mut y = vec![0., 1., -1., 2.];
+    let Asym = Alo.sym_lo();
+    Asym.symv(&mut y, &x, a, b);
     assert_eq!(y, vec![46.0, -29.0, -25.0, -4.0]);
 }
 
 #[test]
 fn test_quad_form() {
-    let A = test_matrix_4x4_triu();
+    let Aup = test_matrix_4x4_triu();
+    let Alo = test_matrix_4x4_tril();
+
     let x = vec![1., 2., -3., -4.];
     let y = vec![0., 1., -1., 2.];
 
-    let val = A.quad_form(&y, &x);
+    let val1 = Aup.sym_up().quad_form(&y, &x);
+    let val2 = Aup.sym(MatrixTriangle::Triu).quad_form(&y, &x);
+    assert_eq!(val1, 15.);
+    assert_eq!(val2, 15.);
 
-    assert_eq!(val, 15.);
+    let val1 = Alo.sym_lo().quad_form(&y, &x);
+    let val2 = Alo.sym(MatrixTriangle::Tril).quad_form(&y, &x);
+    assert_eq!(val1, 15.);
+    assert_eq!(val2, 15.);
 }
 
 #[test]

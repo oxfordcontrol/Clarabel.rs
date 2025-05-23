@@ -19,9 +19,13 @@ use faer::{
 };
 
 use crate::algebra::*;
-use crate::solver::core::kktsolvers::direct::{DirectLDLSolver, DirectLDLSolverReqs};
-use crate::solver::core::kktsolvers::{HasLinearSolverInfo, LinearSolverInfo};
-use crate::solver::core::CoreSettings;
+use crate::solver::core::{
+    kktsolvers::{
+        direct::{DirectLDLSolver, DirectLDLSolverReqs},
+        HasLinearSolverInfo, LinearSolverInfo,
+    },
+    CoreSettings,
+};
 use std::iter::zip;
 
 #[derive(Debug)]
@@ -188,7 +192,7 @@ where
     }
 }
 
-impl<T> DirectLDLSolverReqs<T> for FaerDirectLDLSolver<T>
+impl<T> DirectLDLSolverReqs for FaerDirectLDLSolver<T>
 where
     T: FloatT,
 {
@@ -247,7 +251,7 @@ where
         }
     }
 
-    fn solve(&mut self, _kkt: &CscMatrix<T>, x: &mut [T], b: &[T]) {
+    fn solve(&mut self, _kkt: &CscMatrix<T>, x: &mut [T], b: &mut [T]) {
         // NB: faer solves in place.  Permute b to match the ordering used internally
         permute(&mut self.bperm, b, &self.perm);
 
@@ -360,7 +364,7 @@ fn test_faer_ldl() {
     let mut solver = FaerDirectLDLSolver::new(&KKT, &Dsigns, &CoreSettings::default(), None);
 
     let mut x = vec![0.0; 6];
-    let b = vec![1.0, 2.0, 3.0, 4., 5., 6.];
+    let mut b = vec![1.0, 2.0, 3.0, 4., 5., 6.];
 
     // check that the permuted values are in what should be natural order
     let nzval = &solver.perm_kkt.nzval; // post perm internal data
@@ -371,7 +375,7 @@ fn test_faer_ldl() {
     }
 
     solver.refactor(&KKT);
-    solver.solve(&KKT, &mut x, &b);
+    solver.solve(&KKT, &mut x, &mut b);
 
     let xsol = vec![
         1.0,
@@ -387,7 +391,7 @@ fn test_faer_ldl() {
     solver.update_values(&[9], &[-10.0]);
 
     solver.refactor(&KKT);
-    solver.solve(&KKT, &mut x, &b);
+    solver.solve(&KKT, &mut x, &mut b);
 
     let xsol = vec![
         1.0,
@@ -432,7 +436,7 @@ fn test_faer_qp() {
         .build()
         .unwrap();
 
-    let mut solver = crate::solver::DefaultSolver::new(&P, &q, &A, &b, &cones, settings);
+    let mut solver = crate::solver::DefaultSolver::new(&P, &q, &A, &b, &cones, settings).unwrap();
 
     solver.solve();
 

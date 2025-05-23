@@ -8,125 +8,77 @@ env:
   PYTHON_VERSION: "3.9" # to build abi3 wheels
   PYPI_TARGET: testpypi # use "testpypi" for testing, "pypi" otherwise
 
-# NB: uncomment "if" lines below to skip compilation except on version tagging
-
 jobs:
-
-  linux:
-    runs-on: ubuntu-latest
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }} for ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
     strategy:
-       matrix:
-        target: [x86_64, aarch64]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.target }}
-          command: build
-          manylinux: auto
-          args: -v --release --out dist -i python${{ env.PYTHON_VERSION }} --features "python"
-
-      - name: Install and test built wheel
-        if: matrix.target == 'x86_64'
-        run: |
-          python -m pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
-          python -c "import clarabel"
-          python examples/python/example_qp.py 
-          python examples/python/example_sdp.py 
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-linux-${{ matrix.target }}
-          path: dist
-
-
-  macos:
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          default: true
-
-      - name: Build wheels - x86_64
-        uses: PyO3/maturin-action@v1
-        with:
-          target: x86_64
-          command: build
-          args: --release -i python${{ env.PYTHON_VERSION }} --out dist --features "python" 
-
-      - name: Install and test built wheel - x86_64
-        run: |
-          pip install --upgrade pip
-          pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
-          python -c "import clarabel"
-          python examples/python/example_qp.py 
-          python examples/python/example_sdp.py 
-
-      - name: Build wheels - universal2
-        uses: PyO3/maturin-action@v1
-        with:
-          command: build
-          args: --release -i python${{ env.PYTHON_VERSION }} --target universal2-apple-darwin --out dist --features "python" 
-
-      - name: Install and test built wheel - universal2
-        run: |
-          pip install --upgrade pip
-          pip install dist/${{ env.PACKAGE_NAME }}-*universal2.whl --force-reinstall
-          python -c "import clarabel"
-          python examples/python/example_qp.py 
-          python examples/python/example_sdp.py 
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-macos
-          path: dist
-
-  windows:
-    runs-on: windows-latest
-    strategy:
+      fail-fast: false
       matrix:
-        target: [x64]
+        include:
+          # Linux builds (intel runner)
+          - os: ubuntu-latest
+            target: x86_64
+            features: "python,pardiso"
+            test: true
+
+          - os: ubuntu-latest
+            target: aarch64
+            features: "python,pardiso-panua"
+            test: false
+            
+          # macOS Intel build
+          - os: macos-13
+            target: x86_64
+            features: "python,pardiso"
+            test: true
+            
+          # macOS ARM build
+          - os: macos-latest
+            target: aarch64
+            features: "python,pardiso-panua"
+            test: true
+            
+          # Windows build
+          - os: windows-latest
+            target: x64
+            features: "python,pardiso"
+            test: true
+
+
     steps:
+
       - uses: actions/checkout@v4
+      - name: Generate Cargo.lock
+        run: cargo generate-lockfile
+        
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          architecture: ${{ matrix.target }}
-
+          architecture: ${{ matrix.os == 'windows' && matrix.target || '' }}
+                    
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          command: build
           target: ${{ matrix.target }}
-          args: --release --out dist -i python${{ env.PYTHON_VERSION }} --features "python"
-
+          command: build
+          manylinux: ${{ matrix.os == 'ubuntu-latest' && 'auto' || '' }}
+          args: -v --release --out dist -i python${{ env.PYTHON_VERSION }} --features "${{ matrix.features }}"
+          
       - name: Install and test built wheel
+        if: matrix.test
         shell: bash
         run: |
+          python -m pip install --upgrade pip
           python -m pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
           python -c "import clarabel"
           python examples/python/example_qp.py 
           python examples/python/example_sdp.py 
-
+          
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-windows-${{ matrix.target }}
+          name: wheels-${{ matrix.os }}-${{ matrix.target }}
           path: dist
 
   sdist:
@@ -160,9 +112,8 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     needs: 
-      - macos
-      - windows
-      - linux
+      - build-wheels
+      - sdist
     steps:
       - uses: actions/download-artifact@v4
         with:

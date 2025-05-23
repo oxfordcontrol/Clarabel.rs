@@ -1,6 +1,14 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
 
+
+// PJG : MatrixMath<T> should be implemented for a more 
+// general type, e.g. the DenseStorageMatrix<S,T> type 
+// or similar.   That would provide math functionality
+// for more types, e.g. statically size matrices or 
+// the ones on borrowed data.   
+
+
 impl<T: FloatT> MatrixMath<T> for Matrix<T> {
 
     fn col_sums(&self, sums: &mut [T]) {
@@ -60,30 +68,6 @@ impl<T: FloatT> MatrixMath<T> for Matrix<T> {
             }
         }
     }
-
-    // PJG: this should probably only be implemented as part of
-    // some SymmetricMatrixMath trait.  Uses upper triangle only
-    // and assumes that the rest is symmetric.
-    fn quad_form(&self, y: &[T], x: &[T]) -> T {
-        assert!(self.is_square());
-        let mut out = T::zero();
-        for col in 0..self.ncols() {
-            let mut tmp1 = T::zero();
-            let mut tmp2 = T::zero();
-            for row in 0..=col {
-                let Mv = self[(row, col)];
-                if row < col {
-                    tmp1 += Mv * x[row];
-                    tmp2 += Mv * y[row];
-                } else {
-                    //diagonal term
-                    out += Mv * x[col] * y[col];
-                }
-            }
-            out += tmp1 * y[col] + tmp2 * x[col];
-        }
-        out
-    }
 }
 
 impl<T: FloatT> MatrixMathMut<T> for Matrix<T> {
@@ -119,6 +103,36 @@ impl<T: FloatT> MatrixMathMut<T> for Matrix<T> {
 
 }
 
+impl<T> Matrix<T>
+where
+    T: FloatT,
+{
+    #[allow(dead_code)]
+    pub(crate) fn kron<MATA, MATB>(&mut self, A: &MATA, B: &MATB)
+    where
+        MATA: DenseMatrix<T>,
+        MATB: DenseMatrix<T>,
+    {
+        let (pp, qq) = A.size();
+        let (rr, ss) = B.size();
+        assert!(self.nrows() == pp * rr);
+        assert!(self.ncols() == qq * ss);
+
+        let mut i = 0;
+        for q in 0..qq {
+            for s in 0..ss {
+                for p in 0..pp {
+                    let Apq = A[(p, q)];
+                    for r in 0..rr {
+                        self.data_mut()[i] = (Apq) * B[(r, s)];
+                        i += 1;
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 // additional functions that require floating point operations
 
@@ -145,6 +159,7 @@ where
         self
     }
 }
+
 
 
 pub(crate) fn svec_to_mat<S,T>(M: &mut DenseStorageMatrix<S,T>, x: &[T]) 
@@ -187,23 +202,6 @@ MATM: DenseMatrix<T>,
     }
 }
 
-
-#[test]
-fn test_quad_form() {
-    let mut A = Matrix::from(&[
-        [1., 4.], //
-        [4., 5.], //
-    ]);
-
-    let x = vec![1.0, 2.0];
-    let y = vec![3.0, 4.0];
-    assert!(A.quad_form(&x, &y) == 83.0);
-
-    //remove lower triangle part and check again.
-    //should not change the result.
-    A[(1, 0)] = 0.0;
-    assert!(A.quad_form(&x, &y) == 83.0);
-}
 
 #[test]
 fn test_row_col_sums_and_norms() {
@@ -317,4 +315,106 @@ fn test_col_norms_sym() {
     let mut v = vec![0.0; 3];
     A.col_norms_sym(&mut v);
     assert_eq!(v, [6.0, 8.0, 9.0]);
+}
+
+
+
+#[test]
+#[rustfmt::skip]
+fn test_kron() {
+
+    let A = Matrix::from(
+        &[[ 1.,  2.],
+          [ 4.,  5.]]);
+
+    let B = Matrix::from(
+        &[[ 1.,  2.]]);
+
+
+    // A ⊗ B
+    let (k1, m1) = A.size();
+    let (k2, m2) = B.size();
+    let mut K = Matrix::<f64>::zeros((k1 * k2, m1 * m2));
+    K.kron(&A, &B);
+
+    let Ktest = Matrix::from(
+        &[[ 1.,  2.,  2.,  4.],
+          [ 4.,  8.,  5., 10.]]);
+
+    assert_eq!(K,Ktest);
+
+    // A' ⊗ B
+    let (k1, m1) = A.t().size();
+    let (k2, m2) = B.size();
+    let mut K = Matrix::<f64>::zeros((k1 * k2, m1 * m2));
+    K.kron(&A.t(), &B);
+
+    let Ktest = Matrix::from(
+        &[[ 1.,  2.,  4.,  8.],
+          [ 2.,  4.,  5., 10.]]);
+          
+    assert_eq!(K,Ktest);
+
+    // A ⊗ B'            
+    let (k1, m1) = A.size();
+    let (k2, m2) = B.t().size();
+    let mut K = Matrix::<f64>::zeros((k1 * k2, m1 * m2));
+    K.kron(&A, &B.t());
+
+    let Ktest = Matrix::from(
+        &[[1., 2. ],
+          [2., 4. ],
+          [4., 5. ],
+          [8., 10.]]);
+          
+    assert_eq!(K,Ktest);
+
+    // A' ⊗ B'  
+    let (k1, m1) = A.t().size();
+    let (k2, m2) = B.t().size();  
+    let mut K = Matrix::<f64>::zeros((k1 * k2, m1 * m2));  
+    K.kron(&A.t(), &B.t());
+
+    let Ktest = Matrix::from(
+        &[[1., 4. ],
+          [2., 8. ],
+          [2., 5. ],
+          [4., 10.]]);
+
+    assert_eq!(K,Ktest);
+}
+
+
+
+#[test]
+fn test_svec_conversions() {
+    let n = 3;
+
+    let X = Matrix::from(&[
+        [1., 3., -2.], //
+        [3., -4., 7.], //
+        [-2., 7., 5.], //
+    ]);
+
+    let Y = Matrix::from(&[
+        [2., 5., -4.],  //
+        [5., 6., 2.],   //
+        [-4., 2., -3.], //
+    ]);
+
+    let mut Z = Matrix::zeros((3, 3));
+
+    let mut x = vec![0.; triangular_number(n)];
+    let mut y = vec![0.; triangular_number(n)];
+
+    // check inner product identity
+    mat_to_svec(&mut x, &X);
+    mat_to_svec(&mut y, &Y);
+
+    assert!(f64::abs(x.dot(&y) - X.data().dot(Y.data())) < 1e-12);
+
+    // check round trip
+    mat_to_svec(&mut x, &X);
+    svec_to_mat(&mut Z, &x);
+    assert!(X.data().norm_inf_diff(Z.data()) < 1e-12);
 }

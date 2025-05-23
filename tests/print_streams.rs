@@ -10,7 +10,7 @@ fn test_print_solver() -> DefaultSolver<f64> {
     let b = [1.];
     let cones = [NonnegativeConeT(1)];
     let settings = DefaultSettings::default();
-    DefaultSolver::new(&P, &c, &A, &b, &cones, settings)
+    DefaultSolver::new(&P, &c, &A, &b, &cones, settings).unwrap()
 }
 
 #[test]
