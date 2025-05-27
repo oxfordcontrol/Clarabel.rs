@@ -42,9 +42,9 @@ b = np.array([-1., 0., 0., 1., 0.7, 0.7])
 cones = [clarabel.NonnegativeConeT(3), clarabel.NonnegativeConeT(3)]
 settings = clarabel.DefaultSettings()
 
-#------------------------------------------------------------
-# Solve using a callback 
-#------------------------------------------------------------
+# ------------------------------------------------------------
+# Solve using a callback
+# ------------------------------------------------------------
 
 # solves
 solver = clarabel.DefaultSolver(P, q, A, b, cones, settings)
@@ -58,14 +58,12 @@ solver.solve()
 solver.unset_termination_callback()
 solver.solve()
 
-
-
-
-#------------------------------------------------------------
+# ------------------------------------------------------------
 # # Solve using a callback with state
-#------------------------------------------------------------
+# ------------------------------------------------------------
 
 counter = [-1]  # Using a list as a mutable container
+
 
 def termination_callback_with_state(info: clarabel.DefaultInfo) -> bool:
     # Increment the counter each time the callback is called
