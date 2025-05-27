@@ -69,7 +69,7 @@ def termination_callback_with_state(info: clarabel.DefaultInfo) -> bool:
     # Increment the counter each time the callback is called
     counter[0] += 1
     print(f"Iteration {info.iterations}: Counter = {counter[0]}")
-    
+
     # Terminate when counter reaches 3
     if counter[0] >= 3:
         return True
@@ -87,4 +87,3 @@ solver.solve()
 # works again
 solver.unset_termination_callback()
 solver.solve()
-
