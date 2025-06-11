@@ -44,8 +44,8 @@ buildinfo = ["dep:vergen"]
 
 # explicit configuration options for different blas flavours
 sdp-accelerate = ["sdp", "blas-src/accelerate", "lapack-src/accelerate"]
-sdp-netlib     = ["sdp", "blas-src/netlib", "lapack-src/netlib"]
-sdp-openblas   = ["sdp", "blas-src/openblas", "lapack-src/openblas"]
+sdp-netlib     = ["sdp", "blas-src/netlib", "lapack-src/netlib", "netlib-src"]
+sdp-openblas   = ["sdp", "blas-src/openblas", "lapack-src/openblas", "openblas-src"]
 sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl","intel-mkl-src"]
 sdp-r          = ["sdp", "blas-src/r", "lapack-src/r"]
 
@@ -107,9 +107,24 @@ optional = true
 version = "0.11.0"
 optional = true 
 
+[target.'cfg(not(windows))'.dependencies.openblas-src]
+version = "0.10.11"
+features = ["static"]
+optional = true
+
+[target.'cfg(windows)'.dependencies.openblas-src]
+version = "0.10.11"
+features = ["system"]
+optional = true
+
 [dependencies.intel-mkl-src]
 version = "0.8.1"
 features = ["mkl-static-lp64-iomp"]
+optional = true
+
+[dependencies.netlib-src]
+version = "0.9"
+features = ["static"]
 optional = true
 
 [dependencies.indexmap]
