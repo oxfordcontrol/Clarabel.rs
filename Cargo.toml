@@ -1,6 +1,6 @@
 [package]
 name = "clarabel"
-version = "0.11.0"
+version = "0.11.1"
 authors = ["Paul Goulart <paul.goulart@eng.ox.ac.uk>"]
 edition = "2021"
 rust-version = "1.70.0"
