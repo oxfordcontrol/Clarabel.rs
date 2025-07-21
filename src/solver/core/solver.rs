@@ -127,6 +127,7 @@ where
 {
     pub data: D,
     pub variables: V,
+    pub copy_variables: V,
     pub residuals: R,
     pub kktsystem: K,
     pub cones: C,
@@ -135,6 +136,8 @@ where
     pub prev_vars: V,
     pub info: I,
     pub solution: SO,
+    pub tmp_solution: SO,
+    pub solutions: Vec<SO>,
     pub(crate) settings: SE, // not public to avoid unchecked modifications
     pub timers: Option<Timers>,
     pub(crate) callbacks: SolverCallbacks<I, I::FFI>,
@@ -236,7 +239,7 @@ where
     K: KKTSystem<T, D = D, V = V, C = C, SE = SE>,
     C: Cone<T>,
     I: Info<T, D = D, V = V, R = R, C = C, SE = SE>,
-    SO: Solution<T, D = D, V = V, I = I, SE = SE>,
+    SO: Solution<T, D = D, V = V, I = I, SE = SE> + Clone,
     SE: Settings<T>,
 {
     fn solve(&mut self) {
@@ -267,6 +270,11 @@ where
         timeit!{timers => "default start"; {
             self.default_start();
         }}
+
+        self.solutions.clear();
+        self.copy_variables.copy_from(&self.variables);
+        self.tmp_solution.post_process(&self.data, &mut self.copy_variables, &self.info, &self.settings);
+        self.solutions.push(self.tmp_solution.clone());
 
         timeit!{timers => "IP iteration"; {
 
@@ -430,6 +438,9 @@ where
             self.info.save_prev_iterate(&self.variables,&mut self.prev_vars);
 
             self.variables.add_step(&self.step_lhs, α);
+            self.copy_variables.copy_from(&self.variables);
+            self.tmp_solution.post_process(&self.data, &mut self.copy_variables, &self.info, &self.settings);
+            self.solutions.push(self.tmp_solution.clone());
 
         } //end loop
         // ----------
@@ -596,6 +607,7 @@ mod internal {
                 // involves actual degradation of results
                 self.info
                     .reset_to_prev_iterate(&mut self.variables, &self.prev_vars);
+                self.solutions.pop();
 
                 // If problem is asymmetric, we can try to continue with the dual-only strategy
                 if !self.cones.is_symmetric() && (scaling == ScalingStrategy::PrimalDual) {

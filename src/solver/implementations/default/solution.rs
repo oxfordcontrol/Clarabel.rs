@@ -7,7 +7,7 @@ use crate::{
 };
 
 /// Standard-form solver type implementing the [`Solution`](crate::solver::core::traits::Solution) trait
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DefaultSolution<T> {
     /// primal solution
     pub x: Vec<T>,

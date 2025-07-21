@@ -215,6 +215,7 @@ impl From<&DefaultSolution<f64>> for PyDefaultSolution {
     }
 }
 
+
 struct TruncatedSlice<'a, T>(&'a [T]);
 impl<T> Debug for TruncatedSlice<'_, T>
 where
@@ -653,6 +654,11 @@ impl PyDefaultSolver {
         self.get_solution()
     }
 
+    fn solve_all_iterations(&mut self, py: Python<'_>) -> Vec<PyDefaultSolution> {
+        py.allow_threads(|| self.inner.solve());
+        self.get_solutions()
+    }
+
     pub fn __repr__(&self) -> String {
         "Clarabel model with Float precision: f64".to_string()
     }
@@ -786,6 +792,15 @@ impl PyDefaultSolver {
 
     fn get_solution(&self) -> PyDefaultSolution {
         (&self.inner.solution).into()
+    }
+
+    fn get_solutions(&self) -> Vec<PyDefaultSolution> {
+        let len = self.inner.solutions.len();
+        let mut v : Vec<PyDefaultSolution> = Vec::new();
+        for i in 0..len {
+            v.push((&(self.inner.solutions[i])).into())
+        }
+        v
     }
 
     fn is_data_update_allowed(&self) -> bool {

@@ -75,6 +75,8 @@ where
 
         // user facing results go here.
         let solution = DefaultSolution::<T>::new(A.n, A.m);
+        let tmp_solution = DefaultSolution::<T>::new(A.n, A.m);
+        let solutions: Vec< DefaultSolution::<T> > = Vec::new();
 
         // presolve / chordal decomposition if needed,
         // then take an internal copy of the problem data
@@ -86,6 +88,7 @@ where
         let cones = CompositeCone::<T>::new(&data.cones);
         assert_eq!(cones.numel, data.m);
         let variables = DefaultVariables::<T>::new(data.n,data.m);
+        let copy_variables = DefaultVariables::<T>::new(data.n,data.m);
         let residuals = DefaultResiduals::<T>::new(data.n,data.m);
 
         // equilibrate problem data immediately on setup.
@@ -109,9 +112,9 @@ where
         // configure empty user callbacks
 
         output = Self{
-            data,variables,residuals,kktsystem,
+            data,variables,copy_variables,residuals,kktsystem,
             step_lhs,step_rhs,prev_vars,info,
-            solution,cones,settings,
+            solution,tmp_solution,solutions,cones,settings,
             timers: None,
             callbacks: SolverCallbacks::default(),
             phantom: std::marker::PhantomData };
