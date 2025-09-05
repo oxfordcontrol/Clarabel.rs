@@ -195,6 +195,10 @@ name = "json"
 path = "examples/rust/example_json.rs"
 required-features = ["serde"]
 
+[[example]]
+name = "custom_initialization"
+path = "examples/rust/example_custom_initialization.rs"
+
 
 
 # -------------------------------

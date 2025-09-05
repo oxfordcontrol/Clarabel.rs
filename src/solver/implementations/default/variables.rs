@@ -5,6 +5,52 @@ use crate::solver::core::{
     traits::{Settings, Variables},
     ScalingStrategy, StepDirection,
 };
+use thiserror::Error;
+
+// ---------------
+// Error type for variable initialization
+// ---------------
+
+/// Error type returned by variable initialization operations.
+#[derive(Error, Debug)]
+pub enum VariableInitializationError {
+    /// Slack variables must be positive (s > 0)
+    #[error("Slack variables must be positive (s > 0)")]
+    InvalidSlackVariables,
+    /// Dual variables must be positive (z > 0)
+    #[error("Dual variables must be positive (z > 0)")]
+    InvalidDualVariables,
+    /// Homogenization scalar τ must be positive (τ > 0)
+    #[error("Homogenization scalar τ must be positive (τ > 0)")]
+    InvalidTau,
+    /// Homogenization scalar κ must be positive (κ > 0)
+    #[error("Homogenization scalar κ must be positive (κ > 0)")]
+    InvalidKappa,
+    /// Dimension mismatch for x vector
+    #[error("Dimension mismatch: expected x length {expected}, got {actual}")]
+    XDimensionMismatch { 
+        /// Expected length
+        expected: usize, 
+        /// Actual length
+        actual: usize 
+    },
+    /// Dimension mismatch for s vector
+    #[error("Dimension mismatch: expected s length {expected}, got {actual}")]
+    SDimensionMismatch { 
+        /// Expected length
+        expected: usize, 
+        /// Actual length
+        actual: usize 
+    },
+    /// Dimension mismatch for z vector
+    #[error("Dimension mismatch: expected z length {expected}, got {actual}")]
+    ZDimensionMismatch { 
+        /// Expected length
+        expected: usize, 
+        /// Actual length
+        actual: usize 
+    },
+}
 
 // ---------------
 // Variables type for default problem format
@@ -47,6 +93,161 @@ where
         let κ = T::one();
 
         Self { x, s, z, τ, κ }
+    }
+
+    /// Initialize variables with user-provided values and validation
+    /// 
+    /// This function allows partial initialization of variables while performing
+    /// basic validity checks:
+    /// - All components of `s` must be positive (s > 0)
+    /// - All components of `z` must be positive (z > 0)  
+    /// - `τ` must be positive (τ > 0)
+    /// - `κ` must be positive (κ > 0)
+    /// 
+    /// If a parameter is `None`, the corresponding variable is initialized with default values:
+    /// - `x` defaults to zeros
+    /// - `s` defaults to ones
+    /// - `z` defaults to ones
+    /// - `τ` defaults to 1.0
+    /// - `κ` defaults to 1.0
+    /// 
+    /// # Arguments
+    /// 
+    /// * `x` - Optional primal variables (can be any value)
+    /// * `s` - Optional slack variables (must be positive if provided)
+    /// * `z` - Optional dual variables (must be positive if provided)
+    /// * `τ` - Optional homogenization scalar τ (must be positive if provided)
+    /// * `κ` - Optional homogenization scalar κ (must be positive if provided)
+    /// 
+    /// # Returns
+    /// 
+    /// * `Ok(())` - Initialization successful
+    /// * `Err(VariableInitializationError)` - Validation failed or dimension mismatch
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use clarabel::solver::DefaultVariables;
+    /// 
+    /// // Create variables with dimensions n=3, m=2
+    /// let mut vars = DefaultVariables::<f64>::new(3, 2);
+    /// 
+    /// // Full initialization with validation
+    /// let x_vals = vec![1.0, 2.0, 3.0];
+    /// let s_vals = vec![0.5, 1.5]; // must be positive
+    /// let z_vals = vec![2.0, 3.0]; // must be positive
+    /// 
+    /// vars.initialize_with_values(
+    ///     Some(&x_vals),
+    ///     Some(&s_vals),
+    ///     Some(&z_vals),
+    ///     Some(2.0), // τ must be positive
+    ///     Some(1.5), // κ must be positive
+    /// ).expect("Initialization should succeed");
+    /// 
+    /// // Partial initialization (only x and τ)
+    /// vars.initialize_with_values(
+    ///     Some(&[10.0, 20.0, 30.0]),
+    ///     None, // s defaults to ones
+    ///     None, // z defaults to ones
+    ///     Some(0.8),
+    ///     None, // κ defaults to one
+    /// ).expect("Partial initialization should succeed");
+    /// ```
+    /// 
+    /// # Errors
+    /// 
+    /// This function will return an error if:
+    /// - Any component of `s` is ≤ 0
+    /// - Any component of `z` is ≤ 0  
+    /// - `τ` is ≤ 0
+    /// - `κ` is ≤ 0
+    /// - Vector dimensions don't match the variable dimensions
+    pub fn initialize_with_values(
+        &mut self,
+        x: Option<&[T]>,
+        s: Option<&[T]>,
+        z: Option<&[T]>,
+        τ: Option<T>,
+        κ: Option<T>,
+    ) -> Result<(), VariableInitializationError> {
+        // Validate and set x if provided
+        if let Some(x_vals) = x {
+            if x_vals.len() != self.x.len() {
+                return Err(VariableInitializationError::XDimensionMismatch {
+                    expected: self.x.len(),
+                    actual: x_vals.len(),
+                });
+            }
+            self.x.copy_from_slice(x_vals);
+        } else {
+            // Default to zeros
+            self.x.fill(T::zero());
+        }
+
+        // Validate and set s if provided
+        if let Some(s_vals) = s {
+            if s_vals.len() != self.s.len() {
+                return Err(VariableInitializationError::SDimensionMismatch {
+                    expected: self.s.len(),
+                    actual: s_vals.len(),
+                });
+            }
+            // Check all components are positive
+            for &val in s_vals {
+                if val <= T::zero() {
+                    return Err(VariableInitializationError::InvalidSlackVariables);
+                }
+            }
+            self.s.copy_from_slice(s_vals);
+        } else {
+            // Default to ones
+            self.s.fill(T::one());
+        }
+
+        // Validate and set z if provided
+        if let Some(z_vals) = z {
+            if z_vals.len() != self.z.len() {
+                return Err(VariableInitializationError::ZDimensionMismatch {
+                    expected: self.z.len(),
+                    actual: z_vals.len(),
+                });
+            }
+            // Check all components are positive
+            for &val in z_vals {
+                if val <= T::zero() {
+                    return Err(VariableInitializationError::InvalidDualVariables);
+                }
+            }
+            self.z.copy_from_slice(z_vals);
+        } else {
+            // Default to ones
+            self.z.fill(T::one());
+        }
+
+        // Validate and set τ if provided
+        if let Some(tau_val) = τ {
+            if tau_val <= T::zero() {
+                return Err(VariableInitializationError::InvalidTau);
+            }
+            self.τ = tau_val;
+        } else {
+            // Default to one
+            self.τ = T::one();
+        }
+
+        // Validate and set κ if provided
+        if let Some(kappa_val) = κ {
+            if kappa_val <= T::zero() {
+                return Err(VariableInitializationError::InvalidKappa);
+            }
+            self.κ = kappa_val;
+        } else {
+            // Default to one
+            self.κ = T::one();
+        }
+
+        Ok(())
     }
 }
 
@@ -287,5 +488,178 @@ where
     #[cfg_attr(not(feature = "sdp"), allow(dead_code))]
     pub(crate) fn dims(&self) -> (usize, usize) {
         (self.x.len(), self.s.len())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_initialize_with_values_success() {
+        let mut vars = DefaultVariables::<f64>::new(3, 2);
+
+        // Test successful initialization with all parameters
+        let x_vals = vec![1.0, 2.0, 3.0];
+        let s_vals = vec![0.5, 1.5];
+        let z_vals = vec![2.0, 3.0];
+        let tau_val = 2.0;
+        let kappa_val = 1.5;
+
+        let result = vars.initialize_with_values(
+            Some(&x_vals),
+            Some(&s_vals),
+            Some(&z_vals),
+            Some(tau_val),
+            Some(kappa_val),
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(vars.x, x_vals);
+        assert_eq!(vars.s, s_vals);
+        assert_eq!(vars.z, z_vals);
+        assert_eq!(vars.τ, tau_val);
+        assert_eq!(vars.κ, kappa_val);
+    }
+
+    #[test]
+    fn test_initialize_with_values_partial() {
+        let mut vars = DefaultVariables::<f64>::new(2, 2);
+
+        // Test partial initialization (only x and τ)
+        let x_vals = vec![1.0, 2.0];
+        let tau_val = 0.5;
+
+        let result = vars.initialize_with_values(
+            Some(&x_vals),
+            None,        // s defaults to ones
+            None,        // z defaults to ones
+            Some(tau_val),
+            None,        // κ defaults to one
+        );
+
+        assert!(result.is_ok());
+        assert_eq!(vars.x, x_vals);
+        assert_eq!(vars.s, vec![1.0, 1.0]); // default
+        assert_eq!(vars.z, vec![1.0, 1.0]); // default
+        assert_eq!(vars.τ, tau_val);
+        assert_eq!(vars.κ, 1.0); // default
+    }
+
+    #[test]
+    fn test_initialize_with_values_invalid_s() {
+        let mut vars = DefaultVariables::<f64>::new(2, 2);
+
+        // Test with negative slack variable
+        let s_vals = vec![1.0, -0.5]; // negative value should fail
+
+        let result = vars.initialize_with_values(
+            None,
+            Some(&s_vals),
+            None,
+            None,
+            None,
+        );
+
+        assert!(matches!(
+            result,
+            Err(VariableInitializationError::InvalidSlackVariables)
+        ));
+    }
+
+    #[test]
+    fn test_initialize_with_values_invalid_z() {
+        let mut vars = DefaultVariables::<f64>::new(2, 2);
+
+        // Test with zero dual variable
+        let z_vals = vec![1.0, 0.0]; // zero value should fail
+
+        let result = vars.initialize_with_values(
+            None,
+            None,
+            Some(&z_vals),
+            None,
+            None,
+        );
+
+        assert!(matches!(
+            result,
+            Err(VariableInitializationError::InvalidDualVariables)
+        ));
+    }
+
+    #[test]
+    fn test_initialize_with_values_invalid_tau() {
+        let mut vars = DefaultVariables::<f64>::new(2, 2);
+
+        // Test with negative τ
+        let result = vars.initialize_with_values(
+            None,
+            None,
+            None,
+            Some(-1.0),
+            None,
+        );
+
+        assert!(matches!(
+            result,
+            Err(VariableInitializationError::InvalidTau)
+        ));
+    }
+
+    #[test]
+    fn test_initialize_with_values_invalid_kappa() {
+        let mut vars = DefaultVariables::<f64>::new(2, 2);
+
+        // Test with zero κ
+        let result = vars.initialize_with_values(
+            None,
+            None,
+            None,
+            None,
+            Some(0.0),
+        );
+
+        assert!(matches!(
+            result,
+            Err(VariableInitializationError::InvalidKappa)
+        ));
+    }
+
+    #[test]
+    fn test_initialize_with_values_dimension_mismatch() {
+        let mut vars = DefaultVariables::<f64>::new(3, 2);
+
+        // Test with wrong x dimension
+        let x_vals = vec![1.0, 2.0]; // should be length 3
+
+        let result = vars.initialize_with_values(
+            Some(&x_vals),
+            None,
+            None,
+            None,
+            None,
+        );
+
+        assert!(matches!(
+            result,
+            Err(VariableInitializationError::XDimensionMismatch { expected: 3, actual: 2 })
+        ));
+
+        // Test with wrong s dimension
+        let s_vals = vec![1.0, 2.0, 3.0]; // should be length 2
+
+        let result = vars.initialize_with_values(
+            None,
+            Some(&s_vals),
+            None,
+            None,
+            None,
+        );
+
+        assert!(matches!(
+            result,
+            Err(VariableInitializationError::SDimensionMismatch { expected: 2, actual: 3 })
+        ));
     }
 }
