@@ -449,6 +449,20 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub input_sparse_dropzeros: bool,
 
+    // warm start settings
+    #[pyo3(get, set)]
+    pub warm_start_enable: bool,
+    #[pyo3(get, set)]
+    pub warm_start_x: Option<Vec<f64>>,
+    #[pyo3(get, set)]
+    pub warm_start_s: Option<Vec<f64>>,
+    #[pyo3(get, set)]
+    pub warm_start_z: Option<Vec<f64>>,
+    #[pyo3(get, set)]
+    pub warm_start_tau: Option<f64>,
+    #[pyo3(get, set)]
+    pub warm_start_kappa: Option<f64>,
+
     //chordal decomposition (python must be built with "sdp" feature)
     #[pyo3(get, set)]
     pub chordal_decomposition_enable: bool,
@@ -538,6 +552,12 @@ impl From<&DefaultSettings<f64>> for PyDefaultSettings {
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
             presolve_enable: set.presolve_enable,
             input_sparse_dropzeros: set.input_sparse_dropzeros,
+            warm_start_enable: set.warm_start_enable,
+            warm_start_x: set.warm_start_x.clone(),
+            warm_start_s: set.warm_start_s.clone(),
+            warm_start_z: set.warm_start_z.clone(),
+            warm_start_tau: set.warm_start_tau,
+            warm_start_kappa: set.warm_start_kappa,
             #[cfg(feature = "sdp")]
             chordal_decomposition_enable: set.chordal_decomposition_enable,
             #[cfg(feature = "sdp")]
@@ -598,6 +618,12 @@ impl PyDefaultSettings {
             iterative_refinement_stop_ratio: self.iterative_refinement_stop_ratio,
             presolve_enable: self.presolve_enable,
             input_sparse_dropzeros: self.input_sparse_dropzeros,
+            warm_start_enable: self.warm_start_enable,
+            warm_start_x: self.warm_start_x.clone(),
+            warm_start_s: self.warm_start_s.clone(),
+            warm_start_z: self.warm_start_z.clone(),
+            warm_start_tau: self.warm_start_tau,
+            warm_start_kappa: self.warm_start_kappa,
             #[cfg(feature = "sdp")]
             chordal_decomposition_enable: self.chordal_decomposition_enable,
             #[cfg(feature = "sdp")]
