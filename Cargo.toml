@@ -199,6 +199,10 @@ required-features = ["serde"]
 name = "custom_initialization"
 path = "examples/rust/example_custom_initialization.rs"
 
+[[example]]
+name = "warm_start"
+path = "examples/rust/example_warm_start.rs"
+
 
 
 # -------------------------------

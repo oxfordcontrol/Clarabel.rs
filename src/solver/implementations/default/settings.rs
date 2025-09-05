@@ -245,6 +245,44 @@ pub struct DefaultSettings<T: FloatT> {
     #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
     #[builder(default = "false")]
     pub pardiso_verbose: bool,
+
+    /// Enable warm start functionality
+    /// When enabled, the solver will check for custom initial values
+    /// and use them instead of the default initialization method
+    #[builder(default = "false")]
+    pub warm_start_enable: bool,
+
+    /// Custom initial primal variables (x)
+    /// If provided and warm_start_enable is true, these values will be used
+    /// to initialize the primal variables. Should have dimension n.
+    #[builder(default = "None")]
+    pub warm_start_x: Option<Vec<T>>,
+
+    /// Custom initial slack variables (s)
+    /// If provided and warm_start_enable is true, these values will be used
+    /// to initialize the slack variables. All values must be positive.
+    /// Should have dimension m.
+    #[builder(default = "None")]
+    pub warm_start_s: Option<Vec<T>>,
+
+    /// Custom initial dual variables (z)
+    /// If provided and warm_start_enable is true, these values will be used
+    /// to initialize the dual variables. All values must be positive.
+    /// Should have dimension m.
+    #[builder(default = "None")]
+    pub warm_start_z: Option<Vec<T>>,
+
+    /// Custom initial homogenization scalar τ
+    /// If provided and warm_start_enable is true, this value will be used
+    /// to initialize τ. Must be positive.
+    #[builder(default = "None")]
+    pub warm_start_tau: Option<T>,
+
+    /// Custom initial homogenization scalar κ
+    /// If provided and warm_start_enable is true, this value will be used
+    /// to initialize κ. Must be positive.
+    #[builder(default = "None")]
+    pub warm_start_kappa: Option<T>,
 }
 
 impl<T> Default for DefaultSettings<T>

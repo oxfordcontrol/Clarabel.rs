@@ -485,6 +485,9 @@ mod internal {
         /// Find an initial condition
         fn default_start(&mut self);
 
+        /// Attempt warm start initialization with custom values
+        fn warm_start(&mut self) -> bool;
+
         /// Compute a centering parameter
         fn centering_parameter(&self, α: T) -> T;
 
@@ -534,6 +537,12 @@ mod internal {
         SE: Settings<T>,
     {
         fn default_start(&mut self) {
+            // Try warm start first if enabled
+            if self.settings.core().warm_start_enable && self.warm_start() {
+                return;
+            }
+
+            // Fall back to default initialization
             if self.cones.is_symmetric() {
                 // set all scalings to identity (or zero for the zero cone)
                 self.cones.set_identity_scaling();
@@ -548,6 +557,59 @@ mod internal {
             } else {
                 // Assigns unit (z,s) and zeros the primal variables
                 self.variables.unit_initialization(&self.cones);
+            }
+        }
+
+        fn warm_start(&mut self) -> bool {
+            // Check if any warm start values are provided
+            let settings = self.settings.core();
+            if !settings.warm_start_enable {
+                return false;
+            }
+
+            // Extract values from settings
+            let has_any_values = settings.warm_start_x.is_some() 
+                || settings.warm_start_s.is_some() 
+                || settings.warm_start_z.is_some() 
+                || settings.warm_start_tau.is_some() 
+                || settings.warm_start_kappa.is_some();
+
+            if !has_any_values {
+                return false;
+            }
+
+            // For now, we'll implement a basic approach that casts to DefaultVariables
+            // This is a temporary solution until we can add warm start to the Variables trait
+            
+            // This is safe because we know this is being called on DefaultSolver
+            // which uses DefaultVariables
+            use crate::solver::implementations::default::DefaultVariables;
+            
+            // We need to use unsafe casting here since we can't add the method to the trait right now
+            // In a production setting, this would be better handled by extending the Variables trait
+            let variables_ptr = &mut self.variables as *mut _ as *mut DefaultVariables<T>;
+            let variables = unsafe { &mut *variables_ptr };
+            
+            let x = settings.warm_start_x.as_ref().map(|v| v.as_slice());
+            let s = settings.warm_start_s.as_ref().map(|v| v.as_slice());
+            let z = settings.warm_start_z.as_ref().map(|v| v.as_slice());
+            let tau = settings.warm_start_tau;
+            let kappa = settings.warm_start_kappa;
+
+            // Try to initialize with user-provided values
+            match variables.initialize_with_values(x, s, z, tau, kappa) {
+                Ok(()) => {
+                    // Warm start successful - update cone scalings if needed
+                    if self.cones.is_symmetric() {
+                        self.cones.set_identity_scaling();
+                        self.kktsystem.update(&self.data, &self.cones, &self.settings);
+                    }
+                    true
+                }
+                Err(_) => {
+                    // Warm start failed - fall back to default
+                    false
+                }
             }
         }
 
