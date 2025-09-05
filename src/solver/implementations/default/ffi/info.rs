@@ -23,6 +23,7 @@ pub struct DefaultInfoFFI<T> {
 
     pub solve_time: f64,
     pub status: SolverStatusFFI,
+    pub warm_start_used: bool,
     pub linsolver: LinearSolverInfoFFI,
 }
 
@@ -44,6 +45,7 @@ impl<T: FloatT> From<DefaultInfo<T>> for DefaultInfoFFI<T> {
             ktratio: info.ktratio,
             solve_time: info.solve_time,
             status: info.status,
+            warm_start_used: info.warm_start_used,
             linsolver: info.linsolver.into(),
         }
     }

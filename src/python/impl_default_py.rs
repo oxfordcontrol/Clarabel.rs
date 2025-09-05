@@ -192,6 +192,12 @@ pub struct PyDefaultSolution {
     pub r_prim: f64,
     #[pyo3(get)]
     pub r_dual: f64,
+    #[pyo3(get)]
+    pub tau: f64,
+    #[pyo3(get)]
+    pub kappa: f64,
+    #[pyo3(get)]
+    pub warm_start_used: bool,
 }
 
 impl From<&DefaultSolution<f64>> for PyDefaultSolution {
@@ -211,6 +217,9 @@ impl From<&DefaultSolution<f64>> for PyDefaultSolution {
             iterations: result.iterations,
             r_prim: result.r_prim,
             r_dual: result.r_dual,
+            tau: result.tau,
+            kappa: result.kappa,
+            warm_start_used: result.warm_start_used,
         }
     }
 }

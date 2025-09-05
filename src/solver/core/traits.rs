@@ -221,6 +221,10 @@ where
     fn get_status(&self) -> SolverStatus;
     /// Set the termination status
     fn set_status(&mut self, status: SolverStatus);
+    /// Report whether warm start was used successfully
+    fn warm_start_used(&self) -> bool;
+    /// Set whether warm start was used successfully
+    fn set_warm_start_used(&mut self, used: bool);
 }
 
 /// Solution for a conic optimization problem.

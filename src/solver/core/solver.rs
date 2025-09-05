@@ -538,25 +538,32 @@ mod internal {
     {
         fn default_start(&mut self) {
             // Try warm start first if enabled
-            if self.settings.core().warm_start_enable && self.warm_start() {
-                return;
-            }
-
-            // Fall back to default initialization
-            if self.cones.is_symmetric() {
-                // set all scalings to identity (or zero for the zero cone)
-                self.cones.set_identity_scaling();
-                // Refactor
-                self.kktsystem
-                    .update(&self.data, &self.cones, &self.settings);
-                // solve for primal/dual initial points via KKT
-                self.kktsystem
-                    .solve_initial_point(&mut self.variables, &self.data, &self.settings);
-                // fix up (z,s) so that they are in the cone
-                self.variables.symmetric_initialization(&mut self.cones);
+            let warm_start_used = if self.settings.core().warm_start_enable {
+                self.warm_start()
             } else {
-                // Assigns unit (z,s) and zeros the primal variables
-                self.variables.unit_initialization(&self.cones);
+                false
+            };
+
+            // Record warm start status in info
+            self.info.set_warm_start_used(warm_start_used);
+
+            // Fall back to default initialization if warm start failed or wasn't used
+            if !warm_start_used {
+                if self.cones.is_symmetric() {
+                    // set all scalings to identity (or zero for the zero cone)
+                    self.cones.set_identity_scaling();
+                    // Refactor
+                    self.kktsystem
+                        .update(&self.data, &self.cones, &self.settings);
+                    // solve for primal/dual initial points via KKT
+                    self.kktsystem
+                        .solve_initial_point(&mut self.variables, &self.data, &self.settings);
+                    // fix up (z,s) so that they are in the cone
+                    self.variables.symmetric_initialization(&mut self.cones);
+                } else {
+                    // Assigns unit (z,s) and zeros the primal variables
+                    self.variables.unit_initialization(&self.cones);
+                }
             }
         }
 

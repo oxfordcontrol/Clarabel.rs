@@ -116,6 +116,9 @@ pub(crate) struct SolutionJLRS {
     pub iterations: u32,
     pub r_prim: f64,
     pub r_dual: f64,
+    pub tau: f64,
+    pub kappa: f64,
+    pub warm_start_used: bool,
 }
 
 impl From<&DefaultSolution<f64>> for SolutionJLRS {
@@ -131,6 +134,9 @@ impl From<&DefaultSolution<f64>> for SolutionJLRS {
             iterations: sol.iterations,
             r_prim: sol.r_prim,
             r_dual: sol.r_dual,
+            tau: sol.tau,
+            kappa: sol.kappa,
+            warm_start_used: sol.warm_start_used,
         }
     }
 }
@@ -181,6 +187,7 @@ pub(crate) struct InfoJLRS {
     pub prev_gap_rel: f64,
     pub solve_time: f64,
     pub status: u32, //0 indexed enum in RS/JL
+    pub warm_start_used: bool,
     //NB : print stream left out because it is not FFI safe
     pub linsolver: LinearSolverInfoJLRS,
 }
@@ -209,6 +216,7 @@ impl From<&DefaultInfo<f64>> for InfoJLRS {
             prev_gap_rel: sol.prev_gap_rel,
             solve_time: sol.solve_time,
             status: sol.status as u32,
+            warm_start_used: sol.warm_start_used,
             linsolver: LinearSolverInfoJLRS::from(&sol.linsolver),
         }
     }

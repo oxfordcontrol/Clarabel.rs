@@ -29,6 +29,12 @@ pub struct DefaultSolution<T> {
     pub r_prim: T,
     /// dual residual
     pub r_dual: T,
+    /// τ (homogenization parameter)
+    pub tau: T,
+    /// κ (homogenization parameter)  
+    pub kappa: T,
+    /// whether warm start was used successfully
+    pub warm_start_used: bool,
 }
 
 impl<T> DefaultSolution<T>
@@ -52,6 +58,9 @@ where
             iterations: 0,
             r_prim: T::nan(),
             r_dual: T::nan(),
+            tau: T::one(),
+            kappa: T::one(),
+            warm_start_used: false,
         }
     }
 }
@@ -86,6 +95,9 @@ where
         self.iterations = info.iterations;
         self.r_prim = info.res_primal;
         self.r_dual = info.res_dual;
+        self.tau = variables.τ;
+        self.kappa = variables.κ;
+        self.warm_start_used = info.warm_start_used;
 
         // unscale the variables to get a solution
         // to the internal problem as we solved it

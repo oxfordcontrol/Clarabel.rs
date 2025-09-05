@@ -55,6 +55,8 @@ pub struct DefaultInfo<T> {
     pub solve_time: f64,
     /// solver status
     pub status: SolverStatus,
+    /// whether warm start was used successfully
+    pub warm_start_used: bool,
 
     /// linear solver information
     pub linsolver: LinearSolverInfo,
@@ -265,6 +267,14 @@ where
 
     fn set_status(&mut self, status: SolverStatus) {
         self.status = status;
+    }
+
+    fn warm_start_used(&self) -> bool {
+        self.warm_start_used
+    }
+
+    fn set_warm_start_used(&mut self, used: bool) {
+        self.warm_start_used = used;
     }
 }
 
