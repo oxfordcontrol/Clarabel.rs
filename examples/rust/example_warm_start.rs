@@ -110,6 +110,7 @@ fn main() {
     fallback_solver.solve();
 
     let fallback_iterations = fallback_solver.solution.iterations;
+    let fallback_solution = fallback_solver.solution.clone();
     
     println!("Fallback solution iterations: {}", fallback_iterations);
     println!();
@@ -130,16 +131,17 @@ fn main() {
     invalid_solver.solve();
 
     let invalid_iterations = invalid_solver.solution.iterations;
+    let invalid_solution = invalid_solver.solution.clone();
     
     println!("Invalid warm start (fallback) iterations: {}", invalid_iterations);
     println!();
 
     // Comparison summary
     println!("=== SUMMARY ===");
-    println!("Cold start iterations:        {}", cold_start_iterations);
-    println!("Warm start iterations:        {}", warm_start_iterations);
-    println!("Fallback iterations:          {}", fallback_iterations);
-    println!("Invalid warmstart iterations: {}", invalid_iterations);
+    println!("Cold start iterations:        {} (warm start used: {})", cold_start_iterations, cold_start_solution.warm_start_used);
+    println!("Warm start iterations:        {} (warm start used: {})", warm_start_iterations, warm_start_solution.warm_start_used);
+    println!("Fallback iterations:          {} (warm start used: {})", fallback_iterations, fallback_solution.warm_start_used);
+    println!("Invalid warmstart iterations: {} (warm start used: {})", invalid_iterations, invalid_solution.warm_start_used);
     
     if warm_start_iterations <= cold_start_iterations {
         println!("✅ Warm start improved performance!");

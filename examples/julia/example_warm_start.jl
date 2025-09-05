@@ -97,8 +97,8 @@ function solve_with_warm_start()
     
     # Summary
     println("=== Performance Comparison ===")
-    println("Warm start iterations: ", result2.iterations)
-    println("Cold start iterations: ", result3.iterations)
+    println("Warm start iterations: ", result2.iterations, " (used: ", result2.warm_start_used, ")")
+    println("Cold start iterations: ", result3.iterations, " (used: ", result3.warm_start_used, ")")
     
     if result3.iterations > 0
         speedup = result3.iterations / max(1, result2.iterations)
