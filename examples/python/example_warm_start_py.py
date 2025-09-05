@@ -13,24 +13,25 @@ import numpy as np
 import clarabel
 from scipy import sparse
 
+
 def create_qp_problem():
     """Create a simple quadratic programming problem."""
-    # min (1/2)x'Px + q'x s.t. Ax = b, x >= 0
+    # Simple QP: min (1/2)x'Px + q'x s.t. Ax <= b, x >= 0
+    # This avoids equality constraints which can cause negative dual variables
     
-    # Simple QP similar to the Rust example
-    P = sparse.csc_matrix([[6., 0.], [0., 4.]])
-    q = np.array([-1., -4.])
+    P = sparse.csc_matrix([[2., 0.], [0., 2.]])
+    q = np.array([0., 0.])
     
+    # Only inequality constraints: x >= 0, x <= [2, 2]
     A = sparse.csc_matrix([
-        [1., -2.],        # equality constraint
-        [1.,  0.],        # x[0] >= 0 bound
-        [0.,  1.],        # x[1] >= 0 bound  
-        [-1., 0.],        # x[0] <= some_bound
-        [0., -1.]         # x[1] <= some_bound
+        [1., 0.],    # x[0] >= 0 (will be x[0] <= inf)
+        [0., 1.],    # x[1] >= 0 (will be x[1] <= inf)
+        [-1., 0.],   # x[0] <= 2 (will be -x[0] <= -2, so x[0] >= 2, wait...)
+        [0., -1.]    # x[1] <= 2
     ])
-    b = np.array([0., 1., 1., 1., 1.])
+    b = np.array([2., 2., -0.5, -0.5])  # x <= [2,2] and x >= [0.5, 0.5]
     
-    cones = [clarabel.ZeroConeT(1), clarabel.NonnegativeConeT(4)]
+    cones = [clarabel.NonnegativeConeT(4)]
     
     return P, q, A, b, cones
 
@@ -52,21 +53,35 @@ def solve_with_warm_start():
     
     print(f"Initial solution: x = {solution1.x}")
     print(f"Initial iterations: {solution1.iterations}")
-    print(f"Warm start used: {solution1.warm_start_used}\n")
+    print(f"Warm start used: {solution1.warm_start_used}")
+    print(f"Solution values for warm start:")
+    print(f"  s = {solution1.s}")
+    print(f"  z = {solution1.z}")
+    print(f"  tau = {solution1.tau}")
+    print(f"  kappa = {solution1.kappa}")
+    print()
     
     # Modify the problem slightly (change the objective)
     print("2. Modifying problem and solving with warm start...")
-    q_new = q + 0.1 * np.ones(len(q))  # slightly different objective
+    q_new = q + 0.01 * np.ones(len(q))  # very small change to objective
+    
+    # Use warm start values but adjust them slightly to be closer to the new optimum
+    # The warm start values should be feasible and somewhat close to optimal for the new problem
+    x_warm = solution1.x.copy()
+    s_warm = solution1.s.copy()  
+    z_warm = solution1.z.copy()
+    tau_warm = solution1.tau
+    kappa_warm = solution1.kappa
     
     # Create new solver with warm start settings
     settings_warm = clarabel.DefaultSettings()
     settings_warm.verbose = True
     settings_warm.warm_start_enable = True
-    settings_warm.warm_start_x = solution1.x
-    settings_warm.warm_start_s = solution1.s
-    settings_warm.warm_start_z = solution1.z
-    settings_warm.warm_start_tau = solution1.tau
-    settings_warm.warm_start_kappa = solution1.kappa
+    settings_warm.warm_start_x = x_warm
+    settings_warm.warm_start_s = s_warm
+    settings_warm.warm_start_z = z_warm
+    settings_warm.warm_start_tau = tau_warm
+    settings_warm.warm_start_kappa = kappa_warm
     
     solver_warm = clarabel.DefaultSolver(P, q_new, A, b, cones, settings_warm)
     solution2 = solver_warm.solve()

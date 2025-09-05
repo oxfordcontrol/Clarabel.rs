@@ -56,40 +56,56 @@ try:
     def test_simple_warm_start():
         """Test basic warm start functionality."""
         
-        # Simple QP problem: min x^2 + y^2 s.t. x + y = 1, x >= 0, y >= 0
-        P = np.array([[2.0, 0.0], [0.0, 2.0]])
+        # Simple QP problem with only inequality constraints
+        # min x^2 + y^2 s.t. x >= 0.5, y >= 0.5, x <= 2, y <= 2  
+        from scipy import sparse
+        
+        P = sparse.csc_matrix([[2.0, 0.0], [0.0, 2.0]])
         q = np.array([0.0, 0.0])
-        A = np.array([[1.0, 1.0]])
-        b = np.array([1.0])
-        cones = [clarabel.NonnegativeConeT(2)]
+        
+        # Only inequality constraints to avoid negative dual variables
+        A = sparse.csc_matrix([
+            [1., 0.],    # x >= 0.5 becomes x - 0.5 >= 0, so slack s[0] = x - 0.5
+            [0., 1.],    # y >= 0.5 becomes y - 0.5 >= 0, so slack s[1] = y - 0.5
+            [-1., 0.],   # x <= 2 becomes -x + 2 >= 0, so slack s[2] = -x + 2
+            [0., -1.]    # y <= 2 becomes -y + 2 >= 0, so slack s[3] = -y + 2
+        ])
+        b = np.array([0.5, 0.5, 2.0, 2.0])
+        cones = [clarabel.NonnegativeConeT(4)]
         
         # First solve
         settings = clarabel.DefaultSettings()
         settings.verbose = False
         solver1 = clarabel.DefaultSolver(P, q, A, b, cones, settings)
-        solver1.solve()
-        sol1 = solver1.solution
+        sol1 = solver1.solve()
         
         # Second solve with warm start
         settings_warm = clarabel.DefaultSettings()
         settings_warm.verbose = False
         settings_warm.warm_start_enable = True
-        settings_warm.warm_start_x = sol1.x.tolist()
-        settings_warm.warm_start_s = sol1.s.tolist()
-        settings_warm.warm_start_z = sol1.z.tolist()
+        settings_warm.warm_start_x = sol1.x
+        settings_warm.warm_start_s = sol1.s
+        settings_warm.warm_start_z = sol1.z
         settings_warm.warm_start_tau = sol1.tau
         settings_warm.warm_start_kappa = sol1.kappa
         
         # Slightly modified problem
-        q_new = np.array([0.1, 0.1])
+        q_new = np.array([0.01, 0.01])
         solver2 = clarabel.DefaultSolver(P, q_new, A, b, cones, settings_warm)
-        solver2.solve()
+        sol2 = solver2.solve()
         
         # Check that both solved successfully
-        assert solver1.info.status == clarabel.SolverStatus.Solved
-        assert solver2.info.status == clarabel.SolverStatus.Solved
+        assert sol1.status == clarabel.SolverStatus.Solved
+        assert sol2.status == clarabel.SolverStatus.Solved
+        
+        # Check warm start status
+        assert sol1.warm_start_used == False  # First solve without warm start
+        assert sol2.warm_start_used == True   # Second solve should use warm start
         
         print("✓ Basic warm start functionality test passed!")
+        print(f"  Cold start iterations: {sol1.iterations}")
+        print(f"  Warm start iterations: {sol2.iterations}")
+        print(f"  Warm start used: {sol2.warm_start_used}")
         return True
     
     if __name__ == "__main__":

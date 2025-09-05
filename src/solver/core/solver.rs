@@ -604,7 +604,7 @@ mod internal {
             let kappa = settings.warm_start_kappa;
 
             // Try to initialize with user-provided values
-            match variables.initialize_with_values(x, s, z, tau, kappa) {
+            match variables.initialize_with_values(x, s, z, tau, kappa, &mut self.cones) {
                 Ok(()) => {
                     // Warm start successful - update cone scalings if needed
                     if self.cones.is_symmetric() {

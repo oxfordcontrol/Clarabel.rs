@@ -14,11 +14,11 @@ use thiserror::Error;
 /// Error type returned by variable initialization operations.
 #[derive(Error, Debug)]
 pub enum VariableInitializationError {
-    /// Slack variables must be positive (s > 0)
-    #[error("Slack variables must be positive (s > 0)")]
+    /// Slack variables must be in the interior of their primal cones
+    #[error("Slack variables must be in the interior of their primal cones")]
     InvalidSlackVariables,
-    /// Dual variables must be positive (z > 0)
-    #[error("Dual variables must be positive (z > 0)")]
+    /// Dual variables must be in the interior of their dual cones
+    #[error("Dual variables must be in the interior of their dual cones")]
     InvalidDualVariables,
     /// Homogenization scalar τ must be positive (τ > 0)
     #[error("Homogenization scalar τ must be positive (τ > 0)")]
@@ -98,9 +98,9 @@ where
     /// Initialize variables with user-provided values and validation
     /// 
     /// This function allows partial initialization of variables while performing
-    /// basic validity checks:
-    /// - All components of `s` must be positive (s > 0)
-    /// - All components of `z` must be positive (z > 0)  
+    /// cone-aware validity checks:
+    /// - All components of `s` must be in the interior of their respective primal cones
+    /// - All components of `z` must be in the interior of their respective dual cones
     /// - `τ` must be positive (τ > 0)
     /// - `κ` must be positive (κ > 0)
     /// 
@@ -114,10 +114,11 @@ where
     /// # Arguments
     /// 
     /// * `x` - Optional primal variables (can be any value)
-    /// * `s` - Optional slack variables (must be positive if provided)
-    /// * `z` - Optional dual variables (must be positive if provided)
+    /// * `s` - Optional slack variables (must be in primal cone interior if provided)
+    /// * `z` - Optional dual variables (must be in dual cone interior if provided)
     /// * `τ` - Optional homogenization scalar τ (must be positive if provided)
     /// * `κ` - Optional homogenization scalar κ (must be positive if provided)
+    /// * `cones` - Cone constraints for validation
     /// 
     /// # Returns
     /// 
@@ -129,48 +130,37 @@ where
     /// ```rust
     /// use clarabel::solver::DefaultVariables;
     /// 
-    /// // Create variables with dimensions n=3, m=2
+    /// // Note: This function is mainly used internally by the solver
+    /// // For practical warm starting, use the solver's warm start settings
+    /// 
+    /// // Create variables with dimensions n=3, m=2  
     /// let mut vars = DefaultVariables::<f64>::new(3, 2);
     /// 
-    /// // Full initialization with validation
-    /// let x_vals = vec![1.0, 2.0, 3.0];
-    /// let s_vals = vec![0.5, 1.5]; // must be positive
-    /// let z_vals = vec![2.0, 3.0]; // must be positive
-    /// 
-    /// vars.initialize_with_values(
-    ///     Some(&x_vals),
-    ///     Some(&s_vals),
-    ///     Some(&z_vals),
-    ///     Some(2.0), // τ must be positive
-    ///     Some(1.5), // κ must be positive
-    /// ).expect("Initialization should succeed");
-    /// 
-    /// // Partial initialization (only x and τ)
-    /// vars.initialize_with_values(
-    ///     Some(&[10.0, 20.0, 30.0]),
-    ///     None, // s defaults to ones
-    ///     None, // z defaults to ones
-    ///     Some(0.8),
-    ///     None, // κ defaults to one
-    /// ).expect("Partial initialization should succeed");
+    /// // This function requires a cone structure for validation
+    /// // In practice, this is handled internally by the solver
+    /// // See warm start examples for user-facing API
     /// ```
     /// 
     /// # Errors
     /// 
     /// This function will return an error if:
-    /// - Any component of `s` is ≤ 0
-    /// - Any component of `z` is ≤ 0  
+    /// - Any component of `s` is not in the interior of its primal cone
+    /// - Any component of `z` is not in the interior of its dual cone
     /// - `τ` is ≤ 0
     /// - `κ` is ≤ 0
     /// - Vector dimensions don't match the variable dimensions
-    pub fn initialize_with_values(
+    pub fn initialize_with_values<C>(
         &mut self,
         x: Option<&[T]>,
         s: Option<&[T]>,
         z: Option<&[T]>,
         τ: Option<T>,
         κ: Option<T>,
-    ) -> Result<(), VariableInitializationError> {
+        cones: &mut C,
+    ) -> Result<(), VariableInitializationError> 
+    where
+        C: Cone<T>,
+    {
         // Validate and set x if provided
         if let Some(x_vals) = x {
             if x_vals.len() != self.x.len() {
@@ -193,12 +183,15 @@ where
                     actual: s_vals.len(),
                 });
             }
-            // Check all components are positive
-            for &val in s_vals {
-                if val <= T::zero() {
-                    return Err(VariableInitializationError::InvalidSlackVariables);
-                }
+            
+            // Check if s values are in the interior of their primal cones
+            // We need a mutable copy for the margins function
+            let mut s_copy = s_vals.to_vec();
+            let (min_margin, _) = cones.margins(&mut s_copy, PrimalOrDualCone::PrimalCone);
+            if min_margin <= T::zero() {
+                return Err(VariableInitializationError::InvalidSlackVariables);
             }
+            
             self.s.copy_from_slice(s_vals);
         } else {
             // Default to ones
@@ -213,12 +206,15 @@ where
                     actual: z_vals.len(),
                 });
             }
-            // Check all components are positive
-            for &val in z_vals {
-                if val <= T::zero() {
-                    return Err(VariableInitializationError::InvalidDualVariables);
-                }
+            
+            // Check if z values are in the interior of their dual cones
+            // We need a mutable copy for the margins function
+            let mut z_copy = z_vals.to_vec();
+            let (min_margin, _) = cones.margins(&mut z_copy, PrimalOrDualCone::DualCone);
+            if min_margin <= T::zero() {
+                return Err(VariableInitializationError::InvalidDualVariables);
             }
+            
             self.z.copy_from_slice(z_vals);
         } else {
             // Default to ones
@@ -494,15 +490,34 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::solver::core::cones::*;
+
+    // Helper function to create a simple cone for testing
+    fn create_test_cone() -> CompositeCone<f64> {
+        // Create a simple nonnegative cone with 2 elements
+        let cones_data = vec![SupportedConeT::NonnegativeConeT(2)];
+        CompositeCone::new(&cones_data)
+    }
+
+    // Helper function to create a mixed cone (equality + nonnegative) for testing
+    fn create_mixed_cone() -> CompositeCone<f64> {
+        // Create a cone with 1 equality constraint + 2 nonnegative constraints
+        let cones_data = vec![
+            SupportedConeT::ZeroConeT(1),           // equality constraint
+            SupportedConeT::NonnegativeConeT(2),    // nonnegative constraints
+        ];
+        CompositeCone::new(&cones_data)
+    }
 
     #[test]
     fn test_initialize_with_values_success() {
         let mut vars = DefaultVariables::<f64>::new(3, 2);
+        let mut cones = create_test_cone();
 
         // Test successful initialization with all parameters
         let x_vals = vec![1.0, 2.0, 3.0];
-        let s_vals = vec![0.5, 1.5];
-        let z_vals = vec![2.0, 3.0];
+        let s_vals = vec![0.5, 1.5];  // positive values for nonnegative cone
+        let z_vals = vec![2.0, 3.0];  // positive values for nonnegative cone
         let tau_val = 2.0;
         let kappa_val = 1.5;
 
@@ -512,6 +527,7 @@ mod tests {
             Some(&z_vals),
             Some(tau_val),
             Some(kappa_val),
+            &mut cones,
         );
 
         assert!(result.is_ok());
@@ -525,6 +541,7 @@ mod tests {
     #[test]
     fn test_initialize_with_values_partial() {
         let mut vars = DefaultVariables::<f64>::new(2, 2);
+        let mut cones = create_test_cone();
 
         // Test partial initialization (only x and τ)
         let x_vals = vec![1.0, 2.0];
@@ -536,6 +553,7 @@ mod tests {
             None,        // z defaults to ones
             Some(tau_val),
             None,        // κ defaults to one
+            &mut cones,
         );
 
         assert!(result.is_ok());
@@ -549,8 +567,9 @@ mod tests {
     #[test]
     fn test_initialize_with_values_invalid_s() {
         let mut vars = DefaultVariables::<f64>::new(2, 2);
+        let mut cones = create_test_cone();
 
-        // Test with negative slack variable
+        // Test with negative slack variable (outside cone interior)
         let s_vals = vec![1.0, -0.5]; // negative value should fail
 
         let result = vars.initialize_with_values(
@@ -559,6 +578,7 @@ mod tests {
             None,
             None,
             None,
+            &mut cones,
         );
 
         assert!(matches!(
@@ -570,8 +590,9 @@ mod tests {
     #[test]
     fn test_initialize_with_values_invalid_z() {
         let mut vars = DefaultVariables::<f64>::new(2, 2);
+        let mut cones = create_test_cone();
 
-        // Test with zero dual variable
+        // Test with zero dual variable (not in cone interior)
         let z_vals = vec![1.0, 0.0]; // zero value should fail
 
         let result = vars.initialize_with_values(
@@ -580,6 +601,7 @@ mod tests {
             Some(&z_vals),
             None,
             None,
+            &mut cones,
         );
 
         assert!(matches!(
@@ -591,6 +613,7 @@ mod tests {
     #[test]
     fn test_initialize_with_values_invalid_tau() {
         let mut vars = DefaultVariables::<f64>::new(2, 2);
+        let mut cones = create_test_cone();
 
         // Test with negative τ
         let result = vars.initialize_with_values(
@@ -599,6 +622,7 @@ mod tests {
             None,
             Some(-1.0),
             None,
+            &mut cones,
         );
 
         assert!(matches!(
@@ -610,6 +634,7 @@ mod tests {
     #[test]
     fn test_initialize_with_values_invalid_kappa() {
         let mut vars = DefaultVariables::<f64>::new(2, 2);
+        let mut cones = create_test_cone();
 
         // Test with zero κ
         let result = vars.initialize_with_values(
@@ -618,6 +643,7 @@ mod tests {
             None,
             None,
             Some(0.0),
+            &mut cones,
         );
 
         assert!(matches!(
@@ -629,6 +655,7 @@ mod tests {
     #[test]
     fn test_initialize_with_values_dimension_mismatch() {
         let mut vars = DefaultVariables::<f64>::new(3, 2);
+        let mut cones = create_test_cone();
 
         // Test with wrong x dimension
         let x_vals = vec![1.0, 2.0]; // should be length 3
@@ -639,6 +666,7 @@ mod tests {
             None,
             None,
             None,
+            &mut cones,
         );
 
         assert!(matches!(
@@ -655,11 +683,62 @@ mod tests {
             None,
             None,
             None,
+            &mut cones,
         );
 
         assert!(matches!(
             result,
             Err(VariableInitializationError::SDimensionMismatch { expected: 2, actual: 3 })
+        ));
+    }
+
+    #[test]
+    fn test_initialize_with_values_mixed_cones() {
+        let mut vars = DefaultVariables::<f64>::new(2, 3);
+        let mut cones = create_mixed_cone();
+
+        // Test with mixed cones: equality constraint allows negative z
+        let x_vals = vec![1.0, 2.0];
+        let s_vals = vec![0.0, 0.5, 1.5];  // s[0] = 0 for ZeroCone, s[1,2] > 0 for NonnegativeCone
+        let z_vals = vec![-1.5, 2.0, 3.0]; // z[0] < 0 for ZeroCone (allowed), z[1,2] > 0 for NonnegativeCone
+
+        let result = vars.initialize_with_values(
+            Some(&x_vals),
+            Some(&s_vals),
+            Some(&z_vals),
+            Some(1.0),
+            Some(1.0),
+            &mut cones,
+        );
+
+        // This should succeed because negative z values are allowed for equality constraints
+        assert!(result.is_ok());
+        assert_eq!(vars.x, x_vals);
+        assert_eq!(vars.s, s_vals);
+        assert_eq!(vars.z, z_vals);
+    }
+
+    #[test]
+    fn test_initialize_with_values_mixed_cones_invalid() {
+        let mut vars = DefaultVariables::<f64>::new(2, 3);
+        let mut cones = create_mixed_cone();
+
+        // Test with mixed cones: negative z for nonnegative cone should fail
+        let z_vals = vec![-1.5, -2.0, 3.0]; // z[1] < 0 for NonnegativeCone (should fail)
+
+        let result = vars.initialize_with_values(
+            None,
+            None,
+            Some(&z_vals),
+            None,
+            None,
+            &mut cones,
+        );
+
+        // This should fail because negative z values are not allowed for nonnegative constraints
+        assert!(matches!(
+            result,
+            Err(VariableInitializationError::InvalidDualVariables)
         ));
     }
 }

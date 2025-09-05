@@ -123,11 +123,11 @@ mod warm_start_tests {
         let b = vec![0., 1., 1., 1., 1.];
         let cones = [ZeroConeT(1), NonnegativeConeT(4)];
 
-        // Test with invalid warm start values (negative s values)
+        // Test with invalid warm start values (negative s values in nonnegative cone)
         let settings = DefaultSettingsBuilder::default()
             .verbose(false)
             .warm_start_enable(true)
-            .warm_start_s(Some(vec![-1.0, 0.6, 0.8, 1.4, 1.2])) // Invalid: negative value
+            .warm_start_s(Some(vec![0.0, -1.0, 0.8, 1.4, 1.2])) // Invalid: negative value in NonnegativeCone
             .build()
             .unwrap();
 
@@ -139,6 +139,9 @@ mod warm_start_tests {
             solver.solution.status,
             SolverStatus::Solved | SolverStatus::AlmostSolved
         ));
+        
+        // Should confirm that warm start was NOT used due to invalid values
+        assert_eq!(solver.solution.warm_start_used, false);
     }
 
     #[test]
