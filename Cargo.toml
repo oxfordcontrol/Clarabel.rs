@@ -56,7 +56,7 @@ julia = [
     "buildinfo",
     "faer-sparse",
     "serde",
-    "sdp",
+    "sdp-accelerate",
 ] 
  
 # build as the python interface via maturin.

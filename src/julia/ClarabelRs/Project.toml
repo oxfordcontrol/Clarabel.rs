@@ -11,4 +11,4 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
-Clarabel = "0.11.1"
+Clarabel = "0.11.0"

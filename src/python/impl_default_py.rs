@@ -128,6 +128,8 @@ pub struct PyDefaultInfo {
     #[pyo3(get)]
     pub status: PySolverStatus,
     #[pyo3(get)]
+    pub warm_start_used: bool,
+    #[pyo3(get)]
     pub linsolver: PyLinearSolverInfo,
     // print stream intentionally excluded
 }
@@ -152,6 +154,7 @@ impl From<&DefaultInfo<f64>> for PyDefaultInfo {
             ktratio: info.ktratio,
             solve_time: info.solve_time,
             status,
+            warm_start_used: info.warm_start_used,
             linsolver,
         }
     }
