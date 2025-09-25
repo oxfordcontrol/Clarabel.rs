@@ -5,7 +5,7 @@ use std::fs::File;
 use std::path::PathBuf;
 
 fn main() {
-    let filename = "Foundation_3D_1099.json";
+    let filename = "hs35.json";
 
     // Get the path to the crate root using the CARGO_MANIFEST_DIR environment variable
     let cargo_dir = env::var("CARGO_MANIFEST_DIR").expect("Failed to get CARGO_MANIFEST_DIR");
@@ -17,9 +17,7 @@ fn main() {
 
     // override the settings in the loaded file
     let settings = DefaultSettings {
-        input_sparse_dropzeros: true,
-        iterative_refinement_enable: false,
-        direct_solve_method: "faer".to_string(),
+        direct_solve_method: "qdldl".to_string(),
         ..DefaultSettings::default()
     };
 
