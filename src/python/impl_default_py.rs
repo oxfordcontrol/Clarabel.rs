@@ -14,7 +14,7 @@ use crate::{
             IPSolver, SettingsError, SolverStatus,
         },
         implementations::default::*,
-        SolverJSONReadWrite,
+        SolverSerializedReadWrite,
     },
 };
 use derive_more::with_trait::Debug;
@@ -864,16 +864,14 @@ pub fn load_from_file_py(
     filename: &str,
     settings: Option<PyDefaultSettings>,
 ) -> PyResult<PyDefaultSolver> {
-    let mut file = std::fs::File::open(filename)?;
-
     match settings {
         Some(settings) => {
             let settings = settings.to_internal()?;
-            let solver = DefaultSolver::<f64>::load_from_file(&mut file, Some(settings))?;
+            let solver = DefaultSolver::<f64>::load_from_file(filename, Some(settings))?;
             Ok(PyDefaultSolver { inner: solver })
         }
         None => {
-            let solver = DefaultSolver::<f64>::load_from_file(&mut file, None)?;
+            let solver = DefaultSolver::<f64>::load_from_file(filename, None)?;
             Ok(PyDefaultSolver { inner: solver })
         }
     }

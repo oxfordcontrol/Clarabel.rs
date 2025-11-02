@@ -39,7 +39,7 @@ pub use crate::solver::core::ffi;
 
 // read/write types if enabled
 #[cfg(feature = "serde")]
-pub use crate::solver::core::SolverJSONReadWrite;
+pub use crate::solver::core::SolverSerializedReadWrite;
 
 //If we had implementations for multiple alternative
 //problem formats, they would live here.   Since we
