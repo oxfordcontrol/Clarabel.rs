@@ -1,11 +1,12 @@
 #![allow(non_snake_case)]
 
 #[cfg(feature = "serde")]
-#[test]
-fn test_json_io() {
-    use clarabel::{algebra::*, solver::*};
-    use std::io::{Seek, SeekFrom};
+use clarabel::{algebra::*, solver::*};
+#[cfg(feature = "serde")]
+use tempfile::tempdir;
 
+#[cfg(feature = "serde")]
+fn test_fileio_roundtrip(ext: &str) {
     let P = CscMatrix {
         m: 1,
         n: 1,
@@ -29,23 +30,31 @@ fn test_json_io() {
     let mut solver = DefaultSolver::<f64>::new(&P, &q, &A, &b, &cones, settings).unwrap();
     solver.solve();
 
-    // write the problem to a file
-    let mut file = tempfile::tempfile().unwrap();
-    solver.save_to_file(&mut file).unwrap();
+    let dir = tempdir().unwrap();
+    let file_path = dir.path().join(format!("problem.{ext}"));
+    solver.save_to_file(&file_path).unwrap();
 
-    // read the problem from the file
-    file.seek(SeekFrom::Start(0)).unwrap();
-    let mut solver2 = DefaultSolver::<f64>::load_from_file(&mut file, None).unwrap();
+    let mut solver2 = DefaultSolver::<f64>::load_from_file(&file_path, None).unwrap();
     solver2.solve();
     assert_eq!(solver.solution.x, solver2.solution.x);
 
-    // read the problem from the file with custom settings
-    file.seek(SeekFrom::Start(0)).unwrap();
     let settings = DefaultSettingsBuilder::default()
         .max_iter(1)
         .build()
         .unwrap();
-    let mut solver3 = DefaultSolver::<f64>::load_from_file(&mut file, Some(settings)).unwrap();
+    let mut solver3 = DefaultSolver::<f64>::load_from_file(&file_path, Some(settings)).unwrap();
     solver3.solve();
     assert_eq!(solver3.solution.status, SolverStatus::MaxIterations);
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_json_io() {
+    test_fileio_roundtrip("json");
+}
+
+#[cfg(feature = "serde")]
+#[test]
+fn test_cbin_io() {
+    test_fileio_roundtrip("cbin");
 }

@@ -7,11 +7,10 @@ use crate::solver::{
         IPSolver,
     },
     implementations::default::*,
-    SolverJSONReadWrite,
+    SolverSerializedReadWrite,
 };
 use num_traits::FromPrimitive;
 use serde_json::*;
-use std::fs::File;
 use std::{
     ffi::CStr,
     os::raw::{c_char, c_int, c_void},
@@ -137,15 +136,8 @@ pub(crate) extern "C" fn solver_save_to_file_jlrs(
         }
     };
 
-    let mut file = match File::create(filename) {
-        Ok(f) => f,
-        Err(_) => {
-            return -1;
-        }
-    };
-
     let solver = from_ptr(ptr);
-    let status = solver.save_to_file(&mut file).is_ok();
+    let status = solver.save_to_file(&filename).is_ok();
     let status = if status { 0 } else { -1 } as c_int;
 
     // don't drop, since the memory is owned by Julia
@@ -170,13 +162,6 @@ pub(crate) extern "C" fn solver_load_from_file_jlrs(
         }
     };
 
-    let mut file = match File::open(filename) {
-        Ok(f) => f,
-        Err(_) => {
-            return std::ptr::null();
-        }
-    };
-
     // None on the julia side is serialized as "",
     let settings = unsafe {
         if json_settings.is_null() || CStr::from_ptr(json_settings).to_bytes().is_empty() {
@@ -186,7 +171,7 @@ pub(crate) extern "C" fn solver_load_from_file_jlrs(
         }
     };
 
-    let solver = DefaultSolver::load_from_file(&mut file, settings);
+    let solver = DefaultSolver::load_from_file(&filename, settings);
 
     match solver {
         Ok(solver) => to_ptr(Box::new(solver)),
