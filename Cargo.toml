@@ -32,7 +32,7 @@ thiserror      = "1.0"
 [features]
 default = ["serde"]
 
-# enable reading / writing of problems from json and binary files
+# enable reading / writing of problems from json and binary filesq
 serde = ["dep:serde", "dep:serde-big-array", "dep:serde_json", "dep:bincode"]
 
 # enables blas/lapack for SDP support, with blas/lapack src unspecified
