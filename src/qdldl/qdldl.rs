@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
 use core::cmp::{max, min};
-use derive_builder::Builder;
 use std::iter::zip;
 use thiserror::Error;
+use typed_builder::TypedBuilder;
 
 /// Error codes returnable from [`QDLDLFactorisation`](QDLDLFactorisation) factor operations
 #[derive(Error, Debug)]
@@ -25,37 +25,70 @@ pub enum QDLDLError {
     InvalidPermutation,
 }
 
-#[derive(Builder, Debug, Clone)]
+/// Error returned when building [`QDLDLSettings`] via its builder.
+#[derive(Debug)]
+pub enum QDLDLSettingsBuilderError {
+    /// Builder failed because a required field was not initialised.
+    UninitializedField(&'static str),
+    /// Builder failed validation due to an invalid field value.
+    ValidationError(String),
+}
+
+impl std::fmt::Display for QDLDLSettingsBuilderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UninitializedField(field) => write!(f, "field `{}` was not initialized", field),
+            Self::ValidationError(msg) => write!(f, "validation error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for QDLDLSettingsBuilderError {}
+
+#[derive(TypedBuilder, Debug, Clone)]
 #[allow(missing_docs)]
+#[builder(
+    builder_type(name = QDLDLSettingsBuilder, vis = "pub"),
+    build_method(into = Result<QDLDLSettings<T>, QDLDLSettingsBuilderError>)
+)]
 /// Required settings for [`QDLDLFactorisation`](QDLDLFactorisation)
 pub struct QDLDLSettings<T: FloatT> {
     /// "dense scale" parameter for AMD ordering
-    #[builder(default = "1.0")]
+    #[builder(default = 1.0)]
     pub amd_dense_scale: f64,
 
     /// optional user-supplied custom permutation vector for the matrix
-    #[builder(default = "None", setter(strip_option))]
+    #[builder(default = None, setter(strip_option))]
     pub perm: Option<Vec<usize>>,
 
     /// Logical factorisation only, no numerical factorisation
-    #[builder(default = "false")]
+    #[builder(default = false)]
     pub logical: bool,
 
     /// optional user-supplied signs of the diagonal elements of D in LDL^T
-    #[builder(default = "None", setter(strip_option))]
+    #[builder(default = None, setter(strip_option))]
     pub Dsigns: Option<Vec<i8>>,
 
     /// Enable regularization during factorisation
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub regularize_enable: bool,
 
     /// Regularization epsilon parameter
-    #[builder(default = "(1e-12).as_T()")]
+    #[builder(default = (1e-12).as_T())]
     pub regularize_eps: T,
 
     /// Regularization delta parameter
-    #[builder(default = "(1e-7).as_T()")]
+    #[builder(default = (1e-7).as_T())]
     pub regularize_delta: T,
+}
+
+impl<T> Default for QDLDLSettingsBuilder<T>
+where
+    T: FloatT,
+{
+    fn default() -> QDLDLSettingsBuilder<T> {
+        QDLDLSettings::<T>::builder()
+    }
 }
 
 impl<T> Default for QDLDLSettings<T>
@@ -64,6 +97,15 @@ where
 {
     fn default() -> QDLDLSettings<T> {
         QDLDLSettingsBuilder::<T>::default().build().unwrap()
+    }
+}
+
+impl<T> From<QDLDLSettings<T>> for Result<QDLDLSettings<T>, QDLDLSettingsBuilderError>
+where
+    T: FloatT,
+{
+    fn from(settings: QDLDLSettings<T>) -> Self {
+        Ok(settings)
     }
 }
 
