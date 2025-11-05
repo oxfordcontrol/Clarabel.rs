@@ -10,10 +10,14 @@ macro_rules! printinfo {
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
+    #[cfg(feature = "sdp-mkl-system")]
+    config_intel_mkl_system()?;
+
     config_python_blas();
 
     #[cfg(feature = "buildinfo")]
     config_build_info()?;
+
     Ok(())
 }
 
@@ -59,4 +63,23 @@ fn config_python_blas() {
     } else {
         printinfo!("Python: compiling with local blas/lapack libraries");
     }
+}
+
+#[cfg(feature = "sdp-mkl-system")]
+fn config_intel_mkl_system() -> Result<(), Box<dyn Error>> {
+    // this assumes that that the MKLROOT directory is on the
+    // PATH, LD_LIBRARY_PATH or DYLD_LIBRARY_PATH.   This is
+    // configuring for the same library version as the one selected
+    // by intel-mkl-src with the mkl-dynamic-lp64-iomp feature.
+
+    // NB: this is implemented this way because the intel-mkl-src
+    // crate is a very heavy dependency.   Specifying sdp-mkl-system
+    // indicates that the user has taken responsibility for install,
+    // and path configuration and wants the system MKL installation.§
+
+    println!("cargo:rustc-link-lib=dylib=mkl_intel_lp64");
+    println!("cargo:rustc-link-lib=dylib=mkl_intel_thread");
+    println!("cargo:rustc-link-lib=dylib=mkl_core");
+    println!("cargo:rustc-link-lib=dylib=iomp5");
+    Ok(())
 }
