@@ -2,18 +2,22 @@
 #![allow(clippy::missing_safety_doc)]
 
 use super::lapack_types::*;
-use lazy_static::lazy_static;
 use libc::c_char;
+use std::sync::OnceLock;
 
-lazy_static! {
-    static ref PYLAPACK: PyLapackPointers = pyo3::Python::with_gil(|py| {
-        PyLapackPointers::new(py).expect("Failed to load SciPy LAPACK bindings.")
-    });
+static PYLAPACK: OnceLock<PyLapackPointers> = OnceLock::new();
+
+fn get_pylapack() -> &'static PyLapackPointers {
+    PYLAPACK.get_or_init(|| {
+        pyo3::Python::with_gil(|py| {
+            PyLapackPointers::new(py).expect("Failed to load SciPy LAPACK bindings.")
+        })
+    })
 }
 
 pub(crate) fn force_load() {
-    //forces load of the lazy_static.   Choice of function is arbitrary.
-    let _ = PYLAPACK.dsyevr_;
+    // forces initialization
+    let _ = get_pylapack().dsyevr_;
 }
 
 pub unsafe fn dsyevr(
@@ -39,7 +43,7 @@ pub unsafe fn dsyevr(
     liwork: i32,
     info: &mut i32,
 ) {
-    (PYLAPACK.dsyevr_)(
+    (get_pylapack().dsyevr_)(
         &(jobz as c_char),
         &(range as c_char),
         &(uplo as c_char),
@@ -87,7 +91,7 @@ pub unsafe fn ssyevr(
     liwork: i32,
     info: &mut i32,
 ) {
-    (PYLAPACK.ssyevr_)(
+    (get_pylapack().ssyevr_)(
         &(jobz as c_char),
         &(range as c_char),
         &(uplo as c_char),
@@ -113,11 +117,11 @@ pub unsafe fn ssyevr(
 }
 
 pub unsafe fn dpotrf(uplo: u8, n: i32, a: &mut [f64], lda: i32, info: &mut i32) {
-    (PYLAPACK.dpotrf_)(&(uplo as c_char), &n, a.as_mut_ptr(), &lda, info)
+    (get_pylapack().dpotrf_)(&(uplo as c_char), &n, a.as_mut_ptr(), &lda, info)
 }
 
 pub unsafe fn spotrf(uplo: u8, n: i32, a: &mut [f32], lda: i32, info: &mut i32) {
-    (PYLAPACK.spotrf_)(&(uplo as c_char), &n, a.as_mut_ptr(), &lda, info)
+    (get_pylapack().spotrf_)(&(uplo as c_char), &n, a.as_mut_ptr(), &lda, info)
 }
 
 pub unsafe fn dpotrs(
@@ -130,7 +134,7 @@ pub unsafe fn dpotrs(
     ldb: i32,
     info: &mut i32,
 ) {
-    (PYLAPACK.dpotrs_)(
+    (get_pylapack().dpotrs_)(
         &(uplo as c_char),
         &n,
         &nrhs,
@@ -152,7 +156,7 @@ pub unsafe fn spotrs(
     ldb: i32,
     info: &mut i32,
 ) {
-    (PYLAPACK.spotrs_)(
+    (get_pylapack().spotrs_)(
         &(uplo as c_char),
         &n,
         &nrhs,
@@ -180,7 +184,7 @@ pub unsafe fn dgesdd(
     iwork: &mut [i32],
     info: &mut i32,
 ) {
-    (PYLAPACK.dgesdd_)(
+    (get_pylapack().dgesdd_)(
         &(jobz as c_char),
         &m,
         &n,
@@ -214,7 +218,7 @@ pub unsafe fn sgesdd(
     iwork: &mut [i32],
     info: &mut i32,
 ) {
-    (PYLAPACK.sgesdd_)(
+    (get_pylapack().sgesdd_)(
         &(jobz as c_char),
         &m,
         &n,
@@ -248,7 +252,7 @@ pub unsafe fn dgesvd(
     lwork: i32,
     info: &mut i32,
 ) {
-    (PYLAPACK.dgesvd_)(
+    (get_pylapack().dgesvd_)(
         &(jobu as c_char),
         &(jobvt as c_char),
         &m,
@@ -282,7 +286,7 @@ pub unsafe fn sgesvd(
     lwork: i32,
     info: &mut i32,
 ) {
-    (PYLAPACK.sgesvd_)(
+    (get_pylapack().sgesvd_)(
         &(jobu as c_char),
         &(jobvt as c_char),
         &m,
@@ -310,7 +314,7 @@ pub unsafe fn dgesv(
     ldb: i32,
     info: &mut i32,
 ) {
-    (PYLAPACK.dgesv_)(
+    (get_pylapack().dgesv_)(
         &n,
         &nrhs,
         a.as_mut_ptr(),
@@ -332,7 +336,7 @@ pub unsafe fn sgesv(
     ldb: i32,
     info: &mut i32,
 ) {
-    (PYLAPACK.sgesv_)(
+    (get_pylapack().sgesv_)(
         &n,
         &nrhs,
         a.as_mut_ptr(),
