@@ -141,6 +141,22 @@ where
     pub(crate) phantom: std::marker::PhantomData<T>,
 }
 
+impl<T, D, V, R, K, C, I, SO, SE> Solver<T, D, V, R, K, C, I, SO, SE>
+where
+    T: FloatT,
+    SE: Settings<T>,
+    I: ClarabelFFI<I>,
+{
+    /// Enable or disable warm-start initialization skipping.
+    ///
+    /// When `true`, `solve()` will skip `default_start()` and use the current
+    /// values of `self.variables` as the initial point. Call this after the
+    /// first (cold) solve to enable warm-starting on subsequent solves.
+    pub fn set_warm_start_skip(&mut self, skip: bool) {
+        self.settings.core_mut().warm_start_skip = skip;
+    }
+}
+
 fn _print_banner(out: &mut dyn Write, is_verbose: bool) -> std::io::Result<()> {
     if !is_verbose {
         return std::io::Result::Ok(());
@@ -264,9 +280,11 @@ where
         timeit! {timers => "solve"; {
 
         // initialize variables to some reasonable starting point
-        timeit!{timers => "default start"; {
-            self.default_start();
-        }}
+        if !self.settings.core().warm_start_skip {
+            timeit!{timers => "default start"; {
+                self.default_start();
+            }}
+        }
 
         timeit!{timers => "IP iteration"; {
 
@@ -445,6 +463,10 @@ where
             self.info.save_scalars(μ, α, σ, iter);
             notimeit! {timers; {self.info.print_status(&self.settings).unwrap();}}
         }
+
+        // Cache variables in internal (scaled) form for warm-starting.
+        // Must be done before post_process, which calls unscale() in place.
+        self.prev_vars.copy_from(&self.variables);
 
         timeit! {timers => "post-process"; {
             //check for "almost" convergence case and then extract solution

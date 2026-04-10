@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Version numbering in this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).  We aim to keep the core solver functionality and minor releases in sync between the Rust/Python and Julia implementations.  Small fixes that affect one implementation only may result in the patch release versions differing.
 
+## [Unreleased]
+
+### Added
+
+- Warm-start support via `warm_start_skip` setting ([#206](https://github.com/oxfordcontrol/Clarabel.rs/issues/206))
+
 ## [0.11.1] - 2025-11-06
 
 ### Rust-specific changes

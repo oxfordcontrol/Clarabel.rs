@@ -448,6 +448,10 @@ pub struct PyDefaultSettings {
     #[pyo3(get, set)]
     pub input_sparse_dropzeros: bool,
 
+    // warm-starting
+    #[pyo3(get, set)]
+    pub warm_start_skip: bool,
+
     //chordal decomposition (python must be built with "sdp" feature)
     #[pyo3(get, set)]
     pub chordal_decomposition_enable: bool,
@@ -537,6 +541,7 @@ impl From<&DefaultSettings<f64>> for PyDefaultSettings {
             iterative_refinement_stop_ratio: set.iterative_refinement_stop_ratio,
             presolve_enable: set.presolve_enable,
             input_sparse_dropzeros: set.input_sparse_dropzeros,
+            warm_start_skip: set.warm_start_skip,
             #[cfg(feature = "sdp")]
             chordal_decomposition_enable: set.chordal_decomposition_enable,
             #[cfg(feature = "sdp")]
@@ -597,6 +602,7 @@ impl PyDefaultSettings {
             iterative_refinement_stop_ratio: self.iterative_refinement_stop_ratio,
             presolve_enable: self.presolve_enable,
             input_sparse_dropzeros: self.input_sparse_dropzeros,
+            warm_start_skip: self.warm_start_skip,
             #[cfg(feature = "sdp")]
             chordal_decomposition_enable: self.chordal_decomposition_enable,
             #[cfg(feature = "sdp")]
