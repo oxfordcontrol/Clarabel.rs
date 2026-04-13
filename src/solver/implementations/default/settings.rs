@@ -192,6 +192,13 @@ pub struct DefaultSettings<T: FloatT> {
     #[builder(default = "false")]
     pub input_sparse_dropzeros: bool,
 
+    /// Skip default variable initialization and use externally set variables.
+    /// When true, the caller must set `solver.variables` (x, s, z, τ, κ)
+    /// before calling `solve()`. This enables warm-starting from a previous
+    /// solution.
+    #[builder(default = "false")]
+    pub warm_start_skip: bool,
+
     /// enable chordal decomposition.
     /// [requires "sdp" feature.]
     #[cfg(feature = "sdp")]
