@@ -46,8 +46,13 @@ buildinfo = ["dep:vergen"]
 sdp-accelerate = ["sdp", "blas-src/accelerate", "lapack-src/accelerate"]
 sdp-netlib     = ["sdp", "blas-src/netlib", "lapack-src/netlib", "netlib-src"]
 sdp-openblas   = ["sdp", "blas-src/openblas", "lapack-src/openblas", "openblas-src"]
-sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl","intel-mkl-src"]
 sdp-r          = ["sdp", "blas-src/r", "lapack-src/r"]
+
+# static linking for intel mkl
+sdp-mkl        = ["sdp", "blas-src/intel-mkl", "lapack-src/intel-mkl","intel-mkl-src"]
+
+# dynamic linking for intel mkl
+sdp-mkl-system = ["sdp","blas-src","lapack-src"]
 
 # build as the julia interface 
 julia = [
