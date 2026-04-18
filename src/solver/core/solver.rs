@@ -94,18 +94,20 @@ impl std::fmt::Display for SolverStatus {
     }
 }
 
-/// JSON file read/write trait for solver data.
+/// Problem file read/write trait for solver data.
 /// Only available with the "serde" feature enabled.
+/// Supports various serialization formats based on
+/// file extension.
 #[cfg(feature = "serde")]
-pub trait SolverJSONReadWrite<T>: Sized
+pub trait SolverSerializedReadWrite<T>: Sized
 where
     T: FloatT,
 {
-    /// write internal problem data to a JSON file
-    fn save_to_file(&self, file: &mut std::fs::File) -> Result<(), std::io::Error>;
-    /// load problem data from a JSON file previously saved using [`save_to_file`](self::SolverJSONReadWrite::save_to_file)
-    fn load_from_file(
-        file: &mut std::fs::File,
+    /// Write internal problem data to the provided path.
+    fn save_to_file<P: AsRef<std::path::Path>>(&self, path: P) -> Result<(), std::io::Error>;
+    /// Load problem data previously saved using [`save_to_file`](self::SolverSerializedReadWrite::save_to_file)
+    fn load_from_file<P: AsRef<std::path::Path>>(
+        path: P,
         settings: Option<crate::solver::DefaultSettings<T>>,
     ) -> Result<Self, SolverError>;
 }

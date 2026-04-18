@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 use clarabel::solver::*;
 use std::env;
-use std::fs::File;
 use std::path::PathBuf;
 
 fn main() {
@@ -13,7 +12,6 @@ fn main() {
 
     // now I have the path to the file
     let filename = data_path.join(filename);
-    let mut file = File::open(&filename).unwrap();
 
     // override the settings in the loaded file
     let settings = DefaultSettings {
@@ -21,12 +19,11 @@ fn main() {
         ..DefaultSettings::default()
     };
 
-    let mut solver = DefaultSolver::<f64>::load_from_file(&mut file, Some(settings)).unwrap();
+    let mut solver = DefaultSolver::<f64>::load_from_file(&filename, Some(settings)).unwrap();
     solver.solve();
 
-    // to write the back to a new file
+    // to write back to a new file
 
     // let outfile = "./examples/data/output.json";
-    // let mut file = File::create(outfile).unwrap();
-    // solver.save_to_file(&mut file).unwrap();
+    // solver.save_to_file(&outfile).unwrap();
 }
