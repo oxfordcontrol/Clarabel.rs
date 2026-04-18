@@ -3,26 +3,30 @@
 #![allow(dead_code)]
 
 use super::blas_types::*;
-use lazy_static::lazy_static;
 use libc::c_char;
+use std::sync::OnceLock;
 
-lazy_static! {
-    static ref PYBLAS: PyBlasPointers = pyo3::Python::with_gil(|py| {
-        PyBlasPointers::new(py).expect("Failed to load SciPy BLAS bindings.")
-    });
+static PYBLAS: OnceLock<PyBlasPointers> = OnceLock::new();
+
+fn get_pyblas() -> &'static PyBlasPointers {
+    PYBLAS.get_or_init(|| {
+        pyo3::Python::with_gil(|py| {
+            PyBlasPointers::new(py).expect("Failed to load SciPy BLAS bindings.")
+        })
+    })
 }
 
 pub(crate) fn force_load() {
-    //forces load of the lazy_static.   Choice of function is arbitrary.
-    let _ = PYBLAS.ddot_;
+    //forces load of the lazy static. Choice of function is arbitrary.
+    let _ = get_pyblas().ddot_;
 }
 
 pub unsafe fn ddot(n: i32, x: &[f64], incx: i32, y: &[f64], incy: i32) -> f64 {
-    (PYBLAS.ddot_)(&n, x.as_ptr(), &incx, y.as_ptr(), &incy)
+    (get_pyblas().ddot_)(&n, x.as_ptr(), &incx, y.as_ptr(), &incy)
 }
 
 pub unsafe fn sdot(n: i32, x: &[f32], incx: i32, y: &[f32], incy: i32) -> f32 {
-    (PYBLAS.sdot_)(&n, x.as_ptr(), &incx, y.as_ptr(), &incy)
+    (get_pyblas().sdot_)(&n, x.as_ptr(), &incx, y.as_ptr(), &incy)
 }
 
 pub unsafe fn dgemm(
@@ -40,7 +44,7 @@ pub unsafe fn dgemm(
     c: &mut [f64],
     ldc: i32,
 ) {
-    (PYBLAS.dgemm_)(
+    (get_pyblas().dgemm_)(
         &(transa as c_char),
         &(transb as c_char),
         &m,
@@ -56,6 +60,7 @@ pub unsafe fn dgemm(
         &ldc,
     )
 }
+
 pub unsafe fn sgemm(
     transa: u8,
     transb: u8,
@@ -71,7 +76,7 @@ pub unsafe fn sgemm(
     c: &mut [f32],
     ldc: i32,
 ) {
-    (PYBLAS.sgemm_)(
+    (get_pyblas().sgemm_)(
         &(transa as c_char),
         &(transb as c_char),
         &m,
@@ -101,7 +106,7 @@ pub unsafe fn dgemv(
     y: &mut [f64],
     incy: i32,
 ) {
-    (PYBLAS.dgemv_)(
+    (get_pyblas().dgemv_)(
         &(trans as c_char),
         &m,
         &n,
@@ -129,7 +134,7 @@ pub unsafe fn sgemv(
     y: &mut [f32],
     incy: i32,
 ) {
-    (PYBLAS.sgemv_)(
+    (get_pyblas().sgemv_)(
         &(trans as c_char),
         &m,
         &n,
@@ -156,7 +161,7 @@ pub unsafe fn dsymv(
     y: &mut [f64],
     incy: i32,
 ) {
-    (PYBLAS.dsymv_)(
+    (get_pyblas().dsymv_)(
         &(uplo as c_char),
         &n,
         &alpha,
@@ -182,7 +187,7 @@ pub unsafe fn ssymv(
     y: &mut [f32],
     incy: i32,
 ) {
-    (PYBLAS.ssymv_)(
+    (get_pyblas().ssymv_)(
         &(uplo as c_char),
         &n,
         &alpha,
@@ -208,7 +213,7 @@ pub unsafe fn dsyrk(
     c: &mut [f64],
     ldc: i32,
 ) {
-    (PYBLAS.dsyrk_)(
+    (get_pyblas().dsyrk_)(
         &(uplo as c_char),
         &(trans as c_char),
         &n,
@@ -234,7 +239,7 @@ pub unsafe fn ssyrk(
     c: &mut [f32],
     ldc: i32,
 ) {
-    (PYBLAS.ssyrk_)(
+    (get_pyblas().ssyrk_)(
         &(uplo as c_char),
         &(trans as c_char),
         &n,
@@ -262,7 +267,7 @@ pub unsafe fn dsyr2k(
     c: &mut [f64],
     ldc: i32,
 ) {
-    (PYBLAS.dsyr2k_)(
+    (get_pyblas().dsyr2k_)(
         &(uplo as c_char),
         &(trans as c_char),
         &n,
@@ -292,7 +297,7 @@ pub unsafe fn ssyr2k(
     c: &mut [f32],
     ldc: i32,
 ) {
-    (PYBLAS.ssyr2k_)(
+    (get_pyblas().ssyr2k_)(
         &(uplo as c_char),
         &(trans as c_char),
         &n,

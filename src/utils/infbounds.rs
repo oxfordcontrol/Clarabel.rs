@@ -1,5 +1,5 @@
 use crate::utils::atomic::{AtomicF64, Ordering};
-use lazy_static::lazy_static;
+use std::sync::OnceLock;
 
 /// Constant indicating that an inequality bound is to be treated as infinite.
 ///   
@@ -12,25 +12,29 @@ use lazy_static::lazy_static;
 ///
 pub const INFINITY_DEFAULT: f64 = crate::_INFINITY_DEFAULT;
 
-lazy_static! {
-    static ref INFINITY: AtomicF64 = AtomicF64::new(INFINITY_DEFAULT);
+static INFINITY: OnceLock<AtomicF64> = OnceLock::new();
+
+fn get_infinity_cell() -> &'static AtomicF64 {
+    INFINITY.get_or_init(|| AtomicF64::new(INFINITY_DEFAULT))
 }
 
 /// Revert internal infinity bound to its default value.   The default is [`INFINITY_DEFAULT`]
 ///
 /// See also: [`get_infinity`], [`set_infinity`]
 pub fn default_infinity() {
-    INFINITY.store(INFINITY_DEFAULT, Ordering::Relaxed);
+    get_infinity_cell().store(INFINITY_DEFAULT, Ordering::Relaxed);
 }
+
 /// Set the internal infinity bound to a new value.
 ///
 /// See also: [`get_infinity`], [`default_infinity`]
 pub fn set_infinity(v: f64) {
-    INFINITY.store(v, Ordering::Relaxed);
+    get_infinity_cell().store(v, Ordering::Relaxed);
 }
+
 /// Get the current value of the internal infinity bound.
 ///
 /// See also: [`set_infinity`], [`default_infinity`]
 pub fn get_infinity() -> f64 {
-    INFINITY.load(Ordering::Relaxed)
+    get_infinity_cell().load(Ordering::Relaxed)
 }
