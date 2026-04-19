@@ -1,7 +1,7 @@
 use crate::solver::core::ffi::*;
 use crate::solver::core::traits::Settings;
 use crate::{algebra::*, solver::core::SettingsError};
-use derive_builder::Builder;
+use typed_builder::TypedBuilder;
 
 #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
 use pardiso_wrapper::PardisoInterface;
@@ -14,57 +14,79 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 ))]
 use serde_big_array::BigArray;
 
+/// Error type returned when building [`DefaultSettings`] via its builder.
+#[derive(Debug)]
+pub enum DefaultSettingsBuilderError {
+    /// Builder failed because a field without a default value was not initialised.
+    UninitializedField(&'static str),
+    /// Builder failed validation due to an invalid field value.
+    ValidationError(String),
+}
+
+impl std::fmt::Display for DefaultSettingsBuilderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UninitializedField(field) => write!(f, "field `{}` was not initialized", field),
+            Self::ValidationError(msg) => write!(f, "validation error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for DefaultSettingsBuilderError {}
+
 // PJG: Serialization is required for file in/out, but is also used to pass
 // settings structures between Rust and Julia (and possibly Python)
 // Passing to Julia should be done using the new FFI interface types
 // implemented in https://github.com/oxfordcontrol/Clarabel.rs/pull/176
 
 /// Standard-form solver type implementing the [`Settings`](crate::solver::core::traits::Settings) trait
-
-#[derive(Builder, Debug, Clone)]
-#[builder(build_fn(validate = "Self::validate"))]
+#[derive(Debug, Clone, TypedBuilder)]
+#[builder(
+    builder_type(name = DefaultSettingsBuilder, vis = "pub"),
+    build_method(into = Result<DefaultSettings<T>, DefaultSettingsBuilderError>)
+)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "serde", serde(bound = "T: Serialize + DeserializeOwned"))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct DefaultSettings<T: FloatT> {
     ///maximum number of iterations
-    #[builder(default = "200")]
+    #[builder(default = 200)]
     pub max_iter: u32,
 
     ///maximum run time (seconds)
-    #[builder(default = "f64::INFINITY")]
+    #[builder(default = f64::INFINITY)]
     pub time_limit: f64,
 
     ///verbose printing
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub verbose: bool,
 
     ///maximum interior point step length
-    #[builder(default = "(0.99).as_T()")]
+    #[builder(default = (0.99).as_T())]
     pub max_step_fraction: T,
 
     ///absolute duality gap tolerance
-    #[builder(default = "(1e-8).as_T()")]
+    #[builder(default = (1e-8).as_T())]
     pub tol_gap_abs: T,
 
     ///relative duality gap tolerance
-    #[builder(default = "(1e-8).as_T()")]
+    #[builder(default = (1e-8).as_T())]
     pub tol_gap_rel: T,
 
     ///feasibility check tolerance (primal and dual)
-    #[builder(default = "(1e-8).as_T()")]
+    #[builder(default = (1e-8).as_T())]
     pub tol_feas: T,
 
     ///absolute infeasibility tolerance (primal and dual)
-    #[builder(default = "(1e-8).as_T()")]
+    #[builder(default = (1e-8).as_T())]
     pub tol_infeas_abs: T,
 
     ///relative infeasibility tolerance (primal and dual)
-    #[builder(default = "(1e-8).as_T()")]
+    #[builder(default = (1e-8).as_T())]
     pub tol_infeas_rel: T,
 
     ///κ/τ tolerance
-    #[builder(default = "(1e-6).as_T()")]
+    #[builder(default = (1e-6).as_T())]
     pub tol_ktratio: T,
 
     ///reduced absolute duality gap tolerance
@@ -72,116 +94,116 @@ pub struct DefaultSettings<T: FloatT> {
     // we are checking that we are this far into the interior of
     // an inequality when checking.   Smaller for this value means
     // "less margin required"
-    #[builder(default = "(5e-5).as_T()")]
+    #[builder(default = (5e-5).as_T())]
     pub reduced_tol_gap_abs: T,
 
     ///reduced relative duality gap tolerance
-    #[builder(default = "(5e-5).as_T()")]
+    #[builder(default = (5e-5).as_T())]
     pub reduced_tol_gap_rel: T,
 
     ///reduced feasibility check tolerance (primal and dual)
-    #[builder(default = "(1e-4).as_T()")]
+    #[builder(default = (1e-4).as_T())]
     pub reduced_tol_feas: T,
 
     ///reduced absolute infeasibility tolerance (primal and dual)
-    #[builder(default = "(5e-12).as_T()")]
+    #[builder(default = (5e-12).as_T())]
     pub reduced_tol_infeas_abs: T,
 
     ///reduced relative infeasibility tolerance (primal and dual)
-    #[builder(default = "(5e-5).as_T()")]
+    #[builder(default = (5e-5).as_T())]
     pub reduced_tol_infeas_rel: T,
 
     ///reduced κ/τ tolerance
-    #[builder(default = "(1e-4).as_T()")]
+    #[builder(default = (1e-4).as_T())]
     pub reduced_tol_ktratio: T,
 
     ///enable data equilibration pre-scaling
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub equilibrate_enable: bool,
 
     /// maximum equilibration scaling iterations
-    #[builder(default = "10")]
+    #[builder(default = 10)]
     pub equilibrate_max_iter: u32,
 
     ///minimum equilibration scaling allowed
-    #[builder(default = "(1e-4).as_T()")]
+    #[builder(default = (1e-4).as_T())]
     pub equilibrate_min_scaling: T,
 
     ///maximum equilibration scaling allowed
-    #[builder(default = "(1e+4).as_T()")]
+    #[builder(default = (1e+4).as_T())]
     pub equilibrate_max_scaling: T,
 
     ///line search backtracking
-    #[builder(default = "(0.8).as_T()")]
+    #[builder(default = (0.8).as_T())]
     pub linesearch_backtrack_step: T,
 
     ///minimum step size allowed for asymmetric cones with PrimalDual scaling
-    #[builder(default = "(1e-1).as_T()")]
+    #[builder(default = (1e-1).as_T())]
     pub min_switch_step_length: T,
 
     ///minimum step size allowed for symmetric cones & asymmetric cones with Dual scaling
-    #[builder(default = "(1e-4).as_T()")]
+    #[builder(default = (1e-4).as_T())]
     pub min_terminate_step_length: T,
 
     ///maximum solver threads for multithreaded KKT solvers
     ///choosing 0 lets the solver choose for itself
-    #[builder(default = "0")]
+    #[builder(default = 0)]
     pub max_threads: u32,
 
     ///use a direct linear solver method (required true)
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub direct_kkt_solver: bool,
 
     ///direct linear solver method(e.g. "faer", "qdldl", "auto")
-    #[builder(default = r#""auto".to_string()"#)]
+    #[builder(default = String::from("auto"))]
     pub direct_solve_method: String,
 
     ///enable KKT static regularization
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub static_regularization_enable: bool,
 
     ///KKT static regularization parameter
-    #[builder(default = "(1e-8).as_T()")]
+    #[builder(default = (1e-8).as_T())]
     pub static_regularization_constant: T,
 
     ///additional regularization parameter w.r.t. the maximum abs diagonal term
-    #[builder(default = "T::epsilon()*T::epsilon()")]
+    #[builder(default = T::epsilon() * T::epsilon())]
     pub static_regularization_proportional: T,
 
     ///enable KKT dynamic regularization
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub dynamic_regularization_enable: bool,
 
     ///KKT dynamic regularization threshold
-    #[builder(default = "(1e-13).as_T()")]
+    #[builder(default = (1e-13).as_T())]
     pub dynamic_regularization_eps: T,
 
     ///KKT dynamic regularization shift
-    #[builder(default = "(2e-7).as_T()")]
+    #[builder(default = (2e-7).as_T())]
     pub dynamic_regularization_delta: T,
 
     ///KKT direct solve with iterative refinement
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub iterative_refinement_enable: bool,
 
     ///iterative refinement relative tolerance
-    #[builder(default = "(1e-13).as_T()")]
+    #[builder(default = (1e-13).as_T())]
     pub iterative_refinement_reltol: T,
 
     ///iterative refinement absolute tolerance
-    #[builder(default = "(1e-12).as_T()")]
+    #[builder(default = (1e-12).as_T())]
     pub iterative_refinement_abstol: T,
 
     ///iterative refinement maximum iterations
-    #[builder(default = "10")]
+    #[builder(default = 10)]
     pub iterative_refinement_max_iter: u32,
 
     ///iterative refinement stalling tolerance
-    #[builder(default = "(5.0).as_T()")]
+    #[builder(default = (5.0).as_T())]
     pub iterative_refinement_stop_ratio: T,
 
     ///enable presolve constraint reduction
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub presolve_enable: bool,
 
     ///explicitly drop structural zeros from sparse data inputs
@@ -189,31 +211,31 @@ pub struct DefaultSettings<T: FloatT> {
     ///See also ['dropzeros'][crate::algebra::CscMatrix::dropzeros]
     ///for dropping structural zeros before passing to the solver
     ///
-    #[builder(default = "false")]
+    #[builder(default = false)]
     pub input_sparse_dropzeros: bool,
 
     /// enable chordal decomposition.
     /// [requires "sdp" feature.]
     #[cfg(feature = "sdp")]
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub chordal_decomposition_enable: bool,
 
     ///chordal decomposition merge method ("none", "parent_child" or "clique_graph").  
     /// [requires "sdp" feature.]
     #[cfg(feature = "sdp")]
-    #[builder(default = r#""clique_graph".to_string()"#)]
+    #[builder(default = String::from("clique_graph"))]
     pub chordal_decomposition_merge_method: String,
 
     ///assemble decomposed system in "compact" form
     ///[requires "sdp" feature.]
     #[cfg(feature = "sdp")]
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub chordal_decomposition_compact: bool,
 
     ///complete PSD dual variables after decomposition
     /// [requires "sdp" feature.]
     #[cfg(feature = "sdp")]
-    #[builder(default = "true")]
+    #[builder(default = true)]
     pub chordal_decomposition_complete_dual: bool,
 
     /// Pardiso `iparm` parameter array.  Any values in this array (other
@@ -237,13 +259,13 @@ pub struct DefaultSettings<T: FloatT> {
     ///
     /// Requires the "pardiso-mkl" or "pardiso-panua" feature.
     #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
-    #[builder(default = "[i32::MIN; 64]")]
+    #[builder(default = [i32::MIN; 64])]
     #[cfg_attr(feature = "serde", serde(with = "BigArray"))]
     pub pardiso_iparm: [i32; 64],
 
     /// enable pardiso verbose output
     #[cfg(any(feature = "pardiso-mkl", feature = "pardiso-panua"))]
-    #[builder(default = "false")]
+    #[builder(default = false)]
     pub pardiso_verbose: bool,
 }
 
@@ -252,7 +274,13 @@ where
     T: FloatT,
 {
     fn default() -> DefaultSettings<T> {
-        DefaultSettingsBuilder::<T>::default().build().unwrap()
+        DefaultSettings::<T>::builder().build().unwrap()
+    }
+}
+
+impl<T: FloatT> Default for DefaultSettingsBuilder<T> {
+    fn default() -> Self {
+        DefaultSettings::builder()
     }
 }
 
@@ -339,34 +367,22 @@ impl<T: FloatT> ClarabelFFI<Self> for DefaultSettings<T> {
     type FFI = super::ffi::DefaultSettingsFFI<T>;
 }
 
-// pre build checker (for auto-validation when using the builder)
-
 impl From<SettingsError> for DefaultSettingsBuilderError {
     fn from(e: SettingsError) -> Self {
         DefaultSettingsBuilderError::ValidationError(e.to_string())
     }
 }
 
-/// Automatic pre-build settings validation
-impl<T> DefaultSettingsBuilder<T>
+impl<T> From<DefaultSettings<T>> for Result<DefaultSettings<T>, DefaultSettingsBuilderError>
 where
     T: FloatT,
 {
-    /// check that the specified direct_solve_method is valid
-    pub fn validate(&self) -> Result<(), SettingsError> {
-        if let Some(ref direct_solve_method) = self.direct_solve_method {
-            validate_direct_solve_method(direct_solve_method)?;
+    fn from(settings: DefaultSettings<T>) -> Self {
+        if let Err(err) = settings.validate() {
+            Err(err.into())
+        } else {
+            Ok(settings)
         }
-
-        // check that the chordal decomposition merge method is valid
-        #[cfg(feature = "sdp")]
-        if let Some(ref chordal_decomposition_merge_method) =
-            self.chordal_decomposition_merge_method
-        {
-            validate_chordal_decomposition_merge_method(chordal_decomposition_merge_method)?;
-        }
-
-        Ok(())
     }
 }
 
