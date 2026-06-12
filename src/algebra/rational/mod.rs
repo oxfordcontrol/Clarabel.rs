@@ -52,8 +52,8 @@
 //!   `MpfrFloat`, then round the dual back to exact rationals via a
 //!   Peyrl–Parrilo-style tightening step. The standard recipe is
 //!   continued-fraction rational rounding + an exact-arithmetic
-//!   feasibility verify in `RationalReal`. A `tighten_to_rational`
-//!   helper for this is on the roadmap (see PR #1 round-4 thread).
+//!   feasibility verify in `RationalReal`. Helpers for this are provided
+//!   as [`tighten_scalar`], [`tighten_vec`], and [`tighten_psd_block`].
 
 #[cfg(feature = "sdp")]
 compile_error!(
@@ -86,7 +86,7 @@ pub use precision::{
     with_precision,
 };
 pub use real::RationalReal;
-pub use tighten::{tighten_scalar, tighten_vec};
+pub use tighten::{tighten_psd_block, tighten_scalar, tighten_vec};
 
 // Compile-time assertion: RationalReal satisfies CoreFloatT and (because
 // neither sdp nor faer-sparse can be enabled with bigrational) FloatT.

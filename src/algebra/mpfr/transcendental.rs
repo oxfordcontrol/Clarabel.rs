@@ -1,10 +1,4 @@
-//! `Transcendental` impl for [`MpfrFloat`].
-//!
-//! All ops forward to MPFR's native correctly-rounded transcendentals.
-//! No precision capping needed (rug's working precision is
-//! per-`Float`); each op preserves the operand's precision (or the
-//! larger of two for binary ops) like the basic arithmetic does.
-
+use super::arena;
 use super::real::MpfrFloat;
 use crate::algebra::transcendental::Transcendental;
 use rug::ops::Pow;
@@ -12,32 +6,43 @@ use rug::Float as RugFloat;
 
 impl Transcendental for MpfrFloat {
     fn sqrt(self) -> Self {
-        MpfrFloat(self.0.sqrt())
+        let val = arena::with(self.0, |a| a.clone().sqrt());
+        MpfrFloat(arena::push(val))
     }
     fn ln(self) -> Self {
-        MpfrFloat(self.0.ln())
+        let val = arena::with(self.0, |a| a.clone().ln());
+        MpfrFloat(arena::push(val))
     }
     fn exp(self) -> Self {
-        MpfrFloat(self.0.exp())
+        let val = arena::with(self.0, |a| a.clone().exp());
+        MpfrFloat(arena::push(val))
     }
     fn powf(self, n: Self) -> Self {
-        MpfrFloat(self.0.pow(&n.0))
+        let val = arena::with2(self.0, n.0, |a, b| a.clone().pow(b));
+        MpfrFloat(arena::push(val))
     }
     fn powi(self, n: i32) -> Self {
-        MpfrFloat(self.0.pow(n))
+        let val = arena::with(self.0, |a| a.clone().pow(n));
+        MpfrFloat(arena::push(val))
     }
     fn recip(self) -> Self {
-        let p = self.0.prec();
-        let one = RugFloat::with_val(p, 1);
-        MpfrFloat(one / self.0)
+        let val = arena::with(self.0, |a| {
+            let p = a.prec();
+            let one = RugFloat::with_val(p, 1);
+            one / a
+        });
+        MpfrFloat(arena::push(val))
     }
     fn sin(self) -> Self {
-        MpfrFloat(self.0.sin())
+        let val = arena::with(self.0, |a| a.clone().sin());
+        MpfrFloat(arena::push(val))
     }
     fn cos(self) -> Self {
-        MpfrFloat(self.0.cos())
+        let val = arena::with(self.0, |a| a.clone().cos());
+        MpfrFloat(arena::push(val))
     }
     fn atan2(self, x: Self) -> Self {
-        MpfrFloat(self.0.atan2(&x.0))
+        let val = arena::with2(self.0, x.0, |a, b| a.clone().atan2(b));
+        MpfrFloat(arena::push(val))
     }
 }

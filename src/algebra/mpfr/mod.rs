@@ -31,11 +31,7 @@
 //!
 //! Cannot be combined with `sdp` or `faer-sparse`.
 
-#[cfg(feature = "sdp")]
-compile_error!(
-    "the `mpfr` feature is mutually exclusive with `sdp` and `sdp-*` \
-     because SDP requires BLAS/LAPACK on f32/f64"
-);
+
 
 #[cfg(feature = "faer-sparse")]
 compile_error!(
@@ -45,8 +41,10 @@ compile_error!(
 
 mod precision;
 mod real;
-mod sentinel;
 mod transcendental;
+mod arena;
+mod sentinel;
+mod native_lapack;
 #[cfg(feature = "serde")]
 mod serde_impl;
 
@@ -54,6 +52,7 @@ pub use precision::{
     default_precision, set_default_precision, with_precision as with_mpfr_precision,
 };
 pub use real::MpfrFloat;
+pub use arena::{arena_len, reset_arena};
 
 // Compile-time assertion: MpfrFloat satisfies CoreFloatT (and, via the
 // vacuous MaybeBlasFloatT/MaybeFaerFloatT bounds when neither sdp nor

@@ -1,80 +1,43 @@
-//! `RealSentinel` and `RealConst` for [`MpfrFloat`].
-//!
-//! Unlike the rational backend, MPFR has native infinity / nan / signed
-//! zero, so these all forward directly to `rug::Float` semantics.
-//! `RealConst` (PI/SQRT_2/FRAC_1_SQRT_2) uses MPFR's built-in constants.
-
-use super::precision::default_precision;
+use super::arena;
 use super::real::MpfrFloat;
 use crate::algebra::transcendental::{RealConst, RealSentinel};
-use rug::float::{Constant, Special};
 use rug::Float as RugFloat;
+use rug::float::Special;
 
 impl RealSentinel for MpfrFloat {
-    fn infinity() -> Self {
-        MpfrFloat(RugFloat::with_val(default_precision(), Special::Infinity))
-    }
-    fn neg_infinity() -> Self {
-        MpfrFloat(RugFloat::with_val(default_precision(), Special::NegInfinity))
-    }
-    fn nan() -> Self {
-        MpfrFloat(RugFloat::with_val(default_precision(), Special::Nan))
-    }
+    fn infinity() -> Self { MpfrFloat(arena::push(RugFloat::with_val(super::default_precision(), Special::Infinity))) }
+    fn neg_infinity() -> Self { MpfrFloat(arena::push(RugFloat::with_val(super::default_precision(), Special::NegInfinity))) }
+    fn nan() -> Self { MpfrFloat(arena::push(RugFloat::with_val(super::default_precision(), Special::Nan))) }
     fn epsilon() -> Self {
-        // 2^-(prec-1) — one ULP at the working precision.
-        // Formed as 1.0 right-shifted by (p-1) bits.
-        let p = default_precision();
-        let mut out = RugFloat::with_val(p, 1);
-        out >>= (p - 1) as i32;
-        MpfrFloat(out)
+        let p = super::default_precision();
+        let mut e = RugFloat::with_val(p, - (p as i32));
+        e.exp2_mut(); // e = 2^-p
+        MpfrFloat(arena::push(e))
     }
-    fn max_value() -> Self {
-        MpfrFloat(RugFloat::with_val(default_precision(), f64::MAX))
-    }
-    fn min_value() -> Self {
-        Self::epsilon()
-    }
-    fn is_nan(self) -> bool {
-        self.0.is_nan()
-    }
-    fn is_finite(self) -> bool {
-        self.0.is_finite()
-    }
-    fn is_infinite(self) -> bool {
-        self.0.is_infinite()
-    }
-    fn is_sign_negative(self) -> bool {
-        self.0.is_sign_negative()
-    }
-    fn min(self, other: Self) -> Self {
-        if self <= other {
-            self
-        } else {
-            other
-        }
-    }
-    fn max(self, other: Self) -> Self {
-        if self >= other {
-            self
-        } else {
-            other
-        }
-    }
+    fn is_nan(self) -> bool { arena::with(self.0, |a| a.is_nan()) }
+    fn is_infinite(self) -> bool { arena::with(self.0, |a| a.is_infinite()) }
+    fn is_finite(self) -> bool { arena::with(self.0, |a| a.is_finite()) }
+    fn max_value() -> Self { Self::infinity() }
+    fn min_value() -> Self { Self::neg_infinity() }
+    fn is_sign_negative(self) -> bool { arena::with(self.0, |a| a.is_sign_negative()) }
+    fn min(self, other: Self) -> Self { if self < other { self } else { other } }
+    fn max(self, other: Self) -> Self { if self > other { self } else { other } }
 }
 
-#[allow(non_snake_case)]
 impl RealConst for MpfrFloat {
+    fn FRAC_1_SQRT_2() -> Self {
+        let p = super::default_precision();
+        let val = RugFloat::with_val(p, 2).sqrt().recip();
+        MpfrFloat(arena::push(val))
+    }
     fn PI() -> Self {
-        MpfrFloat(RugFloat::with_val(default_precision(), Constant::Pi))
+        let p = super::default_precision();
+        let val = RugFloat::with_val(p, rug::float::Constant::Pi);
+        MpfrFloat(arena::push(val))
     }
     fn SQRT_2() -> Self {
-        let two = RugFloat::with_val(default_precision(), 2);
-        MpfrFloat(two.sqrt())
-    }
-    fn FRAC_1_SQRT_2() -> Self {
-        let two = RugFloat::with_val(default_precision(), 2);
-        let s = two.sqrt();
-        let one = RugFloat::with_val(default_precision(), 1);
-        MpfrFloat(one / s)
+        let p = super::default_precision();
+        let val = RugFloat::with_val(p, 2).sqrt();
+        MpfrFloat(arena::push(val))
     }
 }

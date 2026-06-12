@@ -70,9 +70,9 @@ configurable thread-local working precision via Newton/Taylor iterations.
 > `RealField`). For high-precision SDP use the `mpfr` backend below
 > with the existing BLAS path; for **certified rational SDP solutions**,
 > solve in `f64`/`MpfrFloat` and round the dual back to rationals via
-> a Peyrl–Parrilo-style tightening step (helper not yet upstream — see
-> the [round-4 thread on PR #1](https://github.com/litlfred/Clarabel.rs/pull/1) for the
-> proposed `tighten_to_rational` API).
+> a Peyrl–Parrilo-style tightening step using the provided
+> `tighten_scalar`, `tighten_vec`, and `tighten_psd_block` helpers in the
+> `clarabel::algebra::rational` module.
 
 ```toml
 [dependencies]

@@ -1,10 +1,4 @@
-//! [`MpfrFloat`] — newtype around [`rug::Float`] satisfying `FloatT`.
-//!
-//! Unlike `RationalReal`, MPFR floats live directly in the value (no
-//! arena). `rug::Float` is `Send + Sync + Clone` — but **not `Copy`**
-//! because MPFR allocates limb storage on the heap. The `CoreFloatT`
-//! impl bound is `Clone`, not `Copy`, so this works.
-
+use super::arena;
 use super::precision::default_precision;
 use num_traits::{FromPrimitive, Num, One, Signed, Zero};
 use rug::Float as RugFloat;
@@ -13,55 +7,44 @@ use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
 
-/// MPFR-precision floating-point scalar.
-///
-/// Wraps [`rug::Float`]. New values get their precision from
-/// [`default_precision`](super::default_precision) (default 167 bits
-/// ≈ 50 dps). Binary ops use the max of the two operand precisions.
-#[derive(Clone)]
-pub struct MpfrFloat(pub(crate) RugFloat);
+#[derive(Clone, Copy)]
+pub struct MpfrFloat(pub(crate) u32);
+
+unsafe impl Send for MpfrFloat {}
+unsafe impl Sync for MpfrFloat {}
 
 impl MpfrFloat {
-    /// Construct from an owned `rug::Float`. Carries the rug value's
-    /// own precision; doesn't reset to the thread default.
     pub fn from_rug(f: RugFloat) -> Self {
-        MpfrFloat(f)
+        MpfrFloat(arena::push(f))
     }
 
-    /// Borrow the underlying `rug::Float`.
-    pub fn as_rug(&self) -> &RugFloat {
-        &self.0
+    pub fn as_rug(&self) -> RugFloat {
+        arena::get(self.0)
     }
 
-    /// Consume into the underlying `rug::Float`.
     pub fn into_rug(self) -> RugFloat {
-        self.0
+        arena::get(self.0)
     }
 
-    /// Construct an `MpfrFloat` with explicit precision and value 0.
     pub fn zero_with_prec(prec: u32) -> Self {
-        MpfrFloat(RugFloat::new(prec))
+        MpfrFloat(arena::push(RugFloat::new(prec)))
     }
 
-    /// Construct an `MpfrFloat` at the thread's default precision
-    /// from any `rug` source value (i64/u64/f64/Rational/...).
     pub fn with_val<V>(value: V) -> Self
     where
         RugFloat: rug::Assign<V>,
     {
         let mut f = RugFloat::new(default_precision());
         rug::Assign::assign(&mut f, value);
-        MpfrFloat(f)
+        MpfrFloat(arena::push(f))
     }
 
-    /// Lossy conversion to `f64`.
     pub fn to_f64(&self) -> f64 {
-        self.0.to_f64()
+        arena::with(self.0, |f| f.to_f64())
     }
 
-    /// Precision of this value, in bits.
     pub fn prec(&self) -> u32 {
-        self.0.prec()
+        arena::with(self.0, |f| f.prec())
     }
 }
 
@@ -70,16 +53,15 @@ fn binop_prec(a: &RugFloat, b: &RugFloat) -> u32 {
     a.prec().max(b.prec())
 }
 
-// ============================================================
-// Arithmetic
-// ============================================================
-
 impl Add for MpfrFloat {
     type Output = Self;
     #[inline]
     fn add(self, rhs: Self) -> Self {
-        let p = binop_prec(&self.0, &rhs.0);
-        MpfrFloat(RugFloat::with_val(p, &self.0 + &rhs.0))
+        let val = arena::with2(self.0, rhs.0, |a, b| {
+            let p = binop_prec(a, b);
+            RugFloat::with_val(p, a + b)
+        });
+        MpfrFloat(arena::push(val))
     }
 }
 
@@ -87,8 +69,11 @@ impl Sub for MpfrFloat {
     type Output = Self;
     #[inline]
     fn sub(self, rhs: Self) -> Self {
-        let p = binop_prec(&self.0, &rhs.0);
-        MpfrFloat(RugFloat::with_val(p, &self.0 - &rhs.0))
+        let val = arena::with2(self.0, rhs.0, |a, b| {
+            let p = binop_prec(a, b);
+            RugFloat::with_val(p, a - b)
+        });
+        MpfrFloat(arena::push(val))
     }
 }
 
@@ -96,8 +81,11 @@ impl Mul for MpfrFloat {
     type Output = Self;
     #[inline]
     fn mul(self, rhs: Self) -> Self {
-        let p = binop_prec(&self.0, &rhs.0);
-        MpfrFloat(RugFloat::with_val(p, &self.0 * &rhs.0))
+        let val = arena::with2(self.0, rhs.0, |a, b| {
+            let p = binop_prec(a, b);
+            RugFloat::with_val(p, a * b)
+        });
+        MpfrFloat(arena::push(val))
     }
 }
 
@@ -105,8 +93,11 @@ impl Div for MpfrFloat {
     type Output = Self;
     #[inline]
     fn div(self, rhs: Self) -> Self {
-        let p = binop_prec(&self.0, &rhs.0);
-        MpfrFloat(RugFloat::with_val(p, &self.0 / &rhs.0))
+        let val = arena::with2(self.0, rhs.0, |a, b| {
+            let p = binop_prec(a, b);
+            RugFloat::with_val(p, a / b)
+        });
+        MpfrFloat(arena::push(val))
     }
 }
 
@@ -114,12 +105,13 @@ impl Rem for MpfrFloat {
     type Output = Self;
     #[inline]
     fn rem(self, rhs: Self) -> Self {
-        let p = binop_prec(&self.0, &rhs.0);
-        // rug doesn't expose a free-function remainder constructor; do
-        // it via .remainder_round on a clone.
-        let mut out = RugFloat::with_val(p, &self.0);
-        out.remainder_round(&rhs.0, rug::float::Round::Nearest);
-        MpfrFloat(out)
+        let val = arena::with2(self.0, rhs.0, |a, b| {
+            let p = binop_prec(a, b);
+            let mut out = RugFloat::with_val(p, a);
+            out.remainder_round(b, rug::float::Round::Nearest);
+            out
+        });
+        MpfrFloat(arena::push(val))
     }
 }
 
@@ -127,91 +119,68 @@ impl Neg for MpfrFloat {
     type Output = Self;
     #[inline]
     fn neg(self) -> Self {
-        MpfrFloat(-self.0)
+        let val = arena::with(self.0, |a| {
+            let p = a.prec();
+            RugFloat::with_val(p, -a)
+        });
+        MpfrFloat(arena::push(val))
     }
 }
 
 impl AddAssign for MpfrFloat {
     #[inline]
-    fn add_assign(&mut self, rhs: Self) {
-        self.0 += rhs.0;
-    }
+    fn add_assign(&mut self, rhs: Self) { *self = *self + rhs; }
 }
 
 impl SubAssign for MpfrFloat {
     #[inline]
-    fn sub_assign(&mut self, rhs: Self) {
-        self.0 -= rhs.0;
-    }
+    fn sub_assign(&mut self, rhs: Self) { *self = *self - rhs; }
 }
 
 impl MulAssign for MpfrFloat {
     #[inline]
-    fn mul_assign(&mut self, rhs: Self) {
-        self.0 *= rhs.0;
-    }
+    fn mul_assign(&mut self, rhs: Self) { *self = *self * rhs; }
 }
 
 impl DivAssign for MpfrFloat {
     #[inline]
-    fn div_assign(&mut self, rhs: Self) {
-        self.0 /= rhs.0;
-    }
+    fn div_assign(&mut self, rhs: Self) { *self = *self / rhs; }
 }
 
 impl RemAssign for MpfrFloat {
     #[inline]
-    fn rem_assign(&mut self, rhs: Self) {
-        let v = self.clone() % rhs;
-        *self = v;
-    }
+    fn rem_assign(&mut self, rhs: Self) { *self = *self % rhs; }
 }
-
-// ============================================================
-// Comparisons
-// ============================================================
 
 impl PartialEq for MpfrFloat {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+        arena::with2(self.0, other.0, |a, b| a == b)
     }
 }
 
 impl PartialOrd for MpfrFloat {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
+        arena::with2(self.0, other.0, |a, b| a.partial_cmp(b))
     }
 }
 
-// ============================================================
-// num_traits
-// ============================================================
-
 impl Zero for MpfrFloat {
     #[inline]
-    fn zero() -> Self {
-        MpfrFloat(RugFloat::new(default_precision()))
-    }
+    fn zero() -> Self { MpfrFloat(arena::push_zero()) }
     #[inline]
-    fn is_zero(&self) -> bool {
-        self.0.is_zero()
-    }
+    fn is_zero(&self) -> bool { arena::with(self.0, |a| a.is_zero()) }
 }
 
 impl One for MpfrFloat {
     #[inline]
-    fn one() -> Self {
-        MpfrFloat(RugFloat::with_val(default_precision(), 1))
-    }
+    fn one() -> Self { MpfrFloat(arena::push_one()) }
 }
 
 impl Default for MpfrFloat {
     #[inline]
-    fn default() -> Self {
-        Self::zero()
-    }
+    fn default() -> Self { Self::zero() }
 }
 
 #[derive(Debug, Clone)]
@@ -230,7 +199,7 @@ impl Num for MpfrFloat {
     fn from_str_radix(s: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
         RugFloat::parse_radix(s, radix as i32)
             .map(|incomplete| {
-                MpfrFloat(RugFloat::with_val(default_precision(), incomplete))
+                MpfrFloat(arena::push(RugFloat::with_val(default_precision(), incomplete)))
             })
             .map_err(|e| ParseMpfrError(format!("{e}")))
     }
@@ -239,117 +208,80 @@ impl Num for MpfrFloat {
 impl Signed for MpfrFloat {
     #[inline]
     fn abs(&self) -> Self {
-        MpfrFloat(self.0.clone().abs())
+        let val = arena::with(self.0, |a| a.clone().abs());
+        MpfrFloat(arena::push(val))
     }
     #[inline]
     fn abs_sub(&self, other: &Self) -> Self {
-        if self <= other {
-            Self::zero()
-        } else {
-            self.clone() - other.clone()
-        }
+        if self <= other { Self::zero() } else { *self - *other }
     }
     #[inline]
     fn signum(&self) -> Self {
-        if self.0.is_zero() {
-            Self::zero()
-        } else if self.0.is_sign_negative() {
-            -Self::one()
-        } else {
-            Self::one()
-        }
+        let (is_z, is_n) = arena::with(self.0, |a| (a.is_zero(), a.is_sign_negative()));
+        if is_z { Self::zero() }
+        else if is_n { -Self::one() }
+        else { Self::one() }
     }
     #[inline]
     fn is_positive(&self) -> bool {
-        !self.0.is_zero() && !self.0.is_sign_negative()
+        arena::with(self.0, |a| !a.is_zero() && !a.is_sign_negative())
     }
     #[inline]
     fn is_negative(&self) -> bool {
-        !self.0.is_zero() && self.0.is_sign_negative()
+        arena::with(self.0, |a| !a.is_zero() && a.is_sign_negative())
     }
 }
 
 impl FromPrimitive for MpfrFloat {
-    fn from_i64(n: i64) -> Option<Self> {
-        Some(MpfrFloat(RugFloat::with_val(default_precision(), n)))
-    }
-    fn from_u64(n: u64) -> Option<Self> {
-        Some(MpfrFloat(RugFloat::with_val(default_precision(), n)))
-    }
-    fn from_isize(n: isize) -> Option<Self> {
-        Self::from_i64(n as i64)
-    }
-    fn from_usize(n: usize) -> Option<Self> {
-        Self::from_u64(n as u64)
-    }
-    fn from_i32(n: i32) -> Option<Self> {
-        Self::from_i64(n as i64)
-    }
-    fn from_u32(n: u32) -> Option<Self> {
-        Self::from_u64(n as u64)
-    }
-    fn from_f32(f: f32) -> Option<Self> {
-        Some(MpfrFloat(RugFloat::with_val(default_precision(), f)))
-    }
-    fn from_f64(f: f64) -> Option<Self> {
-        Some(MpfrFloat(RugFloat::with_val(default_precision(), f)))
-    }
+    fn from_i64(n: i64) -> Option<Self> { Some(MpfrFloat(arena::push(RugFloat::with_val(default_precision(), n)))) }
+    fn from_u64(n: u64) -> Option<Self> { Some(MpfrFloat(arena::push(RugFloat::with_val(default_precision(), n)))) }
+    fn from_isize(n: isize) -> Option<Self> { Self::from_i64(n as i64) }
+    fn from_usize(n: usize) -> Option<Self> { Self::from_u64(n as u64) }
+    fn from_i32(n: i32) -> Option<Self> { Self::from_i64(n as i64) }
+    fn from_u32(n: u32) -> Option<Self> { Self::from_u64(n as u64) }
+    fn from_f32(f: f32) -> Option<Self> { Some(MpfrFloat(arena::push(RugFloat::with_val(default_precision(), f)))) }
+    fn from_f64(f: f64) -> Option<Self> { Some(MpfrFloat(arena::push(RugFloat::with_val(default_precision(), f)))) }
 }
 
-impl From<f64> for MpfrFloat {
-    fn from(f: f64) -> Self {
-        Self::from_f64(f).expect("f64 -> MpfrFloat is always Some")
-    }
-}
-
-impl From<i64> for MpfrFloat {
-    fn from(n: i64) -> Self {
-        Self::from_i64(n).expect("i64 -> MpfrFloat is always Some")
-    }
-}
-
-impl From<RugFloat> for MpfrFloat {
-    fn from(f: RugFloat) -> Self {
-        MpfrFloat(f)
-    }
-}
-
-// ============================================================
-// Display / LowerExp / Debug
-// ============================================================
+impl From<f64> for MpfrFloat { fn from(f: f64) -> Self { Self::from_f64(f).unwrap() } }
+impl From<i64> for MpfrFloat { fn from(n: i64) -> Self { Self::from_i64(n).unwrap() } }
+impl From<RugFloat> for MpfrFloat { fn from(f: RugFloat) -> Self { MpfrFloat(arena::push(f)) } }
 
 impl std::fmt::Debug for MpfrFloat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "MpfrFloat({})", self.0)
+        arena::with(self.0, |a| write!(f, "MpfrFloat({})", a))
     }
 }
 
 impl std::fmt::Display for MpfrFloat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(&self.0, f)
+        arena::with(self.0, |a| std::fmt::Display::fmt(a, f))
     }
 }
 
 impl std::fmt::LowerExp for MpfrFloat {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Forward via f64 for compactness in iter-print logs. The
-        // actual MPFR value retains its full working precision; this
-        // is only the print path.
-        std::fmt::LowerExp::fmt(&self.0.to_f64(), f)
+        arena::with(self.0, |a| std::fmt::LowerExp::fmt(&a.to_f64(), f))
     }
 }
 
-// ============================================================
-// BitWidthDiagnostic
-// ============================================================
-
 impl crate::algebra::transcendental::BitWidthDiagnostic for MpfrFloat {
-    /// Returns `(mantissa_prec_bits, 0)`. MPFR floats have fixed
-    /// per-value precision so the "denominator bits" axis is zero;
-    /// the "numerator" axis surfaces the configured working precision
-    /// for diagnostic comparison with the rational backend.
     #[inline]
     fn bit_width(&self) -> (u64, u64) {
-        (self.0.prec() as u64, 0)
+        (arena::with(self.0, |a| a.prec() as u64), 0)
+    }
+}
+
+impl num_traits::ToPrimitive for MpfrFloat {
+    fn to_i64(&self) -> Option<i64> { Some(self.to_f64() as i64) }
+    fn to_u64(&self) -> Option<u64> { Some(self.to_f64() as u64) }
+    fn to_isize(&self) -> Option<isize> { Some(self.to_f64() as isize) }
+    fn to_usize(&self) -> Option<usize> { Some(self.to_f64() as usize) }
+    fn to_f64(&self) -> Option<f64> { Some(self.to_f64()) }
+}
+
+impl num_traits::NumCast for MpfrFloat {
+    fn from<T: num_traits::ToPrimitive>(n: T) -> Option<Self> {
+        n.to_f64().and_then(|v| Self::from_f64(v))
     }
 }

@@ -104,6 +104,13 @@ pub fn tighten_vec(x: &[f64], q_max: u64) -> Vec<RationalReal> {
     x.iter().map(|&xi| tighten_scalar(xi, q_max)).collect()
 }
 
+/// Element-wise tightening over a 2D matrix block, returning a
+/// `Vec<Vec<RationalReal>>`. Useful for symmetric PSD blocks.
+/// Non-finite entries panic.
+pub fn tighten_psd_block(block: &[Vec<f64>], q_max: u64) -> Vec<Vec<RationalReal>> {
+    block.iter().map(|row| tighten_vec(row, q_max)).collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::reset_arena;
