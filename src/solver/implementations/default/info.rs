@@ -51,6 +51,18 @@ pub struct DefaultInfo<T> {
     pub(crate) prev_gap_abs: T,
     /// relative duality gap from previous iteration
     pub(crate) prev_gap_rel: T,
+
+    // best iterate seen so far (by worst-case residual/gap merit), used as a
+    // fallback when the solver terminates with a numerical error on a
+    // degraded final iterate
+    pub(crate) best_cost_primal: T,
+    pub(crate) best_cost_dual: T,
+    pub(crate) best_res_primal: T,
+    pub(crate) best_res_dual: T,
+    pub(crate) best_gap_abs: T,
+    pub(crate) best_gap_rel: T,
+    pub(crate) best_ktratio: T,
+    pub(crate) best_merit: T,
     /// solve time
     pub solve_time: f64,
     /// solver status
@@ -88,6 +100,7 @@ where
         self.status = SolverStatus::Unsolved;
         self.iterations = 0;
         self.solve_time = 0f64;
+        self.best_merit = T::infinity();
 
         timers.reset_timer("solve");
     }
@@ -250,6 +263,51 @@ where
         self.gap_rel = self.prev_gap_rel;
 
         variables.copy_from(prev_variables);
+    }
+
+    fn save_best_iterate(&mut self, variables: &Self::V, best_variables: &mut Self::V) {
+        // Merit is the worst of the quantities the (almost-)solved checks test. Iterates on
+        // an infeasibility path (κ/τ > 1) are never candidates.
+        if self.ktratio > T::one() {
+            return;
+        }
+
+        let merit = T::max(T::max(self.gap_rel, self.res_primal), self.res_dual);
+        if merit >= self.best_merit {
+            return;
+        }
+
+        self.best_merit = merit;
+        self.best_cost_primal = self.cost_primal;
+        self.best_cost_dual = self.cost_dual;
+        self.best_res_primal = self.res_primal;
+        self.best_res_dual = self.res_dual;
+        self.best_gap_abs = self.gap_abs;
+        self.best_gap_rel = self.gap_rel;
+        self.best_ktratio = self.ktratio;
+
+        best_variables.copy_from(variables);
+    }
+
+    fn reset_to_best_iterate(&mut self, variables: &mut Self::V, best_variables: &Self::V) {
+        if !self.best_merit.is_finite() {
+            return;
+        }
+
+        let merit = T::max(T::max(self.gap_rel, self.res_primal), self.res_dual);
+        if self.ktratio <= T::one() && merit <= self.best_merit {
+            return;
+        }
+
+        self.cost_primal = self.best_cost_primal;
+        self.cost_dual = self.best_cost_dual;
+        self.res_primal = self.best_res_primal;
+        self.res_dual = self.best_res_dual;
+        self.gap_abs = self.best_gap_abs;
+        self.gap_rel = self.best_gap_rel;
+        self.ktratio = self.best_ktratio;
+
+        variables.copy_from(best_variables);
     }
 
     fn save_scalars(&mut self, μ: T, α: T, σ: T, iter: u32) {
