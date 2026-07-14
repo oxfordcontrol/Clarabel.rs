@@ -446,3 +446,76 @@ where
             && (self.res_dual_inf < -tol_infeas_rel * residuals.dot_qx)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::solver::core::traits::Info;
+
+    // fabricate an iterate whose merit-relevant fields are set directly, with x[0]
+    // tagging which iterate it is so we can see which one survives
+    fn set_iterate(info: &mut DefaultInfo<f64>, vars: &mut DefaultVariables<f64>, res: f64, ktratio: f64, tag: f64) {
+        info.res_primal = res;
+        info.res_dual = res;
+        info.gap_rel = res;
+        info.gap_abs = res;
+        info.ktratio = ktratio;
+        vars.x[0] = tag;
+    }
+
+    #[test]
+    fn best_iterate_survives_a_degraded_final_iterate() {
+        let mut info = DefaultInfo::<f64>::new();
+        let mut vars = DefaultVariables::<f64>::new(1, 1);
+        let mut best = DefaultVariables::<f64>::new(1, 1);
+        info.reset(&mut Default::default());
+
+        // a good iterate, then a better one, then the blowup that ends the solve
+        set_iterate(&mut info, &mut vars, 1e-6, 0.5, 1.0);
+        info.save_best_iterate(&vars, &mut best);
+        set_iterate(&mut info, &mut vars, 1e-10, 0.5, 2.0);
+        info.save_best_iterate(&vars, &mut best);
+        set_iterate(&mut info, &mut vars, 3e-5, 0.5, 3.0);
+        info.save_best_iterate(&vars, &mut best);
+
+        info.reset_to_best_iterate(&mut vars, &best);
+
+        assert_eq!(vars.x[0], 2.0, "the 1e-10 iterate should be restored");
+        assert_eq!(info.res_primal, 1e-10);
+        assert_eq!(info.gap_rel, 1e-10);
+    }
+
+    #[test]
+    fn a_better_final_iterate_is_left_alone() {
+        let mut info = DefaultInfo::<f64>::new();
+        let mut vars = DefaultVariables::<f64>::new(1, 1);
+        let mut best = DefaultVariables::<f64>::new(1, 1);
+        info.reset(&mut Default::default());
+
+        set_iterate(&mut info, &mut vars, 1e-6, 0.5, 1.0);
+        info.save_best_iterate(&vars, &mut best);
+        set_iterate(&mut info, &mut vars, 1e-9, 0.5, 2.0);
+
+        info.reset_to_best_iterate(&mut vars, &best);
+
+        assert_eq!(vars.x[0], 2.0, "the current iterate is the best one; keep it");
+        assert_eq!(info.res_primal, 1e-9);
+    }
+
+    #[test]
+    fn iterates_on_the_infeasibility_path_are_not_candidates() {
+        let mut info = DefaultInfo::<f64>::new();
+        let mut vars = DefaultVariables::<f64>::new(1, 1);
+        let mut best = DefaultVariables::<f64>::new(1, 1);
+        info.reset(&mut Default::default());
+
+        // tiny residuals but ktratio > 1: this is an infeasibility certificate path
+        set_iterate(&mut info, &mut vars, 1e-12, 5.0, 1.0);
+        info.save_best_iterate(&vars, &mut best);
+        set_iterate(&mut info, &mut vars, 3e-5, 5.0, 2.0);
+        info.reset_to_best_iterate(&mut vars, &best);
+
+        assert_eq!(vars.x[0], 2.0, "nothing was ever saved, so nothing is restored");
+        assert!(!info.best_merit.is_finite());
+    }
+}
