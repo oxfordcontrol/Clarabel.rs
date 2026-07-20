@@ -171,12 +171,28 @@ where
         lhsz: Option<&mut [T]>,
         settings: &CoreSettings<T>,
     ) -> bool {
-        self.ldlsolver.solve(&self.KKT, &mut self.x, &mut self.b);
-
         let is_success = {
             if settings.iterative_refinement_enable {
-                self.iterative_refinement(settings)
+                // backends may implement refinement internally (in their
+                // own permuted coordinates); otherwise refine here via
+                // repeated solves against our unpermuted KKT copy
+                let refined = self.ldlsolver.solve_refined(
+                    &mut self.x,
+                    &self.b,
+                    settings.iterative_refinement_reltol,
+                    settings.iterative_refinement_abstol,
+                    settings.iterative_refinement_max_iter,
+                    settings.iterative_refinement_stop_ratio,
+                );
+                match refined {
+                    Some(is_success) => is_success,
+                    None => {
+                        self.ldlsolver.solve(&self.KKT, &mut self.x, &mut self.b);
+                        self.iterative_refinement(settings)
+                    }
+                }
             } else {
+                self.ldlsolver.solve(&self.KKT, &mut self.x, &mut self.b);
                 self.x.is_finite()
             }
         };
@@ -253,11 +269,14 @@ where
         let is_success = self.ldlsolver.refactor(KKT);
 
         if settings.static_regularization_enable {
-            // put our internal copy of the KKT matrix back the way
-            // it was. Not necessary to fix the ldlsolver copy because
-            // this is only needed for our post-factorization IR scheme
+            // put our internal copy of the KKT matrix back the way it
+            // was, and likewise any internal copy held by the ldlsolver.
+            // Both are only used post-factorization, for computing
+            // iterative refinement residuals against the unregularized
+            // matrix; the shift is recomputed and reapplied from the
+            // restored diagonal before the next refactorization.
 
-            _update_values_KKT(KKT, &map.diag_full, diag_kkt);
+            _update_values(&mut self.ldlsolver, KKT, &map.diag_full, diag_kkt);
         }
 
         is_success

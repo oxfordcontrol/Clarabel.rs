@@ -85,6 +85,16 @@ pub struct QDLDLFactorisation<T = f64> {
     workspace: QDLDLWorkspace<T>,
     /// true if factorisation is symbolic only
     is_symbolic: bool,
+    /// workspace for `solve_refined`, allocated on first use
+    ir_work: Option<RefinementWorkspace<T>>,
+}
+
+// working vectors for solve_refined, all in permuted coordinates
+#[derive(Debug)]
+struct RefinementWorkspace<T> {
+    x: Vec<T>,  // current solution
+    dx: Vec<T>, // refinement step / trial solution
+    e: Vec<T>,  // residual
 }
 
 impl<T> QDLDLFactorisation<T>
@@ -135,6 +145,102 @@ where
 
         // inverse permutation to put unpermuted soln in b
         ipermute(b, tmp, &self.perm);
+    }
+
+    /// Solves Ax = b like [`solve`](crate::qdldl::QDLDLFactorisation::solve),
+    /// then iteratively refines x against the matrix currently held in the
+    /// internal workspace (i.e. the values set through
+    /// [`update_values`](crate::qdldl::QDLDLFactorisation::update_values) and
+    /// friends, which may deliberately differ from the values that were
+    /// factored, e.g. by a static regularization shift).
+    ///
+    /// The refinement loop runs entirely in the internally permuted
+    /// coordinates: the permutation is applied once to `b` and once to the
+    /// returned `x`, rather than once per backsolve as with repeated calls
+    /// to [`solve`](crate::qdldl::QDLDLFactorisation::solve).  Stopping
+    /// rules: refinement ends when the residual satisfies
+    /// `norm(b - Ax) <= abstol + reltol * norm(b)` (∞-norms), when
+    /// `max_iter` passes have been made, or when a pass fails to improve
+    /// the residual norm by at least `stop_ratio` (an improving final pass
+    /// is still accepted).  Returns false if the solution or residual
+    /// became non-finite.
+    pub fn solve_refined(
+        &mut self,
+        x: &mut [T],
+        b: &[T],
+        reltol: T,
+        abstol: T,
+        max_iter: u32,
+        stop_ratio: T,
+    ) -> bool {
+        assert!(!self.is_symbolic);
+        assert_eq!(b.len(), self.D.len());
+        assert_eq!(x.len(), self.D.len());
+
+        let n = self.D.len();
+        let work = self.ir_work.get_or_insert_with(|| RefinementWorkspace {
+            x: vec![T::zero(); n],
+            dx: vec![T::zero(); n],
+            e: vec![T::zero(); n],
+        });
+
+        // permute b once; all work below is in permuted coordinates
+        let bp = &mut self.workspace.fwork;
+        permute(bp, b, &self.perm);
+
+        let (Lp, Li, Lx) = (&self.L.colptr, &self.L.rowval, &self.L.nzval);
+        let Asym = self.workspace.triuA.sym_up();
+        let normb = bp.norm_inf();
+
+        // initial solve
+        let xp = &mut work.x;
+        xp.copy_from(bp);
+        _solve(Lp, Li, Lx, &self.Dinv, xp);
+
+        // computes e = bp - A*ξ and returns its norm
+        let refine_error = |e: &mut [T], ξ: &[T]| -> T {
+            e.copy_from(bp);
+            Asym.symv(e, ξ, -T::one(), T::one());
+            e.norm_inf()
+        };
+
+        let (e, dx) = (&mut work.e, &mut work.dx);
+        let mut norme = refine_error(e, xp);
+        if !norme.is_finite() {
+            return false;
+        }
+
+        for _ in 0..max_iter {
+            if norme <= (abstol + reltol * normb) {
+                // within tolerance.  Exit
+                break;
+            }
+            let lastnorme = norme;
+
+            // make a refinement: dx = A⁻¹e, prospective solution xp + dx
+            dx.copy_from(e);
+            _solve(Lp, Li, Lx, &self.Dinv, dx);
+            dx.axpby(T::one(), xp, T::one());
+
+            norme = refine_error(e, dx);
+            if !norme.is_finite() {
+                return false;
+            }
+
+            let improved_ratio = lastnorme / norme;
+            if improved_ratio < stop_ratio {
+                // insufficient improvement.  Exit
+                if improved_ratio > T::one() {
+                    std::mem::swap(xp, dx);
+                }
+                break;
+            }
+            std::mem::swap(xp, dx);
+        }
+
+        // undo the permutation into the output
+        ipermute(x, xp, &self.perm);
+        true
     }
 
     /// Update a subset of the values of the matrix to be (re)factored.  See [`refactor`](crate::qdldl::QDLDLFactorisation::refactor)
@@ -291,6 +397,7 @@ fn _qdldl_new<T: FloatT>(
         Dinv,
         workspace,
         is_symbolic: opts.logical,
+        ir_work: None,
     })
 }
 

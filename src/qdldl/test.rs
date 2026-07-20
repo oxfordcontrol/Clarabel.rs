@@ -230,6 +230,31 @@ fn test_solve_basic() {
 }
 
 #[test]
+fn test_solve_refined() {
+    let A = test_matrix_4x4();
+    let mut factors = QDLDLFactorisation::new(&A, None).unwrap();
+    let x_true = [1., -2., 3., -4.];
+    let b = [20.0, -22.0, 32.0, -7.0];
+
+    // agrees with the plain solve
+    let mut x = [0.0; 4];
+    assert!(factors.solve_refined(&mut x, &b, 1e-13, 1e-12, 10, 5.0));
+    assert!(inf_norm_diff(&x_true, &x) <= 1e-10);
+
+    // refines against the values currently in the internal workspace,
+    // even where they differ from the factored ones: scale the matrix
+    // by 1.1 without refactoring, and refinement (contraction rate
+    // ||I - A⁻¹(1.1A)|| = 0.1 per pass) must converge to the solution
+    // of the *scaled* system using the stale factors
+    let indices: Vec<usize> = (0..A.nzval.len()).collect();
+    factors.scale_values(&indices, 1.1);
+    let mut x = [0.0; 4];
+    assert!(factors.solve_refined(&mut x, &b, 1e-13, 1e-12, 20, 5.0));
+    let x_scaled: Vec<f64> = x_true.iter().map(|v| v / 1.1).collect();
+    assert!(inf_norm_diff(&x_scaled, &x) <= 1e-10);
+}
+
+#[test]
 #[should_panic]
 fn test_solve_logical() {
     let A = test_matrix_4x4();
