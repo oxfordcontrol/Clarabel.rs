@@ -190,13 +190,77 @@ where
         // factorization since it will always be the same.  Calling
         // this function implies that we want a numerical factorization
         self.is_symbolic = false;
-        _factor(
-            &mut self.L,
+
+        // The sparsity pattern of L was fixed by the factorization in
+        // `new` (numeric or logical), so refactorizations can replay a
+        // precomputed update schedule instead of re-deriving the pattern.
+        // Built lazily here so that single-factorization use pays nothing.
+        if matches!(self.workspace.schedule, ScheduleState::NotBuilt) {
+            let ws = &self.workspace;
+            self.workspace.schedule = match _build_schedule(
+                &ws.triuA.colptr,
+                &ws.triuA.rowval,
+                &ws.etree,
+                &self.L.colptr,
+                &self.L.rowval,
+            ) {
+                Some(s) => ScheduleState::Ready(s),
+                None => ScheduleState::Unavailable,
+            };
+        }
+
+        if !matches!(self.workspace.schedule, ScheduleState::Ready(_)) {
+            return _factor(
+                &mut self.L,
+                &mut self.D,
+                &mut self.Dinv,
+                &mut self.workspace,
+                false,
+            );
+        }
+
+        // destructure so the borrows of the schedule and the other
+        // workspace fields are disjoint
+        let QDLDLWorkspace {
+            schedule,
+            triuA,
+            fwork,
+            Dsigns,
+            regularize_enable,
+            regularize_eps,
+            regularize_delta,
+            regularize_count,
+            positive_inertia,
+            ..
+        } = &mut self.workspace;
+        let ScheduleState::Ready(sched) = schedule else {
+            unreachable!()
+        };
+
+        *positive_inertia = _refactor_scheduled(
+            sched,
+            &triuA.colptr,
+            &triuA.rowval,
+            &triuA.nzval,
+            &self.L.colptr,
+            &self.L.rowval,
+            &mut self.L.nzval,
             &mut self.D,
             &mut self.Dinv,
-            &mut self.workspace,
-            self.is_symbolic,
-        )
+            fwork,
+            Dsigns,
+            *regularize_enable,
+            *regularize_eps,
+            *regularize_delta,
+            regularize_count,
+        )?;
+        Ok(())
+    }
+
+    // test support: confirms refactorization used the scheduled replay path
+    #[cfg(test)]
+    pub(crate) fn refactor_schedule_is_ready(&self) -> bool {
+        matches!(self.workspace.schedule, ScheduleState::Ready(_))
     }
 
     /// Returns the number of nonzeros in A for A = LDL^T
@@ -325,6 +389,10 @@ struct QDLDLWorkspace<T> {
 
     // number of regularized entries in D
     regularize_count: usize,
+
+    // precomputed control flow for numeric refactorization,
+    // built lazily on the first refactor
+    schedule: ScheduleState,
 }
 
 impl<T> QDLDLWorkspace<T>
@@ -375,8 +443,251 @@ where
             regularize_eps,
             regularize_delta,
             regularize_count,
+            schedule: ScheduleState::NotBuilt,
         })
     }
+}
+
+// -------------------------------------
+// Precomputed refactorization schedule
+// -------------------------------------
+//
+// After the first factorization the sparsity pattern of L (colptr/rowval)
+// is fixed; refactorizations change only numeric values.  `_factor_inner`
+// nevertheless re-derives, for every column k, the list of prior columns
+// that update it — an elimination-tree walk with marker arrays, a work
+// buffer and a reversal step.  On matrices whose factors have little
+// fill-in (typical for IPM KKT systems), that control-flow overhead
+// dominates the actual arithmetic of a refactorization.
+//
+// `FactorSchedule` records the discovered control flow once, flat: for each
+// column k in order, the sequence of (cidx, pos) update steps exactly as
+// `_factor_inner` executes them, where cidx is the prior column supplying
+// the update and pos is the position in L.nzval that receives L[k,cidx].
+// The update range of a step is Lp[cidx]..pos: at the moment step (k,cidx)
+// runs, column cidx holds exactly its entries with row index < k, because
+// entries are appended to each column in increasing row order.
+// `_refactor_scheduled` then replays the identical floating-point
+// operations in the identical order — giving bit-identical L, D and
+// regularization decisions — without re-deriving any of the pattern.
+// This is the standard symbolic/numeric phase separation of sparse direct
+// solvers (T. Davis, "Direct Methods for Sparse Linear Systems", SIAM 2006,
+// ch. 4); QDLDL's original single-phase design favours simplicity for
+// one-shot factorizations, but Clarabel refactors the same pattern once
+// per interior-point iteration.
+//
+// Indices are stored as u32 to halve the memory traffic of the replay.
+// Patterns too large for that (nnz(L) or n >= 2^32) fall back to the
+// original path via `ScheduleState::Unavailable`.
+
+#[derive(Debug)]
+struct FactorSchedule {
+    // start of column k's steps in cidx/pos; length n+1
+    colptr: Vec<u32>,
+    // source column of each update step
+    cidx: Vec<u32>,
+    // position in L.nzval written by each update step
+    pos: Vec<u32>,
+}
+
+#[derive(Debug)]
+enum ScheduleState {
+    NotBuilt,
+    Unavailable,
+    Ready(FactorSchedule),
+}
+
+// Records the update schedule by replaying the pattern-discovery phase of
+// `_factor_inner` (which see), with the numeric work stripped out.  The two
+// functions must stay in lockstep; as a defence, every recorded write
+// position is verified against the already-computed pattern of L
+// (Li[pos] == k), and the total step count against nnz(L).  Any mismatch
+// returns None and refactorization falls back to `_factor_inner`.
+fn _build_schedule(
+    Ap: &[usize],
+    Ai: &[usize],
+    etree: &[usize],
+    Lp: &[usize],
+    Li: &[usize],
+) -> Option<FactorSchedule> {
+    let n = Lp.len() - 1;
+    let nnzL = Lp[n];
+    if n >= u32::MAX as usize || nnzL >= u32::MAX as usize {
+        return None;
+    }
+
+    let mut colptr = Vec::with_capacity(n + 1);
+    let mut cidx = Vec::with_capacity(nnzL);
+    let mut pos = Vec::with_capacity(nnzL);
+
+    let mut y_markers = vec![QDLDL_UNUSED; n];
+    let mut y_idx = vec![0usize; n];
+    let mut elim_buffer = vec![0usize; n];
+    let mut next_colspace: Vec<usize> = Lp[0..n].to_vec();
+
+    colptr.push(0u32);
+    if n > 0 {
+        colptr.push(0u32); // column 0 has no update steps
+    }
+
+    for k in 1..n {
+        // pattern-discovery phase, exactly as in _factor_inner
+        let mut nnz_y = 0;
+
+        for &bidx in &Ai[Ap[k]..Ap[k + 1]] {
+            if bidx == k {
+                continue;
+            }
+
+            if y_markers[bidx] == QDLDL_UNUSED {
+                y_markers[bidx] = QDLDL_USED;
+                elim_buffer[0] = bidx;
+                let mut nnz_e = 1;
+
+                let mut next_idx = etree[bidx];
+                while next_idx != QDLDL_UNKNOWN && next_idx < k {
+                    if y_markers[next_idx] == QDLDL_USED {
+                        break;
+                    }
+                    y_markers[next_idx] = QDLDL_USED;
+                    elim_buffer[nnz_e] = next_idx;
+                    next_idx = etree[next_idx];
+                    nnz_e += 1;
+                }
+
+                while nnz_e != 0 {
+                    nnz_e -= 1;
+                    y_idx[nnz_y] = elim_buffer[nnz_e];
+                    nnz_y += 1;
+                }
+            }
+        }
+
+        // record the value-placement phase of _factor_inner
+        for i in (0..nnz_y).rev() {
+            let c = y_idx[i];
+            let p = next_colspace[c];
+
+            // verify against the pattern L already has
+            if Li[p] != k {
+                return None;
+            }
+
+            cidx.push(c as u32);
+            pos.push(p as u32);
+            next_colspace[c] += 1;
+            y_markers[c] = QDLDL_UNUSED;
+        }
+        colptr.push(cidx.len() as u32);
+    }
+
+    if cidx.len() != nnzL {
+        return None;
+    }
+
+    Some(FactorSchedule { colptr, cidx, pos })
+}
+
+// Numeric refactorization by schedule replay.  Performs the identical
+// floating point operations, in the identical order, as
+// `_factor_inner(..., logical_factor = false)` on the same pattern, so the
+// results (L, D, Dinv, inertia and regularization counts) are bit-identical
+// to that function's.  See `_build_schedule` for the schedule's invariants.
+#[allow(clippy::too_many_arguments)]
+fn _refactor_scheduled<T: FloatT>(
+    sched: &FactorSchedule,
+    Ap: &[usize],
+    Ai: &[usize],
+    Ax: &[T],
+    Lp: &[usize],
+    Li: &[usize],
+    Lx: &mut [T],
+    D: &mut [T],
+    Dinv: &mut [T],
+    y_vals: &mut [T],
+    Dsigns: &[i8],
+    regularize_enable: bool,
+    regularize_eps: T,
+    regularize_delta: T,
+    regularize_count: &mut usize,
+) -> Result<usize, QDLDLError> {
+    *regularize_count = 0;
+    let mut positiveValuesInD = 0;
+    let n = Lp.len() - 1;
+
+    y_vals.fill(T::zero());
+    D.fill(T::zero());
+
+    // First element of the diagonal D, as in _factor_inner
+    D[0] = Ax[0];
+    if regularize_enable {
+        let sign = T::from_i8(Dsigns[0]).unwrap();
+        if D[0] * sign < regularize_eps {
+            D[0] = regularize_delta * sign;
+            *regularize_count += 1;
+        }
+    }
+    if D[0].is_zero() {
+        return Err(QDLDLError::ZeroPivot);
+    }
+    if D[0] > T::zero() {
+        positiveValuesInD += 1;
+    }
+    Dinv[0] = T::recip(D[0]);
+
+    for k in 1..n {
+        // scatter the kth column of A above the diagonal into the sparse
+        // accumulator, and initialize D[k], exactly as in _factor_inner
+        for i in Ap[k]..Ap[k + 1] {
+            let bidx = Ai[i];
+            if bidx == k {
+                D[k] = Ax[i];
+            } else {
+                y_vals[bidx] = Ax[i];
+            }
+        }
+
+        // replay the update steps for this column
+        let (f, l) = (sched.colptr[k] as usize, sched.colptr[k + 1] as usize);
+        for (&c, &p) in zip(&sched.cidx[f..l], &sched.pos[f..l]) {
+            let (cidx, tmp_idx) = (c as usize, p as usize);
+            let y_vals_cidx = y_vals[cidx];
+
+            let (f, l) = (Lp[cidx], tmp_idx);
+            unsafe {
+                // Safety: Li entries index the matrix dimension, and the
+                // schedule's positions were verified against Li at build
+                // time; both bound y_vals/Lx as in _factor_inner.
+                for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
+                    *(y_vals.get_unchecked_mut(Lij)) -= Lxj * y_vals_cidx;
+                }
+
+                let Lx_tmp_idx = y_vals_cidx * *Dinv.get_unchecked(cidx);
+                *Lx.get_unchecked_mut(tmp_idx) = Lx_tmp_idx;
+                *D.get_unchecked_mut(k) -= y_vals_cidx * Lx_tmp_idx;
+            }
+
+            y_vals[cidx] = T::zero();
+        }
+
+        // pivot regularization / rejection, as in _factor_inner
+        if regularize_enable {
+            let sign = T::from_i8(Dsigns[k]).unwrap();
+            if D[k] * sign < regularize_eps {
+                D[k] = regularize_delta * sign;
+                *regularize_count += 1;
+            }
+        }
+        if D[k].is_zero() {
+            return Err(QDLDLError::ZeroPivot);
+        }
+        if D[k] > T::zero() {
+            positiveValuesInD += 1;
+        }
+        Dinv[k] = T::recip(D[k]);
+    }
+
+    Ok(positiveValuesInD)
 }
 
 fn _factor<T: FloatT>(
