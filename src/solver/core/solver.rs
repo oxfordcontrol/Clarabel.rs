@@ -133,6 +133,7 @@ where
     pub step_lhs: V,
     pub step_rhs: V,
     pub prev_vars: V,
+    pub best_vars: V,
     pub info: I,
     pub solution: SO,
     pub(crate) settings: SE, // not public to avoid unchecked modifications
@@ -304,6 +305,11 @@ where
                 self.info.print_status(&self.settings).unwrap();
             }}
 
+            // remember the best iterate seen so far, so that a later numerical
+            // failure can fall back to it rather than a degraded final iterate
+            self.info
+                .save_best_iterate(&self.variables, &mut self.best_vars, &self.settings);
+
             // termination checks
             // --------------
 
@@ -447,6 +453,22 @@ where
         }
 
         timeit! {timers => "post-process"; {
+            // on numerical failure the final iterate is often severely degraded
+            // (e.g. a blown-up primal residual): fall back to the best iterate
+            // seen so that the "almost" convergence check below applies to it.
+            // Iteration and time limits are included because `post_process`
+            // runs that same check for them, and their final iterate is no more
+            // likely to be the best one seen than a failed solve's is.
+            if self.info.get_status().is_errored()
+                || matches!(
+                    self.info.get_status(),
+                    SolverStatus::MaxIterations | SolverStatus::MaxTime
+                )
+            {
+                self.info
+                    .reset_to_best_iterate(&mut self.variables, &self.best_vars, &self.settings);
+            }
+
             //check for "almost" convergence case and then extract solution
             self.info.post_process(&self.residuals, &self.settings);
             self.solution

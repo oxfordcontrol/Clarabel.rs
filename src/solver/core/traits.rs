@@ -212,6 +212,21 @@ where
     /// restore a prior iterate
     fn reset_to_prev_iterate(&mut self, variables: &mut Self::V, prev_variables: &Self::V);
 
+    /// save the current iterate as the best seen so far if it improves on it
+    fn save_best_iterate(
+        &mut self,
+        variables: &Self::V,
+        best_variables: &mut Self::V,
+        settings: &Self::SE,
+    );
+    /// restore the best iterate seen if it improves on the current one
+    fn reset_to_best_iterate(
+        &mut self,
+        variables: &mut Self::V,
+        best_variables: &Self::V,
+        settings: &Self::SE,
+    );
+
     /// Record some of the top level solver's choice of various
     /// scalars. `μ = ` normalized gap.  `α = ` computed step length.
     /// `σ = ` multiplier for the updated centering parameter.

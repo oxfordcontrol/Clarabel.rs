@@ -105,12 +105,13 @@ where
         let step_rhs  = DefaultVariables::<T>::new(data.n,data.m);
         let step_lhs  = DefaultVariables::<T>::new(data.n,data.m);
         let prev_vars = DefaultVariables::<T>::new(data.n,data.m);
+        let best_vars = DefaultVariables::<T>::new(data.n,data.m);
 
         // configure empty user callbacks
 
         output = Self{
             data,variables,residuals,kktsystem,
-            step_lhs,step_rhs,prev_vars,info,
+            step_lhs,step_rhs,prev_vars,best_vars,info,
             solution,cones,settings,
             timers: None,
             callbacks: SolverCallbacks::default(),
