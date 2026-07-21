@@ -276,8 +276,15 @@ where
             return;
         }
 
+        // Strict improvement, tested so that a non-finite merit is rejected.  Every
+        // comparison against NaN is false, so `merit >= best_merit` would treat a NaN
+        // iterate as an improvement, overwrite a good one with it, and then disable the
+        // fallback altogether, since the restore below requires a finite best_merit --
+        // and a solve whose iterates have gone non-finite is exactly the case this is
+        // meant to rescue.  The same test rejects an infinite merit, which is what a
+        // zero reduced tolerance would produce.
         let merit = self.termination_merit(settings);
-        if merit >= self.best_merit {
+        if !(merit < self.best_merit) {
             return;
         }
 
@@ -602,6 +609,34 @@ mod tests {
         info.reset_to_best_iterate(&mut vars, &best, &settings);
         assert_eq!(vars.x[0], 2.0);
         assert_eq!(info.res_primal, 9e-5);
+    }
+
+    // A solve whose iterates go non-finite is the case this fallback exists for, so a NaN
+    // iterate must not be able to displace the good one that preceded it.  Comparisons
+    // against NaN are all false, which makes this easy to get wrong.
+    #[test]
+    fn a_nan_iterate_cannot_displace_the_best_one() {
+        let settings = DefaultSettings::<f64>::default();
+        let mut info = DefaultInfo::<f64>::new();
+        let mut vars = DefaultVariables::<f64>::new(1, 1);
+        let mut best = DefaultVariables::<f64>::new(1, 1);
+        info.reset(&mut Default::default());
+
+        set_iterate(&mut info, &mut vars, 1e-10, 0.5, 1.0);
+        info.save_best_iterate(&vars, &mut best, &settings);
+
+        // the solve blows up: residuals, gap and κ/τ are all NaN
+        set_iterate(&mut info, &mut vars, f64::NAN, f64::NAN, 2.0);
+        info.save_best_iterate(&vars, &mut best, &settings);
+        assert_eq!(best.x[0], 1.0, "the NaN iterate must not be saved");
+        assert!(
+            info.best_merit.is_finite(),
+            "the fallback must remain armed"
+        );
+
+        info.reset_to_best_iterate(&mut vars, &best, &settings);
+        assert_eq!(vars.x[0], 1.0, "the good iterate must be restored");
+        assert_eq!(info.res_primal, 1e-10);
     }
 
     #[test]
