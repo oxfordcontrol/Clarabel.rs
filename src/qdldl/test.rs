@@ -20,6 +20,10 @@ fn test_matrix_4x4() -> CscMatrix<f64> {
     }
 }
 
+fn inf_norm<T: FloatT>(a: &[T]) -> T {
+    a.iter().fold(T::zero(), |acc, x| T::max(acc, T::abs(*x)))
+}
+
 fn inf_norm_diff<T: FloatT>(a: &[T], b: &[T]) -> T {
     zip(a, b).fold(T::zero(), |acc, (x, y)| T::max(acc, T::abs(*x - *y)))
 }
@@ -252,6 +256,163 @@ fn test_solve_refined() {
     assert!(factors.solve_refined(&mut x, &b, 1e-13, 1e-12, 20, 5.0));
     let x_scaled: Vec<f64> = x_true.iter().map(|v| v / 1.1).collect();
     assert!(inf_norm_diff(&x_scaled, &x) <= 1e-10);
+}
+
+// A small quasidefinite KKT-like matrix [[diag(p) B'; B -diag(r)]] in
+// upper triangular CSC form, with the D signs it should factor with.
+#[cfg(test)]
+fn test_matrix_kkt_like(nx: usize, nz: usize, seed: u64) -> (CscMatrix<f64>, Vec<i8>) {
+    let mut state = seed;
+    let mut next = move || {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        ((state >> 33) as f64) / ((1u64 << 31) as f64) - 1.0
+    };
+
+    let n = nx + nz;
+    let mut cols: Vec<Vec<(usize, f64)>> = vec![Vec::new(); n];
+    for j in 0..nx {
+        cols[j].push((j, 1.0 + next().abs()));
+    }
+    for j in 0..nz {
+        let col = nx + j;
+        for t in 0..3 {
+            let i = ((next().abs() * nx as f64) as usize + t * 7) % nx;
+            cols[col].push((i, next()));
+        }
+        cols[col].sort_by_key(|e| e.0);
+        cols[col].dedup_by_key(|e| e.0);
+        cols[col].push((col, -(1.0 + next().abs())));
+    }
+
+    let mut colptr = vec![0usize];
+    let (mut rowval, mut nzval) = (Vec::new(), Vec::new());
+    for c in &cols {
+        for &(i, v) in c {
+            rowval.push(i);
+            nzval.push(v);
+        }
+        colptr.push(rowval.len());
+    }
+    let mut signs = vec![1i8; n];
+    signs[nx..].fill(-1);
+    (
+        CscMatrix {
+            m: n,
+            n,
+            colptr,
+            rowval,
+            nzval,
+        },
+        signs,
+    )
+}
+
+// With exactly-representable values every product and sum below is
+// exact, so the both-triangles residual must agree with the triangular
+// symv *bitwise*.  Any disagreement would be a structural error in the
+// copy or its value map rather than a rounding difference.
+#[test]
+fn test_symmetric_copy_exact_on_integer_data() {
+    // upper triangular, small integers, some zero-free columns
+    //   [ 2  -1   0   3 ]
+    //   [    -4   5   0 ]
+    //   [         6  -2 ]
+    //   [             8 ]
+    let triu = CscMatrix {
+        m: 4,
+        n: 4,
+        colptr: vec![0, 1, 3, 5, 8],
+        rowval: vec![0, 0, 1, 1, 2, 0, 2, 3],
+        nzval: vec![2., -1., -4., 5., 6., 3., -2., 8.],
+    };
+
+    let mut sym = _build_symmetric_copy(&triu).unwrap();
+    for (dst, &k) in zip(&mut sym.A.nzval, &sym.sym_to_triu) {
+        *dst = triu.nzval[k as usize];
+    }
+    // 4 diagonal entries, 4 off-diagonal mirrored
+    assert_eq!(sym.A.nzval.len(), 2 * 8 - 4);
+
+    let x = [1., -2., 4., 8.];
+    let b = [100., -100., 50., 25.];
+
+    let mut e_ref = b;
+    triu.sym_up().symv(&mut e_ref, &x, -1.0, 1.0);
+
+    let mut e_new = [0.0; 4];
+    let norme = _sym_residual(&sym, &mut e_new, &b, &x);
+
+    assert_eq!(e_ref, e_new); // bitwise on exact data
+    assert_eq!(norme, inf_norm(&e_new));
+}
+
+// A non-finite solution must be reported rather than masked.  The running
+// maximum cannot see a NaN on its own, because IEEE maxNum returns the
+// non-NaN operand, so without explicit tracking a NaN residual would leave
+// the norm finite and the caller would accept a NaN solution as converged.
+#[test]
+fn test_sym_residual_reports_nan() {
+    let triu = CscMatrix {
+        m: 3,
+        n: 3,
+        colptr: vec![0, 1, 3, 6],
+        rowval: vec![0, 0, 1, 0, 1, 2],
+        nzval: vec![2.0, 1.0, 3.0, -1.0, 0.5, 4.0],
+    };
+    let mut sym = _build_symmetric_copy(&triu).unwrap();
+    for (dst, &k) in zip(&mut sym.A.nzval, &sym.sym_to_triu) {
+        *dst = triu.nzval[k as usize];
+    }
+    let b = [1.0, 2.0, 3.0];
+    let mut e = [0.0; 3];
+
+    // finite input: ordinary infinity norm
+    let n_ok: f64 = _sym_residual(&sym, &mut e, &b, &[1.0, 1.0, 1.0]);
+    assert!(n_ok.is_finite());
+
+    // one NaN in x taints its rows, and must be reported
+    let norme: f64 = _sym_residual(&sym, &mut e, &b, &[1.0, f64::NAN, 1.0]);
+    assert!(norme.is_nan(), "NaN residual must not be masked");
+}
+
+// The both-triangles copy must reproduce the matrix the triangular
+// symv represents, so that refinement residuals are unchanged in value
+// (they differ only in summation order).
+#[test]
+fn test_symmetric_copy_matches_triangular_symv() {
+    let (A, signs) = test_matrix_kkt_like(50, 35, 777);
+    let opts = QDLDLSettingsBuilder::<f64>::default()
+        .Dsigns(signs)
+        .build()
+        .unwrap();
+    let factors = QDLDLFactorisation::new(&A, Some(opts)).unwrap();
+
+    // the permuted internal matrix, and its both-triangles copy
+    let triu = &factors.workspace.triuA;
+    let mut sym = _build_symmetric_copy(triu).unwrap();
+    for (dst, &k) in zip(&mut sym.A.nzval, &sym.sym_to_triu) {
+        *dst = triu.nzval[k as usize];
+    }
+
+    let n = triu.ncols();
+    // every off-diagonal entry must appear on both sides
+    assert_eq!(sym.A.nzval.len(), 2 * triu.nzval.len() - n);
+
+    let x: Vec<f64> = (0..n).map(|i| ((i * 13) % 7) as f64 - 3.0).collect();
+    let b: Vec<f64> = (0..n).map(|i| ((i * 5) % 11) as f64 - 5.0).collect();
+
+    // reference: e = b - A*x via the triangular symv
+    let mut e_ref = b.clone();
+    triu.sym_up().symv(&mut e_ref, &x, -1.0, 1.0);
+
+    let mut e_new = vec![0.0; n];
+    let norme = _sym_residual(&sym, &mut e_new, &b, &x);
+
+    // same values up to summation order, and the returned norm agrees
+    assert!(inf_norm_diff(&e_ref, &e_new) <= 1e-10 * inf_norm(&e_ref).max(1.0));
+    assert!((norme - inf_norm(&e_new)).abs() <= 1e-12 * norme.max(1.0));
 }
 
 #[test]
