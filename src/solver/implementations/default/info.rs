@@ -265,14 +265,18 @@ where
         variables.copy_from(prev_variables);
     }
 
-    fn save_best_iterate(&mut self, variables: &Self::V, best_variables: &mut Self::V) {
-        // Merit is the worst of the quantities the (almost-)solved checks test. Iterates on
-        // an infeasibility path (κ/τ > 1) are never candidates.
+    fn save_best_iterate(
+        &mut self,
+        variables: &Self::V,
+        best_variables: &mut Self::V,
+        settings: &DefaultSettings<T>,
+    ) {
+        // Iterates on an infeasibility path (κ/τ > 1) are never candidates.
         if self.ktratio > T::one() {
             return;
         }
 
-        let merit = T::max(T::max(self.gap_rel, self.res_primal), self.res_dual);
+        let merit = self.termination_merit(settings);
         if merit >= self.best_merit {
             return;
         }
@@ -289,12 +293,17 @@ where
         best_variables.copy_from(variables);
     }
 
-    fn reset_to_best_iterate(&mut self, variables: &mut Self::V, best_variables: &Self::V) {
+    fn reset_to_best_iterate(
+        &mut self,
+        variables: &mut Self::V,
+        best_variables: &Self::V,
+        settings: &DefaultSettings<T>,
+    ) {
         if !self.best_merit.is_finite() {
             return;
         }
 
-        let merit = T::max(T::max(self.gap_rel, self.res_primal), self.res_dual);
+        let merit = self.termination_merit(settings);
         if self.ktratio <= T::one() && merit <= self.best_merit {
             return;
         }
@@ -420,6 +429,32 @@ where
         }
     }
 
+    // How far the current iterate is from satisfying `is_solved` at the *reduced*
+    // tolerances: each quantity divided by the tolerance that will judge it, combined
+    // exactly as in that test, so the duality gap enters through whichever of its
+    // absolute/relative forms is closer to passing.  A merit below 1 passes.
+    //
+    // The reduced tolerances are the right yardstick because this merit only ever ranks
+    // candidates for an unsuccessful exit, where `check_convergence_almost` -- which uses
+    // exactly these tolerances -- decides whether the restored iterate can still be
+    // reported as AlmostSolved.  Ranking by them makes the selection safe: the chosen
+    // iterate has the smallest reduced merit of all candidates, so if any candidate would
+    // have passed that check, the chosen one passes it too.  Comparing the raw quantities
+    // instead can prefer an iterate that fails the check over one that passes, because the
+    // tolerances differ from each other -- by default `reduced_tol_feas` is 1e-4 while
+    // `reduced_tol_gap_rel` is 5e-5.
+    fn termination_merit(&self, settings: &DefaultSettings<T>) -> T {
+        let gap = T::min(
+            self.gap_abs / settings.reduced_tol_gap_abs,
+            self.gap_rel / settings.reduced_tol_gap_rel,
+        );
+        let feas = T::max(
+            self.res_primal / settings.reduced_tol_feas,
+            self.res_dual / settings.reduced_tol_feas,
+        );
+        T::max(gap, feas)
+    }
+
     fn is_solved(&self, tol_gap_abs: T, tol_gap_rel: T, tol_feas: T) -> bool {
         ((self.gap_abs < tol_gap_abs) || (self.gap_rel < tol_gap_rel))
             && (self.res_primal < tol_feas)
@@ -454,7 +489,13 @@ mod tests {
 
     // fabricate an iterate whose merit-relevant fields are set directly, with x[0]
     // tagging which iterate it is so we can see which one survives
-    fn set_iterate(info: &mut DefaultInfo<f64>, vars: &mut DefaultVariables<f64>, res: f64, ktratio: f64, tag: f64) {
+    fn set_iterate(
+        info: &mut DefaultInfo<f64>,
+        vars: &mut DefaultVariables<f64>,
+        res: f64,
+        ktratio: f64,
+        tag: f64,
+    ) {
         info.res_primal = res;
         info.res_dual = res;
         info.gap_rel = res;
@@ -465,6 +506,7 @@ mod tests {
 
     #[test]
     fn best_iterate_survives_a_degraded_final_iterate() {
+        let settings = DefaultSettings::<f64>::default();
         let mut info = DefaultInfo::<f64>::new();
         let mut vars = DefaultVariables::<f64>::new(1, 1);
         let mut best = DefaultVariables::<f64>::new(1, 1);
@@ -472,13 +514,13 @@ mod tests {
 
         // a good iterate, then a better one, then the blowup that ends the solve
         set_iterate(&mut info, &mut vars, 1e-6, 0.5, 1.0);
-        info.save_best_iterate(&vars, &mut best);
+        info.save_best_iterate(&vars, &mut best, &settings);
         set_iterate(&mut info, &mut vars, 1e-10, 0.5, 2.0);
-        info.save_best_iterate(&vars, &mut best);
+        info.save_best_iterate(&vars, &mut best, &settings);
         set_iterate(&mut info, &mut vars, 3e-5, 0.5, 3.0);
-        info.save_best_iterate(&vars, &mut best);
+        info.save_best_iterate(&vars, &mut best, &settings);
 
-        info.reset_to_best_iterate(&mut vars, &best);
+        info.reset_to_best_iterate(&mut vars, &best, &settings);
 
         assert_eq!(vars.x[0], 2.0, "the 1e-10 iterate should be restored");
         assert_eq!(info.res_primal, 1e-10);
@@ -487,23 +529,84 @@ mod tests {
 
     #[test]
     fn a_better_final_iterate_is_left_alone() {
+        let settings = DefaultSettings::<f64>::default();
         let mut info = DefaultInfo::<f64>::new();
         let mut vars = DefaultVariables::<f64>::new(1, 1);
         let mut best = DefaultVariables::<f64>::new(1, 1);
         info.reset(&mut Default::default());
 
         set_iterate(&mut info, &mut vars, 1e-6, 0.5, 1.0);
-        info.save_best_iterate(&vars, &mut best);
+        info.save_best_iterate(&vars, &mut best, &settings);
         set_iterate(&mut info, &mut vars, 1e-9, 0.5, 2.0);
 
-        info.reset_to_best_iterate(&mut vars, &best);
+        info.reset_to_best_iterate(&mut vars, &best, &settings);
 
-        assert_eq!(vars.x[0], 2.0, "the current iterate is the best one; keep it");
+        assert_eq!(
+            vars.x[0], 2.0,
+            "the current iterate is the best one; keep it"
+        );
         assert_eq!(info.res_primal, 1e-9);
+    }
+
+    // The acceptance check applied on an unsuccessful exit uses a different tolerance for
+    // each quantity -- by default reduced_tol_feas is 1e-4 but reduced_tol_gap_rel is 5e-5 --
+    // so ranking candidates by the raw worst quantity can prefer one that fails the check
+    // over one that passes it.  Here the first candidate has the smaller raw maximum (8e-5
+    // against 9e-5) yet its gap is outside tolerance, while the second is inside on every
+    // count; the second must be the one restored.
+    #[test]
+    fn merit_ranks_by_distance_from_the_acceptance_check() {
+        let settings = DefaultSettings::<f64>::default();
+        let mut info = DefaultInfo::<f64>::new();
+        let mut vars = DefaultVariables::<f64>::new(1, 1);
+        let mut best = DefaultVariables::<f64>::new(1, 1);
+        info.reset(&mut Default::default());
+
+        // candidate 1: gap outside the reduced tolerance, residuals well inside
+        info.gap_abs = 8e-5;
+        info.gap_rel = 8e-5;
+        info.res_primal = 1e-5;
+        info.res_dual = 1e-5;
+        info.ktratio = 0.5;
+        vars.x[0] = 1.0;
+        info.save_best_iterate(&vars, &mut best, &settings);
+        assert!(!info.is_solved(
+            settings.reduced_tol_gap_abs,
+            settings.reduced_tol_gap_rel,
+            settings.reduced_tol_feas
+        ));
+
+        // candidate 2: larger raw maximum, but inside tolerance on every count
+        info.gap_abs = 2e-5;
+        info.gap_rel = 2e-5;
+        info.res_primal = 9e-5;
+        info.res_dual = 9e-5;
+        vars.x[0] = 2.0;
+        info.save_best_iterate(&vars, &mut best, &settings);
+        assert!(info.is_solved(
+            settings.reduced_tol_gap_abs,
+            settings.reduced_tol_gap_rel,
+            settings.reduced_tol_feas
+        ));
+        assert_eq!(
+            best.x[0], 2.0,
+            "the iterate that passes the check must be preferred"
+        );
+
+        // and it is the one a degraded final iterate is replaced by
+        info.gap_abs = 1e-2;
+        info.gap_rel = 1e-2;
+        info.res_primal = 1e-2;
+        info.res_dual = 1e-2;
+        vars.x[0] = 3.0;
+        info.reset_to_best_iterate(&mut vars, &best, &settings);
+        assert_eq!(vars.x[0], 2.0);
+        assert_eq!(info.res_primal, 9e-5);
     }
 
     #[test]
     fn iterates_on_the_infeasibility_path_are_not_candidates() {
+        let settings = DefaultSettings::<f64>::default();
         let mut info = DefaultInfo::<f64>::new();
         let mut vars = DefaultVariables::<f64>::new(1, 1);
         let mut best = DefaultVariables::<f64>::new(1, 1);
@@ -511,11 +614,14 @@ mod tests {
 
         // tiny residuals but ktratio > 1: this is an infeasibility certificate path
         set_iterate(&mut info, &mut vars, 1e-12, 5.0, 1.0);
-        info.save_best_iterate(&vars, &mut best);
+        info.save_best_iterate(&vars, &mut best, &settings);
         set_iterate(&mut info, &mut vars, 3e-5, 5.0, 2.0);
-        info.reset_to_best_iterate(&mut vars, &best);
+        info.reset_to_best_iterate(&mut vars, &best, &settings);
 
-        assert_eq!(vars.x[0], 2.0, "nothing was ever saved, so nothing is restored");
+        assert_eq!(
+            vars.x[0], 2.0,
+            "nothing was ever saved, so nothing is restored"
+        );
         assert!(!info.best_merit.is_finite());
     }
 }
