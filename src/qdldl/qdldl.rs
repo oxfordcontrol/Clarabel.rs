@@ -257,6 +257,17 @@ where
         Ok(())
     }
 
+    // test support: how many columns replay their updates block-wise
+    #[cfg(test)]
+    pub(crate) fn columns_using_blocks(&self) -> usize {
+        match &self.workspace.schedule {
+            ScheduleState::Ready(s) => (0..s.colruns.len() - 1)
+                .filter(|&c| s.colruns[c] != s.colruns[c + 1])
+                .count(),
+            _ => 0,
+        }
+    }
+
     // test support: confirms refactorization used the scheduled replay path
     #[cfg(test)]
     pub(crate) fn refactor_schedule_is_ready(&self) -> bool {
@@ -479,6 +490,19 @@ where
 // Indices are stored as u32 to halve the memory traffic of the replay.
 // Patterns too large for that (nnz(L) or n >= 2^32) fall back to the
 // original path via `ScheduleState::Unavailable`.
+//
+// The schedule also stores a run decomposition of each L column's row
+// indices: the maximal blocks of consecutive rows.  KKT factors from
+// block-structured problems concentrate their flops in columns whose
+// entries lie in long consecutive row blocks (e.g. a trailing
+// dense-border trapezoid produced by a set of dense rows), so the
+// dominant update loop
+//     for j in range { y[Li[j]] -= Lx[j] * y_c }
+// mostly writes to contiguous y locations.  Replaying it run-by-run as
+//     y[rs..rs+len] -= Lx[p..p+len] * y_c
+// performs the same independent elementwise operations on the same
+// values — bit-identical results — but with no per-element index load
+// and in a form the compiler can vectorize.
 
 #[derive(Debug)]
 struct FactorSchedule {
@@ -488,6 +512,45 @@ struct FactorSchedule {
     cidx: Vec<u32>,
     // position in L.nzval written by each update step
     pos: Vec<u32>,
+    // start of column c's blocks in `runs`; length n+1.  A column with an
+    // empty range is replayed entry-wise -- see `_column_prefers_blocks`.
+    colruns: Vec<u32>,
+    // (first row, length) of each maximal consecutive-row block, in position
+    // order within each column
+    runs: Vec<(u32, u32)>,
+}
+
+// Replaying an update over maximal blocks of consecutive rows removes one
+// indexed load per entry and lets the compiler vectorize the inner loop, but
+// it costs bookkeeping per *block*: the block bounds, the clip against the end
+// of the update range, and the inner loop's own setup.  For a block of two or
+// three entries that bookkeeping is not amortized and the entry-wise loop is
+// faster; for a long block it is negligible.
+//
+// The trade is a property of each column rather than of the matrix, so it is
+// decided per column: a column's blocks are recorded only if the block
+// containing a typical entry of that column reaches `RUN_MIN_LEN`, and columns
+// failing the test are replayed entry-wise.  A factorization of mixed
+// structure -- common when a few dense-ish rows sit above a sparse remainder
+// -- then takes the contiguous path on exactly the columns that benefit.
+//
+// `RUN_MIN_LEN` is a vectorization threshold: at 16 entries a two-wide
+// double-precision loop runs eight iterations, comfortably past its prologue
+// and epilogue, whereas at two or four the setup dominates.
+//
+// The average is entry-weighted, Sum(len^2) / Sum(len) over the column's
+// blocks, i.e. the mean block length seen by a randomly chosen entry of the
+// column, because it is the per-entry saving that has to outweigh the
+// per-block cost.
+const RUN_MIN_LEN: u32 = 16;
+
+fn _column_prefers_blocks(runs: &[(u32, u32)]) -> bool {
+    let (mut sum, mut sumsq) = (0u64, 0u64);
+    for &(_, len) in runs {
+        sum += len as u64;
+        sumsq += (len as u64) * (len as u64);
+    }
+    sum > 0 && sumsq >= (RUN_MIN_LEN as u64) * sum
 }
 
 #[derive(Debug)]
@@ -497,12 +560,6 @@ enum ScheduleState {
     Ready(FactorSchedule),
 }
 
-// Records the update schedule by replaying the pattern-discovery phase of
-// `_factor_inner` (which see), with the numeric work stripped out.  The two
-// functions must stay in lockstep; as a defence, every recorded write
-// position is verified against the already-computed pattern of L
-// (Li[pos] == k), and the total step count against nnz(L).  Any mismatch
-// returns None and refactorization falls back to `_factor_inner`.
 fn _build_schedule(
     Ap: &[usize],
     Ai: &[usize],
@@ -585,7 +642,44 @@ fn _build_schedule(
         return None;
     }
 
-    Some(FactorSchedule { colptr, cidx, pos })
+    // Decompose each column's (already final) row indices into maximal blocks
+    // of consecutive rows, keeping them only for the columns that prefer the
+    // block-wise replay.  A column with no recorded blocks is replayed
+    // entry-wise, so this doubles as the decision and as its storage: nothing
+    // is kept for columns that would not use it.
+    let mut colruns = Vec::with_capacity(n + 1);
+    let mut runs: Vec<(u32, u32)> = Vec::new();
+    let mut col: Vec<(u32, u32)> = Vec::new();
+    colruns.push(0u32);
+    for c in 0..n {
+        let li = &Li[Lp[c]..Lp[c + 1]];
+        col.clear();
+        let mut t = 0;
+        while t < li.len() {
+            let start = li[t];
+            let mut len = 1;
+            while t + len < li.len() && li[t + len] == start + len {
+                len += 1;
+            }
+            col.push((start as u32, len as u32));
+            t += len;
+        }
+        if _column_prefers_blocks(&col) {
+            runs.extend_from_slice(&col);
+        }
+        colruns.push(runs.len() as u32);
+    }
+    if runs.len() >= u32::MAX as usize {
+        return None;
+    }
+
+    Some(FactorSchedule {
+        colptr,
+        cidx,
+        pos,
+        colruns,
+        runs,
+    })
 }
 
 // Numeric refactorization by schedule replay.  Performs the identical
@@ -653,19 +747,46 @@ fn _refactor_scheduled<T: FloatT>(
             let (cidx, tmp_idx) = (c as usize, p as usize);
             let y_vals_cidx = y_vals[cidx];
 
-            let (f, l) = (Lp[cidx], tmp_idx);
-            unsafe {
-                // Safety: Li entries index the matrix dimension, and the
-                // schedule's positions were verified against Li at build
-                // time; both bound y_vals/Lx as in _factor_inner.
-                for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
-                    *(y_vals.get_unchecked_mut(Lij)) -= Lxj * y_vals_cidx;
+            // The update range is Lp[cidx]..tmp_idx.  Either way this performs
+            // the same independent operations on the same values as the scalar
+            // loop in _factor_inner; the two paths differ only in how the row
+            // of each entry is obtained.
+            let (rf, rl) = (
+                sched.colruns[cidx] as usize,
+                sched.colruns[cidx + 1] as usize,
+            );
+            if rf != rl {
+                // Block-wise: each block covers consecutive rows, so the
+                // scatter becomes a contiguous elementwise update with no
+                // per-entry index load, in a form the compiler vectorizes.
+                let mut pos = Lp[cidx];
+                for &(row_start, run_len) in &sched.runs[rf..rl] {
+                    if pos >= tmp_idx {
+                        break;
+                    }
+                    let take = min(run_len as usize, tmp_idx - pos);
+                    let rs = row_start as usize;
+                    for (yv, &Lxj) in zip(&mut y_vals[rs..rs + take], &Lx[pos..pos + take]) {
+                        *yv -= Lxj * y_vals_cidx;
+                    }
+                    pos += take;
                 }
-
-                let Lx_tmp_idx = y_vals_cidx * *Dinv.get_unchecked(cidx);
-                *Lx.get_unchecked_mut(tmp_idx) = Lx_tmp_idx;
-                *D.get_unchecked_mut(k) -= y_vals_cidx * Lx_tmp_idx;
+            } else {
+                // Entry-wise, for columns whose blocks are too short to be
+                // worth the per-block bookkeeping.
+                let (f, l) = (Lp[cidx], tmp_idx);
+                unsafe {
+                    // Safety: Li entries index the matrix dimension, so they
+                    // bound y_vals as in _factor_inner.
+                    for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
+                        *(y_vals.get_unchecked_mut(Lij)) -= Lxj * y_vals_cidx;
+                    }
+                }
             }
+
+            let Lx_tmp_idx = y_vals_cidx * Dinv[cidx];
+            Lx[tmp_idx] = Lx_tmp_idx;
+            D[k] -= y_vals_cidx * Lx_tmp_idx;
 
             y_vals[cidx] = T::zero();
         }
