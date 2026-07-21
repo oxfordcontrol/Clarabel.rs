@@ -104,4 +104,23 @@ where
         self.factors.refactor().unwrap();
         self.factors.Dinv.is_finite()
     }
+
+    fn solve_refined(
+        &mut self,
+        x: &mut [T],
+        b: &[T],
+        reltol: T,
+        abstol: T,
+        max_iter: u32,
+        stop_ratio: T,
+    ) -> Option<bool> {
+        // QDLDL's internal matrix copy holds the values most recently
+        // written through update/scale/offset -- i.e. the unregularized
+        // diagonal, restored there after each refactorization -- so it can
+        // refine against the true KKT matrix in permuted coordinates.
+        Some(
+            self.factors
+                .solve_refined(x, b, reltol, abstol, max_iter, stop_ratio),
+        )
+    }
 }
