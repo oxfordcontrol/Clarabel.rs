@@ -263,6 +263,253 @@ fn test_solve_logical_refactor() {
     assert!(inf_norm_diff(&x, &b) <= 1e-8);
 }
 
+// Build a deterministic pseudo-random quasidefinite KKT-like matrix
+// [[diag(p) B'; B -diag(r)]] in upper triangular CSC form, sized so that
+// its factor has genuine fill-in.  Returns (A, Dsigns).
+#[cfg(test)]
+fn test_matrix_quasidef(nx: usize, nz: usize, seed: u64) -> (CscMatrix<f64>, Vec<i8>) {
+    // simple LCG so the test needs no rand dependency
+    let mut state = seed;
+    let mut next = move || {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        ((state >> 33) as f64) / ((1u64 << 31) as f64) - 1.0 // in [-1,1)
+    };
+
+    let n = nx + nz;
+    let mut cols: Vec<Vec<(usize, f64)>> = vec![Vec::new(); n];
+    for j in 0..nx {
+        cols[j].push((j, 1.0 + next().abs())); // positive definite block
+    }
+    for j in 0..nz {
+        let col = nx + j;
+        // a few entries of B in each column, rows in 0..nx
+        for t in 0..3 {
+            let i = ((next().abs() * nx as f64) as usize + t * 7) % nx;
+            cols[col].push((i, next()));
+        }
+        cols[col].sort_by_key(|e| e.0);
+        cols[col].dedup_by_key(|e| e.0);
+        cols[col].push((col, -(1.0 + next().abs()))); // negative definite block
+    }
+
+    let mut colptr = vec![0usize];
+    let (mut rowval, mut nzval) = (Vec::new(), Vec::new());
+    for c in &cols {
+        for &(i, v) in c {
+            rowval.push(i);
+            nzval.push(v);
+        }
+        colptr.push(rowval.len());
+    }
+    let A = CscMatrix {
+        m: n,
+        n,
+        colptr,
+        rowval,
+        nzval,
+    };
+    let mut signs = vec![1i8; n];
+    signs[nx..].fill(-1);
+    (A, signs)
+}
+
+// Refactorization must reproduce _factor_inner bit-for-bit: the scheduled
+// replay path performs the identical operations in the identical order, so
+// L, D, Dinv, the inertia and the regularization count of a refactor must
+// all equal those of a fresh factorization of the same values.
+#[test]
+fn test_refactor_matches_fresh_factor_exactly() {
+    let (A, signs) = test_matrix_quasidef(40, 30, 12345);
+
+    let opts = || {
+        QDLDLSettingsBuilder::<f64>::default()
+            .Dsigns(signs.clone())
+            .build()
+            .unwrap()
+    };
+
+    let mut f1 = QDLDLFactorisation::new(&A, Some(opts())).unwrap();
+
+    // change every value, refactor (first refactor builds the schedule
+    // and replays it), and compare against a fresh factorization
+    let mut A2 = A.clone();
+    for v in A2.nzval.iter_mut() {
+        *v *= 1.25;
+    }
+    let indices: Vec<usize> = (0..A2.nzval.len()).collect();
+
+    f1.update_values(&indices, &A2.nzval);
+    f1.refactor().unwrap();
+    assert!(f1.refactor_schedule_is_ready()); // replay path, not a fallback
+
+    let f2 = QDLDLFactorisation::new(&A2, Some(opts())).unwrap();
+
+    assert_eq!(f1.perm, f2.perm); // same AMD ordering on the same pattern
+    assert_eq!(f1.L.nzval, f2.L.nzval); // bitwise
+    assert_eq!(f1.D, f2.D);
+    assert_eq!(f1.Dinv, f2.Dinv);
+    assert_eq!(f1.positive_inertia(), f2.positive_inertia());
+    assert_eq!(f1.regularize_count(), f2.regularize_count());
+
+    // and again, to exercise the replay path on an already-built schedule
+    f1.update_values(&indices, &A.nzval);
+    f1.refactor().unwrap();
+    let f3 = QDLDLFactorisation::new(&A, Some(opts())).unwrap();
+    assert_eq!(f1.L.nzval, f3.L.nzval);
+    assert_eq!(f1.D, f3.D);
+}
+
+// Same bit-identity requirement when dynamic regularization fires: the
+// pivot tests happen in the same order on the same values, so the same
+// pivots must be perturbed.
+#[test]
+fn test_refactor_matches_fresh_factor_with_regularization() {
+    let (mut A, signs) = test_matrix_quasidef(40, 30, 999);
+    // shrink some diagonal entries so that regularization triggers
+    for j in 0..40 {
+        let d = A.colptr[j]; // diagonal of the (j,j) leading block column
+        A.nzval[d] *= 1e-14;
+    }
+
+    let opts = || {
+        QDLDLSettingsBuilder::<f64>::default()
+            .Dsigns(signs.clone())
+            .regularize_eps(1e-12)
+            .regularize_delta(1e-7)
+            .build()
+            .unwrap()
+    };
+
+    let mut f1 = QDLDLFactorisation::new(&A, Some(opts())).unwrap();
+
+    let mut A2 = A.clone();
+    for v in A2.nzval.iter_mut() {
+        *v *= 0.75;
+    }
+    let indices: Vec<usize> = (0..A2.nzval.len()).collect();
+    f1.update_values(&indices, &A2.nzval);
+    f1.refactor().unwrap();
+    assert!(f1.refactor_schedule_is_ready()); // replay path, not a fallback
+
+    let f2 = QDLDLFactorisation::new(&A2, Some(opts())).unwrap();
+    assert!(f2.regularize_count() > 0); // the scenario is actually exercised
+    assert_eq!(f1.L.nzval, f2.L.nzval);
+    assert_eq!(f1.D, f2.D);
+    assert_eq!(f1.Dinv, f2.Dinv);
+    assert_eq!(f1.positive_inertia(), f2.positive_inertia());
+    assert_eq!(f1.regularize_count(), f2.regularize_count());
+}
+
+// Both replay paths must produce the same factorization: the block-wise and
+// entry-wise updates perform the same operations on the same values in the
+// same order, and which one is selected is a performance decision only.  The
+// two matrices below sit on opposite sides of that decision.
+#[test]
+fn test_both_replay_paths_agree_with_a_fresh_factor() {
+    // banded, so the factor's rows are long consecutive blocks
+    let n = 120usize;
+    let (mut colptr, mut rowval, mut nzval) = (vec![0usize], Vec::new(), Vec::new());
+    for j in 0..n {
+        for i in j.saturating_sub(20)..=j {
+            rowval.push(i);
+            nzval.push(if i == j {
+                40.0
+            } else {
+                -1.0 / (1 + j - i) as f64
+            });
+        }
+        colptr.push(rowval.len());
+    }
+    let banded = CscMatrix {
+        m: n,
+        n,
+        colptr,
+        rowval,
+        nzval,
+    };
+
+    // and a sparse quasidefinite matrix, whose blocks are short
+    let (scattered, signs) = test_matrix_quasidef(60, 45, 4242);
+
+    for (name, A, ds) in [
+        ("banded", banded, None),
+        ("scattered", scattered, Some(signs)),
+    ] {
+        let mut b = QDLDLSettingsBuilder::<f64>::default();
+        if let Some(ds) = ds {
+            b.Dsigns(ds);
+        }
+        let opts = b.build().unwrap();
+
+        let mut f = QDLDLFactorisation::new(&A, Some(opts.clone())).unwrap();
+        let mut scaled = A.clone();
+        for v in scaled.nzval.iter_mut() {
+            *v *= 1.25;
+        }
+        let idx: Vec<usize> = (0..A.nzval.len()).collect();
+        f.update_values(&idx, &scaled.nzval);
+        f.refactor().unwrap();
+        assert!(
+            f.refactor_schedule_is_ready(),
+            "{name}: replay path not engaged"
+        );
+
+        let fresh = QDLDLFactorisation::new(&scaled, Some(opts)).unwrap();
+        assert_eq!(f.L.nzval, fresh.L.nzval, "{name}: L differs");
+        assert_eq!(f.D, fresh.D, "{name}: D differs");
+        assert_eq!(f.Dinv, fresh.Dinv, "{name}: Dinv differs");
+    }
+}
+
+// The block-wise path must be chosen for a factor whose updates are long
+// consecutive blocks, and declined for one whose blocks are short -- which is
+// what makes the two cases above cover both paths rather than one twice.
+#[test]
+fn test_run_selection_follows_block_structure() {
+    let n = 120usize;
+    let (mut colptr, mut rowval, mut nzval) = (vec![0usize], Vec::new(), Vec::new());
+    for j in 0..n {
+        for i in j.saturating_sub(20)..=j {
+            rowval.push(i);
+            nzval.push(if i == j {
+                40.0
+            } else {
+                -1.0 / (1 + j - i) as f64
+            });
+        }
+        colptr.push(rowval.len());
+    }
+    let banded = CscMatrix {
+        m: n,
+        n,
+        colptr,
+        rowval,
+        nzval,
+    };
+    let mut f = QDLDLFactorisation::new(&banded, None).unwrap();
+    f.refactor().unwrap();
+    let banded_cols = f.columns_using_blocks();
+    assert!(
+        banded_cols > n / 2,
+        "long blocks should select the block path for most columns, got {banded_cols}"
+    );
+
+    let (scattered, signs) = test_matrix_quasidef(60, 45, 4242);
+    let opts = QDLDLSettingsBuilder::<f64>::default()
+        .Dsigns(signs)
+        .build()
+        .unwrap();
+    let mut f = QDLDLFactorisation::new(&scattered, Some(opts)).unwrap();
+    f.refactor().unwrap();
+    assert_eq!(
+        f.columns_using_blocks(),
+        0,
+        "short blocks should decline the block path"
+    );
+}
+
 #[test]
 fn test_bad_numeric_pivot() {
     //Disable regularization to force an exact zero pivot
