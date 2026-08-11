@@ -44,6 +44,10 @@ mod real;
 mod transcendental;
 mod arena;
 mod sentinel;
+// `native_lapack` implements the X*Scalar traits, which `algebra/dense/mod.rs`
+// declares only under `#[cfg(feature = "sdp")]`. Declared unconditionally, it
+// makes `--features mpfr` alone fail to compile (13 x E0405).
+#[cfg(feature = "sdp")]
 mod native_lapack;
 #[cfg(feature = "serde")]
 mod serde_impl;
