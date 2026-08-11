@@ -23,13 +23,31 @@
 //! - Not bit-exact: arithmetic ops round to working precision. The
 //!   trade-off is "high-precision floats" semantics: ULP at ~50 dps
 //!   instead of f64's 16 dps, vs. truly exact rationals.
-//! - SDP integration: still excluded by the `compile_error!` against
-//!   `sdp` (BLAS/LAPACK only impl on f32/f64). A future MPFR-native
-//!   eigensolver would unlock that.
+//! - SDP: **supported, and `sdp` is required rather than excluded.**
+//!   [`native_lapack`](self) implements every `X*Scalar` trait for
+//!   [`MpfrFloat`] — including `xsyevr`, the symmetric eigensolver the
+//!   PSD cone projects with — so MPFR serves the SDP path without BLAS.
+//!   Those trait *declarations* live behind `#[cfg(feature = "sdp")]`
+//!   (`algebra/dense/mod.rs`), so `native_lapack` is gated to match and
+//!   the two features are built **together**.
+//!
+//!   Still `unimplemented!()`: `xgesdd` / `xgesvd` (SVD), reached only
+//!   via `solver/chordal/decomp/psd_completion.rs`. Chordal
+//!   decomposition is therefore the one SDP path MPFR cannot take yet.
 //!
 //! # Mutual exclusivity
 //!
-//! Cannot be combined with `sdp` or `faer-sparse`.
+//! Cannot be combined with `faer-sparse` (faer requires `RealField` on
+//! f32/f64) — see the `compile_error!` below, which is the only one in
+//! this module.
+//!
+//! **`sdp` is NOT excluded.** Earlier revisions of this comment said it
+//! was, citing a `compile_error!` against `sdp` that does not exist here
+//! (the `rational` backend has one; this backend does not) and calling
+//! the MPFR-native eigensolver a future item when it was already
+//! written. Both readings are wrong and both have cost downstream
+//! readers real time — please keep this section true to the `cfg`s
+//! directly below rather than to intent.
 
 
 
