@@ -68,18 +68,40 @@ pub enum SupportedConeT<T> {
     /// `block_dims = vec![n]` is equivalent to a single
     /// `PSDTriangleConeT(n)` and expanded to that.
     ///
+    /// `block_dims = vec![]` is a **documented no-op**: it declares an empty
+    /// sequence of PSD blocks, expands to no cones at all, and contributes no
+    /// slack variables.  This is not an error, for the same reason
+    /// `NonnegativeConeT(0)`, `ZeroConeT(0)` and `PSDTriangleConeT(0)` are not
+    /// errors -- the crate's empty-cone rule silently drops every cone with
+    /// `nvars() == 0`.  Rejecting the empty vector here would make the sugar
+    /// behave differently from the hand-written sequence it stands for, since
+    /// pushing an empty list of `PSDTriangleConeT`s by hand is trivially legal.
+    /// A `block_dims` consisting only of zeros (e.g. `vec![0, 0]`) is dropped
+    /// by the same rule and is likewise a no-op.
+    ///
     /// The expansion happens *before* the cone-collapse pass, so the
     /// resulting blocks are subject to exactly the same simplifications
     /// as the hand-written sequence they stand for.  In particular a
     /// 1x1 block becomes a `NonnegativeConeT(1)` (a 1x1 PSD constraint
     /// *is* a scalar nonnegativity constraint) and may be merged with an
-    /// adjacent nonnegative cone.  Consumers that index the solved cone
-    /// list -- e.g. `DefaultSolution::dual_psd_block` -- therefore see
-    /// the collapsed list, exactly as they would for the hand-written
-    /// form; use `dual_block` / `primal_block` to read a 1x1 block's
-    /// value as a plain slice.
+    /// adjacent nonnegative cone.  Consumers that index the *solved* cone
+    /// list -- `DefaultSolution::cone_specs` and the `dual_psd_block` /
+    /// `primal_psd_block` accessors keyed off it -- therefore see the
+    /// collapsed list, exactly as they would for the hand-written form.
+    ///
+    /// To index by the position you *declared* instead, and to recover a 1x1
+    /// block as a PSD block rather than as a bare nonnegative slice, use
+    /// `DefaultSolution::declared_cone_specs` and its
+    /// `declared_dual_psd_block` / `declared_primal_psd_block` accessors.
+    /// Each block of a `BlockDiagPSDConeT` gets its own declared entry, and
+    /// every entry records the index of the cone in the caller's input slice
+    /// that it came from, so the blocks of one `BlockDiagPSDConeT` are
+    /// identifiable as a group.
     #[cfg(feature = "sdp")]
-    BlockDiagPSDConeT { block_dims: Vec<usize> },
+    BlockDiagPSDConeT {
+        /// Matrix dimension of each diagonal block, in order.
+        block_dims: Vec<usize>,
+    },
 }
 
 impl<T> SupportedConeT<T> {
@@ -101,6 +123,32 @@ impl<T> SupportedConeT<T> {
                 block_dims.iter().map(|d| triangular_number(*d)).sum()
             }
             SupportedConeT::GenPowerConeT(α, dim2) => α.len() + *dim2,
+        }
+    }
+
+    // The "dimension" reported in per-cone solution metadata.  For a
+    // PSD cone this is the *matrix* dimension `d` (the slack vector then
+    // holds `triangular_number(d)` entries); for every other cone it is
+    // the scalar dimension, which equals `nvars()`.
+    //
+    // Only ever called on a desugared cone list, so the BlockDiag sugar
+    // -- which has no single dimension -- cannot appear.
+    #[cfg_attr(not(feature = "sdp"), allow(dead_code))]
+    pub(crate) fn spec_dim(&self) -> usize {
+        match self {
+            SupportedConeT::ZeroConeT(dim) => *dim,
+            SupportedConeT::NonnegativeConeT(dim) => *dim,
+            SupportedConeT::SecondOrderConeT(dim) => *dim,
+            SupportedConeT::ExponentialConeT() => 3,
+            SupportedConeT::PowerConeT(_) => 3,
+            SupportedConeT::GenPowerConeT(α, dim2) => α.len() + *dim2,
+            #[cfg(feature = "sdp")]
+            SupportedConeT::PSDTriangleConeT(dim) => *dim,
+            #[cfg(feature = "sdp")]
+            SupportedConeT::BlockDiagPSDConeT { .. } => unreachable!(
+                "BlockDiagPSDConeT is sugar and has no single dimension; it must be \
+                 desugared before its per-cone metadata is built"
+            ),
         }
     }
 }
@@ -173,6 +221,64 @@ where
             }
         }
         Cow::Owned(out)
+    }
+
+    /// The *declared* view of a cone list: the caller's cones with only the
+    /// [`BlockDiagPSDConeT`](SupportedConeT::BlockDiagPSDConeT) sugar
+    /// unfolded, and nothing else changed.
+    ///
+    /// This is deliberately **not** [`new_collapsed`](Self::new_collapsed).
+    /// The collapse pass is a solver-side optimisation: it merges adjacent
+    /// nonnegative cones, rewrites `SecondOrderConeT(1)` / `PSDTriangleConeT(1)`
+    /// singletons as `NonnegativeConeT(1)`, and drops empty cones.  Those
+    /// rewrites destroy the caller's declared structure -- a declared
+    /// `PSDTriangleConeT(1)` is no longer recognisable as a PSD cone
+    /// afterwards, and merging shifts every subsequent cone index.  Keeping
+    /// the declared list alongside the collapsed one lets solution accessors
+    /// report what the caller actually asked for without changing what the
+    /// solver actually solves.
+    ///
+    /// The second returned vector is parallel to the first: entry `i` is the
+    /// index into `cones` that produced declared cone `i`.  A
+    /// `BlockDiagPSDConeT` with `k` blocks contributes `k` consecutive entries
+    /// all carrying the same origin index; every other cone contributes
+    /// exactly one.
+    ///
+    /// Because no rewriting happens, `nvars()` is preserved cone-by-cone, and
+    /// the cumulative `nvars()` ranges of this list are a *refinement* of the
+    /// collapsed list's ranges -- the collapse pass only ever merges adjacent
+    /// ranges or removes zero-length ones.  That is what makes a declared
+    /// range safe to index into the solution's `s` / `z` vectors.
+    pub(crate) fn desugared_with_origin(
+        cones: &[SupportedConeT<T>],
+    ) -> (Vec<SupportedConeT<T>>, Vec<usize>) {
+        let mut out = Vec::with_capacity(cones.len());
+        let mut origin = Vec::with_capacity(cones.len());
+
+        for (input_index, cone) in cones.iter().enumerate() {
+            match cone {
+                #[cfg(feature = "sdp")]
+                SupportedConeT::BlockDiagPSDConeT { block_dims } => {
+                    // Pushed verbatim, including zero-dimensional blocks, so
+                    // that the declared list matches the hand-written
+                    // equivalent exactly.  An empty `block_dims` therefore
+                    // contributes no declared cones at all -- see the type's
+                    // documentation for why that is a no-op and not an error.
+                    for &d in block_dims {
+                        out.push(SupportedConeT::PSDTriangleConeT(d));
+                        origin.push(input_index);
+                    }
+                }
+                _ => {
+                    out.push(cone.clone());
+                    origin.push(input_index);
+                }
+            }
+        }
+
+        out.shrink_to_fit();
+        origin.shrink_to_fit();
+        (out, origin)
     }
 
     pub(crate) fn new_collapsed(cones: &[SupportedConeT<T>]) -> Vec<SupportedConeT<T>> {
@@ -293,15 +399,30 @@ where
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[repr(u8)]
+/// Data-free tag identifying which [`SupportedConeT`] variant a cone is.
+///
+/// Carried by `DefaultSolution::cone_specs` and `declared_cone_specs` so that
+/// callers can dispatch on a cone's type without re-walking their own input.
 pub enum SupportedConeTag {
+    /// See [`SupportedConeT::ZeroConeT`].
     ZeroCone = 0,
+    /// See [`SupportedConeT::NonnegativeConeT`].
     NonnegativeCone,
+    /// See [`SupportedConeT::SecondOrderConeT`].
     SecondOrderCone,
+    /// See [`SupportedConeT::ExponentialConeT`].
     ExponentialCone,
+    /// See [`SupportedConeT::PowerConeT`].
     PowerCone,
+    /// See [`SupportedConeT::GenPowerConeT`].
     GenPowerCone,
+    /// See [`SupportedConeT::PSDTriangleConeT`].
     #[cfg(feature = "sdp")]
     PSDTriangleCone,
+    /// See [`SupportedConeT::BlockDiagPSDConeT`].  This tag only ever appears
+    /// for a cone list the caller wrote; the sugar is desugared before any
+    /// solution metadata is built, so it never appears in `cone_specs` or
+    /// `declared_cone_specs`.
     #[cfg(feature = "sdp")]
     BlockDiagPSDCone,
 }
@@ -350,6 +471,7 @@ impl<T: FloatT> SupportedConeAsTag for SupportedCone<T> {
 
 /// Returns the name of the cone from its tag.  Used for printing progress.
 impl SupportedConeTag {
+    /// The cone type's name, as printed in the solver's progress output.
     pub fn as_str(&self) -> &'static str {
         match self {
             SupportedConeTag::ZeroCone => "ZeroCone",
@@ -590,7 +712,7 @@ mod tests {
         let block = SupportedConeT::<f64>::BlockDiagPSDConeT {
             block_dims: vec![5, 7, 2, 4],
         };
-        let by_hand = vec![
+        let by_hand = [
             SupportedConeT::<f64>::PSDTriangleConeT(5),
             SupportedConeT::<f64>::PSDTriangleConeT(7),
             SupportedConeT::<f64>::PSDTriangleConeT(2),
@@ -692,5 +814,205 @@ mod tests {
             SupportedConeT::NonnegativeConeT(1),
         ];
         assert_eq!(result, expected);
+    }
+    // ---------------------------------------------------------------
+    // desugared_with_origin -- the "declared" view of the cone list
+    // ---------------------------------------------------------------
+
+    #[test]
+    fn test_desugared_with_origin_is_identity_without_sugar() {
+        let cones = vec![
+            SupportedConeT::<f64>::NonnegativeConeT(3),
+            SupportedConeT::NonnegativeConeT(2),
+            SupportedConeT::SecondOrderConeT(1),
+            SupportedConeT::ZeroConeT(0),
+            SupportedConeT::ExponentialConeT(),
+        ];
+        let (declared, origin) = SupportedConeT::desugared_with_origin(&cones);
+
+        // Nothing is merged, rewritten or dropped -- contrast new_collapsed,
+        // which turns this list into two cones.
+        assert_eq!(declared, cones);
+        assert_eq!(origin, vec![0, 1, 2, 3, 4]);
+        assert_eq!(SupportedConeT::new_collapsed(&cones).len(), 2);
+    }
+
+    #[test]
+    fn test_desugared_ranges_refine_collapsed_ranges() {
+        // The invariant the declared metadata depends on: the cumulative
+        // nvars() ranges of the declared list partition the same [0, m) that
+        // the collapsed list does, and each declared range sits inside
+        // exactly one collapsed range.
+        let cases: Vec<Vec<SupportedConeT<f64>>> = vec![
+            vec![
+                SupportedConeT::NonnegativeConeT(3),
+                SupportedConeT::NonnegativeConeT(2),
+                SupportedConeT::SecondOrderConeT(4),
+            ],
+            vec![
+                SupportedConeT::SecondOrderConeT(1),
+                SupportedConeT::NonnegativeConeT(3),
+                SupportedConeT::ZeroConeT(0),
+                SupportedConeT::NonnegativeConeT(2),
+                SupportedConeT::ExponentialConeT(),
+            ],
+            vec![
+                SupportedConeT::ZeroConeT(2),
+                SupportedConeT::NonnegativeConeT(0),
+                SupportedConeT::PowerConeT(0.5),
+            ],
+        ];
+
+        for cones in cases {
+            let (declared, _) = SupportedConeT::desugared_with_origin(&cones);
+            let collapsed = SupportedConeT::new_collapsed(&cones);
+
+            let total: usize = declared.iter().map(|c| c.nvars()).sum();
+            assert_eq!(
+                total,
+                collapsed.iter().map(|c| c.nvars()).sum::<usize>(),
+                "declared and collapsed disagree on total slack for {:?}",
+                cones
+            );
+
+            // Build both range lists and check containment.
+            let mut collapsed_ranges = vec![];
+            let mut start = 0;
+            for c in &collapsed {
+                collapsed_ranges.push(start..(start + c.nvars()));
+                start += c.nvars();
+            }
+
+            let mut start = 0;
+            for c in &declared {
+                let r = start..(start + c.nvars());
+                start += c.nvars();
+                if r.is_empty() {
+                    continue; // zero-length cones sit on a boundary
+                }
+                let containing = collapsed_ranges
+                    .iter()
+                    .filter(|cr| cr.start <= r.start && r.end <= cr.end)
+                    .count();
+                assert_eq!(
+                    containing, 1,
+                    "declared range {:?} is not inside exactly one collapsed range \
+                     ({:?}) for {:?}",
+                    r, collapsed_ranges, cones
+                );
+            }
+        }
+    }
+
+    #[cfg(feature = "sdp")]
+    #[test]
+    fn test_desugared_with_origin_expands_block_diag() {
+        let cones = vec![
+            SupportedConeT::<f64>::NonnegativeConeT(2),
+            SupportedConeT::BlockDiagPSDConeT {
+                block_dims: vec![2, 3, 1],
+            },
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+        let (declared, origin) = SupportedConeT::desugared_with_origin(&cones);
+
+        assert_eq!(
+            declared,
+            vec![
+                SupportedConeT::NonnegativeConeT(2),
+                // NOT rewritten to NonnegativeConeT(1) -- that is the whole point
+                SupportedConeT::PSDTriangleConeT(2),
+                SupportedConeT::PSDTriangleConeT(3),
+                SupportedConeT::PSDTriangleConeT(1),
+                SupportedConeT::SecondOrderConeT(4),
+            ]
+        );
+        // The three blocks all trace back to input cone 1.
+        assert_eq!(origin, vec![0, 1, 1, 1, 2]);
+    }
+
+    #[cfg(feature = "sdp")]
+    #[test]
+    fn test_desugared_with_origin_empty_block_dims_is_a_noop() {
+        // Task B: an empty block_dims declares an empty sequence of PSD
+        // blocks. It contributes no declared cones and no slack variables --
+        // exactly like pushing no PSDTriangleConeTs by hand.
+        let cones = vec![
+            SupportedConeT::<f64>::NonnegativeConeT(2),
+            SupportedConeT::BlockDiagPSDConeT { block_dims: vec![] },
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+        assert_eq!(cones[1].nvars(), 0);
+
+        let (declared, origin) = SupportedConeT::desugared_with_origin(&cones);
+        assert_eq!(
+            declared,
+            vec![
+                SupportedConeT::NonnegativeConeT(2),
+                SupportedConeT::SecondOrderConeT(4),
+            ]
+        );
+        // input index 1 contributed nothing at all
+        assert_eq!(origin, vec![0, 2]);
+
+        // and it desugars to exactly the same thing as omitting it
+        let without = vec![
+            SupportedConeT::<f64>::NonnegativeConeT(2),
+            SupportedConeT::SecondOrderConeT(4),
+        ];
+        assert_eq!(
+            SupportedConeT::new_collapsed(&cones),
+            SupportedConeT::new_collapsed(&without)
+        );
+    }
+
+    #[cfg(feature = "sdp")]
+    #[test]
+    fn test_block_diag_empty_matches_hand_written_empty_sequence() {
+        // Extends the sugar-equals-desugared invariant to the empty case, and
+        // to a block_dims that is all zeros.
+        for block_dims in [vec![], vec![0], vec![0, 0]] {
+            let sugared = vec![
+                SupportedConeT::<f64>::NonnegativeConeT(3),
+                SupportedConeT::BlockDiagPSDConeT {
+                    block_dims: block_dims.clone(),
+                },
+                SupportedConeT::SecondOrderConeT(4),
+            ];
+            let mut by_hand = vec![SupportedConeT::<f64>::NonnegativeConeT(3)];
+            by_hand.extend(
+                block_dims
+                    .iter()
+                    .map(|&d| SupportedConeT::PSDTriangleConeT(d)),
+            );
+            by_hand.push(SupportedConeT::SecondOrderConeT(4));
+
+            assert_eq!(
+                SupportedConeT::new_collapsed(&sugared),
+                SupportedConeT::new_collapsed(&by_hand),
+                "sugar and hand-written form disagree for block_dims {:?}",
+                block_dims
+            );
+            assert_eq!(
+                SupportedConeT::desugared_with_origin(&sugared).0,
+                SupportedConeT::desugared_with_origin(&by_hand).0,
+                "declared views disagree for block_dims {:?}",
+                block_dims
+            );
+        }
+    }
+
+    #[cfg(feature = "sdp")]
+    #[test]
+    fn test_spec_dim_reports_matrix_dimension_for_psd() {
+        // spec_dim is the matrix dimension d, not the svec length.
+        assert_eq!(SupportedConeT::<f64>::PSDTriangleConeT(3).spec_dim(), 3);
+        assert_eq!(SupportedConeT::<f64>::PSDTriangleConeT(3).nvars(), 6);
+        assert_eq!(SupportedConeT::<f64>::NonnegativeConeT(3).spec_dim(), 3);
+        assert_eq!(SupportedConeT::<f64>::ExponentialConeT().spec_dim(), 3);
+        assert_eq!(
+            SupportedConeT::GenPowerConeT(vec![0.5f64, 0.5], 2).spec_dim(),
+            4
+        );
     }
 }
