@@ -41,6 +41,17 @@ pub struct DefaultProblemData<T> {
     normq: Option<T>,
     normb: Option<T>,
 
+    // The caller's cone list with only the BlockDiagPSDConeT sugar
+    // desugared -- no collapsing, no singleton rewriting, no empty-cone
+    // removal.  Retained so that solution metadata can report the cones the
+    // caller actually declared; the solver itself never looks at this.
+    //
+    // `declared_cone_origin` is parallel to `declared_cones`: entry `i` is
+    // the index into the caller's original slice that produced declared cone
+    // `i` (several blocks of one BlockDiagPSDConeT share an origin).
+    pub(crate) declared_cones: Vec<SupportedConeT<T>>,
+    pub(crate) declared_cone_origin: Vec<usize>,
+
     pub(crate) presolver: Option<Presolver<T>>,
     dropped_zeros: usize, // number of eliminated structural zeros
 
@@ -61,6 +72,13 @@ where
         cones: &[SupportedConeT<T>],
         settings: &DefaultSettings<T>,
     ) -> Self {
+        // Take the *declared* view of the cone list first -- the caller's
+        // cones with only the BlockDiagPSDConeT sugar unfolded.  This has to
+        // happen before the line below, which shadows `cones` with the
+        // collapsed list and so is the point at which the caller's declared
+        // structure would otherwise become unrecoverable.
+        let (declared_cones, declared_cone_origin) = SupportedConeT::desugared_with_origin(cones);
+
         // clean up the cones by consolidating repeated NNs,
         // eliminate empty cones, transform singletons etc
         // this makes a locally owned copy of the cones
@@ -158,6 +176,8 @@ where
             equilibration,
             normq,
             normb,
+            declared_cones,
+            declared_cone_origin,
             dropped_zeros,
             presolver,
             #[cfg(feature = "sdp")]

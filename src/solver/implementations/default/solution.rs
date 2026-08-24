@@ -4,7 +4,7 @@ use super::*;
 use crate::{
     algebra::*,
     solver::core::{
-        cones::{SupportedConeAsTag, SupportedConeT, SupportedConeTag},
+        cones::{SupportedConeAsTag, SupportedConeTag},
         traits::Solution,
         SolverStatus,
     },
@@ -53,7 +53,48 @@ pub struct DefaultSolution<T> {
     /// `new_collapsed`) representation. Sugar variants like
     /// [`BlockDiagPSDConeT`](crate::solver::core::cones::SupportedConeT::BlockDiagPSDConeT)
     /// will appear here as their expanded constituents (one entry per block).
+    ///
+    /// # Known limitation
+    ///
+    /// This list is taken from `DefaultProblemData::cones`, which is the cone
+    /// list *after* presolve and chordal decomposition have rewritten it,
+    /// whereas `s` and `z` are returned at the original, un-reduced length.
+    /// When presolve fires the two disagree.  Measured on the two-cone
+    /// presolve case in `tests/presolve.rs` (one `b` entry at infinity,
+    /// `[NonnegativeConeT(3), NonnegativeConeT(3)]`): `z.len() == 6` but
+    /// `cone_specs` is the single entry `NonnegativeCone, range 0..5`,
+    /// covering 5 of the 6 slack entries.  This is a pre-existing defect and
+    /// is not addressed here.
+    ///
+    /// [`declared_cone_specs`](Self::declared_cone_specs) is derived from the
+    /// caller's own cone list and never sees presolve or chordal
+    /// decomposition, so it is correct in those cases.
     pub cone_specs: Vec<ConeSpec>,
+
+    /// Per-cone metadata for the cones the caller *declared*, as opposed to
+    /// the collapsed list `cone_specs` describes.
+    ///
+    /// The solver internally collapses the user's cone list before solving:
+    /// adjacent nonnegative cones are merged, `SecondOrderConeT(1)` and
+    /// `PSDTriangleConeT(1)` singletons are rewritten as `NonnegativeConeT(1)`,
+    /// and empty cones are dropped.  That is a sound optimisation -- it does
+    /// not change the solution -- but it means `cone_specs` neither preserves
+    /// the caller's cone *indices* nor remembers that a 1x1 cone was declared
+    /// PSD.  This field does both.
+    ///
+    /// Entries are the caller's cones with only the
+    /// [`BlockDiagPSDConeT`](crate::solver::core::cones::SupportedConeT::BlockDiagPSDConeT)
+    /// sugar unfolded, in declaration order, one entry per block.  Each entry
+    /// records the index of the cone in the caller's input slice it came from
+    /// (see [`DeclaredConeSpec::input_index`]), so the blocks belonging to one
+    /// `BlockDiagPSDConeT` are identifiable as a group.
+    ///
+    /// The ranges here index the same `s` / `z` vectors as `cone_specs`, and
+    /// are a refinement of them: the collapse pass only ever merges adjacent
+    /// ranges or removes zero-length ones, so a declared range is always a
+    /// contiguous sub-slice of exactly one collapsed range.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub declared_cone_specs: Vec<DeclaredConeSpec>,
 }
 
 /// Per-cone metadata recorded on `DefaultSolution`. Used as the offset
@@ -73,6 +114,36 @@ pub struct ConeSpec {
     /// scalar dimension. Used by [`DefaultSolution::dual_psd_block`]
     /// and friends to unpack svec into a dense `d×d` matrix.
     pub dim: usize,
+}
+
+/// Per-cone metadata for a cone *as the caller declared it*, before the
+/// internal collapse pass rewrote it.  Recorded on
+/// [`DefaultSolution::declared_cone_specs`].
+///
+/// This is deliberately a separate type from [`ConeSpec`] rather than an
+/// extra field on it: `ConeSpec` is public and (under the `serde` feature)
+/// serialized, so growing it would change its wire format for every existing
+/// consumer.  The two lists also have different lengths whenever the collapse
+/// pass did anything, so they cannot share entries in any case.
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct DeclaredConeSpec {
+    /// Tag identifying the cone type **as declared**.  A `PSDTriangleConeT(1)`
+    /// reports `PSDTriangleCone` here even though the solver collapsed it to a
+    /// `NonnegativeCone`.
+    pub tag: SupportedConeTag,
+    /// Half-open range `[start, stop)` indexing into the flat `z` and `s`
+    /// vectors, exactly as for [`ConeSpec::range`].
+    pub range: std::ops::Range<usize>,
+    /// For `PSDTriangleCone` cones the matrix dimension `d`; for other cones
+    /// the scalar dimension.
+    pub dim: usize,
+    /// Index of the cone in the caller's original input slice that produced
+    /// this entry.  Normally equal to the position in `declared_cone_specs`,
+    /// but a `BlockDiagPSDConeT` with `k` blocks produces `k` consecutive
+    /// entries that all carry its input index, and any cone list containing
+    /// one shifts every later entry's position relative to its input index.
+    pub input_index: usize,
 }
 
 impl<T> DefaultSolution<T>
@@ -97,6 +168,7 @@ where
             r_prim: T::nan(),
             r_dual: T::nan(),
             cone_specs: Vec::new(),
+            declared_cone_specs: Vec::new(),
         }
     }
 }
@@ -156,6 +228,75 @@ where
         let d = spec.dim;
         let svec = &self.s[spec.range.clone()];
         Some(unpack_svec::<T>(svec, d))
+    }
+
+    /// Slice of the dual `z` vector corresponding to declared cone `idx`
+    /// (an index into [`declared_cone_specs`](Self::declared_cone_specs),
+    /// i.e. the caller's own cone ordering with `BlockDiagPSDConeT` blocks
+    /// counted individually).
+    ///
+    /// Unlike [`dual_block`](Self::dual_block), this index is not disturbed
+    /// by the internal collapse pass merging or dropping cones.
+    ///
+    /// Returns `None` if `idx` is out of range.
+    pub fn declared_dual_block(&self, idx: usize) -> Option<&[T]> {
+        let spec = self.declared_cone_specs.get(idx)?;
+        Some(&self.z[spec.range.clone()])
+    }
+
+    /// Slice of the slack `s` vector corresponding to declared cone `idx`.
+    /// See [`declared_dual_block`](Self::declared_dual_block).
+    pub fn declared_primal_block(&self, idx: usize) -> Option<&[T]> {
+        let spec = self.declared_cone_specs.get(idx)?;
+        Some(&self.s[spec.range.clone()])
+    }
+
+    /// For a cone the caller **declared** as `PSDTriangleConeT` at declared
+    /// position `idx`, unpack the dual `z` slice into a dense `d × d`
+    /// symmetric matrix, exactly as [`dual_psd_block`](Self::dual_psd_block)
+    /// does for the collapsed list.
+    ///
+    /// This honours the declaration rather than the internal representation,
+    /// so a declared `PSDTriangleConeT(1)` yields `Some([[value]])` here even
+    /// though the solver collapsed it to a `NonnegativeConeT(1)` and
+    /// `dual_psd_block` therefore returns `None` for it.
+    ///
+    /// Returns `None` if `idx` is out of range or the cone at declared
+    /// position `idx` was not declared as `PSDTriangleConeT`.
+    #[cfg(feature = "sdp")]
+    pub fn declared_dual_psd_block(&self, idx: usize) -> Option<Vec<Vec<T>>> {
+        let spec = self.declared_cone_specs.get(idx)?;
+        if spec.tag != SupportedConeTag::PSDTriangleCone {
+            return None;
+        }
+        Some(unpack_svec::<T>(&self.z[spec.range.clone()], spec.dim))
+    }
+
+    /// Same as [`declared_dual_psd_block`](Self::declared_dual_psd_block) for
+    /// the primal slack `s`.
+    #[cfg(feature = "sdp")]
+    pub fn declared_primal_psd_block(&self, idx: usize) -> Option<Vec<Vec<T>>> {
+        let spec = self.declared_cone_specs.get(idx)?;
+        if spec.tag != SupportedConeTag::PSDTriangleCone {
+            return None;
+        }
+        Some(unpack_svec::<T>(&self.s[spec.range.clone()], spec.dim))
+    }
+
+    /// The declared positions produced by entry `input_index` of the caller's
+    /// original cone slice.
+    ///
+    /// This is the identity for every cone except `BlockDiagPSDConeT`, which
+    /// contributes one declared position per block.  Returns an empty vector
+    /// if the input cone contributed no declared cones (a `BlockDiagPSDConeT`
+    /// with empty `block_dims`) or if `input_index` is out of range.
+    pub fn declared_positions_for_input(&self, input_index: usize) -> Vec<usize> {
+        self.declared_cone_specs
+            .iter()
+            .enumerate()
+            .filter(|(_, spec)| spec.input_index == input_index)
+            .map(|(pos, _)| pos)
+            .collect()
     }
 
     /// Sum-of-squares norm of `s + Ax - b` per cone, evaluated at
@@ -262,24 +403,35 @@ where
         let mut start = 0usize;
         for cone in &data.cones {
             let nv = cone.nvars();
-            let dim = match cone {
-                SupportedConeT::ZeroConeT(d) => *d,
-                SupportedConeT::NonnegativeConeT(d) => *d,
-                SupportedConeT::SecondOrderConeT(d) => *d,
-                SupportedConeT::ExponentialConeT() => 3,
-                SupportedConeT::PowerConeT(_) => 3,
-                SupportedConeT::GenPowerConeT(α, dim2) => α.len() + *dim2,
-                #[cfg(feature = "sdp")]
-                SupportedConeT::PSDTriangleConeT(d) => *d,
-                #[cfg(feature = "sdp")]
-                SupportedConeT::BlockDiagPSDConeT { .. } => unreachable!(
-                    "BlockDiagPSDConeT must be expanded before reaching post_process"
-                ),
-            };
             self.cone_specs.push(ConeSpec {
                 tag: cone.as_tag(),
                 range: start..(start + nv),
-                dim,
+                // `spec_dim` panics on BlockDiagPSDConeT, which is exactly
+                // the invariant asserted here: the sugar is desugared by
+                // `new_collapsed` and cannot reach `post_process`.
+                dim: cone.spec_dim(),
+            });
+            start += nv;
+        }
+
+        // Populate the *declared* metadata from the cone list the caller
+        // actually wrote, retained on the problem data before the collapse
+        // pass shadowed it.  These ranges refine the collapsed ones -- the
+        // collapse pass only merges adjacent ranges or drops zero-length
+        // ones -- so they index the same `s` / `z` vectors.
+        self.declared_cone_specs.clear();
+        let mut start = 0usize;
+        for (cone, &input_index) in data
+            .declared_cones
+            .iter()
+            .zip(data.declared_cone_origin.iter())
+        {
+            let nv = cone.nvars();
+            self.declared_cone_specs.push(DeclaredConeSpec {
+                tag: cone.as_tag(),
+                range: start..(start + nv),
+                dim: cone.spec_dim(),
+                input_index,
             });
             start += nv;
         }
