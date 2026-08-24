@@ -111,7 +111,7 @@ fn mpfr_serde_round_trip() {
 mod lapack_tests {
     use super::*;
     // The X*Scalar traits must be in scope to call their methods on MpfrFloat.
-    use crate::algebra::dense::blas::traits::{XpotrfScalar, XsyevrScalar};
+    use crate::algebra::{XpotrfScalar, XsyevrScalar};
 
     fn f(x: f64) -> MpfrFloat {
         MpfrFloat::from_f64(x).unwrap()
