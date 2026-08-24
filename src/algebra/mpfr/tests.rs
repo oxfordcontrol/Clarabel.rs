@@ -111,7 +111,7 @@ fn mpfr_serde_round_trip() {
 mod lapack_tests {
     use super::*;
     // The X*Scalar traits must be in scope to call their methods on MpfrFloat.
-    use crate::algebra::{XpotrfScalar, XsyevrScalar};
+    use crate::algebra::{XpotrfScalar, XsyevrScalar, XsyrkScalar};
 
     fn f(x: f64) -> MpfrFloat {
         MpfrFloat::from_f64(x).unwrap()
@@ -278,5 +278,91 @@ mod lapack_tests {
                 close(&acc, a0[j * 3 + i].to_f64(), 1e-38, &format!("LLᵀ[{i}][{j}]"));
             }
         }
+    }
+
+    // -----------------------------------------------------------------
+    // Moved here 2026-08-24 from `tests/mpfr_edge_cases.rs`.
+    //
+    // These three cases were written as an *integration* test, but they
+    // call `xsyevr` / `xpotrf` / `xsyrk` through the `X*Scalar` traits.
+    // Those traits live in `crate::algebra::dense::blas`, and `dense` is
+    // a private module of `crate::algebra` re-exported only as
+    // `pub(crate) use dense::*`. An integration test is a separate crate,
+    // so it can never name them — the file failed with 3 x E0405 and, by
+    // failing to build, took the whole `cargo test` target down with it.
+    // They belong in-crate; only the sentinel case, which uses public
+    // API alone, remains in `tests/mpfr_edge_cases.rs`.
+    // -----------------------------------------------------------------
+
+    /// Repeated (degenerate) eigenvalues: A = 2·I₃ has spectrum {2,2,2}.
+    ///
+    /// The Jacobi sweep must terminate immediately here — every
+    /// off-diagonal is already zero — and return the diagonal unchanged.
+    ///
+    /// NB: the storage was corrected during the move. The original passed
+    /// a 6-element *packed* triangle to `xsyevr`, which is a full-storage
+    /// routine requiring `lda*n = 9` entries; it panicked with
+    /// `index out of bounds: the len is 6 but the index is 6` at
+    /// native_lapack.rs:144. Even a strictly-triangle-respecting reader
+    /// needs `a[(n-1)*lda + (n-1)] = a[8]`, so 6 entries is insufficient
+    /// under any reading — the input was wrong, not the implementation.
+    /// The assertions are untouched.
+    #[test]
+    fn mpfr_syevr_degenerate_repeated_eigenvalues() {
+        let mut a = vec![MpfrFloat::zero(); 9];
+        a[0] = f(2.0);
+        a[4] = f(2.0);
+        a[8] = f(2.0);
+
+        let mut w = vec![MpfrFloat::zero(); 3];
+        let mut z = vec![MpfrFloat::zero(); 9];
+        let mut isuppz = vec![0i32; 6];
+        let mut work = vec![MpfrFloat::zero(); 26];
+        let mut iwork = vec![0i32; 10];
+        let mut m = 0i32;
+        let mut info = 0i32;
+
+        MpfrFloat::xsyevr(
+            b'V', b'A', b'U', 3, &mut a, 3,
+            MpfrFloat::zero(), MpfrFloat::zero(), 0, 0, f(1e-10),
+            &mut m, &mut w, &mut z, 3, &mut isuppz,
+            &mut work, 26, &mut iwork, 10, &mut info,
+        );
+        assert_eq!(info, 0, "xsyevr reported info={info}");
+        assert_eq!(m, 3, "xsyevr returned m={m}, expected 3");
+
+        for i in 0..3 {
+            close(&w[i], 2.0, 1e-8, &format!("w{i}"));
+        }
+    }
+
+    /// `xpotrf` must *reject* a singular (rank-1) matrix rather than
+    /// return a bogus factor: the all-ones 3x3 is PSD but not PD, and
+    /// the second pivot is exactly zero, so `info` must be > 0.
+    #[test]
+    fn mpfr_potrf_rejects_singular_matrix() {
+        let mut a = vec![f(1.0); 9];
+        let mut info = 0i32;
+        MpfrFloat::xpotrf(b'U', 3, &mut a, 3, &mut info);
+        assert!(info > 0, "singular matrix must be rejected, got info={info}");
+    }
+
+    /// `xsyrk`: C := A Aᵀ, upper triangle only.
+    ///
+    /// A is 2x2 column-major [1,2,3,4] = [[1,3],[2,4]], so
+    /// A Aᵀ = [[10,14],[14,20]]. Only the upper triangle is written,
+    /// so `c[1]` (row 1, col 0) must stay at its `beta`-scaled zero.
+    #[test]
+    fn mpfr_syrk_upper_triangle_product() {
+        let a = vec![f(1.0), f(2.0), f(3.0), f(4.0)];
+        let mut c = vec![MpfrFloat::zero(); 4];
+        MpfrFloat::xsyrk(
+            b'U', b'N', 2, 2, MpfrFloat::one(), &a, 2, MpfrFloat::zero(), &mut c, 2,
+        );
+        close(&c[0], 10.0, 1e-8, "C[0][0]");
+        close(&c[2], 14.0, 1e-8, "C[0][1]");
+        close(&c[3], 20.0, 1e-8, "C[1][1]");
+        // strictly-lower entry is not referenced by an upper-triangle syrk
+        close(&c[1], 0.0, 1e-40, "C[1][0] (must be untouched)");
     }
 }
