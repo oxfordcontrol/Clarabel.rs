@@ -26,6 +26,12 @@ pub(crate) mod chordal;
 //allows declaration of cone constraints
 pub use crate::solver::core::cones::{SupportedConeT, SupportedConeT::*};
 
+// The tag type carried by `DefaultSolution::cone_specs` and
+// `declared_cone_specs`.  `solver::core` is `pub(crate)`, so without this
+// re-export the `tag` field of those public structs has a type no downstream
+// caller can name, let alone match on.
+pub use crate::solver::core::cones::SupportedConeTag;
+
 //user facing traits required to interact with solver
 pub use crate::solver::core::kktsolvers::LinearSolverInfo;
 pub use crate::solver::core::{IPSolver, SolverStatus};
