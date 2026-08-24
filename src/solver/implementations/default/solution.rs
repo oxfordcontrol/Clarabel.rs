@@ -16,12 +16,17 @@ use crate::{
 /// and `Deserialize` with bound `T: Serialize + DeserializeOwned`.
 /// For `T = RationalReal` this gives bit-exact JSON witnesses
 /// (numerator/denominator pairs preserved through round-trip).
+/// Marked `#[non_exhaustive]`: external struct-literal construction is not
+/// supported (use [`DefaultSolution::new`]), so future fields can be added
+/// without further breakage.  Deserialization of previously-written JSON is
+/// unaffected — added fields carry serde defaults.
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "serde",
     serde(bound = "T: serde::Serialize + serde::de::DeserializeOwned")
 )]
+#[non_exhaustive]
 pub struct DefaultSolution<T> {
     /// primal solution
     pub x: Vec<T>,
@@ -125,8 +130,15 @@ pub struct ConeSpec {
 /// serialized, so growing it would change its wire format for every existing
 /// consumer.  The two lists also have different lengths whenever the collapse
 /// pass did anything, so they cannot share entries in any case.
+///
+/// Marked `#[non_exhaustive]` so that later fields can be added without a
+/// breaking change.  This costs nothing here: the type is new, so no external
+/// struct-literal construction of it can exist yet.  Note that [`ConeSpec`] is
+/// deliberately *not* marked — it predates this type, so marking it would
+/// itself be the breaking change this crate went out of its way to avoid.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[non_exhaustive]
 pub struct DeclaredConeSpec {
     /// Tag identifying the cone type **as declared**.  A `PSDTriangleConeT(1)`
     /// reports `PSDTriangleCone` here even though the solver collapsed it to a
