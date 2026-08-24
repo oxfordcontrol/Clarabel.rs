@@ -4,6 +4,8 @@ use super::*;
 use crate::algebra::triangular_number;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "sdp")]
+use std::borrow::Cow;
 
 // ---------------------------------------------------
 // We define some machinery here for enumerating the
@@ -63,9 +65,19 @@ pub enum SupportedConeT<T> {
     /// concatenation `triu(B_0) ‖ triu(B_1) ‖ …` in svec form, with
     /// the same packing convention as `PSDTriangleConeT`.
     ///
-    /// `block_dims = vec![]` is rejected at validation time;
     /// `block_dims = vec![n]` is equivalent to a single
     /// `PSDTriangleConeT(n)` and expanded to that.
+    ///
+    /// The expansion happens *before* the cone-collapse pass, so the
+    /// resulting blocks are subject to exactly the same simplifications
+    /// as the hand-written sequence they stand for.  In particular a
+    /// 1x1 block becomes a `NonnegativeConeT(1)` (a 1x1 PSD constraint
+    /// *is* a scalar nonnegativity constraint) and may be merged with an
+    /// adjacent nonnegative cone.  Consumers that index the solved cone
+    /// list -- e.g. `DefaultSolution::dual_psd_block` -- therefore see
+    /// the collapsed list, exactly as they would for the hand-written
+    /// form; use `dual_block` / `primal_block` to read a 1x1 block's
+    /// value as a plain slice.
     #[cfg(feature = "sdp")]
     BlockDiagPSDConeT { block_dims: Vec<usize> },
 }
@@ -130,7 +142,51 @@ impl<T> SupportedConeT<T>
 where
     T: FloatT,
 {
+    /// Expand every [`BlockDiagPSDConeT`](SupportedConeT::BlockDiagPSDConeT)
+    /// into the sequence of [`PSDTriangleConeT`](SupportedConeT::PSDTriangleConeT)s
+    /// it is sugar for.  Blocks are pushed verbatim, *including* zero-dimensional
+    /// ones: a `PSDTriangleConeT(0)` has `nvars() == 0` and is dropped by the
+    /// same empty-cone rule that drops a hand-written one, so the two forms stay
+    /// indistinguishable.
+    ///
+    /// Returns a borrow of the input when there is no sugar to expand, so the
+    /// common (no block-diagonal) case allocates nothing.
+    #[cfg(feature = "sdp")]
+    fn expand_block_diag(cones: &[SupportedConeT<T>]) -> Cow<'_, [SupportedConeT<T>]> {
+        let has_sugar = cones
+            .iter()
+            .any(|c| matches!(c, SupportedConeT::BlockDiagPSDConeT { .. }));
+
+        if !has_sugar {
+            return Cow::Borrowed(cones);
+        }
+
+        let mut out = Vec::with_capacity(cones.len());
+        for cone in cones {
+            match cone {
+                SupportedConeT::BlockDiagPSDConeT { block_dims } => out.extend(
+                    block_dims
+                        .iter()
+                        .map(|&d| SupportedConeT::PSDTriangleConeT(d)),
+                ),
+                _ => out.push(cone.clone()),
+            }
+        }
+        Cow::Owned(out)
+    }
+
     pub(crate) fn new_collapsed(cones: &[SupportedConeT<T>]) -> Vec<SupportedConeT<T>> {
+        // Expand the BlockDiagPSDConeT sugar *first*, so that the blocks it
+        // stands for are then fed through exactly the same collapse pass as
+        // the hand-written `[PSDTriangleConeT(d0), PSDTriangleConeT(d1), ...]`
+        // equivalent.  Expanding inside the loop below instead would push the
+        // blocks straight to the output and bypass those rules, making the
+        // sugar behave differently from the form it is sugar for.
+        #[cfg(feature = "sdp")]
+        let expanded = Self::expand_block_diag(cones);
+        #[cfg(feature = "sdp")]
+        let cones: &[SupportedConeT<T>] = expanded.as_ref();
+
         let mut newcones = Vec::with_capacity(cones.len());
         let mut iter = cones.iter().peekable();
 
@@ -179,17 +235,16 @@ where
                         collapse(&mut iter, &mut newcones, *dim)
                     }
 
-                    // BlockDiagPSDConeT is sugar — expand to one
-                    // PSDTriangleConeT per block. Empty blocks are
-                    // skipped (nvars() == 0 for an empty triu).
+                    // BlockDiagPSDConeT is sugar and was already expanded by
+                    // `expand_block_diag` above, so it cannot appear here.  Do
+                    // not add an expansion arm at this point: it would bypass
+                    // the collapse rules above and desugar differently from the
+                    // hand-written equivalent.
                     #[cfg(feature = "sdp")]
-                    SupportedConeT::BlockDiagPSDConeT { block_dims } => {
-                        for &d in block_dims {
-                            if d > 0 {
-                                newcones.push(SupportedConeT::PSDTriangleConeT(d));
-                            }
-                        }
-                    }
+                    SupportedConeT::BlockDiagPSDConeT { .. } => unreachable!(
+                        "BlockDiagPSDConeT is sugar; expand_block_diag should have \
+                         expanded it before the collapse pass"
+                    ),
 
                     // everything else
                     _ => newcones.push(cone.clone()),
@@ -543,6 +598,85 @@ mod tests {
         ];
         let by_hand_total: usize = by_hand.iter().map(|c| c.nvars()).sum();
         assert_eq!(block.nvars(), by_hand_total);
+    }
+
+    #[cfg(feature = "sdp")]
+    #[test]
+    fn test_block_diag_psd_cone_equivalent_to_hand_written() {
+        // The whole premise of the sugar: declaring the blocks with
+        // BlockDiagPSDConeT must desugar to exactly what the user would
+        // have got by pushing the PSDTriangleConeTs by hand.  Check that
+        // over a set of shapes that exercise the collapse rules.
+        let cases: Vec<(Vec<usize>, Vec<SupportedConeT<f64>>)> = vec![
+            (vec![2, 3, 1], vec![]),
+            (vec![1], vec![]),
+            (vec![1, 1, 1], vec![]),
+            (vec![2, 0, 3, 0, 1], vec![]),
+            (vec![4], vec![SupportedConeT::SecondOrderConeT(4)]),
+            (vec![3, 1], vec![SupportedConeT::NonnegativeConeT(2)]),
+            (vec![1], vec![SupportedConeT::NonnegativeConeT(2)]),
+            (
+                vec![2, 1],
+                vec![
+                    SupportedConeT::SecondOrderConeT(1),
+                    SupportedConeT::ExponentialConeT(),
+                ],
+            ),
+        ];
+
+        for (block_dims, tail) in cases {
+            let mut sugared = vec![SupportedConeT::<f64>::BlockDiagPSDConeT {
+                block_dims: block_dims.clone(),
+            }];
+            sugared.extend(tail.iter().cloned());
+
+            let mut by_hand: Vec<SupportedConeT<f64>> = block_dims
+                .iter()
+                .map(|&d| SupportedConeT::PSDTriangleConeT(d))
+                .collect();
+            by_hand.extend(tail.iter().cloned());
+
+            assert_eq!(
+                SupportedConeT::new_collapsed(&sugared),
+                SupportedConeT::new_collapsed(&by_hand),
+                "sugar and hand-written form disagree for block_dims {:?}",
+                block_dims
+            );
+        }
+    }
+
+    #[cfg(feature = "sdp")]
+    #[test]
+    fn test_block_diag_psd_cone_rolls_up_into_following_nonnegative() {
+        // A 1x1 block collapses to a nonnegative, and the collapse pass then
+        // rolls it together with the nonnegative that follows -- exactly as it
+        // does for a hand-written PSDTriangleConeT(1).
+        let cones = vec![
+            SupportedConeT::<f64>::BlockDiagPSDConeT {
+                block_dims: vec![1],
+            },
+            SupportedConeT::NonnegativeConeT(2),
+        ];
+        let result = SupportedConeT::new_collapsed(&cones);
+        assert_eq!(result, vec![SupportedConeT::NonnegativeConeT(3)]);
+    }
+
+    #[cfg(feature = "sdp")]
+    #[test]
+    fn test_block_diag_psd_cone_preserves_slack_count_through_collapse() {
+        // Collapsing must not lose or invent slack variables: the desugared
+        // cone list has to carry the same total nvars as the sugared input.
+        for block_dims in [vec![2, 3, 1], vec![1, 1, 1], vec![2, 0, 3, 0, 1]] {
+            let cones = vec![SupportedConeT::<f64>::BlockDiagPSDConeT {
+                block_dims: block_dims.clone(),
+            }];
+            let before: usize = cones.iter().map(|c| c.nvars()).sum();
+            let after: usize = SupportedConeT::new_collapsed(&cones)
+                .iter()
+                .map(|c| c.nvars())
+                .sum();
+            assert_eq!(before, after, "slack count changed for {:?}", block_dims);
+        }
     }
 
     #[cfg(feature = "sdp")]
