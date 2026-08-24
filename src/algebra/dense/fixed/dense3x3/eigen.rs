@@ -80,11 +80,11 @@ fn eigvals_analytic<T: FloatT>(A: &DenseMatrixSym3<T>) -> [T; 3] {
     // p, q and sqrt(p)
     let p = m * m - c1 * (3.0).as_T();
     let q = m * (p - c1 * (1.5).as_T()) - C_27_OVER_2 * c0;
-    let sqrt_p = T::sqrt(T::abs(p));
+    let sqrt_p = T::sqrt(p.abs());
 
     // phi
     let phi = ((c1 * c1) * (p - c1) * (0.25).as_T() + c0 * (q + C_27_OVER_4 * c0)) * (27.0).as_T();
-    let phi = ONE_THIRD * T::atan2(T::sqrt(T::abs(phi)), q);
+    let phi = ONE_THIRD * T::atan2(T::sqrt(phi.abs()), q);
 
     // c and s
     let s = SQRT3_INV * sqrt_p * T::sin(phi);
@@ -124,7 +124,7 @@ fn eigvecs_analytic<T: FloatT>(
     };
 
     // bail if the condition number is too large
-    let cond = T::abs(w[sidx[0]] / w[sidx[2]]);
+    let cond = (w[sidx[0]] / w[sidx[2]]).abs();
     if cond > T::epsilon().sqrt().recip() {
         return Err(());
     }

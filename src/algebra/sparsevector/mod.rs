@@ -65,7 +65,7 @@ where
 
 impl<T> From<SparseVector<T>> for Vec<T>
 where
-    T: Num + Copy,
+    T: Num + Clone,
 {
     fn from(sv: SparseVector<T>) -> Vec<T> {
         let mut v = vec![T::zero(); sv.n];

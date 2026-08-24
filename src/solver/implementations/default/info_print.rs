@@ -37,13 +37,14 @@ impl<T> ConfigurablePrintTarget for DefaultInfo<T> {
 }
 
 macro_rules! expformat {
-    ($fmt:expr,$val:expr) => {
-        if $val.is_finite() {
-            _exp_str_reformat(format!($fmt, $val))
+    ($fmt:expr,$val:expr) => {{
+        let v = $val;
+        if v.clone().is_finite() {
+            _exp_str_reformat(format!($fmt, v))
         } else {
-            format!($fmt, $val)
+            format!($fmt, v)
         }
-    };
+    }};
 }
 
 impl<T> InfoPrint<T> for DefaultInfo<T>
@@ -136,17 +137,17 @@ where
         let out = &mut self.stream;
 
         write!(out, "{:>3}  ", self.iterations)?;
-        write!(out, "{}  ", expformat!("{:+8.4e}", self.cost_primal))?;
-        write!(out, "{}  ", expformat!("{:+8.4e}", self.cost_dual))?;
-        let gapprint = T::min(self.gap_abs, self.gap_rel);
+        write!(out, "{}  ", expformat!("{:+8.4e}", self.cost_primal.clone()))?;
+        write!(out, "{}  ", expformat!("{:+8.4e}", self.cost_dual.clone()))?;
+        let gapprint = T::min(self.gap_abs.clone(), self.gap_rel.clone());
         write!(out, "{}  ", expformat!("{:6.2e}", gapprint))?;
-        write!(out, "{}  ", expformat!("{:6.2e}", self.res_primal))?;
-        write!(out, "{}  ", expformat!("{:6.2e}", self.res_dual))?;
-        write!(out, "{}  ", expformat!("{:6.2e}", self.ktratio))?;
-        write!(out, "{}  ", expformat!("{:6.2e}", self.mu))?;
+        write!(out, "{}  ", expformat!("{:6.2e}", self.res_primal.clone()))?;
+        write!(out, "{}  ", expformat!("{:6.2e}", self.res_dual.clone()))?;
+        write!(out, "{}  ", expformat!("{:6.2e}", self.ktratio.clone()))?;
+        write!(out, "{}  ", expformat!("{:6.2e}", self.mu.clone()))?;
 
         if self.iterations > 0 {
-            write!(out, "{}  ", expformat!("{:>.2e}", self.step_length))?;
+            write!(out, "{}  ", expformat!("{:>.2e}", self.step_length.clone()))?;
         } else {
             write!(out, " ------   ")?; //info.step_length
         }

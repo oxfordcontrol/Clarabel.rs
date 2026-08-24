@@ -207,16 +207,16 @@ where
         let sparse_data = self.sparse_data.as_ref().unwrap();
 
         let map = self.recover_map(map);
-        let η2 = self.η * self.η;
+        let η2 = self.η.clone() * self.η.clone();
 
         // off diagonal columns (or rows)
         updateFcn(ldl, K, &map.u, &sparse_data.u);
         updateFcn(ldl, K, &map.v, &sparse_data.v);
-        scaleFcn(ldl, K, &map.u, -η2);
-        scaleFcn(ldl, K, &map.v, -η2);
+        scaleFcn(ldl, K, &map.u, -η2.clone());
+        scaleFcn(ldl, K, &map.v, -η2.clone());
 
         //set diagonal to η^2*(-1,1) in the extended rows/cols
-        updateFcn(ldl, K, &map.D, &[-η2, η2]);
+        updateFcn(ldl, K, &map.D, &[-η2.clone(), η2]);
     }
 }
 
@@ -328,14 +328,14 @@ where
     ) {
         let map = self.recover_map(map);
         let data = &self.data;
-        let sqrtμ = data.μ.sqrt();
+        let sqrtμ = data.μ.clone().sqrt();
 
         //&off diagonal columns (or rows), distribute √μ to off-diagonal terms
         updateFcn(ldl, K, &map.q, &data.q);
         updateFcn(ldl, K, &map.r, &data.r);
         updateFcn(ldl, K, &map.p, &data.p);
-        scaleFcn(ldl, K, &map.q, -sqrtμ);
-        scaleFcn(ldl, K, &map.r, -sqrtμ);
+        scaleFcn(ldl, K, &map.q, -sqrtμ.clone());
+        scaleFcn(ldl, K, &map.r, -sqrtμ.clone());
         scaleFcn(ldl, K, &map.p, -sqrtμ);
 
         //&normalize diagonal terms to 1/-1 in the extended rows/cols

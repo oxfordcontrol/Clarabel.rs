@@ -116,7 +116,7 @@ where
 
 impl<T> CscMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Clone,
 {
     /// `CscMatrix` constructor.
     ///
@@ -184,14 +184,15 @@ where
                 if j == 0 || M.rowval[readidx] != M.rowval[readidx - 1] {
                     if writeidx != readidx {
                         M.rowval[writeidx] = M.rowval[readidx];
-                        M.nzval[writeidx] = M.nzval[readidx];
+                        M.nzval[writeidx] = M.nzval[readidx].clone();
                     }
                     writeidx += 1;
                     readidx += 1;
                 }
                 // repeated row entry with value to be consolidated
                 else {
-                    M.nzval[writeidx - 1] = M.nzval[writeidx - 1] + M.nzval[readidx];
+                    let cur = M.nzval[writeidx - 1].clone();
+                    M.nzval[writeidx - 1] = cur + M.nzval[readidx].clone();
                     M.colptr[col] -= 1;
                     readidx += 1;
                 }
@@ -246,7 +247,7 @@ where
             let last = self.colptr[col + 1];
 
             for readidx in first..last {
-                let val = self.nzval[readidx];
+                let val = self.nzval[readidx].clone();
                 let row = self.rowval[readidx];
 
                 // If nonzero and a shift so far, move the value
@@ -365,13 +366,13 @@ where
             tempdata.resize(stop - start, (0, T::zero()));
 
             for (i, (r, v)) in zip(rowval.iter(), nzval.iter()).enumerate() {
-                tempdata[i] = (*r, *v);
+                tempdata[i] = (*r, v.clone());
             }
-            tempdata.sort_by_key(|&(r, _)| r);
+            tempdata.sort_by_key(|(r, _)| *r);
 
             for (i, (r, v)) in tempdata.iter().enumerate() {
                 rowval[i] = *r;
-                nzval[i] = *v;
+                nzval[i] = v.clone();
             }
         }
 
@@ -390,11 +391,11 @@ where
 
             while ptr < stop {
                 let thisrow = self.rowval[ptr];
-                let mut accum = self.nzval[ptr];
+                let mut accum = self.nzval[ptr].clone();
                 ptr += 1;
 
                 while (ptr < stop) && (self.rowval[ptr] == thisrow) {
-                    accum = accum + self.nzval[ptr];
+                    accum = accum + self.nzval[ptr].clone();
                     ptr += 1;
                 }
                 self.rowval[nnz] = thisrow;
@@ -482,7 +483,7 @@ where
                 let thisrow = self.rowval[ptr];
                 if rowidx[thisrow] {
                     Ared.rowval[ptrred] = rridx[thisrow];
-                    Ared.nzval[ptrred] = self.nzval[ptr];
+                    Ared.nzval[ptrred] = self.nzval[ptr].clone();
                     ptrred += 1;
                 }
             }
@@ -534,7 +535,9 @@ where
 
             //copy upper triangle values
             rowval[fdest..ldest].copy_from_slice(&self.rowval[fsrc..lsrc]);
-            nzval[fdest..ldest].copy_from_slice(&self.nzval[fsrc..lsrc]);
+            for (d, s) in zip(&mut nzval[fdest..ldest], &self.nzval[fsrc..lsrc]) {
+                *d = s.clone();
+            }
 
             //this should now be cumsum of the counts
             colptr[col + 1] = ldest;
@@ -555,7 +558,7 @@ where
         let last = self.colptr[col + 1];
         let rows_in_this_column = &self.rowval[first..last];
         match rows_in_this_column.binary_search(&row) {
-            Ok(idx) => Some(self.nzval[first + idx]),
+            Ok(idx) => Some(self.nzval[first + idx].clone()),
             Err(_) => None,
         }
     }

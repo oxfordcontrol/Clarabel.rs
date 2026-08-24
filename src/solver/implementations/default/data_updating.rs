@@ -101,7 +101,7 @@ where
     ) -> Result<(), DataUpdateError> {
         self.check_data_update_allowed()?;
         let d = &self.data.equilibration.d;
-        let c = self.data.equilibration.c;
+        let c = self.data.equilibration.c.clone();
         data.update_matrix(&mut self.data.P, d, d, Some(c))?;
         // overwrite KKT data
         self.kktsystem.update_P(&self.data.P);
@@ -138,7 +138,7 @@ where
     ) -> Result<(), DataUpdateError> {
         self.check_data_update_allowed()?;
         let d = &self.data.equilibration.d;
-        let c = self.data.equilibration.c;
+        let c = self.data.equilibration.c.clone();
         data.update_vector(&mut self.data.q, d, Some(c))?;
 
         // flush unscaled norm. Will be recalculated during solve
@@ -220,7 +220,7 @@ where
             return Err(SparseFormatError::IncompatibleDimension);
         }
 
-        M.nzval.copy_from_slice(data);
+        M.nzval.copy_from(data);
 
         // reapply original equilibration
         M.lrscale(lscale, rscale);
@@ -271,15 +271,17 @@ where
         rscale: &[T],
         cscale: Option<T>,
     ) -> Result<(), SparseFormatError> {
-        for (&idx, &value) in self.clone() {
+        for (&idx, value) in self.clone() {
             if idx >= M.nzval.len() {
                 return Err(SparseFormatError::IncompatibleDimension);
             }
             let (row, col) = M.index_to_coord(idx);
-            if let Some(c) = cscale {
-                M.nzval[idx] = lscale[row] * rscale[col] * c * value;
+            let l: T = Clone::clone(&lscale[row]);
+            let r: T = Clone::clone(&rscale[col]);
+            if let Some(c) = cscale.clone() {
+                M.nzval[idx] = l * r * c * value.clone();
             } else {
-                M.nzval[idx] = lscale[row] * rscale[col] * value;
+                M.nzval[idx] = l * r * value.clone();
             }
         }
         Ok(())
@@ -321,7 +323,7 @@ where
             return Err(SparseFormatError::IncompatibleDimension);
         }
 
-        v.copy_from_slice(data);
+        v.copy_from(data);
 
         //reapply original equilibration
         v.hadamard(vscale);
@@ -370,14 +372,15 @@ where
         vscale: &[T],
         cscale: Option<T>,
     ) -> Result<(), SparseFormatError> {
-        for (&idx, &value) in self.clone() {
+        for (&idx, value) in self.clone() {
             if idx >= v.len() {
                 return Err(SparseFormatError::IncompatibleDimension);
             }
-            if let Some(c) = cscale {
-                v[idx] = value * vscale[idx] * c;
+            let vs: T = Clone::clone(&vscale[idx]);
+            if let Some(c) = cscale.clone() {
+                v[idx] = value.clone() * vs * c;
             } else {
-                v[idx] = value * vscale[idx];
+                v[idx] = value.clone() * vs;
             }
         }
         Ok(())

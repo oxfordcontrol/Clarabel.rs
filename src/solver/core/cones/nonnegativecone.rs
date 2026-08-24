@@ -57,7 +57,7 @@ where
 
     fn margins(&mut self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
         let α = z.minimum();
-        let β = z.iter().fold(T::zero(), |β, &zi| β + T::max(zi, T::zero()));
+        let β = z.iter().fold(T::zero(), |β, zi| β + T::max(zi.clone(), T::zero()));
         (α, β)
     }
 
@@ -66,12 +66,12 @@ where
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
-        z.fill(T::one());
-        s.fill(T::one());
+        z.set(T::one());
+        s.set(T::one());
     }
 
     fn set_identity_scaling(&mut self) {
-        self.w.fill(T::one());
+        self.w.set(T::one());
     }
 
     fn update_scaling(
@@ -82,8 +82,8 @@ where
         _scaling_strategy: ScalingStrategy,
     ) -> bool {
         for (λ, w, s, z) in izip!(&mut self.λ, &mut self.w, s, z) {
-            *λ = T::sqrt((*s) * (*z));
-            *w = T::sqrt((*s) / (*z));
+            *λ = T::sqrt(s.clone() * z.clone());
+            *w = T::sqrt(s.clone() / z.clone());
         }
 
         true
@@ -95,22 +95,22 @@ where
 
     fn get_Hs(&self, Hsblock: &mut [T]) {
         assert_eq!(self.w.len(), Hsblock.len());
-        for (blki, &wi) in zip(Hsblock, &self.w) {
-            *blki = wi * wi;
+        for (blki, wi) in zip(Hsblock, &self.w) {
+            *blki = wi.clone() * wi.clone();
         }
     }
 
     fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
         //NB : seemingly sensitive to order of multiplication
-        for (yi, (&wi, &xi)) in y.iter_mut().zip(self.w.iter().zip(x)) {
-            *yi = wi * (wi * xi)
+        for (yi, (wi, xi)) in y.iter_mut().zip(self.w.iter().zip(x)) {
+            *yi = wi.clone() * (wi.clone() * xi.clone())
         }
     }
 
     fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
         assert_eq!(self.λ.len(), ds.len());
-        for (dsi, &λi) in zip(ds, &self.λ) {
-            *dsi = λi * λi;
+        for (dsi, λi) in zip(ds, &self.λ) {
+            *dsi = λi.clone() * λi.clone();
         }
     }
 
@@ -120,8 +120,8 @@ where
     }
 
     fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], _work: &mut [T], z: &[T]) {
-        for (outi, (&dsi, &zi)) in zip(out, zip(ds, z)) {
-            *outi = dsi / zi;
+        for (outi, (dsi, zi)) in zip(out, zip(ds, z)) {
+            *outi = dsi.clone() / zi.clone();
         }
     }
 
@@ -138,15 +138,15 @@ where
         assert_eq!(dz.len(), z.len());
         assert_eq!(ds.len(), s.len());
 
-        let mut αz = αmax;
+        let mut αz = αmax.clone();
         let mut αs = αmax;
 
         for i in 0..z.len() {
             if dz[i] < T::zero() {
-                αz = T::min(αz, -z[i] / dz[i]);
+                αz = T::min(αz, -z[i].clone() / dz[i].clone());
             }
             if ds[i] < T::zero() {
-                αs = T::min(αs, -s[i] / ds[i]);
+                αs = T::min(αs, -s[i].clone() / ds[i].clone());
             }
         }
         (αz, αs)
@@ -157,9 +157,9 @@ where
         assert_eq!(dz.len(), z.len());
         assert_eq!(ds.len(), s.len());
         let mut barrier = T::zero();
-        for (&s, &ds, &z, &dz) in izip!(s, ds, z, dz) {
-            let si = s + α * ds;
-            let zi = z + α * dz;
+        for (s, ds, z, dz) in izip!(s, ds, z, dz) {
+            let si = s.clone() + α.clone() * ds.clone();
+            let zi = z.clone() + α.clone() * dz.clone();
             barrier -= (si * zi).logsafe();
         }
         barrier
@@ -182,7 +182,7 @@ where
         assert_eq!(y.len(), x.len());
         assert_eq!(y.len(), self.w.len());
         for i in 0..y.len() {
-            y[i] = α * (x[i] * self.w[i]) + β * y[i];
+            y[i] = α.clone() * (x[i].clone() * self.w[i].clone()) + β.clone() * y[i].clone();
         }
     }
 
@@ -190,7 +190,7 @@ where
         assert_eq!(y.len(), x.len());
         assert_eq!(y.len(), self.w.len());
         for i in 0..y.len() {
-            y[i] = α * (x[i] / self.w[i]) + β * y[i];
+            y[i] = α.clone() * (x[i].clone() / self.w[i].clone()) + β.clone() * y[i].clone();
         }
     }
 }
@@ -220,7 +220,7 @@ where
     T: FloatT,
 {
     for (x, (y, z)) in zip(x, zip(y, z)) {
-        *x = (*y) * (*z);
+        *x = y.clone() * z.clone();
     }
 }
 
@@ -229,6 +229,6 @@ where
     T: FloatT,
 {
     for (x, (y, z)) in zip(x, zip(y, z)) {
-        *x = (*z) / (*y);
+        *x = z.clone() / y.clone();
     }
 }

@@ -192,7 +192,7 @@ where
         let mut k = 0;
         for col in 0..self.ncols() {
             for row in 0..=col {
-                v[k] = self.src[(row, col)];
+                v[k] = self.src[(row, col)].clone();
                 k += 1;
             }
         }

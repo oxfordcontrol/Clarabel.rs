@@ -579,7 +579,7 @@ where
     for col in 0..S.n {
         for k in S.colptr[col]..S.colptr[col + 1] {
             J[count] = col;
-            V[count] = S.nzval[k];
+            V[count] = S.nzval[k].clone();
             count += 1
         }
     }

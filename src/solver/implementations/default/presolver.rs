@@ -143,8 +143,8 @@ where
 
         for (idx, &keep) in map.keep_logical.iter().enumerate() {
             if keep {
-                solution.s[idx] = variables.s[ctr];
-                solution.z[idx] = variables.z[ctr];
+                solution.s[idx] = variables.s[ctr].clone();
+                solution.z[idx] = variables.z[ctr].clone();
                 ctr += 1;
             } else {
                 solution.s[idx] = self.infbound.as_T();

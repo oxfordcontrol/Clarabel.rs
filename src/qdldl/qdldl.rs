@@ -144,7 +144,7 @@ where
         let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
 
         for (i, &idx) in indices.iter().enumerate() {
-            nzval[AtoPAPt[idx]] = values[i];
+            nzval[AtoPAPt[idx]] = values[i].clone();
         }
     }
 
@@ -155,7 +155,7 @@ where
         let AtoPAPt = &self.workspace.AtoPAPt; //mapping from input matrix entries to triuA
 
         for &idx in indices.iter() {
-            nzval[AtoPAPt[idx]] *= scale;
+            nzval[AtoPAPt[idx]] *= scale.clone();
         }
     }
 
@@ -172,10 +172,10 @@ where
         for (&idx, &sign) in zip(indices, signs) {
             match sign.signum() {
                 1 => {
-                    nzval[AtoPAPt[idx]] += offset;
+                    nzval[AtoPAPt[idx]] += offset.clone();
                 }
                 -1 => {
-                    nzval[AtoPAPt[idx]] -= offset;
+                    nzval[AtoPAPt[idx]] -= offset.clone();
                 }
                 _ => {}
             }
@@ -387,9 +387,14 @@ fn _factor<T: FloatT>(
     logical: bool,
 ) -> Result<(), QDLDLError> {
     if logical {
-        L.nzval.fill(T::one());
-        D.fill(T::one());
-        Dinv.fill(T::one());
+        // For RationalReal-style backends, T::one() pushes a fresh
+        // arena entry per call; one-call + clone is N-1 entries cheaper
+        // per fill. set() from VectorMath would do the same but isn't
+        // in scope on these slices in the qdldl crate.
+        let one = T::one();
+        L.nzval.iter_mut().for_each(|x| *x = one.clone());
+        D.iter_mut().for_each(|x| *x = one.clone());
+        Dinv.iter_mut().for_each(|x| *x = one.clone());
     }
 
     // factor using QDLDL C style converted code
@@ -413,8 +418,8 @@ fn _factor<T: FloatT>(
         logical,
         &workspace.Dsigns,
         workspace.regularize_enable,
-        workspace.regularize_eps,
-        workspace.regularize_delta,
+        workspace.regularize_eps.clone(),
+        workspace.regularize_delta.clone(),
         &mut workspace.regularize_count,
     )?;
 
@@ -509,17 +514,19 @@ fn _factor_inner<T: FloatT>(
     // in each column of L, the next available space
     // to start is just the first space in the column
     y_markers.fill(QDLDL_UNUSED);
-    y_vals.fill(T::zero());
-    D.fill(T::zero());
+    // One T::zero() + clone-fill instead of N independent zeros.
+    let zero = T::zero();
+    y_vals.iter_mut().for_each(|x| *x = zero.clone());
+    D.iter_mut().for_each(|x| *x = zero.clone());
     next_colspace.copy_from_slice(&Lp[0..Lp.len() - 1]);
 
     if !logical_factor {
         // First element of the diagonal D.
-        D[0] = Ax[0];
+        D[0] = Ax[0].clone();
         if regularize_enable {
             let sign = T::from_i8(Dsigns[0]).unwrap();
-            if D[0] * sign < regularize_eps {
-                D[0] = regularize_delta * sign;
+            if D[0].clone() * sign.clone() < regularize_eps {
+                D[0] = regularize_delta.clone() * sign;
                 *regularize_count += 1;
             }
         }
@@ -530,7 +537,7 @@ fn _factor_inner<T: FloatT>(
         if D[0] > T::zero() {
             positiveValuesInD += 1;
         }
-        Dinv[0] = T::recip(D[0]);
+        Dinv[0] = T::recip(D[0].clone());
     }
 
     // Start from second row (k=1) here. The upper LH corner is trivially 0
@@ -557,11 +564,11 @@ fn _factor_inner<T: FloatT>(
             // this element as part of the elimination step
             // that computes the k^th row of L
             if bidx == k {
-                D[k] = Ax[i];
+                D[k] = Ax[i].clone();
                 continue;
             }
 
-            y_vals[bidx] = Ax[i]; // initialise y(bidx) = b(bidx)
+            y_vals[bidx] = Ax[i].clone(); // initialise y(bidx) = b(bidx)
 
             // use the forward elimination tree to figure
             // out which elements must be eliminated after
@@ -610,22 +617,22 @@ fn _factor_inner<T: FloatT>(
             // don't compute Lx for logical factorisation
             // this logic is not implemented in the C version
             if !logical_factor {
-                let y_vals_cidx = y_vals[cidx];
+                let y_vals_cidx = y_vals[cidx].clone();
 
                 let (f, l) = (Lp[cidx], tmp_idx);
                 unsafe {
                     //Safety : Here the Lij index comes from the rowval
                     //field of the sparse L factor matrix, and should
                     //always be bounded by the matrix dimension.
-                    for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
-                        *(y_vals.get_unchecked_mut(Lij)) -= Lxj * y_vals_cidx;
+                    for (Lxj, Lij) in zip(&Lx[f..l], &Li[f..l]) {
+                        *(y_vals.get_unchecked_mut(*Lij)) -= Lxj.clone() * y_vals_cidx.clone();
                     }
 
                     // Now I have the cidx^th element of y = L\b.
                     // so compute the corresponding element of
                     // this row of L and put it into the right place
-                    let Lx_tmp_idx = y_vals_cidx * *Dinv.get_unchecked(cidx);
-                    *Lx.get_unchecked_mut(tmp_idx) = Lx_tmp_idx;
+                    let Lx_tmp_idx = y_vals_cidx.clone() * (*Dinv.get_unchecked(cidx)).clone();
+                    *Lx.get_unchecked_mut(tmp_idx) = Lx_tmp_idx.clone();
                     *D.get_unchecked_mut(k) -= y_vals_cidx * Lx_tmp_idx;
                 }
             }
@@ -644,8 +651,8 @@ fn _factor_inner<T: FloatT>(
             // apply dynamic regularization
             if regularize_enable {
                 let sign = T::from_i8(Dsigns[k]).unwrap();
-                if D[k] * sign < regularize_eps {
-                    D[k] = regularize_delta * sign;
+                if D[k].clone() * sign.clone() < regularize_eps {
+                    D[k] = regularize_delta.clone() * sign;
                     *regularize_count += 1;
                 }
             }
@@ -661,7 +668,7 @@ fn _factor_inner<T: FloatT>(
             }
 
             // compute the inverse of the diagonal
-            Dinv[k] = T::recip(D[k]);
+            Dinv[k] = T::recip(D[k].clone());
         }
     } //end for k
 
@@ -671,12 +678,12 @@ fn _factor_inner<T: FloatT>(
 // Solves (L+I)x = b, with x replacing b (with standard bounds checks)
 fn _lsolve_safe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
     for i in 0..x.len() {
-        let xi = x[i];
+        let xi = x[i].clone();
         let (f, l) = (Lp[i], Lp[i + 1]);
         let Lx = &Lx[f..l];
         let Li = &Li[f..l];
-        for (&Lij, &Lxj) in zip(Li, Lx) {
-            x[Lij] -= Lxj * xi;
+        for (&Lij, Lxj) in zip(Li, Lx) {
+            x[Lij] -= Lxj.clone() * xi.clone();
         }
     }
 }
@@ -688,8 +695,8 @@ fn _ltsolve_safe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
         let (f, l) = (Lp[i], Lp[i + 1]);
         let Lx = &Lx[f..l];
         let Li = &Li[f..l];
-        for (&Lij, &Lxj) in zip(Li, Lx) {
-            s += Lxj * x[Lij];
+        for (&Lij, Lxj) in zip(Li, Lx) {
+            s += Lxj.clone() * x[Lij].clone();
         }
         x[i] -= s;
     }
@@ -708,11 +715,11 @@ fn _ltsolve_safe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
 fn _lsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T]) {
     unsafe {
         for i in 0..x.len() {
-            let xi = *x.get_unchecked(i);
+            let xi = (*x.get_unchecked(i)).clone();
             let f = *Lp.get_unchecked(i);
             let l = *Lp.get_unchecked(i + 1);
-            for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
-                *(x.get_unchecked_mut(Lij)) -= Lxj * xi;
+            for (Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
+                *(x.get_unchecked_mut(Lij)) -= Lxj.clone() * xi.clone();
             }
         }
     }
@@ -725,8 +732,8 @@ fn _ltsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], x: &mut [T])
             let mut s = T::zero();
             let f = *Lp.get_unchecked(i);
             let l = *Lp.get_unchecked(i + 1);
-            for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
-                s += Lxj * (*x.get_unchecked(Lij));
+            for (Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
+                s += Lxj.clone() * (*x.get_unchecked(Lij)).clone();
             }
             *x.get_unchecked_mut(i) -= s;
         }
@@ -740,12 +747,12 @@ fn _dltsolve_unsafe<T: FloatT>(Lp: &[usize], Li: &[usize], Lx: &[T], Dinv: &[T],
             let mut s = T::zero();
             let f = *Lp.get_unchecked(i);
             let l = *Lp.get_unchecked(i + 1);
-            for (&Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
-                s += Lxj * (*x.get_unchecked(Lij));
+            for (Lxj, &Lij) in zip(&Lx[f..l], &Li[f..l]) {
+                s += Lxj.clone() * (*x.get_unchecked(Lij)).clone();
             }
 
             let xi = x.get_unchecked_mut(i);
-            *xi *= *Dinv.get_unchecked(i);
+            *xi *= (*Dinv.get_unchecked(i)).clone();
             *xi -= s;
         }
     }
@@ -786,17 +793,17 @@ fn _invperm(p: &[usize]) -> Result<Vec<usize>, QDLDLError> {
 // p must be a valid permutation vector
 // in both cases for safety
 
-pub(crate) fn permute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
+pub(crate) fn permute<T: Clone>(x: &mut [T], b: &[T], p: &[usize]) {
     debug_assert!(p.is_empty() || *p.iter().max().unwrap() < x.len());
     unsafe {
-        zip(p, x).for_each(|(p, x)| *x = *b.get_unchecked(*p));
+        zip(p, x).for_each(|(p, x)| *x = (*b.get_unchecked(*p)).clone());
     }
 }
 
-pub(crate) fn ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
+pub(crate) fn ipermute<T: Clone>(x: &mut [T], b: &[T], p: &[usize]) {
     debug_assert!(p.is_empty() || *p.iter().max().unwrap() < x.len());
     unsafe {
-        zip(p, b).for_each(|(p, b)| *x.get_unchecked_mut(*p) = *b);
+        zip(p, b).for_each(|(p, b)| *x.get_unchecked_mut(*p) = (*b).clone());
     }
 }
 
@@ -890,7 +897,7 @@ fn _permute_symmetric_inner<T: FloatT>(
 
                 // store rowval and nzval
                 Pr[rowP_idx] = min(colP, rowP);
-                Pv[rowP_idx] = Av[rowA_idx];
+                Pv[rowP_idx] = Av[rowA_idx].clone();
 
                 //record this into the mapping vector
                 AtoPAPt[rowA_idx] = rowP_idx;

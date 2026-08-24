@@ -79,6 +79,30 @@ python = [
 # compile with faer supernodal solver option
 faer-sparse = ["dep:faer", "dep:faer-traits"]
 
+# experimental exact-rational backend for LP/QP. Adds a `RationalReal`
+# scalar type satisfying `FloatT`, with arithmetic backed by
+# arbitrary-precision `num_rational::BigRational` stored in a thread-local
+# arena (`RationalReal` itself is a `u32` arena handle and is `Copy`).
+# Mutually exclusive with `sdp` and `faer-sparse` (those features pin
+# `T` to f32/f64). LP/QP iterates are bit-exact rationals; SOCP/exp/pow
+# barrier transcendentals are rounded to a thread-local working precision.
+bigrational = ["dep:num-rational", "dep:num-bigint"]
+
+# Optional GMP/MPFR interop for the bigrational backend, providing
+# bit-exact From<&rug::Rational> conversion into RationalReal. Useful
+# for downstream crates (e.g. QOU's seminormal_mpfr.rs) that already
+# carry MPFR rationals and want to feed them into the solver without
+# routing through f64. Implies `bigrational`.
+rug-interop = ["bigrational", "dep:rug"]
+
+# Run-time MPFR float backend. Adds an `MpfrFloat` scalar type
+# satisfying `FloatT`, with arithmetic backed by `rug::Float` (a
+# thin GMP/MPFR wrapper). Configurable thread-local working precision;
+# default 167 bits ≈ 50 decimal digits matching QOU R5_FULL_PLAN.md.
+# Mutually exclusive with `sdp` and `faer-sparse` (those features pin
+# `T` to f32/f64 via BLAS / RealField).
+mpfr = ["dep:rug"]
+
 # various pardiso options
 pardiso-panua = ["pardiso-wrapper/panua"]
 pardiso-mkl = ["pardiso-wrapper/mkl"]
@@ -135,9 +159,27 @@ optional = true
 # 3rd party sparse LDL solvers
 # -------------------------------
 
+[dependencies.num-rational]
+version = "0.4"
+default-features = false
+features = ["num-bigint", "serde"]
+optional = true
+
+[dependencies.num-bigint]
+version = "0.4"
+default-features = false
+features = ["serde"]
+optional = true
+
+[dependencies.rug]
+version = "1.24"
+default-features = false
+features = ["rational", "float"]
+optional = true
+
 [dependencies.faer]
 version = "0.21.9"
-optional = true 
+optional = true
 
 [dependencies.faer-traits]
 version = "0.21.5"
@@ -175,6 +217,16 @@ path = "examples/rust/example_expcone.rs"
 [[example]]
 name = "box"
 path = "examples/rust/example_box.rs"
+
+[[example]]
+name = "lp_rational"
+path = "examples/rust/example_lp_rational.rs"
+required-features = ["bigrational"]
+
+[[example]]
+name = "lp_mpfr"
+path = "examples/rust/example_lp_mpfr.rs"
+required-features = ["mpfr"]
 
 [[example]]
 name = "callback"

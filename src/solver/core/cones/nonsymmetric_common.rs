@@ -73,31 +73,31 @@ where
 
         let (H_dual, Hs, grad, _) = self.split_borrow_mut();
 
-        let st = grad;
-        let mut δs = [T::zero(); 3];
-        let mut tmp = [T::zero(); 3];
+        let st: &[T; 3] = grad;
+        let mut δs = [T::zero(), T::zero(), T::zero()];
+        let mut tmp = [T::zero(), T::zero(), T::zero()];
 
         // compute zt,st,μt locally
         // NB: zt,st have different sign convention wrt Mosek paper
         let dot_sz = s.dot(z);
-        let μ = dot_sz / three;
-        let μt = st[..].dot(&zt[..]) / three;
+        let μ = dot_sz.clone() / three.clone();
+        let μt = st[..].dot(&zt[..]) / three.clone();
 
         // δs = s + μ*st
         // δz = z + μ*zt
-        let mut δz = tmp;
+        let mut δz = tmp.clone();
         for i in 0..3 {
-            δs[i] = s[i] + μ * st[i];
-            δz[i] = z[i] + μ * zt[i];
+            δs[i] = s[i].clone() + μ.clone() * st[i].clone();
+            δz[i] = z[i].clone() + μ.clone() * zt[i].clone();
         }
         let dot_δsz = δs[..].dot(&δz[..]);
 
-        let de1 = μ * μt - T::one();
-        let de2 = H_dual.quad_form(&zt, &zt) - three * μt * μt;
+        let de1 = μ.clone() * μt.clone() - T::one();
+        let de2 = H_dual.quad_form(&zt, &zt) - three.clone() * μt.clone() * μt.clone();
 
         // use the primal-dual scaling
-        if T::abs(de1) > T::sqrt(T::epsilon()) &&      // too close to central path
-           T::abs(de2) > T::epsilon()          &&      // others for numerical stability
+        if de1.abs() > T::sqrt(T::epsilon()) &&      // too close to central path
+           de2.abs() > T::epsilon()          &&      // others for numerical stability
            dot_sz > T::zero()                  &&
            dot_δsz > T::zero()
         {
@@ -105,32 +105,36 @@ where
             // tmp = μt*st - H*zt
             H_dual.mul(&mut tmp, &zt);
             for i in 0..3 {
-                tmp[i] = μt * st[i] - tmp[i];
+                tmp[i] = μt.clone() * st[i].clone() - tmp[i].clone();
             }
 
             // Hs as a workspace (only need to write the upper triangle)
             Hs.copy_from(H_dual);
             for i in 0..3 {
                 for j in i..3 {
-                    Hs[(i, j)] -= st[i] * st[j] / three + tmp[i] * tmp[j] / de2;
+                    let cur: T = Hs[(i, j)].clone();
+                    Hs[(i, j)] = cur
+                        - (st[i].clone() * st[j].clone() / three.clone()
+                            + tmp[i].clone() * tmp[j].clone() / de2.clone());
                 }
             }
-            let t = μ * Hs.norm_fro(); //Frobenius norm
+            let t = μ.clone() * Hs.norm_fro(); //Frobenius norm
 
             // generate the remaining axis
             // axis_z = cross(z,zt)
-            let mut axis_z = tmp;
-            axis_z[0] = z[1] * zt[2] - z[2] * zt[1];
-            axis_z[1] = z[2] * zt[0] - z[0] * zt[2];
-            axis_z[2] = z[0] * zt[1] - z[1] * zt[0];
+            let mut axis_z = tmp.clone();
+            axis_z[0] = z[1].clone() * zt[2].clone() - z[2].clone() * zt[1].clone();
+            axis_z[1] = z[2].clone() * zt[0].clone() - z[0].clone() * zt[2].clone();
+            axis_z[2] = z[0].clone() * zt[1].clone() - z[1].clone() * zt[0].clone();
             axis_z.normalize();
 
             // Hs = s*s'/⟨s,z⟩ + δs*δs'/⟨δs,δz⟩ + t*axis_z*axis_z'
             // (only need to write the upper triangle)
             for i in 0..3 {
                 for j in i..3 {
-                    Hs[(i, j)] =
-                        s[i] * s[j] / dot_sz + δs[i] * δs[j] / dot_δsz + t * axis_z[i] * axis_z[j];
+                    Hs[(i, j)] = s[i].clone() * s[j].clone() / dot_sz.clone()
+                        + δs[i].clone() * δs[j].clone() / dot_δsz.clone()
+                        + t.clone() * axis_z[i].clone() * axis_z[j].clone();
                 }
             }
 
@@ -177,12 +181,12 @@ where
 
     loop {
         // work = q + α*dq
-        work.waxpby(T::one(), q, α, dq);
+        work.waxpby(T::one(), q, α.clone(), dq);
 
         if is_in_cone_fcn(work) {
             break;
         }
-        α *= step;
+        α *= step.clone();
         if α < α_min {
             α = T::zero();
             break;
@@ -203,12 +207,12 @@ where
 
     while iter < 100 {
         iter += 1;
-        let dfdx = f1(x);
-        let dx = -f0(x) / dfdx;
+        let dfdx = f1(x.clone());
+        let dx = -f0(x.clone()) / dfdx.clone();
 
         if (dx < T::epsilon())
-            || (T::abs(dx / x) < T::sqrt(T::epsilon()))
-            || (T::abs(dfdx) < T::epsilon())
+            || ((dx.clone() / x.clone()).abs() < T::sqrt(T::epsilon()))
+            || (dfdx.abs() < T::epsilon())
         {
             break;
         }

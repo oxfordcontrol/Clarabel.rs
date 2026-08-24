@@ -39,5 +39,84 @@ jobs:
       with:
         token: ${{secrets.CODECOV_TOKEN}}
 
+  sdp_check:
+    # Fast type-check of the --features sdp,faer-sparse path on linux,
+    # without running the full BLAS/LAPACK link or test pass. Exists to
+    # surface trait-bound regressions in the SDP code paths (chordal
+    # decomposition, dense fixed-size 3x3 eigen/svd, BLAS Cholesky)
+    # quickly on PRs — the macos build job above is the source of truth
+    # for SDP correctness, but it's slow and macos minutes are expensive.
+    #
+    # Was added after a Copy -> Clone refactor (Phase 2 of the
+    # bigrational backend) silently broke `--features sdp` because none
+    # of the existing CI jobs exercised that combination on linux.
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install BLAS / LAPACK build deps (for the openblas-src build script)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake gfortran build-essential libopenblas-dev pkg-config
+
+    - name: cargo check --features sdp-openblas,faer-sparse,serde
+      run: cargo check --features sdp-openblas,faer-sparse,serde
+
+  mpfr:
+    # MPFR-precision float backend tests. Mutually exclusive with
+    # sdp/faer-sparse, so a separate job. Tests build, run unit tests,
+    # and exercise the lp_mpfr example end-to-end.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install GMP / MPFR build deps (for the rug crate's static build)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libgmp-dev libmpfr-dev pkg-config
+
+    - name: cargo build --features mpfr
+      run: cargo build --verbose --no-default-features --features serde,mpfr
+
+    - name: Run unit tests for the mpfr module
+      run: cargo test --verbose --no-default-features --features serde,mpfr --lib mpfr::
+
+    - name: Build the lp_mpfr example
+      run: cargo build --release --no-default-features --features serde,mpfr --example lp_mpfr
+
+    - name: Run the lp_mpfr example end-to-end
+      run: cargo run --release --no-default-features --features serde,mpfr --example lp_mpfr
+
+  bigrational:
+    # Exact-rational backend tests. Mutually exclusive with sdp/faer-sparse,
+    # so this is a separate job. Marked continue-on-error until the
+    # backend stabilizes; flip to required once Phase 6 lands fully.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: rust version info
+      run: cargo --version
+
+    - name: Build (default features)
+      run: cargo build --verbose
+
+    - name: Build (--features bigrational)
+      run: cargo build --verbose --no-default-features --features serde,bigrational
+
+    - name: Run unit tests for the rational module
+      run: cargo test --verbose --no-default-features --features serde,bigrational --lib rational::
+
+    - name: Run rational regression integration tests (fast subset)
+      run: cargo test --verbose --no-default-features --features serde,bigrational --test rational_regression
+
+    - name: Build the lp_rational example
+      run: cargo build --release --no-default-features --features serde,bigrational --example lp_rational
+
 
 

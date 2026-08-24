@@ -33,12 +33,12 @@ where
 }
 
 // permutation and inverse permutation
-pub(crate) fn permute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
+pub(crate) fn permute<T: Clone>(x: &mut [T], b: &[T], p: &[usize]) {
     qdldl::permute(x, b, p);
 }
 
 #[allow(dead_code)]
-pub(crate) fn ipermute<T: Copy>(x: &mut [T], b: &[T], p: &[usize]) {
+pub(crate) fn ipermute<T: Clone>(x: &mut [T], b: &[T], p: &[usize]) {
     qdldl::ipermute(x, b, p);
 }
 

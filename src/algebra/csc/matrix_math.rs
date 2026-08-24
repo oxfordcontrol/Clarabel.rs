@@ -34,14 +34,14 @@ impl<T: FloatT> MatrixMath<T> for CscMatrix<T> {
 
     fn row_sums(&self, sums: &mut [T]) {
         assert_eq!(self.m, sums.len());
-        sums.fill(T::zero());
-        for (&row, &val) in zip(&self.rowval, &self.nzval) {
-            sums[row] += val;
+        sums.set(T::zero());
+        for (row, val) in zip(&self.rowval, &self.nzval) {
+            sums[*row] += val.clone();
         }
     }
 
     fn col_norms(&self, norms: &mut [T]) {
-        norms.fill(T::zero());
+        norms.set(T::zero());
         self.col_norms_no_reset(norms);
     }
 
@@ -54,12 +54,12 @@ impl<T: FloatT> MatrixMath<T> for CscMatrix<T> {
                 .iter()
                 .take(self.colptr[i + 1])
                 .skip(self.colptr[i])
-                .fold(*v, |m, &nzval| T::max(m, T::abs(nzval)));
+                .fold(v.clone(), |m, nzval| T::max(m, nzval.clone().abs()));
         }
     }
 
     fn col_norms_sym(&self, norms: &mut [T]) {
-        norms.fill(T::zero());
+        norms.set(T::zero());
         self.col_norms_sym_no_reset(norms);
     }
 
@@ -68,16 +68,16 @@ impl<T: FloatT> MatrixMath<T> for CscMatrix<T> {
 
         for i in 0..norms.len() {
             for j in self.colptr[i]..self.colptr[i + 1] {
-                let tmp = T::abs(self.nzval[j]);
+                let tmp = self.nzval[j].clone().abs();
                 let r = self.rowval[j];
-                norms[i] = T::max(norms[i], tmp);
-                norms[r] = T::max(norms[r], tmp);
+                norms[i] = T::max(norms[i].clone(), tmp.clone());
+                norms[r] = T::max(norms[r].clone(), tmp);
             }
         }
     }
 
     fn row_norms(&self, norms: &mut [T]) {
-        norms.fill(T::zero());
+        norms.set(T::zero());
         self.row_norms_no_reset(norms);
     }
 
@@ -85,7 +85,7 @@ impl<T: FloatT> MatrixMath<T> for CscMatrix<T> {
         assert_eq!(self.rowval.len(), *self.colptr.last().unwrap());
 
         for (row, val) in zip(&self.rowval, &self.nzval) {
-            norms[*row] = T::max(norms[*row], T::abs(*val));
+            norms[*row] = T::max(norms[*row].clone(), val.clone().abs());
         }
     }
 }
@@ -102,7 +102,7 @@ impl<T: FloatT> MatrixMathMut<T> for CscMatrix<T> {
 
     fn lscale(&mut self, l: &[T]) {
         for (val, row) in zip(&mut self.nzval, &self.rowval) {
-            *val *= l[*row];
+            *val *= l[*row].clone();
         }
     }
 
@@ -112,20 +112,20 @@ impl<T: FloatT> MatrixMathMut<T> for CscMatrix<T> {
 
         assert_eq!(vals.len(), *colptr.last().unwrap());
         for i in 0..self.n {
-            vals[colptr[i]..colptr[i + 1]].scale(r[i]);
+            vals[colptr[i]..colptr[i + 1]].scale(r[i].clone());
         }
     }
 
     fn lrscale(&mut self, l: &[T], r: &[T]) {
         assert_eq!(self.nzval.len(), *self.colptr.last().unwrap());
 
-        for (col, &ri) in r.iter().enumerate() {
+        for (col, ri) in r.iter().enumerate() {
             let (first, last) = (self.colptr[col], self.colptr[col + 1]);
             let vals = &mut self.nzval[first..last];
             let rows = &self.rowval[first..last];
 
             for (val, row) in zip(vals, rows) {
-                *val *= l[*row] * ri;
+                *val *= l[*row].clone() * ri.clone();
             }
         }
     }
@@ -149,18 +149,18 @@ fn _csc_symv_safe<T: FloatT>(
     assert!(y.len() == A.n);
     assert!(A.n == A.m);
 
-    for (col, &xcol) in x.iter().enumerate() {
+    for (col, xcol) in x.iter().enumerate() {
         let first = A.colptr[col];
         let last = A.colptr[col + 1];
         let rows = &A.rowval[first..last];
         let nzvals = &A.nzval[first..last];
 
-        for (&row, &Aij) in zip(rows, nzvals) {
-            y[row] += a * Aij * xcol;
+        for (&row, Aij) in zip(rows, nzvals) {
+            y[row] += a.clone() * Aij.clone() * xcol.clone();
 
             if row != col {
                 //don't double up on the diagonal
-                y[col] += a * Aij * x[row];
+                y[col] += a.clone() * Aij.clone() * x[row].clone();
             }
         }
     }
@@ -192,15 +192,16 @@ fn _csc_symv_unsafe<T: FloatT>(
     assert!(y.len() == A.n);
     assert!(A.n == A.m);
     unsafe {
-        for (col, &xcol) in x.iter().enumerate() {
+        for (col, xcol) in x.iter().enumerate() {
             let first = *A.colptr.get_unchecked(col);
             let last = *A.colptr.get_unchecked(col + 1);
 
-            for (&row, &Aij) in zip(&A.rowval[first..last], &A.nzval[first..last]) {
-                *y.get_unchecked_mut(row) += a * Aij * xcol;
+            for (&row, Aij) in zip(&A.rowval[first..last], &A.nzval[first..last]) {
+                *y.get_unchecked_mut(row) += a.clone() * Aij.clone() * xcol.clone();
                 if row != col {
                     //don't double up on the diagonal
-                    *y.get_unchecked_mut(col) += a * Aij * (*x.get_unchecked(row));
+                    *y.get_unchecked_mut(col) +=
+                        a.clone() * Aij.clone() * (*x.get_unchecked(row)).clone();
                 }
             }
         }
@@ -240,18 +241,18 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, uplo: MatrixTriangle, y: &[T], x:
         let values = &M.nzval[first..last];
         let rows = &M.rowval[first..last];
 
-        for (&Mv, &row) in zip(values, rows) {
+        for (Mv, &row) in zip(values, rows) {
             if cmp(&row, &col) {
                 //triangular terms only
-                tmp1 += Mv * x[row];
-                tmp2 += Mv * y[row];
+                tmp1 += Mv.clone() * x[row].clone();
+                tmp2 += Mv.clone() * y[row].clone();
             } else if row == col {
-                out += Mv * x[col] * y[col];
+                out += Mv.clone() * x[col].clone() * y[col].clone();
             } else {
                 panic!("Input matrix should be in triangular form.");
             }
         }
-        out += tmp1 * y[col] + tmp2 * x[col];
+        out += tmp1 * y[col].clone() + tmp2 * x[col].clone();
     }
     out
 }
@@ -261,7 +262,7 @@ fn _csc_quad_form<T: FloatT>(M: &CscMatrix<T>, uplo: MatrixTriangle, y: &[T], x:
 fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     //first do the b*y part
     if b.is_zero() {
-        y.fill(T::zero());
+        y.set(T::zero());
     } else if b == T::one() {
     } else if b == -T::one() {
         y.negate();
@@ -281,19 +282,19 @@ fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     if a == T::one() {
         for (j, xj) in x.iter().enumerate().take(A.n) {
             for i in A.colptr[j]..A.colptr[j + 1] {
-                y[A.rowval[i]] += A.nzval[i] * *xj;
+                y[A.rowval[i]] += A.nzval[i].clone() * xj.clone();
             }
         }
     } else if a == -T::one() {
         for (j, xj) in x.iter().enumerate().take(A.n) {
             for i in A.colptr[j]..A.colptr[j + 1] {
-                y[A.rowval[i]] -= A.nzval[i] * *xj;
+                y[A.rowval[i]] -= A.nzval[i].clone() * xj.clone();
             }
         }
     } else {
         for (j, xj) in x.iter().enumerate().take(A.n) {
             for i in A.colptr[j]..A.colptr[j + 1] {
-                y[A.rowval[i]] += a * A.nzval[i] * *xj;
+                y[A.rowval[i]] += a.clone() * A.nzval[i].clone() * xj.clone();
             }
         }
     }
@@ -304,7 +305,7 @@ fn _csc_axpby_N<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
 fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     //first do the b*y part
     if b.is_zero() {
-        y.fill(T::zero());
+        y.set(T::zero());
     } else if b == T::one() {
     } else if b == -T::one() {
         y.negate();
@@ -324,19 +325,19 @@ fn _csc_axpby_T<T: FloatT>(A: &CscMatrix<T>, y: &mut [T], x: &[T], a: T, b: T) {
     if a == T::one() {
         for (j, yj) in y.iter_mut().enumerate().take(A.n) {
             for k in A.colptr[j]..A.colptr[j + 1] {
-                *yj += A.nzval[k] * x[A.rowval[k]];
+                *yj += A.nzval[k].clone() * x[A.rowval[k]].clone();
             }
         }
     } else if a == -T::one() {
         for (j, yj) in y.iter_mut().enumerate().take(A.n) {
             for k in A.colptr[j]..A.colptr[j + 1] {
-                *yj -= A.nzval[k] * x[A.rowval[k]];
+                *yj -= A.nzval[k].clone() * x[A.rowval[k]].clone();
             }
         }
     } else {
         for (j, yj) in y.iter_mut().enumerate().take(A.n) {
             for k in A.colptr[j]..A.colptr[j + 1] {
-                *yj += a * A.nzval[k] * x[A.rowval[k]];
+                *yj += a.clone() * A.nzval[k].clone() * x[A.rowval[k]].clone();
             }
         }
     }

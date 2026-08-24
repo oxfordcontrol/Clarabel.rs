@@ -207,7 +207,7 @@ where
 
     fn scaled_unit_shift(&self, z: &mut [T], α: T, pd: PrimalOrDualCone) {
         for (cone, rng) in zip(&self.cones, &self.rng_cones) {
-            cone.scaled_unit_shift(&mut z[rng.clone()], α, pd);
+            cone.scaled_unit_shift(&mut z[rng.clone()], α.clone(), pd);
         }
     }
 
@@ -234,7 +234,7 @@ where
         for (cone, rng) in zip(&mut self.cones, &self.rng_cones) {
             let si = &s[rng.clone()];
             let zi = &z[rng.clone()];
-            is_scaling_success = cone.update_scaling(si, zi, μ, scaling_strategy);
+            is_scaling_success = cone.update_scaling(si, zi, μ.clone(), scaling_strategy);
             if !is_scaling_success {
                 return false;
             }
@@ -283,7 +283,7 @@ where
             let shifti = &mut shift[rng.clone()];
             let step_zi = &mut step_z[rng.clone()];
             let step_si = &mut step_s[rng.clone()];
-            cone.combined_ds_shift(shifti, step_zi, step_si, σμ);
+            cone.combined_ds_shift(shifti, step_zi, step_si, σμ.clone());
         }
     }
 
@@ -317,7 +317,7 @@ where
                 }
                 let (dzi, dsi) = (&dz[rng.clone()], &ds[rng.clone()]);
                 let (zi, si) = (&z[rng.clone()], &s[rng.clone()]);
-                let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si, settings, α);
+                let (nextαz, nextαs) = cone.step_length(dzi, dsi, zi, si, settings, α.clone());
                 α = T::min(α, T::min(nextαz, nextαs));
             }
             α
@@ -329,14 +329,14 @@ where
         // if we have any nonsymmetric cones, then back off from full steps slightly
         // so that centrality checks and logarithms don't fail right at the boundaries
         if !all_symmetric {
-            let ceil = T::one() - T::sqrt(T::epsilon()); 
+            let ceil = T::one() - T::sqrt(T::epsilon());
             α = T::min(α, ceil);
         }
 
         // Force asymmetric cones last.
         α = innerfcn(α, false);
 
-        (α, α)
+        (α.clone(), α)
     }
 
     fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
@@ -346,7 +346,7 @@ where
             let si = &s[rng.clone()];
             let dzi = &dz[rng.clone()];
             let dsi = &ds[rng.clone()];
-            barrier += cone.compute_barrier(zi, si, dzi, dsi, α);
+            barrier += cone.compute_barrier(zi, si, dzi, dsi, α.clone());
         }
         barrier
     }

@@ -93,15 +93,19 @@ where
 
         //complete the residuals
         //rx = rx_inf - Px - qτ
-        self.rx.waxpby(-T::one(), &self.Px, -variables.τ, &data.q);
+        self.rx
+            .waxpby(-T::one(), &self.Px, -variables.τ.clone(), &data.q);
         self.rx.axpby(T::one(), &self.rx_inf, T::one());
 
         // rz = rz_inf - bτ
         self.rz
-            .waxpby(T::one(), &self.rz_inf, -variables.τ, &data.b);
+            .waxpby(T::one(), &self.rz_inf, -variables.τ.clone(), &data.b);
 
         // τ = qz + bz + κ + xPx/τ;
-        self.rτ = qx + bz + variables.κ + xPx / variables.τ;
+        self.rτ = qx.clone()
+            + bz.clone()
+            + variables.κ.clone()
+            + xPx.clone() / variables.τ.clone();
 
         //save local versions
         self.dot_qx = qx;

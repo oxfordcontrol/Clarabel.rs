@@ -225,7 +225,7 @@ where
             // hold a copy of the true KKT diagonal
             // diag_kkt .= KKT.nzval[map.diag_full];
             for (d, idx) in zip(&mut *diag_kkt, &map.diag_full) {
-                *d = KKT.nzval[*idx];
+                *d = KKT.nzval[*idx].clone();
             }
 
             let eps = _compute_regularizer(diag_kkt, settings);
@@ -235,9 +235,9 @@ where
 
             zip(&mut *diag_shifted, dsigns).for_each(|(shift, &sign)| {
                 if sign == 1 {
-                    *shift += eps;
+                    *shift += eps.clone();
                 } else {
-                    *shift -= eps;
+                    *shift -= eps.clone();
                 }
             });
 
@@ -268,10 +268,10 @@ where
         let (e, dx) = (&mut self.work1, &mut self.work2);
 
         // iterative refinement params
-        let reltol = settings.iterative_refinement_reltol;
-        let abstol = settings.iterative_refinement_abstol;
+        let reltol = settings.iterative_refinement_reltol.clone();
+        let abstol = settings.iterative_refinement_abstol.clone();
         let maxiter = settings.iterative_refinement_max_iter;
-        let stopratio = settings.iterative_refinement_stop_ratio;
+        let stopratio = settings.iterative_refinement_stop_ratio.clone();
 
         let KKT = &self.KKT;
         let KKTsym = KKT.sym(self.KKTuplo);
@@ -281,17 +281,17 @@ where
         //compute the initial error
         let mut norme = _get_refine_error(e, b, &KKTsym, x);
 
-        if !norme.is_finite() {
+        if !norme.clone().is_finite() {
             return false;
         }
 
         for _ in 0..maxiter {
-            if norme <= (abstol + reltol * normb) {
+            if norme <= (abstol.clone() + reltol.clone() * normb.clone()) {
                 //within tolerance.  Exit
                 break;
             }
 
-            let lastnorme = norme;
+            let lastnorme = norme.clone();
 
             //make a refinement
             self.ldlsolver.solve(KKT, dx, e);
@@ -302,11 +302,11 @@ where
 
             norme = _get_refine_error(e, b, &KKTsym, dx);
 
-            if !norme.is_finite() {
+            if !norme.clone().is_finite() {
                 return false;
             }
 
-            let improved_ratio = lastnorme / norme;
+            let improved_ratio = lastnorme / norme.clone();
             if improved_ratio < stopratio {
                 //insufficient improvement.  Exit
                 if improved_ratio > T::one() {
@@ -325,7 +325,8 @@ fn _compute_regularizer<T: FloatT>(diag_kkt: &[T], settings: &CoreSettings<T>) -
     let maxdiag = diag_kkt.norm_inf();
 
     // Compute a new regularizer
-    settings.static_regularization_constant + settings.static_regularization_proportional * maxdiag
+    settings.static_regularization_constant.clone()
+        + settings.static_regularization_proportional.clone() * maxdiag
 }
 
 //  computes e = b - Kξ, overwriting the first argument
@@ -365,7 +366,7 @@ fn _update_values<T: FloatT>(
 
 fn _update_values_KKT<T: FloatT>(KKT: &mut CscMatrix<T>, index: &[usize], values: &[T]) {
     for (idx, v) in zip(index, values) {
-        KKT.nzval[*idx] = *v;
+        KKT.nzval[*idx] = v.clone();
     }
 }
 
@@ -376,7 +377,7 @@ fn _scale_values<T: FloatT>(
     scale: T,
 ) {
     //Update values in the KKT matrix K
-    _scale_values_KKT(KKT, index, scale);
+    _scale_values_KKT(KKT, index, scale.clone());
 
     // ...and in the LDL subsolver if needed
     ldlsolver.scale_values(index, scale);
@@ -385,7 +386,7 @@ fn _scale_values<T: FloatT>(
 //scales KKT matrix values
 fn _scale_values_KKT<T: FloatT>(KKT: &mut CscMatrix<T>, index: &[usize], scale: T) {
     for idx in index.iter() {
-        KKT.nzval[*idx] *= scale;
+        KKT.nzval[*idx] *= scale.clone();
     }
 }
 
