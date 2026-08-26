@@ -5,6 +5,7 @@ use super::{traits::*, SettingsError};
 use crate::algebra::*;
 use crate::solver::core::callbacks::SolverCallbacks;
 use crate::solver::core::ffi::*;
+#[cfg(feature = "serde")]
 use crate::solver::SolverError;
 use crate::timers::*;
 use std::io::Write;
