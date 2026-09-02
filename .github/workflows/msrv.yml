@@ -17,11 +17,32 @@ jobs:
     strategy:
       matrix:
         toolchain:
-          - 1.70.0
+          - 1.71.0
           - stable
           - beta
     steps:
       - uses: actions/checkout@v4
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+
+      # Cargo.lock is not committed, so every run resolves dependencies afresh
+      # and picks up releases the pinned toolchain cannot handle. Two distinct
+      # ways this bites: crates raise their own rust-version past ours, and some
+      # now publish edition 2024 manifests, which cargo 1.71 cannot parse at all
+      # regardless of what MSRV we declare. The latter reaches us through
+      # dev-dependencies (getrandom >= 0.4), so it breaks `cargo test` while
+      # `cargo build` still passes.
+      #
+      # Resolve with a current cargo under MSRV-aware resolution, which honours
+      # rust-version from Cargo.toml, then build and test with the pinned
+      # toolchain. This tracks rust-version automatically instead of pinning
+      # individual crates, which rots on every new release.
+      - name: Resolve dependencies compatible with the declared MSRV
+        if: matrix.toolchain != 'stable' && matrix.toolchain != 'beta'
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
+        run: |
+          rustup toolchain install stable --profile minimal
+          cargo +stable generate-lockfile
+
       - run: cargo build --verbose
       - run: cargo test --verbose
