@@ -39,7 +39,9 @@ jobs:
             test: false
             
           # macOS Intel build
-          - os: macos-13
+          # macos-13 was retired on 2025-12-04; macos-15-intel is the
+          # replacement x86_64 image, available until August 2027.
+          - os: macos-15-intel
             target: x86_64
             features: "python,pardiso"
             test: true
@@ -82,8 +84,24 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
           python -c "import clarabel"
-          python examples/python/example_qp.py 
-          python examples/python/example_sdp.py 
+
+      - name: Run the Python test suite
+        if: matrix.test
+        shell: bash
+        run: |
+          python -m pip install pytest
+          python -m pytest python/clarabel/tests -v
+
+      - name: Run the Python examples
+        if: matrix.test
+        shell: bash
+        run: |
+          for f in examples/python/example_*.py; do
+            # pardiso needs a licensed Panua/MKL runtime that CI does not provide
+            if [ "$(basename "$f")" = "example_pardiso.py" ]; then continue; fi
+            echo "=== $f"
+            python "$f"
+          done
           
       - name: Upload wheels
         uses: actions/upload-artifact@v4
