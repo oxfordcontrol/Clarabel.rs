@@ -23,5 +23,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: rustup update ${{ matrix.toolchain }} && rustup default ${{ matrix.toolchain }}
+
+      # Cargo.lock is not committed, so every run resolves dependencies afresh and
+      # picks up releases that have raised their own MSRV past ours: serde_json
+      # >=1.0.150, proc-macro2 >=1.0.107, unicode-ident >=1.0.23 and syn 3.x all
+      # now require rustc 1.71. Resolve with a current cargo using MSRV-aware
+      # resolution, which honours rust-version in Cargo.toml, then build and test
+      # with the pinned toolchain.
+      - name: Resolve dependencies compatible with the declared MSRV
+        if: matrix.toolchain == '1.70.0'
+        env:
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS: fallback
+        run: |
+          rustup toolchain install stable --profile minimal
+          cargo +stable generate-lockfile
+          # serde pins serde_derive with an exact `=` requirement, and serde_derive
+          # 1.0.229 depends on syn 3.x; the fallback resolver cannot see through
+          # that pin, so step serde back one release explicitly.
+          cargo +stable update -p serde --precise 1.0.228
+
       - run: cargo build --verbose
       - run: cargo test --verbose
