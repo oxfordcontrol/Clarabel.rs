@@ -1,8 +1,6 @@
 #![allow(non_snake_case)]
 
-use crate::algebra::{
-    DenseMatrix, FloatT, Matrix, MultiplySYMV, ShapedMatrix, Symmetric,
-};
+use crate::algebra::{DenseMatrix, FloatT, Matrix, MultiplySYMV, ShapedMatrix, Symmetric};
 
 impl<T> MultiplySYMV for Symmetric<'_, Matrix<T>>
 where
@@ -31,8 +29,8 @@ macro_rules! generate_test_gsymv {
         fn $test_name() {
             #[rustfmt::skip]
             let A = Matrix::<$fxx>::from(&[
-                [ 1.,  2.,   4.], 
-                [ 0.,  3.,   5.], 
+                [ 1.,  2.,   4.],
+                [ 0.,  3.,   5.],
                 [ 0.,  0.,   6.],
             ]);
 
@@ -43,8 +41,8 @@ macro_rules! generate_test_gsymv {
 
             #[rustfmt::skip]
             let A = Matrix::<$fxx>::from(&[
-                [ 1.,  0.,   0.], 
-                [ 2.,  3.,   0.], 
+                [ 1.,  0.,   0.],
+                [ 2.,  3.,   0.],
                 [ 4.,  5.,   6.],
             ]);
 
@@ -52,7 +50,7 @@ macro_rules! generate_test_gsymv {
             let mut y = vec![-4., -1., 3.];
             A.sym_lo().symv(&x, &mut y, 2.0, 3.0);
             assert_eq!(y, [6.0, 19.0, 33.0]);
-        } 
+        }
     };
 }
 

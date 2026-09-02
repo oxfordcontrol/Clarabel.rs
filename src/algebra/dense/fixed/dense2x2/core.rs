@@ -6,10 +6,10 @@ use crate::algebra::{DenseMatrixN, DenseMatrixSymN, FloatT};
 // NB: Implements special matrix decomposition cases
 
 // NB: S = 4 here because the matrix has 2^2 elements
-pub (crate) type DenseMatrix2<T> = DenseMatrixN<4, T>;
+pub(crate) type DenseMatrix2<T> = DenseMatrixN<4, T>;
 
 // NB: S = 3 here because the upper triangle has 3 elements
-pub (crate) type DenseMatrixSym2<T> = DenseMatrixSymN<3, T>;
+pub(crate) type DenseMatrixSym2<T> = DenseMatrixSymN<3, T>;
 
 // hand implemented DenseMatrixSym2<T> to make sure
 // everything is properly unrolled

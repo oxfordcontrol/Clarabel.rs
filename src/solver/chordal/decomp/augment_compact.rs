@@ -561,11 +561,9 @@ where
 
 fn extra_columns(total_length: usize, n_start: usize, start_val: usize) -> Vec<usize> {
     let mut v = vec![0; total_length];
-    let mut start_val = start_val;
-    for i in (n_start..(v.len() - 1)).step_by(2) {
-        v[i] = start_val;
-        v[i + 1] = start_val;
-        start_val += 1;
+    for (offset, i) in (n_start..(v.len() - 1)).step_by(2).enumerate() {
+        v[i] = start_val + offset;
+        v[i + 1] = start_val + offset;
     }
     v
 }

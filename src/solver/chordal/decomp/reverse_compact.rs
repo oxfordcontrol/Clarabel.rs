@@ -45,13 +45,9 @@ where
         for (cone, cone_map) in zip(old_cones.iter(), cone_maps.iter()) {
             let row_range = row_ranges[cone_map.orig_index].clone();
 
-            if cone_map.tree_and_clique.is_none() {
-                row_ptr =
-                    add_blocks_with_cone(new_s, old_s, new_z, old_z, row_range, cone, row_ptr);
-            } else {
+            if let Some((tree_index, clique_index)) = cone_map.tree_and_clique {
                 assert!(matches!(cone, SupportedConeT::PSDTriangleConeT(_)));
 
-                let (tree_index, clique_index) = cone_map.tree_and_clique.unwrap();
                 let pattern = &self.spatterns[tree_index];
 
                 row_ptr = add_blocks_with_sparsity_pattern(
@@ -65,6 +61,9 @@ where
                     &mut clique_buffer,
                     row_ptr,
                 );
+            } else {
+                row_ptr =
+                    add_blocks_with_cone(new_s, old_s, new_z, old_z, row_range, cone, row_ptr);
             }
         }
     }

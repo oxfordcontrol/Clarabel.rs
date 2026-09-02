@@ -110,8 +110,7 @@ where
         if A <= T::zero() {
             // check for positive definite
             Err(DenseFactorizationError::Cholesky(1))
-        }
-        else {
+        } else {
             self.L[(0, 0)] = A.sqrt();
             Ok(())
         }
@@ -307,26 +306,17 @@ mod test {
 
     fn test_data_2x2<T: FloatT>() -> (Matrix<T>, Matrix<T>, Matrix<T>) {
         // Create a symmetric matrix S
-        let S = Matrix::<T>::from(&[
-            [(4.0).as_T(), (1.0).as_T()],
-            [(1.0).as_T(), (3.0).as_T()],
-        ]);
-    
+        let S = Matrix::<T>::from(&[[(4.0).as_T(), (1.0).as_T()], [(1.0).as_T(), (3.0).as_T()]]);
+
         // Solution matrix X with 2 columns
-        let X = Matrix::<T>::from(&[
-            [(2.0).as_T(), (3.0).as_T()],
-            [(1.0).as_T(), (2.0).as_T()],
-        ]);
-    
+        let X = Matrix::<T>::from(&[[(2.0).as_T(), (3.0).as_T()], [(1.0).as_T(), (2.0).as_T()]]);
+
         // Right-hand side B = S*X
-        let B = Matrix::<T>::from(&[
-            [(9.0).as_T(), (14.0).as_T()],
-            [(5.0).as_T(), (9.0).as_T()],
-        ]);
-    
+        let B = Matrix::<T>::from(&[[(9.0).as_T(), (14.0).as_T()], [(5.0).as_T(), (9.0).as_T()]]);
+
         (S, X, B)
     }
- 
+
     #[rustfmt::skip]
     fn test_data_3x3<T: FloatT>() -> (Matrix<T>, Matrix<T>, Matrix<T>) {
         let S = Matrix::<T>::from(&[
@@ -350,7 +340,6 @@ mod test {
         (S, X, B)
     }
 
-       
     #[rustfmt::skip]
     fn test_data_4x4<T: FloatT>() -> (Matrix<T>, Matrix<T>, Matrix<T>) {
         // Create a symmetric matrix S
@@ -441,9 +430,6 @@ mod test {
     generate_test_cholesky_logdet!(f64, test_cholesky_logdet_f64, abs);
 }
 
-
-
-
 #[cfg(all(test, feature = "bench"))]
 mod bench {
 
@@ -454,15 +440,15 @@ mod bench {
 
         let v: Vec<f64> = (-100..=100).map(|i| i as f64).collect();
 
-        iproduct!(v.clone(), v.clone(), v.clone()).map(move |(b,d,e)| {
-            // new matrices that are positive definite, 
-            // so choose a,c,e so that the matrix is 
+        iproduct!(v.clone(), v.clone(), v.clone()).map(move |(b, d, e)| {
+            // new matrices that are positive definite,
+            // so choose a,c,e so that the matrix is
             // diagonally dominant
             let a = b.abs() + d.abs() + 0.1;
             let c = b.abs() + e.abs() + 0.1;
             let f = d.abs() + e.abs() + 0.1;
-            let data = [a,b,d,b,c,e,d,e,f];
-            Matrix::new_from_slice((3,3), &data)
+            let data = [a, b, d, b, c, e, d, e, f];
+            Matrix::new_from_slice((3, 3), &data)
         })
     }
 

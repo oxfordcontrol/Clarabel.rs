@@ -329,7 +329,7 @@ where
         // if we have any nonsymmetric cones, then back off from full steps slightly
         // so that centrality checks and logarithms don't fail right at the boundaries
         if !all_symmetric {
-            let ceil = T::one() - T::sqrt(T::epsilon()); 
+            let ceil = T::one() - T::sqrt(T::epsilon());
             α = T::min(α, ceil);
         }
 

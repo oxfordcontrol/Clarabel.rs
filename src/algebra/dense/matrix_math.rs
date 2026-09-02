@@ -1,16 +1,13 @@
 #![allow(non_snake_case)]
 use crate::algebra::*;
 
-
-// PJG : MatrixMath<T> should be implemented for a more 
-// general type, e.g. the DenseStorageMatrix<S,T> type 
+// PJG : MatrixMath<T> should be implemented for a more
+// general type, e.g. the DenseStorageMatrix<S,T> type
 // or similar.   That would provide math functionality
-// for more types, e.g. statically size matrices or 
-// the ones on borrowed data.   
-
+// for more types, e.g. statically size matrices or
+// the ones on borrowed data.
 
 impl<T: FloatT> MatrixMath<T> for Matrix<T> {
-
     fn col_sums(&self, sums: &mut [T]) {
         assert_eq!(self.ncols(), sums.len());
         for (col, sum) in sums.iter_mut().enumerate() {
@@ -71,7 +68,6 @@ impl<T: FloatT> MatrixMath<T> for Matrix<T> {
 }
 
 impl<T: FloatT> MatrixMathMut<T> for Matrix<T> {
-
     //scalar mut operations
     fn scale(&mut self, c: T) {
         self.data.scale(c);
@@ -100,7 +96,6 @@ impl<T: FloatT> MatrixMathMut<T> for Matrix<T> {
             }
         }
     }
-
 }
 
 impl<T> Matrix<T>
@@ -133,16 +128,15 @@ where
     }
 }
 
-
 // additional functions that require floating point operations
 
 // allow dead code here since dense matrix and its supporting
 // functionality could eventually become a public interface.
 #[allow(dead_code)]
-impl<S,T> DenseStorageMatrix<S, T> 
-where 
+impl<S, T> DenseStorageMatrix<S, T>
+where
     T: FloatT,
-    S: AsRef<[T]> + AsMut<[T]>
+    S: AsRef<[T]> + AsMut<[T]>,
 {
     /// Set A = (A + A') / 2.  Assumes A is real
     pub fn symmetric_part(&mut self) -> &mut Self {
@@ -160,9 +154,7 @@ where
     }
 }
 
-
-
-pub(crate) fn svec_to_mat<S,T>(M: &mut DenseStorageMatrix<S,T>, x: &[T]) 
+pub(crate) fn svec_to_mat<S, T>(M: &mut DenseStorageMatrix<S, T>, x: &[T])
 where
     T: FloatT,
     S: AsRef<[T]> + AsMut<[T]>,
@@ -182,10 +174,10 @@ where
 }
 
 //PJG : Perhaps implementation for Symmetric type would be faster
-pub(crate) fn mat_to_svec<T,MATM>(x: &mut [T], M: &MATM)
-where 
-MATM: DenseMatrix<T>,
-     T: FloatT,
+pub(crate) fn mat_to_svec<T, MATM>(x: &mut [T], M: &MATM)
+where
+    MATM: DenseMatrix<T>,
+    T: FloatT,
 {
     let mut idx = 0;
     for col in 0..M.ncols() {
@@ -201,7 +193,6 @@ MATM: DenseMatrix<T>,
         }
     }
 }
-
 
 #[test]
 fn test_row_col_sums_and_norms() {
@@ -286,38 +277,22 @@ fn test_l_r_scalings() {
 
 #[test]
 fn test_symmetric_part() {
+    let mut A = Matrix::from(&[[-1., 4., 6.], [2., -8., 8.], [0., 4., 9.]]);
 
-    let mut A = Matrix::from(&[
-        [-1.,  4.,  6.],
-        [ 2., -8.,  8.],
-        [ 0.,  4.,  9.],
-    ]);
-
-    let B = Matrix::from(&[
-        [-1.,  3.,  3.],
-        [ 3., -8.,  6.],
-        [ 3.,  6.,  9.],
-    ]);
+    let B = Matrix::from(&[[-1., 3., 3.], [3., -8., 6.], [3., 6., 9.]]);
 
     A.symmetric_part();
-    assert_eq!(B,A);
+    assert_eq!(B, A);
 }
 
 #[test]
 fn test_col_norms_sym() {
-
-    let A = Matrix::from(&[
-        [-1.,  4.,  6.],
-        [ 2., -8.,  8.],
-        [ 0.,  4.,  9.],
-    ]);
+    let A = Matrix::from(&[[-1., 4., 6.], [2., -8., 8.], [0., 4., 9.]]);
 
     let mut v = vec![0.0; 3];
     A.col_norms_sym(&mut v);
     assert_eq!(v, [6.0, 8.0, 9.0]);
 }
-
-
 
 #[test]
 #[rustfmt::skip]
@@ -383,8 +358,6 @@ fn test_kron() {
 
     assert_eq!(K,Ktest);
 }
-
-
 
 #[test]
 fn test_svec_conversions() {

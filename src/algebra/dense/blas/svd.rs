@@ -366,26 +366,17 @@ mod test {
 
     fn test_solve_data_2x2<T: FloatT>() -> (Matrix<T>, Matrix<T>, Matrix<T>) {
         // Create a symmetric matrix S
-        let A = Matrix::<T>::from(&[
-            [(4.0).as_T(), (1.0).as_T()],
-            [(1.0).as_T(), (3.0).as_T()],
-        ]);
-    
+        let A = Matrix::<T>::from(&[[(4.0).as_T(), (1.0).as_T()], [(1.0).as_T(), (3.0).as_T()]]);
+
         // Solution matrix X with 2 columns
-        let X = Matrix::<T>::from(&[
-            [(2.0).as_T(), (3.0).as_T()],
-            [(1.0).as_T(), (2.0).as_T()],
-        ]);
-    
+        let X = Matrix::<T>::from(&[[(2.0).as_T(), (3.0).as_T()], [(1.0).as_T(), (2.0).as_T()]]);
+
         // Right-hand side B = S*X
-        let B = Matrix::<T>::from(&[
-            [(9.0).as_T(), (14.0).as_T()],
-            [(5.0).as_T(), (9.0).as_T()],
-        ]);
-    
+        let B = Matrix::<T>::from(&[[(9.0).as_T(), (14.0).as_T()], [(5.0).as_T(), (9.0).as_T()]]);
+
         (A, X, B)
     }
- 
+
     #[rustfmt::skip]
     fn test_solve_data_3x3<T: FloatT>() -> (Matrix<T>, Matrix<T>, Matrix<T>) {
         let A = Matrix::<T>::from(&[
@@ -409,7 +400,6 @@ mod test {
         (A, X, B)
     }
 
-       
     #[rustfmt::skip]
     fn test_solve_data_4x4<T: FloatT>() -> (Matrix<T>, Matrix<T>, Matrix<T>) {
         // Create a symmetric matrix S
@@ -451,7 +441,6 @@ mod test {
         ];
 
         for method in methods.iter() {
-
             // A and B are modified inplace during factor/solve
             let mut thisA = A.clone();
             let mut thisB = B.clone();
@@ -471,13 +460,13 @@ mod test {
             #[test]
             fn $test_name() {
                 let (mut A, mut X, mut B) = test_solve_data_2x2::<$fxx>();
-                run_svd_solve_test(&mut A, &mut X, &mut B,  |x| x.$tolfn());
+                run_svd_solve_test(&mut A, &mut X, &mut B, |x| x.$tolfn());
 
-                let (mut A, mut X, mut B) = test_solve_data_3x3::<$fxx>();  
-                run_svd_solve_test(&mut A, &mut X, &mut B,  |x| x.$tolfn());
+                let (mut A, mut X, mut B) = test_solve_data_3x3::<$fxx>();
+                run_svd_solve_test(&mut A, &mut X, &mut B, |x| x.$tolfn());
 
                 let (mut A, mut X, mut B) = test_solve_data_4x4::<$fxx>();
-                run_svd_solve_test(&mut A, &mut X, &mut B,  |x| x.$tolfn());
+                run_svd_solve_test(&mut A, &mut X, &mut B, |x| x.$tolfn());
             }
         };
     }
@@ -485,17 +474,16 @@ mod test {
     generate_test_svd_solve!(f32, test_svd_solve_f32, sqrt);
     generate_test_svd_solve!(f64, test_svd_solve_f64, abs);
 
-
-    fn test_factor_data_2x2<T: FloatT>() ->Matrix<T> {
-        let (A,_,_) = test_solve_data_2x2::<T>();
+    fn test_factor_data_2x2<T: FloatT>() -> Matrix<T> {
+        let (A, _, _) = test_solve_data_2x2::<T>();
         A
     }
-    fn test_factor_data_3x3<T: FloatT>() ->Matrix<T> {
-        let (A,_,_) = test_solve_data_3x3::<T>();
+    fn test_factor_data_3x3<T: FloatT>() -> Matrix<T> {
+        let (A, _, _) = test_solve_data_3x3::<T>();
         A
     }
-    fn test_factor_data_4x4<T: FloatT>() ->Matrix<T> {
-        let (A,_,_) = test_solve_data_4x4::<T>();
+    fn test_factor_data_4x4<T: FloatT>() -> Matrix<T> {
+        let (A, _, _) = test_solve_data_4x4::<T>();
         A
     }
 
@@ -522,7 +510,6 @@ mod test {
         s.windows(2).all(|w| w[0] >= w[1])
     }
 
-
     fn run_svd_factor_test<T>(A: &mut Matrix<T>, tolfn: fn(T) -> T)
     where
         T: FloatT,
@@ -535,7 +522,6 @@ mod test {
         ];
 
         for method in methods.iter() {
-
             let Acopy = A.clone(); //A is corrupted after factorization
 
             let mut eng = SVDEngine::<T>::new(A.size());
@@ -564,35 +550,31 @@ mod test {
         }
     }
 
-
     macro_rules! generate_test_svd_factor {
         ($fxx:ty, $test_name:ident, $tolfn:ident) => {
             #[test]
             fn $test_name() {
                 let mut A = test_factor_data_2x2::<$fxx>();
-                run_svd_factor_test(&mut A,  |x| x.$tolfn());
+                run_svd_factor_test(&mut A, |x| x.$tolfn());
 
-                let mut A = test_factor_data_3x3::<$fxx>();  
-                run_svd_factor_test(&mut A,  |x| x.$tolfn());
+                let mut A = test_factor_data_3x3::<$fxx>();
+                run_svd_factor_test(&mut A, |x| x.$tolfn());
 
                 let mut A = test_factor_data_4x4::<$fxx>();
-                run_svd_factor_test(&mut A,  |x| x.$tolfn());
+                run_svd_factor_test(&mut A, |x| x.$tolfn());
 
                 let mut A = test_factor_data_2x4::<$fxx>();
-                run_svd_factor_test(&mut A,  |x| x.$tolfn());
+                run_svd_factor_test(&mut A, |x| x.$tolfn());
 
                 let mut A = test_factor_data_4x2::<$fxx>();
-                run_svd_factor_test(&mut A,  |x| x.$tolfn());
+                run_svd_factor_test(&mut A, |x| x.$tolfn());
             }
         };
     }
 
     generate_test_svd_factor!(f32, test_svd_factor_f32, sqrt);
     generate_test_svd_factor!(f64, test_svd_factor_f64, abs);
-
 }
-
-
 
 #[cfg(all(test, feature = "bench"))]
 mod bench {
@@ -600,21 +582,19 @@ mod bench {
     use super::*;
 
     fn svd3_bench_iter() -> impl Iterator<Item = Matrix<f64>> {
-
         use itertools::iproduct;
 
         let v = [-4., -2., 0., 1., 5.];
 
         iproduct!(v, v, v, v, v, v, v, v, v).map(move |(a, b, c, d, e, f, g, h, i)| {
-            let data = [a,b,c,d,e,f,g,h,i];
-            Matrix::new_from_slice((3,3), &data)
+            let data = [a, b, c, d, e, f, g, h, i];
+            Matrix::new_from_slice((3, 3), &data)
         })
     }
 
     #[test]
     fn bench_svd3_vs_blas() {
-
-        let mut eng = SVDEngine::<f64>::new((3,3));
+        let mut eng = SVDEngine::<f64>::new((3, 3));
 
         for mut A in svd3_bench_iter() {
             eng.factor3(&mut A).unwrap();
@@ -624,6 +604,4 @@ mod bench {
             eng.factorblas(&mut A).unwrap();
         }
     }
-
 }
-

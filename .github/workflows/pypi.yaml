@@ -39,7 +39,9 @@ jobs:
             test: false
             
           # macOS Intel build
-          - os: macos-13
+          # macos-13 was retired on 2025-12-04; macos-15-intel is the
+          # replacement x86_64 image, available until August 2027.
+          - os: macos-15-intel
             target: x86_64
             features: "python,pardiso"
             test: true

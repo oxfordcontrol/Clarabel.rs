@@ -6,7 +6,7 @@
 use crate::algebra::*;
 use num_traits::Num;
 
-// The comment below is not a docstring since it relies on the 
+// The comment below is not a docstring since it relies on the
 // type Matrix<T> which is not currently visible outside the crate.
 // It can be restored if the dense Matrix type is made public.
 
@@ -65,12 +65,11 @@ where
             }
         }
 
-        Self::new((m,n), data)
+        Self::new((m, n), data)
     }
 }
 
-
-// Constructors for dense matrices with owned data 
+// Constructors for dense matrices with owned data
 
 impl<T> Matrix<T>
 where
@@ -89,7 +88,11 @@ where
 
     pub fn new(size: (usize, usize), data: Vec<T>) -> Self {
         assert!(size.0 * size.1 == data.len());
-        Self{size, data, phantom: std::marker::PhantomData}
+        Self {
+            size,
+            data,
+            phantom: std::marker::PhantomData,
+        }
     }
 
     pub fn new_from_slice(size: (usize, usize), src: &[T]) -> Self {
@@ -104,11 +107,10 @@ where
     }
 }
 
-impl<S,T> TriangularMatrixChecks for DenseStorageMatrix<S,T>
+impl<S, T> TriangularMatrixChecks for DenseStorageMatrix<S, T>
 where
     S: AsMut<[T]> + AsRef<[T]>,
     T: Sized + Num + Copy,
-
 {
     fn is_triu(&self) -> bool {
         for c in 0..self.ncols() {
@@ -135,7 +137,7 @@ where
 
 // Methods that required mutable access to the matrix
 
-impl<S,T> DenseStorageMatrix<S,T>
+impl<S, T> DenseStorageMatrix<S, T>
 where
     S: AsMut<[T]> + AsRef<[T]>,
     T: Sized + Num + Copy,
@@ -175,7 +177,7 @@ where
     where
         RI: IntoIterator<Item = &'a usize> + Copy,
         CI: IntoIterator<Item = &'a usize>,
-        MAT: DenseMatrix<T,Output = T>,
+        MAT: DenseMatrix<T, Output = T>,
     {
         for (j, &col) in cols.into_iter().enumerate() {
             for (i, &row) in rows.into_iter().enumerate() {
@@ -185,15 +187,11 @@ where
     }
 
     /// self.subsref(B,rows,cols) sets self = B[rows,cols]
-    pub(crate) fn subsref<'a, RI, CI, MAT>(
-        &mut self,
-        source: &MAT,
-        rows: RI,
-        cols: CI,
-    ) where
+    pub(crate) fn subsref<'a, RI, CI, MAT>(&mut self, source: &MAT, rows: RI, cols: CI)
+    where
         RI: IntoIterator<Item = &'a usize> + Copy,
         CI: IntoIterator<Item = &'a usize>,
-        MAT: DenseMatrix<T,Output = T>,
+        MAT: DenseMatrix<T, Output = T>,
     {
         for (j, &col) in cols.into_iter().enumerate() {
             for (i, &row) in rows.into_iter().enumerate() {
@@ -202,9 +200,6 @@ where
         }
     }
 }
-
-
-
 
 impl<T> std::fmt::Display for Matrix<T>
 where
@@ -223,9 +218,6 @@ where
         Ok(())
     }
 }
-
-
-
 
 #[test]
 #[rustfmt::skip]

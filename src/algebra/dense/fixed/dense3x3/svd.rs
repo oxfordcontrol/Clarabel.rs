@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-use crate::algebra::*;
 use super::eigen::*;
+use crate::algebra::*;
 
 // 3x3 SVD using a two-sided Jacobi method.
 
@@ -139,25 +139,20 @@ fn apply_two_sided_rotation<T: FloatT>(
 
 #[inline]
 fn hypot_fast<T: FloatT>(x: T, y: T) -> T {
-
-    // NB: avoids overflow in x^2 + y^2, and also faster 
+    // NB: avoids overflow in x^2 + y^2, and also faster
     // bc it reduces the range of the sqrt to [1,2]
-    // marginally faster than [x,y].norm(), which is 
-    // equivalent and amounts to the same method. Faster 
-    // than hypot(x,y) since it doesn't check nan or inf 
+    // marginally faster than [x,y].norm(), which is
+    // equivalent and amounts to the same method. Faster
+    // than hypot(x,y) since it doesn't check nan or inf
     // edge cases
 
     let x = x.abs();
     let y = y.abs();
 
-    let (maxval, minval) = if x > y {
-        (x, y)
-    } else {
-        (y, x)
-    };
+    let (maxval, minval) = if x > y { (x, y) } else { (y, x) };
 
     if minval.is_zero() {
-         if maxval.is_zero() {
+        if maxval.is_zero() {
             return T::zero();
         } else {
             return maxval;
@@ -166,7 +161,6 @@ fn hypot_fast<T: FloatT>(x: T, y: T) -> T {
 
     let r = minval / maxval;
     maxval * T::sqrt(T::one() + r * r)
-
 }
 
 fn compute_polar_2x2<T: FloatT>(App: T, Aqp: T, Apq: T, Aqq: T) -> (T, T, T, T, T) {
@@ -175,7 +169,7 @@ fn compute_polar_2x2<T: FloatT>(App: T, Aqp: T, Apq: T, Aqq: T) -> (T, T, T, T, 
     let x = App + Aqq;
     let y = Aqp - Apq;
 
-    let d = hypot_fast(x, y); 
+    let d = hypot_fast(x, y);
 
     let (c, s) = {
         if d.is_zero() {
@@ -286,9 +280,10 @@ mod tests {
     #[test]
     fn test_svd_3x3_hard() {
         let mut A = Matrix::zeros((3, 3));
-        A.data.copy_from(&[0.0001, 0.01, 1.0, 0.01, 1.0, 0.0001, 1.0, 0.0001, 0.01]);
+        A.data
+            .copy_from(&[0.0001, 0.01, 1.0, 0.01, 1.0, 0.0001, 1.0, 0.0001, 0.01]);
 
-        let strue = [1.0101,0.9949869396127771, 0.9949869396127768];
+        let strue = [1.0101, 0.9949869396127771, 0.9949869396127768];
 
         let mut A: DenseMatrix3<f64> = A.into();
         let mut U = DenseMatrix3::zeros();

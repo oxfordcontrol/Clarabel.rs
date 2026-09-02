@@ -1,6 +1,6 @@
 #![allow(non_snake_case)]
-use crate::algebra::*;
 use crate::algebra::dense::fixed::dense3x3::svd::compute_two_sided_rotation;
+use crate::algebra::*;
 
 // 2x2 SVD using a two-sided Jacobi method.
 
@@ -68,24 +68,18 @@ fn set_order_and_signs_2x2<T: FloatT>(
     [absa, absb]
 }
 
-
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_svd_2x2_nice(){
-        
+    fn test_svd_2x2_nice() {
         #[rustfmt::skip]
         let A = Matrix::from(&[
             [ 1.0, 2.0], 
             [ 3.0, 4.0]
         ]);
-        let strue = [
-            5.464985704219043,
-            0.3659661906262575];
+        let strue = [5.464985704219043, 0.3659661906262575];
 
         let mut A: DenseMatrix2<f64> = A.into();
         let mut U = DenseMatrix2::zeros();
@@ -97,14 +91,13 @@ mod tests {
             assert!((s[i] - strue[i]).abs() < 1e-10);
         }
 
-        for (i,&si) in s.iter().enumerate() {
-                let mut u = U.col_slice(i).to_vec();
-                let v = V.col_slice(i).to_vec();
-                let mut Av = vec![0.0; v.len()];
-                A.mul(&mut Av, &v);
-                u.scale(si);
-                assert!(Av.norm_inf_diff(&u) < 1e-10);
+        for (i, &si) in s.iter().enumerate() {
+            let mut u = U.col_slice(i).to_vec();
+            let v = V.col_slice(i).to_vec();
+            let mut Av = vec![0.0; v.len()];
+            A.mul(&mut Av, &v);
+            u.scale(si);
+            assert!(Av.norm_inf_diff(&u) < 1e-10);
         }
     }
 }
-

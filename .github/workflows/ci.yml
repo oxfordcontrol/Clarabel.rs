@@ -11,6 +11,22 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  lint:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install rustfmt and clippy
+      run: rustup component add rustfmt clippy
+
+    - name: Check formatting
+      run: cargo fmt --all -- --check
+
+    - name: Clippy
+      run: cargo clippy --all-targets --features sdp-accelerate,faer-sparse,serde -- -D warnings
+
   build:
 
     runs-on: macos-latest

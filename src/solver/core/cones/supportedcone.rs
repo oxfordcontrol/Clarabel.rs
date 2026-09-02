@@ -75,7 +75,7 @@ where
     T: FloatT,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", &self.as_tag().as_str())
+        write!(f, "{}", self.as_tag().as_str())
     }
 }
 
