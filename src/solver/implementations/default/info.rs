@@ -7,6 +7,14 @@ use crate::solver::core::{traits::Info, SolverStatus};
 use crate::solver::traits::Variables;
 use crate::timers::*;
 
+cfg_if::cfg_if! {
+    if #[cfg(target_family = "wasm")] {
+        use web_time::Instant;
+    } else {
+        use std::time::Instant;
+    }
+}
+
 /// Standard-form solver type implementing the [`Info`](crate::solver::core::traits::Info) and [`InfoPrint`](crate::solver::core::traits::InfoPrint) traits
 #[repr(C)]
 #[derive(Default, Debug, Clone)]
@@ -53,6 +61,8 @@ pub struct DefaultInfo<T> {
     pub(crate) prev_gap_rel: T,
     /// solve time
     pub solve_time: f64,
+    /// start of the current `solve` call. Setup and earlier solves stay off this clock.
+    pub(crate) solve_start: Option<Instant>,
     /// solver status
     pub status: SolverStatus,
 
@@ -71,6 +81,13 @@ where
     pub fn new() -> Self {
         Self::default()
     }
+
+    pub(crate) fn stamp_solve_time(&mut self) {
+        self.solve_time = match self.solve_start {
+            Some(start) => start.elapsed().as_secs_f64(),
+            None => 0.0,
+        };
+    }
 }
 
 impl<T: FloatT> ClarabelFFI<Self> for DefaultInfo<T> {
@@ -88,6 +105,9 @@ where
         self.status = SolverStatus::Unsolved;
         self.iterations = 0;
         self.solve_time = 0f64;
+        // Time limit applies to this call. Setup ran in the constructor, and a
+        // previous solve must not consume the budget of an updated problem.
+        self.solve_start = Some(Instant::now());
 
         timers.reset_timer("solve");
     }
@@ -104,9 +124,8 @@ where
         }
     }
 
-    fn finalize(&mut self, timers: &mut Timers) {
-        //final check of timers
-        self.solve_time = timers.total_time().as_secs_f64();
+    fn finalize(&mut self, _timers: &mut Timers) {
+        self.stamp_solve_time();
     }
 
     fn update(
@@ -114,7 +133,7 @@ where
         data: &mut DefaultProblemData<T>,
         variables: &DefaultVariables<T>,
         residuals: &DefaultResiduals<T>,
-        timers: &Timers,
+        _timers: &Timers,
     ) {
         // optimality termination check should be computed w.r.t
         // the pre-homogenization x and z variables.
@@ -175,8 +194,8 @@ where
         // κ/τ ratio (scaled)
         self.ktratio = variables.κ * τinv;
 
-        // solve time so far (includes setup)
-        self.solve_time = timers.total_time().as_secs_f64();
+        // Wall time of this solve() call, not setup or an earlier solve.
+        self.stamp_solve_time();
     }
 
     fn check_termination(
@@ -386,5 +405,47 @@ where
     ) -> bool {
         (residuals.dot_qx < -tol_infeas_abs)
             && (self.res_dual_inf < -tol_infeas_rel * residuals.dot_qx)
+    }
+}
+
+#[cfg(test)]
+mod solve_clock_tests {
+    use super::*;
+    use crate::timers::Timers;
+    use std::thread::sleep;
+    use std::time::Duration;
+
+    #[test]
+    fn solve_clock_ignores_setup_and_previous_solves() {
+        let mut timers = Timers::default();
+        timers.start_as_current("setup");
+        sleep(Duration::from_millis(60));
+        timers.stop_current();
+        let setup = timers.total_time().as_secs_f64();
+
+        let mut info = DefaultInfo::<f64>::default();
+        info.reset(&mut timers);
+        sleep(Duration::from_millis(15));
+        info.stamp_solve_time();
+        assert!(
+            info.solve_time < setup * 0.75,
+            "solve_time {} included setup {}",
+            info.solve_time,
+            setup
+        );
+
+        timers.start_as_current("solve");
+        sleep(Duration::from_millis(60));
+        timers.stop_current();
+        let with_previous = timers.total_time().as_secs_f64();
+        info.reset(&mut timers);
+        sleep(Duration::from_millis(15));
+        info.stamp_solve_time();
+        assert!(
+            info.solve_time < with_previous * 0.5,
+            "solve_time {} included an earlier solve (clock {})",
+            info.solve_time,
+            with_previous
+        );
     }
 }
