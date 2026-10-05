@@ -27,34 +27,36 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Linux builds (intel runner)
+          # Linux Intel build
           - os: ubuntu-latest
             target: x86_64
             features: "python,pardiso"
-            test: true
 
-          - os: ubuntu-latest
+          # Linux ARM build
+          - os: ubuntu-24.04-arm
             target: aarch64
             features: "python,pardiso-panua"
-            test: false
             
           # macOS Intel build
-          - os: macos-13
+          - os: macos-15-intel
             target: x86_64
             features: "python,pardiso"
-            test: true
             
           # macOS ARM build
           - os: macos-latest
             target: aarch64
             features: "python,pardiso-panua"
-            test: true
             
           # Windows build
           - os: windows-latest
             target: x64
             features: "python,pardiso"
-            test: true
+
+          # Windows ARM build
+          - os: windows-11-arm
+            target: aarch64
+            features: "python,pardiso-panua"
+            python-version: "3.11" # oldest version available for windows arm64. Wheels are still abi3-py39
 
     steps:
 
@@ -64,19 +66,17 @@ jobs:
         
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          architecture: ${{ matrix.os == 'windows' && matrix.target || '' }}
+          python-version: ${{ matrix.python-version || env.PYTHON_VERSION }}
                     
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.target }}
           command: build
-          manylinux: ${{ matrix.os == 'ubuntu-latest' && 'auto' || '' }}
-          args: -v --release --out dist -i python${{ env.PYTHON_VERSION }} --features "${{ matrix.features }}"
+          manylinux: ${{ startsWith(matrix.os, 'ubuntu') && 'auto' || '' }}
+          args: -v --release --out dist -i python${{ matrix.python-version || env.PYTHON_VERSION }} --features "${{ matrix.features }}"
           
       - name: Install and test built wheel
-        if: matrix.test
         shell: bash
         run: |
           python -m pip install --upgrade pip
