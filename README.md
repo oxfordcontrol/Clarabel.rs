@@ -70,6 +70,16 @@ pip install clarabel
 
 To install the Python interface from source, see the [Python Installation Documentation](https://oxfordcontrol.github.io/ClarabelDocs/stable/python/installation_py/).
 
+### WebAssembly without JavaScript
+
+For `wasm32-unknown-unknown` hosts without JavaScript, such as Typst plugins,
+enable the `wasm-no-js` feature. Solver timing then reports zero, and settings
+validation rejects any `time_limit` other than positive infinity, since the host
+cannot enforce it. Iteration limits and numerical tolerances are unchanged.
+
+The feature has no effect on native, WASI, or Emscripten clocks. Browser builds
+retain their JavaScript-backed clock unless this feature is explicitly enabled.
+
 ## Citing
 ```
 @misc{Clarabel_2024,

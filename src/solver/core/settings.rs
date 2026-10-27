@@ -14,6 +14,9 @@ pub enum SettingsError {
     /// An error attributable to one of the fields
     #[error("Bad value for field \"{0}\"")]
     BadFieldValue(&'static str),
+    /// A time limit cannot be enforced without a clock in a bare WebAssembly host.
+    #[error("time_limit must be positive infinity when wasm-no-js disables the clock")]
+    UnsupportedTimeLimit,
     /// An error thrown when immutable settings are modified within the solver
     #[error("Attempt to modify immutable setting \"{0}\"")]
     ImmutableSetting(&'static str),

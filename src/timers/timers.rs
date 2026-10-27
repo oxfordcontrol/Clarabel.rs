@@ -1,13 +1,31 @@
 #![allow(missing_docs)]
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
+use std::time::Duration;
 
 cfg_if::cfg_if! {
-    if #[cfg(target_family = "wasm")] {
-        use web_time::{Duration, Instant};
+    if #[cfg(all(target_family = "wasm", target_os = "unknown", feature = "wasm-no-js"))] {
+        // Bare WebAssembly hosts, such as Typst plugins, have no clock import.
+        // Keep the timer stack operational but report zero elapsed time. Settings
+        // validation rejects time limits that could not be enforced in this mode.
+        #[derive(Debug, Clone, Copy)]
+        struct Instant;
+
+        impl Instant {
+            fn now() -> Self {
+                Self
+            }
+
+            fn elapsed(&self) -> Duration {
+                Duration::ZERO
+            }
+        }
+    }
+    else if #[cfg(all(target_family = "wasm", target_os = "unknown"))] {
+        use web_time::Instant;
     }
     else {
-        use std::time::{Duration, Instant};
+        use std::time::Instant;
     }
 }
 
@@ -214,3 +232,33 @@ macro_rules! notimeit {
     }
 }
 pub(crate) use notimeit;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(all(target_family = "wasm", target_os = "unknown", feature = "wasm-no-js"))]
+    #[test]
+    fn no_js_timers_preserve_stack_without_reporting_time() {
+        let mut timers = Timers::default();
+        timers.start_as_current("parent");
+        timers.start_as_current("child");
+        timers.suspend();
+        timers.resume();
+        timers.stop_current();
+        timers.stop_current();
+        assert_eq!(timers.total_time(), Duration::ZERO);
+        assert!(timers.stack.is_empty());
+        assert!(timers.subtimers["parent"].subtimers.contains_key("child"));
+    }
+
+    #[cfg(not(target_family = "wasm"))]
+    #[test]
+    fn native_timers_keep_measuring_with_no_js_feature() {
+        let mut timers = Timers::default();
+        timers.start_as_current("parent");
+        std::thread::sleep(Duration::from_millis(1));
+        timers.stop_current();
+        assert!(timers.total_time() > Duration::ZERO);
+    }
+}

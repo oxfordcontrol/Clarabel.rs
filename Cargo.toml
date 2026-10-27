@@ -32,6 +32,10 @@ thiserror      = "1.0"
 [features]
 default = ["serde"]
 
+# Support wasm32-unknown-unknown hosts without JavaScript clock imports.
+# Timing is unavailable and finite time limits are rejected on this target.
+wasm-no-js = []
+
 # enable reading / writing of problems from json files 
 serde = ["dep:serde", "dep:serde_json", "dep:serde-big-array"]
 
@@ -269,7 +273,7 @@ features = ["sdp","sdp-mkl"]
 # wasm compatibility
 # ------------------------------
 
-[target.'cfg(target_family = "wasm")'.dependencies]
+[target.'cfg(all(target_family = "wasm", target_os = "unknown"))'.dependencies]
 web-time = "0.2.3"
 [target.'cfg(target_family = "wasm")'.dev-dependencies]
 wasm-bindgen-test = "0.3"

@@ -32,6 +32,9 @@ pub struct DefaultSettings<T: FloatT> {
     pub max_iter: u32,
 
     ///maximum run time (seconds)
+    ///
+    /// Must remain positive infinity on `wasm32-unknown-unknown` when the
+    /// `wasm-no-js` feature is enabled, because that host has no clock.
     #[builder(default = "f64::INFINITY")]
     pub time_limit: f64,
 
@@ -279,6 +282,8 @@ where
     /// Checks that the settings are valid.  This only ensures that fields specified
     /// by strings contain valid options.   It does not sanity check numerical values
     fn validate(&self) -> Result<(), SettingsError> {
+        validate_time_limit(self.time_limit)?;
+
         // this direct check avoids an internal panic since indirect
         // solvers are not yet available at all
         if !self.direct_kkt_solver {
@@ -354,6 +359,10 @@ where
 {
     /// check that the specified direct_solve_method is valid
     pub fn validate(&self) -> Result<(), SettingsError> {
+        if let Some(time_limit) = self.time_limit {
+            validate_time_limit(time_limit)?;
+        }
+
         if let Some(ref direct_solve_method) = self.direct_solve_method {
             validate_direct_solve_method(direct_solve_method)?;
         }
@@ -373,6 +382,14 @@ where
 // ---------------------------------------------------------
 // individual validation functions go here
 // ---------------------------------------------------------
+
+fn validate_time_limit(_time_limit: f64) -> Result<(), SettingsError> {
+    #[cfg(all(target_family = "wasm", target_os = "unknown", feature = "wasm-no-js"))]
+    if _time_limit != f64::INFINITY {
+        return Err(SettingsError::UnsupportedTimeLimit);
+    }
+    Ok(())
+}
 
 fn validate_direct_solve_method(direct_solve_method: &str) -> Result<(), SettingsError> {
     match direct_solve_method {
@@ -493,4 +510,39 @@ fn test_settings_validate() {
         ..DefaultSettings::default()
     };
     assert!(newsettings.validate_as_update(&oldsettings).is_ok());
+}
+
+#[test]
+fn test_time_limit_clock_capability() {
+    for time_limit in [0., 1., f64::NEG_INFINITY, f64::NAN] {
+        let built = DefaultSettingsBuilder::<f64>::default()
+            .time_limit(time_limit)
+            .build();
+        let settings = DefaultSettings::<f64> {
+            time_limit,
+            ..DefaultSettings::default()
+        };
+        let direct = settings.validate();
+        let update = settings.validate_as_update(&DefaultSettings::default());
+
+        if cfg!(all(
+            target_family = "wasm",
+            target_os = "unknown",
+            feature = "wasm-no-js"
+        )) {
+            assert!(built.is_err());
+            assert!(matches!(direct, Err(SettingsError::UnsupportedTimeLimit)));
+            assert!(matches!(update, Err(SettingsError::UnsupportedTimeLimit)));
+        } else {
+            // Preserve existing validation behavior on hosts with clocks.
+            assert!(built.is_ok());
+            assert!(direct.is_ok());
+            assert!(update.is_ok());
+        }
+    }
+
+    assert!(DefaultSettingsBuilder::<f64>::default()
+        .time_limit(f64::INFINITY)
+        .build()
+        .is_ok());
 }
