@@ -234,11 +234,144 @@ impl XsyevrScalar for MpfrFloat {
     }
 }
 
+// ---------------------------------------------------------------------
+// SVD: one-sided (Hestenes) Jacobi, at full MPFR working precision.
+//
+// Only the economy ("S") form used by `SVDEngine::factorblas` is
+// supported: on exit `s` holds the k = min(m, n) singular values in
+// descending order, `u` the m×k left factor (ld = ldu) and `vt` the k×n
+// right factor (ld = ldvt). The LAPACK workspace-query protocol
+// (lwork = -1 writes the required size to work[0]) is honoured; no
+// workspace is actually needed. Both ?gesdd and ?gesvd dispatch here.
+// ---------------------------------------------------------------------
+
+fn jacobi_svd(
+    m: usize, n: usize, a: &[MpfrFloat], lda: usize,
+    s: &mut [MpfrFloat], u: &mut [MpfrFloat], ldu: usize,
+    vt: &mut [MpfrFloat], ldvt: usize,
+) -> i32 {
+    // Work on G = A (m >= n) or G = Aᵀ (m < n), so G is r×c with r >= c.
+    // Then G = Ug Σ Vgᵀ and A = Ug Σ Vgᵀ or A = Vg Σ Ugᵀ respectively.
+    let trans = m < n;
+    let (r, c) = if trans { (n, m) } else { (m, n) };
+    let get = |i: usize, j: usize| if trans { a[i * lda + j].clone() } else { a[j * lda + i].clone() };
+    // columns of G, stored column-major r×c
+    let mut g: Vec<MpfrFloat> = (0..c).flat_map(|j| (0..r).map(move |i| (i, j))).map(|(i, j)| get(i, j)).collect();
+    let mut v: Vec<MpfrFloat> = (0..c * c).map(|k| if k % (c + 1) == 0 { MpfrFloat::one() } else { MpfrFloat::zero() }).collect();
+
+    let eps = MpfrFloat::epsilon();
+    let max_sweeps = 30 + 4 * (super::default_precision() as usize / 53 + 1);
+    let mut converged = c < 2;
+    let dot = |x: &[MpfrFloat], y: &[MpfrFloat]| {
+        x.iter().zip(y).fold(MpfrFloat::zero(), |acc, (xi, yi)| acc + xi.clone() * yi.clone())
+    };
+    for _ in 0..max_sweeps {
+        if converged { break; }
+        let mut rotated = false;
+        for p in 0..c {
+            for q in (p + 1)..c {
+                let (gp, gq) = (&g[p * r..(p + 1) * r], &g[q * r..(q + 1) * r]);
+                let alpha = dot(gp, gp);
+                let beta = dot(gq, gq);
+                let gamma = dot(gp, gq);
+                if gamma.clone().abs() <= eps.clone() * (alpha.clone() * beta.clone()).sqrt() {
+                    continue;
+                }
+                rotated = true;
+                let two = MpfrFloat::from(2.0);
+                let zeta = (beta - alpha) / (two * gamma);
+                let one = MpfrFloat::one();
+                let t = if zeta >= MpfrFloat::zero() {
+                    one.clone() / (zeta.clone() + (one.clone() + zeta.clone() * zeta).sqrt())
+                } else {
+                    -one.clone() / (-zeta.clone() + (one.clone() + zeta.clone() * zeta).sqrt())
+                };
+                let cs = one.clone() / (one + t.clone() * t.clone()).sqrt();
+                let sn = cs.clone() * t;
+                for (mat, len) in [(&mut g, r), (&mut v, c)] {
+                    for i in 0..len {
+                        let xp = mat[p * len + i].clone();
+                        let xq = mat[q * len + i].clone();
+                        mat[p * len + i] = cs.clone() * xp.clone() - sn.clone() * xq.clone();
+                        mat[q * len + i] = sn.clone() * xp + cs.clone() * xq;
+                    }
+                }
+            }
+        }
+        converged = !rotated;
+    }
+
+    // singular values = column norms of G; sort descending
+    let norms: Vec<MpfrFloat> = (0..c).map(|j| dot(&g[j * r..(j + 1) * r], &g[j * r..(j + 1) * r]).sqrt()).collect();
+    let mut idx: Vec<usize> = (0..c).collect();
+    idx.sort_by(|&i, &j| norms[j].partial_cmp(&norms[i]).unwrap_or(Ordering::Equal));
+    let smax = if c > 0 { norms[idx[0]].clone() } else { MpfrFloat::zero() };
+    let tiny = eps.clone() * smax * MpfrFloat::from(r as f64);
+
+    // left vectors of G (r×c): normalise columns; complete null directions
+    let mut ug: Vec<MpfrFloat> = vec![MpfrFloat::zero(); r * c];
+    for (k, &j) in idx.iter().enumerate() {
+        s[k] = norms[j].clone();
+        if norms[j] > tiny {
+            for i in 0..r { ug[k * r + i] = g[j * r + i].clone() / norms[j].clone(); }
+        } else {
+            // Gram-Schmidt a unit basis vector against the columns so far
+            for e in 0..r {
+                let mut col: Vec<MpfrFloat> = (0..r).map(|i| if i == e { MpfrFloat::one() } else { MpfrFloat::zero() }).collect();
+                for _ in 0..2 {
+                    for kk in 0..k {
+                        let prev = &ug[kk * r..(kk + 1) * r];
+                        let d = dot(prev, &col);
+                        for i in 0..r { col[i] = col[i].clone() - d.clone() * prev[i].clone(); }
+                    }
+                }
+                let nrm = dot(&col, &col).sqrt();
+                if nrm > MpfrFloat::from(0.5) {
+                    for i in 0..r { ug[k * r + i] = col[i].clone() / nrm.clone(); }
+                    break;
+                }
+            }
+        }
+    }
+
+    // scatter: A = Ug Σ Vgᵀ (no transpose) or A = Vg Σ Ugᵀ (transposed)
+    for (k, &j) in idx.iter().enumerate() {
+        for i in 0..m {
+            u[k * ldu + i] = if trans { v[j * c + i].clone() } else { ug[k * r + i].clone() };
+        }
+        for i in 0..n {
+            vt[i * ldvt + k] = if trans { ug[k * r + i].clone() } else { v[j * c + i].clone() };
+        }
+    }
+    if converged { 0 } else { 1 }
+}
+
+fn jacobi_svd_entry(
+    jobz: u8, m: i32, n: i32, a: &mut [MpfrFloat], lda: i32, s: &mut [MpfrFloat],
+    u: &mut [MpfrFloat], ldu: i32, vt: &mut [MpfrFloat], ldvt: i32,
+    work: &mut [MpfrFloat], lwork: i32, info: &mut i32,
+) {
+    *info = 0;
+    if lwork == -1 {
+        if let Some(w0) = work.first_mut() { *w0 = MpfrFloat::one(); }
+        return;
+    }
+    assert!(jobz == b'S' || jobz == b's', "MPFR SVD supports only economy (job = 'S') output");
+    *info = jacobi_svd(
+        m as usize, n as usize, a, lda as usize, s, u, ldu as usize, vt, ldvt as usize,
+    );
+}
+
 impl XgesddScalar for MpfrFloat {
-    fn xgesdd(_jobz: u8, _m: i32, _n: i32, _a: &mut [Self], _lda: i32, _s: &mut [Self], _u: &mut [Self], _ldu: i32, _vt: &mut [Self], _ldvt: i32, _work: &mut [Self], _lwork: i32, _iwork: &mut [i32], _info: &mut i32) { unimplemented!() }
+    fn xgesdd(jobz: u8, m: i32, n: i32, a: &mut [Self], lda: i32, s: &mut [Self], u: &mut [Self], ldu: i32, vt: &mut [Self], ldvt: i32, work: &mut [Self], lwork: i32, _iwork: &mut [i32], info: &mut i32) {
+        jacobi_svd_entry(jobz, m, n, a, lda, s, u, ldu, vt, ldvt, work, lwork, info)
+    }
 }
 impl XgesvdScalar for MpfrFloat {
-    fn xgesvd(_jobu: u8, _jobvt: u8, _m: i32, _n: i32, _a: &mut [Self], _lda: i32, _s: &mut [Self], _u: &mut [Self], _ldu: i32, _vt: &mut [Self], _ldvt: i32, _work: &mut [Self], _lwork: i32, _info: &mut i32) { unimplemented!() }
+    fn xgesvd(jobu: u8, jobvt: u8, m: i32, n: i32, a: &mut [Self], lda: i32, s: &mut [Self], u: &mut [Self], ldu: i32, vt: &mut [Self], ldvt: i32, work: &mut [Self], lwork: i32, info: &mut i32) {
+        assert_eq!(jobu, jobvt, "MPFR SVD requires jobu == jobvt");
+        jacobi_svd_entry(jobu, m, n, a, lda, s, u, ldu, vt, ldvt, work, lwork, info)
+    }
 }
 impl XgemmScalar for MpfrFloat {
     fn xgemm(transa: u8, transb: u8, m: i32, n: i32, k: i32, alpha: Self, a: &[Self], lda: i32, b: &[Self], ldb: i32, beta: Self, c: &mut [Self], ldc: i32) {

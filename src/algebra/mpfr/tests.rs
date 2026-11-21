@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::algebra::transcendental::{RealConst, RealSentinel, Transcendental};
-use num_traits::{FromPrimitive, One, Signed, Zero};
+use num_traits::{FromPrimitive, Num, One, Signed, Zero};
 
 #[test]
 fn mpfr_arithmetic_at_default_precision() {
@@ -365,4 +365,58 @@ mod lapack_tests {
         // strictly-lower entry is not referenced by an upper-triangle syrk
         close(&c[1], 0.0, 1e-40, "C[1][0] (must be untouched)");
     }
+}
+
+// Native Jacobi SVD (`xgesvd`/`xgesdd`): reconstruction and orthogonality
+// at 256-bit precision, for tall, wide, square and rank-deficient inputs.
+#[cfg(feature = "sdp")]
+#[test]
+fn mpfr_native_svd_reconstructs_to_working_precision() {
+    use crate::algebra::dense::{XgesddScalar, XgesvdScalar};
+    set_default_precision(256);
+    let tol = MpfrFloat::from_str_radix("1e-70", 10).unwrap();
+    let cases: Vec<(usize, usize, Vec<i64>)> = vec![
+        (4, 4, (0..16).map(|k| ((k * 7 + 3) % 11) as i64 - 5).collect()),
+        (6, 4, (0..24).map(|k| ((k * 5 + 1) % 13) as i64 - 6).collect()),
+        (3, 5, (0..15).map(|k| ((k * 3 + 2) % 7) as i64 - 3).collect()),
+        // rank 1: outer product
+        (4, 4, (0..16).map(|k| ((k % 4) as i64 + 1) * ((k / 4) as i64 - 2)).collect()),
+    ];
+    for (dd, (m, n, vals)) in cases.into_iter().enumerate() {
+        let k = m.min(n);
+        let a0: Vec<MpfrFloat> = vals.iter().map(|&v| MpfrFloat::from(v)).collect();
+        let mut a = a0.clone();
+        let mut s = vec![MpfrFloat::zero(); k];
+        let mut u = vec![MpfrFloat::zero(); m * k];
+        let mut vt = vec![MpfrFloat::zero(); k * n];
+        let mut work = vec![MpfrFloat::zero(); 1];
+        let mut info = 0;
+        if dd % 2 == 0 {
+            MpfrFloat::xgesvd(b'S', b'S', m as i32, n as i32, &mut a, m as i32, &mut s, &mut u, m as i32, &mut vt, k as i32, &mut work, 1, &mut info);
+        } else {
+            let mut iwork = vec![0; 8 * k];
+            MpfrFloat::xgesdd(b'S', m as i32, n as i32, &mut a, m as i32, &mut s, &mut u, m as i32, &mut vt, k as i32, &mut work, 1, &mut iwork, &mut info);
+        }
+        assert_eq!(info, 0);
+        for w in s.windows(2) { assert!(w[0] >= w[1]); }
+        // A = U diag(s) Vt
+        for j in 0..n {
+            for i in 0..m {
+                let mut acc = MpfrFloat::zero();
+                for l in 0..k { acc = acc + u[l * m + i].clone() * s[l].clone() * vt[j * k + l].clone(); }
+                assert!((acc - a0[j * m + i].clone()).abs() < tol, "case {dd}: reconstruction");
+            }
+        }
+        // UᵀU = I and Vt Vtᵀ = I
+        for p in 0..k {
+            for q in 0..k {
+                let id = if p == q { MpfrFloat::one() } else { MpfrFloat::zero() };
+                let uu = (0..m).fold(MpfrFloat::zero(), |acc, i| acc + u[p * m + i].clone() * u[q * m + i].clone());
+                let vv = (0..n).fold(MpfrFloat::zero(), |acc, j| acc + vt[j * k + p].clone() * vt[j * k + q].clone());
+                assert!((uu - id.clone()).abs() < tol, "case {dd}: U orthogonality");
+                assert!((vv - id).abs() < tol, "case {dd}: V orthogonality");
+            }
+        }
+    }
+    set_default_precision(167);
 }
