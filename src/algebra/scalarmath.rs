@@ -7,7 +7,7 @@ impl<T: FloatT> ScalarMath for T {
         } else if *self > max_thresh {
             max_thresh
         } else {
-            *self
+            self.clone()
         }
     }
 
@@ -15,7 +15,7 @@ impl<T: FloatT> ScalarMath for T {
         if *self <= Self::zero() {
             -Self::infinity()
         } else {
-            self.ln()
+            self.clone().ln()
         }
     }
 }

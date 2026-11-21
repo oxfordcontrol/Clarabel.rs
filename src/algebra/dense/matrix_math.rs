@@ -64,7 +64,7 @@ impl<T: FloatT> MatrixMath<T> for Matrix<T> {
     fn row_norms_no_reset(&self, norms: &mut [T]) {
         for r in 0..self.nrows() {
             for c in 0..self.ncols() {
-                norms[r] = T::max(norms[r], T::abs(self[(r, c)]))
+                norms[r] = T::max(norms[r], self[(r, c)].abs())
             }
         }
     }

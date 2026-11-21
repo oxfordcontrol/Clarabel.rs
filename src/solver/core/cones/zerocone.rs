@@ -123,7 +123,7 @@ where
         αmax: T,
     ) -> (T, T) {
         //equality constraints allow arbitrary step length
-        (αmax, αmax)
+        (αmax.clone(), αmax)
     }
 
     fn compute_barrier(&mut self, _z: &[T], _s: &[T], _dz: &[T], _ds: &[T], _α: T) -> T {

@@ -16,6 +16,7 @@ use std::io::Write;
 /// Status of solver at termination
 #[repr(C)]
 #[derive(PartialEq, Eq, Clone, Debug, Copy, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SolverStatus {
     /// Problem is not solved (solver hasn't run).
     #[default]
@@ -291,7 +292,7 @@ where
 
             // record scalar values from most recent iteration.
             // This captures μ at iteration zero.
-            self.info.save_scalars(μ, α, σ, iter);
+            self.info.save_scalars(μ.clone(), α.clone(), σ.clone(), iter);
 
             // convergence check and printing
             // --------------
@@ -328,7 +329,7 @@ where
             // --------------
             let is_scaling_success;
             timeit!{timers => "scale cones"; {
-                is_scaling_success = self.variables.scale_cones(&mut self.cones,μ,scaling);
+                is_scaling_success = self.variables.scale_cones(&mut self.cones,μ.clone(),scaling);
             }}
             // check whether variables are interior points
             match self.strategy_checkpoint_is_scaling_success(is_scaling_success,scaling){
@@ -375,11 +376,11 @@ where
                 //calculate step length and centering parameter
                 // --------------
                 α = self.get_step_length(StepDirection::Affine, scaling);
-                σ = self.centering_parameter(α);
+                σ = self.centering_parameter(α.clone());
 
                 // make a reduced Mehrotra correction in the first iteration
                 // to accommodate badly centred starting points
-                let m = if iter > 1 {T::one()} else {α};
+                let m = if iter > 1 {T::one()} else {α.clone()};
 
                 // calculate the combined step and length
                 // --------------
@@ -388,8 +389,8 @@ where
                     &self.variables,
                     &mut self.cones,
                     &mut self.step_lhs,
-                    σ,
-                    μ,
+                    σ.clone(),
+                    μ.clone(),
                     m
                 );
 
@@ -420,7 +421,7 @@ where
             α = self.get_step_length(StepDirection::Combined,scaling);
 
             // check for undersized step and update strategy
-            match self.strategy_checkpoint_small_step(α, scaling) {
+            match self.strategy_checkpoint_small_step(α.clone(), scaling) {
                 StrategyCheckpoint::NoUpdate => {}
                 StrategyCheckpoint::Update(s) => {α = T::zero(); scaling = s; continue}
                 StrategyCheckpoint::Fail => {α = T::zero(); break}
@@ -429,7 +430,7 @@ where
             // Copy previous iterate in case the next one is a dud
             self.info.save_prev_iterate(&self.variables,&mut self.prev_vars);
 
-            self.variables.add_step(&self.step_lhs, α);
+            self.variables.add_step(&self.step_lhs, α.clone());
 
         } //end loop
         // ----------
@@ -442,7 +443,7 @@ where
         // Check we if actually took a final step.  If not, we need
         // to recapture the scalars and print one last line
         if α.is_zero() {
-            self.info.save_scalars(μ, α, σ, iter);
+            self.info.save_scalars(μ, α.clone(), σ, iter);
             notimeit! {timers; {self.info.print_status(&self.settings).unwrap();}}
         }
 
@@ -569,15 +570,15 @@ mod internal {
         }
 
         fn backtrack_step_to_barrier(&mut self, αinit: T) -> T {
-            let step = self.settings.core().linesearch_backtrack_step;
+            let step = self.settings.core().linesearch_backtrack_step.clone();
             let mut α = αinit;
 
             for _ in 0..50 {
-                let barrier = self.variables.barrier(&self.step_lhs, α, &mut self.cones);
+                let barrier = self.variables.barrier(&self.step_lhs, α.clone(), &mut self.cones);
                 if barrier < T::one() {
                     return α;
                 } else {
-                    α = step * α;
+                    α = step.clone() * α;
                 }
             }
             α
@@ -641,7 +642,7 @@ mod internal {
                 && α < self.settings.core().min_switch_step_length
             {
                 output = StrategyCheckpoint::Update(ScalingStrategy::Dual);
-            } else if α <= T::max(T::zero(), self.settings.core().min_terminate_step_length) {
+            } else if α <= T::max(T::zero(), self.settings.core().min_terminate_step_length.clone()) {
                 self.info.set_status(SolverStatus::InsufficientProgress);
                 output = StrategyCheckpoint::Fail;
             } else {

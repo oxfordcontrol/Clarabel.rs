@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 Version numbering in this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).  We aim to keep the core solver functionality and minor releases in sync between the Rust/Python and Julia implementations.  Small fixes that affect one implementation only may result in the patch release versions differing.
 
+## Unreleased
+
+### Rust-specific changes
+
+- **Decoupled `FloatT` from `num_traits::Float`.** The solver internally now requires a smaller trait split — `Transcendental` (sqrt/ln/exp/powf/powi/recip plus sin/cos/atan2 for the analytic 3×3 eigensolver), `RealConst` (PI/SQRT_2/FRAC_1_SQRT_2), and `RealSentinel` (infinity/nan/epsilon/min/max/is_finite/is_sign_negative) — instead of the IEEE-only `num_traits::Float`/`FloatConst` bound. f32/f64 keep working through blanket impls; the change is invisible to `f64` users.
+- **Relaxed `CoreFloatT: Copy` to `Clone`.** Enables non-Copy backends (e.g. arbitrary-precision rational, MPFR float) to satisfy `FloatT`. ~700 mechanical `.clone()` insertions across the algebra, KKT, and cone code paths. f64/f32 numerics are unaffected — `Clone::clone` on a `Copy` type is a register-move identical to `Copy`.
+- **Added experimental exact-rational backend** behind the new `bigrational` cargo feature. Provides `RationalReal` — a `Copy`-able 4-byte arena handle whose arithmetic is backed by `num_rational::BigRational`. Bit-exact LP/QP iterates in default mode; opt-in inner-loop precision capping via `set_max_arena_bits(Some(p))` gives p-bit-bounded rounding for tractable runtime on non-trivial problems. Mutually exclusive with `sdp` and `faer-sparse` (those features pin `T` to f32/f64 for BLAS / `faer::RealField`). See `README.md` and `examples/rust/example_lp_rational.rs` for details.
+- New `clarabel::algebra` re-exports for the rational backend: `RationalReal`, `arena_len`, `reset_arena`, `precision_bits`, `set_precision_bits`, `with_precision`, `max_arena_bits`, `set_max_arena_bits`, `with_max_arena_bits`.
+
 ## [0.11.1] - 2025-11-06
 
 ### Rust-specific changes

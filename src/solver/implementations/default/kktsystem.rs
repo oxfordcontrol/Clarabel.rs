@@ -169,10 +169,10 @@ where
         // -----------
         // Numerator first
         let ξ = workx;
-        ξ.axpby(T::recip(variables.τ), &variables.x, T::zero());
+        ξ.axpby(T::recip(variables.τ.clone()), &variables.x, T::zero());
 
         let two: T = (2.).as_T();
-        let tau_num = rhs.τ - rhs.κ / variables.τ
+        let tau_num = rhs.τ.clone() - rhs.κ.clone() / variables.τ.clone()
             + data.q.dot(x1)
             + data.b.dot(z1)
             + two * data.P.sym_up().quad_form(ξ, x1);
@@ -181,15 +181,16 @@ where
         let ξ_minus_x2 = ξ; //alias to ξ, same as workx
         ξ_minus_x2.axpby(-T::one(), x2, T::one());
 
-        let mut tau_den = variables.κ / variables.τ - data.q.dot(x2) - data.b.dot(z2);
+        let mut tau_den =
+            variables.κ.clone() / variables.τ.clone() - data.q.dot(x2) - data.b.dot(z2);
         tau_den +=
             data.P.sym_up().quad_form(ξ_minus_x2, ξ_minus_x2) - data.P.sym_up().quad_form(x2, x2);
 
         // solve for (Δx,Δz)
         // -----------
         lhs.τ = tau_num / tau_den;
-        lhs.x.waxpby(T::one(), x1, lhs.τ, x2);
-        lhs.z.waxpby(T::one(), z1, lhs.τ, z2);
+        lhs.x.waxpby(T::one(), x1, lhs.τ.clone(), x2);
+        lhs.z.waxpby(T::one(), z1, lhs.τ.clone(), z2);
 
         // solve for Δs
         // -------------
@@ -200,7 +201,7 @@ where
 
         // solve for Δκ
         // --------------
-        lhs.κ = -(rhs.κ + variables.κ * lhs.τ) / variables.τ;
+        lhs.κ = -(rhs.κ.clone() + variables.κ.clone() * lhs.τ.clone()) / variables.τ.clone();
 
         // we don't check the validity of anything
         // after the KKT solve, so just return is_success

@@ -50,7 +50,7 @@ where
     fn from(rows: I) -> Matrix<T> {
         let rows: Vec<Vec<T>> = rows
             .into_iter()
-            .map(|r| r.into_iter().copied().collect())
+            .map(|r| r.into_iter().cloned().collect())
             .collect();
 
         let m = rows.len();
@@ -61,7 +61,7 @@ where
         let mut data = Vec::with_capacity(nnz);
         for c in 0..n {
             for r in 0..m {
-                data.push(rows[r][c]);
+                data.push(rows[r][c].clone());
             }
         }
 
@@ -138,18 +138,25 @@ where
 impl<S,T> DenseStorageMatrix<S,T>
 where
     S: AsMut<[T]> + AsRef<[T]>,
-    T: Sized + Num + Copy,
+    T: Sized + Num + Clone,
 {
     pub fn set_identity(&mut self) {
         assert!(self.is_square());
-        self.data_mut().fill(T::zero());
+        // For RationalReal-style backends, T::zero() pushes a fresh
+        // arena entry per call; one-call + clone via `set` is cheaper.
+        let zero = T::zero();
+        for x in self.data_mut().iter_mut() {
+            *x = zero.clone();
+        }
         for i in 0..self.ncols() {
             self[(i, i)] = T::one();
         }
     }
 
     pub fn copy_from_slice(&mut self, src: &[T]) {
-        self.data_mut().copy_from_slice(src);
+        for (d, s) in self.data_mut().iter_mut().zip(src.iter()) {
+            *d = s.clone();
+        }
     }
 
     pub fn t(&self) -> Adjoint<'_, Self> {
@@ -179,7 +186,7 @@ where
     {
         for (j, &col) in cols.into_iter().enumerate() {
             for (i, &row) in rows.into_iter().enumerate() {
-                self[(row, col)] = source[(i, j)];
+                self[(row, col)] = source[(i, j)].clone();
             }
         }
     }
@@ -197,7 +204,7 @@ where
     {
         for (j, &col) in cols.into_iter().enumerate() {
             for (i, &row) in rows.into_iter().enumerate() {
-                self[(i, j)] = source[(row, col)];
+                self[(i, j)] = source[(row, col)].clone();
             }
         }
     }

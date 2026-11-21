@@ -102,8 +102,8 @@ where
 
     // functions relating to unit vectors and cone initialization
     fn margins(&mut self, z: &mut [T], _pd: PrimalOrDualCone) -> (T, T) {
-        let α = z[0] - z[1..].norm();
-        let β = T::max(T::zero(), α);
+        let α = z[0].clone() - z[1..].norm();
+        let β = T::max(T::zero(), α.clone());
         (α, β)
     }
 
@@ -112,22 +112,22 @@ where
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
-        s.fill(T::zero());
-        z.fill(T::zero());
+        s.set(T::zero());
+        z.set(T::zero());
         self.scaled_unit_shift(s, T::one(), PrimalOrDualCone::PrimalCone);
         self.scaled_unit_shift(z, T::one(), PrimalOrDualCone::DualCone);
     }
 
     fn set_identity_scaling(&mut self) {
-        self.w.fill(T::zero());
+        self.w.set(T::zero());
         self.w[0] = T::one();
         self.η = T::one();
 
         if let Some(sparse_data) = &mut self.sparse_data {
             sparse_data.d = (0.5).as_T();
-            sparse_data.u.fill(T::zero());
+            sparse_data.u.set(T::zero());
             sparse_data.u[0] = T::FRAC_1_SQRT_2();
-            sparse_data.v.fill(T::zero());
+            sparse_data.v.set(T::zero());
         }
     }
 
@@ -151,55 +151,59 @@ where
         }
 
         //the leading scalar term for W^TW
-        self.η = T::sqrt(sscale / zscale);
+        self.η = T::sqrt(sscale.clone() / zscale.clone());
 
         // construct w and normalize
         let w = &mut self.w;
         w.copy_from(s);
-        w.scale(sscale.recip());
-        w[0] += z[0] / zscale;
-        w[1..].axpby(-zscale.recip(), &z[1..], T::one());
+        w.scale(sscale.clone().recip());
+        w[0] += z[0].clone() / zscale.clone();
+        w[1..].axpby(-zscale.clone().recip(), &z[1..], T::one());
 
         let wscale = _sqrt_soc_residual(w);
         // Fail if w is not an interior point
         if wscale.is_zero() {
             return false;
         }
-        w.scale(wscale.recip());
+        w.scale(wscale.clone().recip());
 
         // try to force badly scaled w to come out normalized
         let w1sq = w[1..].sumsq();
-        w[0] = T::sqrt(T::one() + w1sq);
+        w[0] = T::sqrt(T::one() + w1sq.clone());
 
         //Compute the scaling point λ.   Should satisfy λ = Wz = W^{-T}s
-        let γ = half * wscale;
-        self.λ[0] = γ;
+        let γ = half.clone() * wscale.clone();
+        self.λ[0] = γ.clone();
         self.λ[1..].waxpby(
-            (γ + z[0] / zscale) / sscale,
+            (γ.clone() + z[0].clone() / zscale.clone()) / sscale.clone(),
             &s[1..],
-            (γ + s[0] / sscale) / zscale,
+            (γ.clone() + s[0].clone() / sscale.clone()) / zscale.clone(),
             &z[1..],
         );
-        self.λ[1..].scale(T::recip(s[0] / sscale + z[0] / zscale + two * γ));
+        self.λ[1..].scale(T::recip(
+            s[0].clone() / sscale.clone() + z[0].clone() / zscale.clone() + two.clone() * γ,
+        ));
         self.λ.scale(T::sqrt(sscale * zscale));
 
         // Populate sparse expansion terms if allocated
         if let Some(sparse_data) = &mut self.sparse_data {
             //various intermediate calcs for u,v,d,η
-            let α = two * w[0];
+            let α = two.clone() * w[0].clone();
 
             //Scalar d is the upper LH corner of the diagonal
             //term in the rank-2 update form of W^TW
-            let wsq = w[0] * w[0] + w1sq;
-            let wsqinv = wsq.recip();
-            sparse_data.d = half * wsqinv;
+            let wsq = w[0].clone() * w[0].clone() + w1sq;
+            let wsqinv = wsq.clone().recip();
+            sparse_data.d = half * wsqinv.clone();
 
             //the vectors for the rank two update
             //representation of W^TW
-            let u0 = T::sqrt(wsq - sparse_data.d);
-            let u1 = α / u0;
+            let u0 = T::sqrt(wsq.clone() - sparse_data.d.clone());
+            let u1 = α / u0.clone();
             let v0 = T::zero();
-            let v1 = T::sqrt(two * (two + wsqinv) / (two * wsq - wsqinv));
+            let v1 = T::sqrt(
+                two.clone() * (two.clone() + wsqinv.clone()) / (two.clone() * wsq - wsqinv),
+            );
 
             sparse_data.u[0] = u0;
             sparse_data.u[1..].axpby(u1, &self.w[1..], T::zero());
@@ -219,40 +223,41 @@ where
             // For sparse form, we are returning here the diagonal D block
             // from the sparse representation of W^TW, but not the
             // extra two entries at the bottom right of the block.
-            Hsblock.fill(self.η * self.η);
-            Hsblock[0] *= sparse_data.d;
+            Hsblock.set(self.η.clone() * self.η.clone());
+            Hsblock[0] = Hsblock[0].clone() * sparse_data.d.clone();
         } else {
             // for dense form, we return H = \eta^2 (2*ww^T - J), where
             // J = diag(1,-I).  We are packing into dense triu form
 
             // 2 * w[0]^2 - 1., avoiding bad cancellations
-            Hsblock[0] =
-                (T::SQRT_2() * self.w[0] - T::one()) * (T::SQRT_2() * self.w[0] + T::one());
+            Hsblock[0] = (T::SQRT_2() * self.w[0].clone() - T::one())
+                * (T::SQRT_2() * self.w[0].clone() + T::one());
 
             let mut hidx = 1;
             let two: T = (2.).as_T();
 
             for col in 1..self.dim {
-                let wcol = self.w[col];
+                let wcol = self.w[col].clone();
                 for row in 0..=col {
-                    Hsblock[hidx] = two * self.w[row] * wcol;
+                    Hsblock[hidx] = two.clone() * self.w[row].clone() * wcol.clone();
                     hidx += 1
                 }
                 //go back to add the offset term from J
-                Hsblock[hidx - 1] += T::one()
+                Hsblock[hidx - 1] = Hsblock[hidx - 1].clone() + T::one();
             }
-            Hsblock.scale(self.η * self.η);
+            Hsblock.scale(self.η.clone() * self.η.clone());
         }
     }
 
     fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
         //self.mul_W(MatrixShape::N, work, x, T::one(), T::zero()); // work = Wx
         //self.mul_W(MatrixShape::T, y, work, T::one(), T::zero()); // y = c Wᵀwork = W^TWx
-        let c = self.w.dot(x) * (2.).as_T();
+        let two: T = (2.).as_T();
+        let c = self.w.dot(x) * two;
         y.copy_from(x);
-        y[0] = -x[0];
+        y[0] = -x[0].clone();
         y.axpby(c, &self.w, T::one());
-        y.scale(self.η * self.η);
+        y.scale(self.η.clone() * self.η.clone());
     }
 
     fn affine_ds(&self, ds: &mut [T], _s: &[T]) {
@@ -273,17 +278,20 @@ where
         let w1ds1 = self.w[1..].dot(&ds[1..]);
 
         out.scalarop_from(|zi| -zi, z);
-        out[0] = z[0];
+        out[0] = z[0].clone();
 
-        let c = self.λ[0] * ds[0] - λ1ds1;
+        let c = self.λ[0].clone() * ds[0].clone() - λ1ds1;
         out.scale(c / resz);
 
-        out[0] += self.η * w1ds1;
-        for (outi, &dsi, &wi) in izip!(out[1..].iter_mut(), &ds[1..], &self.w[1..]) {
-            *outi += self.η * (dsi + w1ds1 / (T::one() + self.w[0]) * wi);
+        out[0] = out[0].clone() + self.η.clone() * w1ds1.clone();
+        let one_plus_w0 = T::one() + self.w[0].clone();
+        for (outi, dsi, wi) in izip!(out[1..].iter_mut(), &ds[1..], &self.w[1..]) {
+            *outi = outi.clone()
+                + self.η.clone()
+                    * (dsi.clone() + w1ds1.clone() / one_plus_w0.clone() * wi.clone());
         }
 
-        out.scale(self.λ[0].recip());
+        out.scale(self.λ[0].clone().recip());
     }
 
     fn step_length(
@@ -295,14 +303,14 @@ where
         _settings: &CoreSettings<T>,
         αmax: T,
     ) -> (T, T) {
-        let αz = _step_length_soc_component(z, dz, αmax);
+        let αz = _step_length_soc_component(z, dz, αmax.clone());
         let αs = _step_length_soc_component(s, ds, αmax);
 
         (αz, αs)
     }
 
     fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
-        let res_s = _soc_residual_shifted(s, ds, α);
+        let res_s = _soc_residual_shifted(s, ds, α.clone());
         let res_z = _soc_residual_shifted(z, dz, α);
 
         // avoid numerical issue if res_s <= 0 or res_z <= 0
@@ -328,11 +336,11 @@ where
 
     fn mul_W(&mut self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
         // symmetric, so ignore transpose
-        _soc_mul_W_inner(y, x, α, β, &self.w, self.η);
+        _soc_mul_W_inner(y, x, α, β, &self.w, self.η.clone());
     }
 
     fn mul_Winv(&mut self, _is_transpose: MatrixShape, y: &mut [T], x: &[T], α: T, β: T) {
-        _soc_mul_Winv_inner(y, x, α, β, &self.w, self.η);
+        _soc_mul_Winv_inner(y, x, α, β, &self.w, self.η.clone());
     }
 }
 
@@ -362,7 +370,7 @@ where
     T: FloatT,
 {
     x[0] = y.dot(z);
-    let (y0, z0) = (y[0], z[0]);
+    let (y0, z0) = (y[0].clone(), z[0].clone());
     x[1..].waxpby(y0, &z[1..], z0, &y[1..]);
 }
 
@@ -374,10 +382,10 @@ where
     let pinv = T::recip(p);
     let v = y[1..].dot(&z[1..]);
 
-    x[0] = (y[0] * z[0] - v) * pinv;
+    x[0] = (y[0].clone() * z[0].clone() - v.clone()) * pinv.clone();
 
-    let c1 = pinv * (v / y[0] - z[0]);
-    let c2 = T::recip(y[0]);
+    let c1 = pinv * (v / y[0].clone() - z[0].clone());
+    let c2 = T::recip(y[0].clone());
     x[1..].waxpby(c1, &y[1..], c2, &z[1..]);
 }
 
@@ -390,7 +398,7 @@ where
     T: FloatT,
 {
     let z1norm = z[1..].norm();
-    (z[0] - z1norm) * (z[0] + z1norm)
+    (z[0].clone() - z1norm.clone()) * (z[0].clone() + z1norm)
 }
 
 fn _sqrt_soc_residual<T>(z: &[T]) -> T
@@ -411,9 +419,9 @@ fn _soc_residual_shifted<T>(z: &[T], dz: &[T], α: T) -> T
 where
     T: FloatT,
 {
-    let x0 = z[0] + α * dz[0];
+    let x0 = z[0].clone() + α.clone() * dz[0].clone();
     let x1norm = z[1..].norm_shifted(&dz[1..], α);
-    (x0 - x1norm) * (x0 + x1norm)
+    (x0.clone() - x1norm.clone()) * (x0 + x1norm)
 }
 
 // find the maximum step length α≥0 so that
@@ -427,7 +435,7 @@ where
     // upper bound the step length by the maximum allowable
     // step length for the scalar part of the cone
     if x[0] >= T::zero() && y[0] < T::zero() {
-        αmax = T::min(αmax, -x[0] / y[0]);
+        αmax = T::min(αmax, -x[0].clone() / y[0].clone());
     }
 
     // assume that x is in the SOC, and find the minimum positive root
@@ -437,9 +445,9 @@ where
     let four: T = (4.).as_T();
 
     let a = _soc_residual(y); //NB: could be negative
-    let b = two * (x[0] * y[0] - x[1..].dot(&y[1..]));
+    let b = two.clone() * (x[0].clone() * y[0].clone() - x[1..].dot(&y[1..]));
     let c = T::max(T::zero(), _soc_residual(x)); //should be ≥0
-    let d = b * b - four * a * c;
+    let d = b.clone() * b.clone() - four * a.clone() * c.clone();
 
     if c < T::zero() {
         // This should never be reachable since c ≥ 0 above
@@ -484,7 +492,7 @@ where
         }
     };
 
-    let r1: T = (two * c) / t;
+    let r1: T = (two.clone() * c) / t.clone();
     let r2: T = t / (two * a);
 
     // return the minimum positive root, up to αmax
@@ -507,11 +515,11 @@ where
 {
     // use the fast product method from ECOS ECC paper
     let ζ = w[1..].dot(&x[1..]);
-    let c = x[0] + ζ / (T::one() + w[0]);
+    let c = x[0].clone() + ζ.clone() / (T::one() + w[0].clone());
 
-    y[0] = (α * η) * (w[0] * x[0] + ζ) + β * y[0];
+    y[0] = (α.clone() * η.clone()) * (w[0].clone() * x[0].clone() + ζ) + β.clone() * y[0].clone();
 
-    y[1..].axpby(α * η * c, &w[1..], β);
+    y[1..].axpby(α.clone() * η.clone() * c, &w[1..], β);
     y[1..].axpby(α * η, &x[1..], T::one());
 }
 
@@ -521,10 +529,10 @@ where
 {
     // use the fast inverse product method from ECOS ECC paper
     let ζ = w[1..].dot(&x[1..]);
-    let c = -x[0] + ζ / (T::one() + w[0]);
+    let c = -x[0].clone() + ζ.clone() / (T::one() + w[0].clone());
 
-    y[0] = (α / η) * (w[0] * x[0] - ζ) + β * y[0];
+    y[0] = (α.clone() / η.clone()) * (w[0].clone() * x[0].clone() - ζ) + β.clone() * y[0].clone();
 
-    y[1..].axpby(α / η * c, &w[1..], β);
+    y[1..].axpby(α.clone() / η.clone() * c, &w[1..], β);
     y[1..].axpby(α / η, &x[1..], T::one());
 }

@@ -43,7 +43,8 @@ where
 
         //PJG : these checks belong elsewhere
         assert!(α.iter().all(|r| *r > T::zero())); // check all powers are greater than 0
-        assert!((T::one() - α.sum()).abs() < (T::epsilon() * α.len().as_T() * (0.5).as_T()));
+        let len_t: T = α.len().as_T();
+        assert!((T::one() - α.sum()).abs() < (T::epsilon() * len_t * (0.5).as_T()));
 
         Self {
             grad: vec![T::zero(); dim],
@@ -171,8 +172,9 @@ where
         let dim1 = self.dim1();
         let data = &self.data;
 
-        Hsblock[..dim1].scalarop_from(|d1| data.μ * d1, &data.d1);
-        Hsblock[dim1..].set(data.μ * data.d2);
+        let μ_for_d1 = data.μ.clone();
+        Hsblock[..dim1].scalarop_from(move |d1| μ_for_d1.clone() * d1, &data.d1);
+        Hsblock[dim1..].set(data.μ.clone() * data.d2.clone());
     }
 
     fn mul_Hs(&mut self, y: &mut [T], x: &[T], _work: &mut [T]) {
@@ -187,18 +189,18 @@ where
 
         // y1 .= K.d1 .* x1 - coef_q.*K.q
         // NB: d1 is a vector
-        for (y, &x, &d1, &q) in izip!(&mut y[..dim1], &x[..dim1], &data.d1, &data.q) {
-            *y = d1 * x - coef_q * q;
+        for (y, x, d1, q) in izip!(&mut y[..dim1], &x[..dim1], &data.d1, &data.q) {
+            *y = d1.clone() * x.clone() - coef_q.clone() * q.clone();
         }
 
         // y2 .= K.d2 .* x2 - coef_r.*K.r.
         // NB: d2 is a scalar
-        for (y, &x, &r) in izip!(&mut y[dim1..], &x[dim1..], &data.r) {
-            *y = data.d2 * x - coef_r * r;
+        for (y, x, r) in izip!(&mut y[dim1..], &x[dim1..], &data.r) {
+            *y = data.d2.clone() * x.clone() - coef_r.clone() * r.clone();
         }
 
         y.axpby(coef_p, &data.p, T::one());
-        y.scale(data.μ);
+        y.scale(data.μ.clone());
     }
 
     fn affine_ds(&self, ds: &mut [T], s: &[T]) {
@@ -209,7 +211,7 @@ where
         &mut self, shift: &mut [T], _step_z: &mut [T], _step_s: &mut [T], σμ: T
     ) {
         //YC: No 3rd order correction at present
-        shift.scalarop_from(|g| g * σμ, &self.data.grad);
+        shift.scalarop_from(move |g| g * σμ.clone(), &self.data.grad);
     }
 
     fn Δs_from_Δz_offset(&mut self, out: &mut [T], ds: &[T], _work: &mut [T], _z: &[T]) {
@@ -225,8 +227,8 @@ where
         settings: &CoreSettings<T>,
         αmax: T,
     ) -> (T, T) {
-        let step = settings.linesearch_backtrack_step;
-        let αmin = settings.min_terminate_step_length;
+        let step = settings.linesearch_backtrack_step.clone();
+        let αmin = settings.min_terminate_step_length.clone();
 
         //simultaneously using "work" and the closures defined
         //below produces a borrow check error, so temporarily
@@ -236,7 +238,15 @@ where
         let is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = backtrack_search(dz, z, αmax, αmin, step, is_dual_feasible_fcn, &mut work);
+        let αz = backtrack_search(
+            dz,
+            z,
+            αmax.clone(),
+            αmin.clone(),
+            step.clone(),
+            is_dual_feasible_fcn,
+            &mut work,
+        );
         let αs = backtrack_search(ds, s, αmax, αmin, step, is_prim_feasible_fcn, &mut work);
 
         //restore work to self
@@ -249,7 +259,7 @@ where
         let mut barrier = T::zero();
         let mut work = std::mem::take(&mut self.data.work);
 
-        work.waxpby(T::one(), s, α, ds);
+        work.waxpby(T::one(), s, α.clone(), ds);
         barrier += self.barrier_primal(&work);
 
         work.waxpby(T::one(), z, α, dz);
@@ -274,9 +284,9 @@ where
         let two: T = (2f64).as_T();
         let dim1 = self.dim1();
 
-        if s[..dim1].iter().all(|&x| x > T::zero()) {
-            let res = zip(α, &s[..dim1]).fold(T::zero(), |res, (&αi, &si)| -> T {
-                res + two * αi * si.logsafe()
+        if s[..dim1].iter().all(|x| *x > T::zero()) {
+            let res = zip(α, &s[..dim1]).fold(T::zero(), |res, (αi, si)| -> T {
+                res + two.clone() * αi.clone() * si.clone().logsafe()
             });
             let res = T::exp(res) - s[dim1..].sumsq();
 
@@ -296,9 +306,9 @@ where
         let two: T = (2.).as_T();
         let dim1 = self.dim1();
 
-        if z[..dim1].iter().all(|&x| x > T::zero()) {
-            let res = zip(α, &z[..dim1]).fold(T::zero(), |res, (&αi, &zi)| -> T {
-                res + two * αi * (zi / αi).logsafe()
+        if z[..dim1].iter().all(|x| *x > T::zero()) {
+            let res = zip(α, &z[..dim1]).fold(T::zero(), |res, (αi, zi)| -> T {
+                res + two.clone() * αi.clone() * (zi.clone() / αi.clone()).logsafe()
             });
             let res = T::exp(res) - z[dim1..].sumsq();
 
@@ -323,7 +333,8 @@ where
         self.gradient_primal(&mut g, s);
         g.negate(); //-g(s)
 
-        let out = -self.barrier_dual(&g) - self.degree().as_T();
+        let degree_t: T = self.degree().as_T();
+        let out = -self.barrier_dual(&g) - degree_t;
 
         self.data.work_pb = g;
 
@@ -340,14 +351,14 @@ where
         let two: T = (2.).as_T();
 
         let mut res = T::zero();
-        for (&zi, &αi) in zip(&z[..dim1], α) {
-            res += two * αi * (zi / αi).logsafe();
+        for (zi, αi) in zip(&z[..dim1], α) {
+            res += two.clone() * αi.clone() * (zi.clone() / αi.clone()).logsafe();
         }
         res = T::exp(res) - z[dim1..].sumsq();
 
         let mut barrier: T = -res.logsafe();
-        for (&zi, &αi) in zip(&z[..dim1], α) {
-            barrier -= (zi).logsafe() * (T::one() - αi);
+        for (zi, αi) in zip(&z[..dim1], α) {
+            barrier -= zi.clone().logsafe() * (T::one() - αi.clone());
         }
 
         barrier
@@ -363,41 +374,48 @@ where
         let data = &mut self.data;
         let two: T = (2.).as_T();
 
-        let phi = zip(α, z).fold(T::one(), |phi, (&αi, &zi)| phi * (zi / αi).powf(two * αi));
+        let phi = zip(α, z).fold(T::one(), |phi, (αi, zi)| {
+            phi * (zi.clone() / αi.clone()).powf(two.clone() * αi.clone())
+        });
 
         let norm2w = z[dim1..].sumsq();
-        let ζ = phi - norm2w;
+        let ζ = phi.clone() - norm2w.clone();
         assert!(ζ > T::zero());
 
         // compute the gradient at z
         let grad = &mut data.grad;
         let τ = &mut data.q;
 
-        for (τ, grad, &α, &z) in izip!(τ.iter_mut(), &mut grad[..dim1], α, &z[..dim1]) {
-            *τ = two * α / z;
-            *grad = -(*τ) * phi / ζ - (T::one() - α) / z;
+        for (τ, grad, α, z) in izip!(τ.iter_mut(), &mut grad[..dim1], α, &z[..dim1]) {
+            *τ = two.clone() * α.clone() / z.clone();
+            *grad = -(τ.clone()) * phi.clone() / ζ.clone() - (T::one() - α.clone()) / z.clone();
         }
 
-        grad[dim1..].scalarop_from(|z| (two / ζ) * z, &z[dim1..]);
+        let two_over_ζ = two.clone() / ζ.clone();
+        grad[dim1..].scalarop_from(move |z| two_over_ζ.clone() * z, &z[dim1..]);
 
         // compute Hessian information at z
-        let p0 = T::sqrt(phi * (phi + norm2w) / two);
-        let p1 = -two * phi / p0;
-        let q0 = T::sqrt(ζ * phi / two);
-        let r1 = two * T::sqrt(ζ / (phi + norm2w));
+        let p0 = T::sqrt(phi.clone() * (phi.clone() + norm2w.clone()) / two.clone());
+        let p1 = -two.clone() * phi.clone() / p0.clone();
+        let q0 = T::sqrt(ζ.clone() * phi.clone() / two.clone());
+        let r1 = two.clone() * T::sqrt(ζ.clone() / (phi.clone() + norm2w));
 
         // compute the diagonal d1,d2
-        for (d1, &τ, &α, &z) in izip!(&mut data.d1, τ.iter(), α, &z[..dim1]) {
-            *d1 = (τ) * phi / (ζ * z) + (T::one() - α) / (z * z);
+        for (d1, τ, α, z) in izip!(&mut data.d1, τ.iter(), α, &z[..dim1]) {
+            *d1 = τ.clone() * phi.clone() / (ζ.clone() * z.clone())
+                + (T::one() - α.clone()) / (z.clone() * z.clone());
         }
-        data.d2 = two / ζ;
+        data.d2 = two.clone() / ζ.clone();
 
         // compute p, q, r where τ shares memory with q
-        data.p[..dim1].scalarop_from(|τi| (p0 / ζ) * τi, τ);
-        data.p[dim1..].scalarop_from(|zi| (p1 / ζ) * zi, &z[dim1..]);
+        let p0_over_ζ = p0 / ζ.clone();
+        let p1_over_ζ = p1 / ζ.clone();
+        let r1_over_ζ = r1 / ζ.clone();
+        data.p[..dim1].scalarop_from(move |τi| p0_over_ζ.clone() * τi, τ);
+        data.p[dim1..].scalarop_from(move |zi| p1_over_ζ.clone() * zi, &z[dim1..]);
 
-        data.q.scale(q0 / ζ);
-        data.r.scalarop_from(|zi| (r1 / ζ) * zi, &z[dim1..]);
+        data.q.scale(q0 / ζ.clone());
+        data.r.scalarop_from(move |zi| r1_over_ζ.clone() * zi, &z[dim1..]);
     }
 }
 
@@ -415,8 +433,9 @@ where
         let data = &self.data;
 
         // unscaled phi
-        let phi =
-            zip(&s[..dim1], &self.α).fold(T::one(), |phi, (&si, &αi)| phi * si.powf(two * αi));
+        let phi = zip(&s[..dim1], &self.α).fold(T::one(), |phi, (si, αi)| {
+            phi * si.clone().powf(two.clone() * αi.clone())
+        });
 
         // obtain g1 from the Newton-Raphson method
         let (p, r) = s.split_at(dim1);
@@ -424,18 +443,22 @@ where
         let norm_r = r.norm();
 
         if norm_r > T::epsilon() {
-            let g1 = _newton_raphson_genpowcone(norm_r, p, phi, &self.α, data.ψ);
+            let g1 = _newton_raphson_genpowcone(norm_r.clone(), p, phi, &self.α, data.ψ.clone());
 
-            gr.scalarop_from(|r| (g1 / norm_r) * r, r);
+            let g1_over_norm_r = g1.clone() / norm_r.clone();
+            gr.scalarop_from(move |r| g1_over_norm_r.clone() * r, r);
 
-            for (gp, &α, &p) in izip!(gp.iter_mut(), &self.α, p) {
-                *gp = -(T::one() + α + α * g1 * norm_r) / p;
+            for (gp, α, p) in izip!(gp.iter_mut(), &self.α, p) {
+                *gp = -(T::one()
+                    + α.clone()
+                    + α.clone() * g1.clone() * norm_r.clone())
+                    / p.clone();
             }
         } else {
             gr.set(T::zero());
 
-            for (gp, &α, &p) in izip!(gp.iter_mut(), &self.α, p) {
-                *gp = -(T::one() + α) / p;
+            for (gp, α, p) in izip!(gp.iter_mut(), &self.α, p) {
+                *gp = -(T::one() + α.clone()) / p.clone();
             }
         }
     }
@@ -456,30 +479,42 @@ where
     let two: T = (2.).as_T();
 
     // init point x0: f(x0) > 0
-    let x0 = -norm_r.recip()
-        + (ψ * norm_r + ((phi / norm_r / norm_r + ψ * ψ - T::one()) * phi).sqrt())
-            / (phi - norm_r * norm_r);
+    let x0 = -norm_r.clone().recip()
+        + (ψ.clone() * norm_r.clone()
+            + ((phi.clone() / norm_r.clone() / norm_r.clone() + ψ.clone() * ψ - T::one())
+                * phi.clone())
+            .sqrt())
+            / (phi.clone() - norm_r.clone() * norm_r.clone());
 
-    // function for f(x) = 0
-    let f0 = {
-        |x: T| -> T {
-            let finit = -(two * x / norm_r + x * x).logsafe();
+    // function for f(x) = 0 (clones captured values per call)
+    let two_f0 = two.clone();
+    let norm_r_f0 = norm_r.clone();
+    let f0 = move |x: T| -> T {
+        let two = two_f0.clone();
+        let norm_r = norm_r_f0.clone();
+        let finit = -(two.clone() * x.clone() / norm_r.clone() + x.clone() * x.clone()).logsafe();
 
-            zip(α, p).fold(finit, |f, (&αi, &pi)| {
-                f + two * αi * ((x * norm_r + (T::one() + αi) / αi).logsafe() - pi.logsafe())
-            })
-        }
+        zip(α, p).fold(finit, |f, (αi, pi)| {
+            f + two.clone()
+                * αi.clone()
+                * ((x.clone() * norm_r.clone() + (T::one() + αi.clone()) / αi.clone()).logsafe()
+                    - pi.clone().logsafe())
+        })
     };
 
     // first derivative
-    let f1 = {
-        |x: T| -> T {
-            let finit = -(two * x + two / norm_r) / (x * x + two * x / norm_r);
+    let two_f1 = two.clone();
+    let norm_r_f1 = norm_r.clone();
+    let f1 = move |x: T| -> T {
+        let two = two_f1.clone();
+        let norm_r = norm_r_f1.clone();
+        let finit = -(two.clone() * x.clone() + two.clone() / norm_r.clone())
+            / (x.clone() * x.clone() + two.clone() * x.clone() / norm_r.clone());
 
-            α.iter().fold(finit, |f, &αi| {
-                f + two * (αi) * norm_r / (norm_r * x + (T::one() + αi) / αi)
-            })
-        }
+        α.iter().fold(finit, |f, αi| {
+            f + two.clone() * αi.clone() * norm_r.clone()
+                / (norm_r.clone() * x.clone() + (T::one() + αi.clone()) / αi.clone())
+        })
     };
     newton_raphson_onesided(x0, f0, f1)
 }

@@ -30,8 +30,8 @@ where
             α,
             H_dual: DenseMatrixSym3::zeros(),
             Hs: DenseMatrixSym3::zeros(),
-            grad: [T::zero(); 3],
-            z: [T::zero(); 3],
+            grad: [T::zero(), T::zero(), T::zero()],
+            z: [T::zero(), T::zero(), T::zero()],
         }
     }
 }
@@ -77,13 +77,15 @@ where
     }
 
     fn unit_initialization(&self, z: &mut [T], s: &mut [T]) {
-        let α = self.α;
+        let α = self.α.clone();
 
-        s[0] = (T::one() + α).sqrt();
+        s[0] = (T::one() + α.clone()).sqrt();
         s[1] = (T::one() + (T::one() - α)).sqrt();
         s[2] = T::zero();
 
-        (z[0], z[1], z[2]) = (s[0], s[1], s[2]);
+        z[0] = s[0].clone();
+        z[1] = s[1].clone();
+        z[2] = s[2].clone();
     }
 
     fn set_identity_scaling(&mut self) {
@@ -106,7 +108,9 @@ where
         self.update_Hs(s, z, μ, scaling_strategy);
 
         // K.z .= z
-        self.z.copy_from(z);
+        self.z[0] = z[0].clone();
+        self.z[1] = z[1].clone();
+        self.z[2] = z[2].clone();
 
         true
     }
@@ -131,11 +135,11 @@ where
     fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T) {
         //3rd order correction requires input variables.z
 
-        let mut η = [T::zero(); 3];
+        let mut η = [T::zero(), T::zero(), T::zero()];
         self.higher_correction(&mut η, step_s, step_z);
 
         for i in 0..3 {
-            shift[i] = self.grad[i] * σμ - η[i];
+            shift[i] = self.grad[i].clone() * σμ.clone() - η[i].clone();
         }
     }
 
@@ -152,14 +156,22 @@ where
         settings: &CoreSettings<T>,
         αmax: T,
     ) -> (T, T) {
-        let step = settings.linesearch_backtrack_step;
-        let αmin = settings.min_terminate_step_length;
-        let mut work = [T::zero(); 3];
+        let step = settings.linesearch_backtrack_step.clone();
+        let αmin = settings.min_terminate_step_length.clone();
+        let mut work = [T::zero(), T::zero(), T::zero()];
 
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
+        let αz = backtrack_search(
+            dz,
+            z,
+            αmax.clone(),
+            αmin.clone(),
+            step.clone(),
+            _is_dual_feasible_fcn,
+            &mut work,
+        );
         let αs = backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
 
         (αz, αs)
@@ -168,8 +180,16 @@ where
     fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
 
-        let cur_z = [z[0] + α * dz[0], z[1] + α * dz[1], z[2] + α * dz[2]];
-        let cur_s = [s[0] + α * ds[0], s[1] + α * ds[1], s[2] + α * ds[2]];
+        let cur_z = [
+            z[0].clone() + α.clone() * dz[0].clone(),
+            z[1].clone() + α.clone() * dz[1].clone(),
+            z[2].clone() + α.clone() * dz[2].clone(),
+        ];
+        let cur_s = [
+            s[0].clone() + α.clone() * ds[0].clone(),
+            s[1].clone() + α.clone() * ds[1].clone(),
+            s[2].clone() + α * ds[2].clone(),
+        ];
 
         barrier += self.barrier_dual(&cur_z);
         barrier += self.barrier_primal(&cur_s);
@@ -191,11 +211,13 @@ where
     where
         T: FloatT,
     {
-        let α = self.α;
+        let α = self.α.clone();
         let two: T = (2f64).as_T();
         if s[0] > T::zero() && s[1] > T::zero() {
-            let res = T::exp(two * α * s[0].logsafe() + two * (T::one() - α) * s[1].logsafe())
-                - s[2] * s[2];
+            let res = T::exp(
+                two.clone() * α.clone() * s[0].clone().logsafe()
+                    + two * (T::one() - α) * s[1].clone().logsafe(),
+            ) - s[2].clone() * s[2].clone();
             if res > T::zero() {
                 return true;
             }
@@ -208,14 +230,16 @@ where
     where
         T: FloatT,
     {
-        let α = self.α;
+        let α = self.α.clone();
         let two: T = (2.).as_T();
 
         if z[0] > T::zero() && z[1] > T::zero() {
             let res = T::exp(
-                (α * two) * (z[0] / α).logsafe()
-                    + (T::one() - α) * (z[1] / (T::one() - α)).logsafe() * two,
-            ) - z[2] * z[2];
+                (α.clone() * two.clone()) * (z[0].clone() / α.clone()).logsafe()
+                    + (T::one() - α.clone())
+                        * (z[1].clone() / (T::one() - α)).logsafe()
+                        * two,
+            ) - z[2].clone() * z[2].clone();
             if res > T::zero() {
                 return true;
             }
@@ -230,7 +254,7 @@ where
         // Primal barrier: f(s) = ⟨s,g(s)⟩ - f*(-g(s))
         // NB: ⟨s,g(s)⟩ = -3 = - ν
 
-        let α = self.α;
+        let α = self.α.clone();
         let two: T = (2.).as_T();
         let three: T = (3.).as_T();
 
@@ -238,11 +262,13 @@ where
 
         let mut out = T::zero();
 
-        out += ((-g[0] / α).powf(two * α) * (-g[1] / (T::one() - α)).powf(two - α * two)
-            - g[2] * g[2])
-            .logsafe();
-        out += (T::one() - α) * (-g[0]).logsafe();
-        out += α * (-g[1]).logsafe() - three;
+        out += ((-g[0].clone() / α.clone()).powf(two.clone() * α.clone())
+            * (-g[1].clone() / (T::one() - α.clone()))
+                .powf(two.clone() - α.clone() * two.clone())
+            - g[2].clone() * g[2].clone())
+        .logsafe();
+        out += (T::one() - α.clone()) * (-g[0].clone()).logsafe();
+        out += α * (-g[1].clone()).logsafe() - three;
         out
     }
 
@@ -252,12 +278,16 @@ where
     {
         // Dual barrier:
         // f*(z) = -log((z1/α)^{2α} * (z2/(1-α))^{2(1-α)} - z3*z3) - (1-α)*log(z1) - α*log(z2):
-        let α = self.α;
+        let α = self.α.clone();
         let two: T = (2.).as_T();
-        let arg1 =
-            (z[0] / α).powf(two * α) * (z[1] / (T::one() - α)).powf(two - two * α) - z[2] * z[2];
+        let arg1 = (z[0].clone() / α.clone()).powf(two.clone() * α.clone())
+            * (z[1].clone() / (T::one() - α.clone()))
+                .powf(two.clone() - two.clone() * α.clone())
+            - z[2].clone() * z[2].clone();
 
-        -arg1.logsafe() - (T::one() - α) * z[0].logsafe() - α * z[1].logsafe()
+        -arg1.logsafe()
+            - (T::one() - α.clone()) * z[0].clone().logsafe()
+            - α * z[1].clone().logsafe()
     }
 
     fn higher_correction(&mut self, η: &mut [T], ds: &[T], v: &[T])
@@ -266,7 +296,7 @@ where
     {
         // u for H^{-1}*Δs
         let H = &self.H_dual;
-        let mut u = [T::zero(); 3];
+        let mut u = [T::zero(), T::zero(), T::zero()];
         let z = &self.z;
 
         //Fine to use symmetric here because the upper
@@ -282,54 +312,71 @@ where
             return;
         }
 
-        let α = self.α;
+        let α = self.α.clone();
         let two: T = (2.).as_T();
         let four: T = (4.).as_T();
 
-        let phi = (z[0] / α).powf(two * α) * (z[1] / (T::one() - α)).powf(two - two * α);
-        let ψ = phi - z[2] * z[2];
+        let phi = (z[0].clone() / α.clone()).powf(two.clone() * α.clone())
+            * (z[1].clone() / (T::one() - α.clone()))
+                .powf(two.clone() - two.clone() * α.clone());
+        let ψ = phi.clone() - z[2].clone() * z[2].clone();
 
         // Reuse cholH memory for further computation
         let Hψ = &mut cholH;
 
-        η[0] = two * α * phi / z[0];
-        η[1] = two * (T::one() - α) * phi / z[1];
-        η[2] = -two * z[2];
+        η[0] = two.clone() * α.clone() * phi.clone() / z[0].clone();
+        η[1] = two.clone() * (T::one() - α.clone()) * phi.clone() / z[1].clone();
+        η[2] = -two.clone() * z[2].clone();
 
         // we only need to assign the upper triangle
         // for our 3x3 symmetric type
-        Hψ[(0, 1)] = four * α * (T::one() - α) * phi / (z[0] * z[1]);
-        Hψ[(0, 0)] = two * α * (two * α - T::one()) * phi / (z[0] * z[0]);
+        Hψ[(0, 1)] = four.clone() * α.clone() * (T::one() - α.clone()) * phi.clone()
+            / (z[0].clone() * z[1].clone());
+        Hψ[(0, 0)] = two.clone()
+            * α.clone()
+            * (two.clone() * α.clone() - T::one())
+            * phi.clone()
+            / (z[0].clone() * z[0].clone());
         Hψ[(0, 2)] = T::zero();
-        Hψ[(1, 1)] = two * (T::one() - α) * (T::one() - two * α) * phi / (z[1] * z[1]);
+        Hψ[(1, 1)] = two.clone()
+            * (T::one() - α.clone())
+            * (T::one() - two.clone() * α.clone())
+            * phi.clone()
+            / (z[1].clone() * z[1].clone());
         Hψ[(1, 2)] = T::zero();
-        Hψ[(2, 2)] = -two;
+        Hψ[(2, 2)] = -two.clone();
 
         let dotψu = u.dot(η);
         let dotψv = v.dot(η);
 
-        let mut Hψv = [T::zero(); 3];
+        let mut Hψv = [T::zero(), T::zero(), T::zero()];
         Hψ.mul(&mut Hψv, v);
 
-        let coef = (u.dot(&Hψv) * ψ - two * dotψu * dotψv) / (ψ * ψ * ψ);
+        let coef = (u.dot(&Hψv) * ψ.clone() - two.clone() * dotψu.clone() * dotψv.clone())
+            / (ψ.clone() * ψ.clone() * ψ.clone());
         let coef2 = four
-            * α
-            * (two * α - T::one())
-            * (T::one() - α)
+            * α.clone()
+            * (two.clone() * α.clone() - T::one())
+            * (T::one() - α.clone())
             * phi
-            * (u[0] / z[0] - u[1] / z[1])
-            * (v[0] / z[0] - v[1] / z[1])
-            / ψ;
-        let inv_ψ2 = (ψ * ψ).recip();
+            * (u[0].clone() / z[0].clone() - u[1].clone() / z[1].clone())
+            * (v[0].clone() / z[0].clone() - v[1].clone() / z[1].clone())
+            / ψ.clone();
+        let inv_ψ2 = (ψ.clone() * ψ.clone()).recip();
 
-        η[0] = coef * η[0] - two * (T::one() - α) * u[0] * v[0] / (z[0] * z[0] * z[0])
-            + coef2 / z[0]
-            + Hψv[0] * dotψu * inv_ψ2;
+        η[0] = coef.clone() * η[0].clone()
+            - two.clone() * (T::one() - α.clone()) * u[0].clone() * v[0].clone()
+                / (z[0].clone() * z[0].clone() * z[0].clone())
+            + coef2.clone() / z[0].clone()
+            + Hψv[0].clone() * dotψu.clone() * inv_ψ2.clone();
 
-        η[1] = coef * η[1] - two * α * u[1] * v[1] / (z[1] * z[1] * z[1]) - coef2 / z[1]
-            + Hψv[1] * dotψu * inv_ψ2;
+        η[1] = coef.clone() * η[1].clone()
+            - two.clone() * α.clone() * u[1].clone() * v[1].clone()
+                / (z[1].clone() * z[1].clone() * z[1].clone())
+            - coef2 / z[1].clone()
+            + Hψv[1].clone() * dotψu.clone() * inv_ψ2.clone();
 
-        η[2] = coef * η[2] + Hψv[2] * dotψu * inv_ψ2;
+        η[2] = coef * η[2].clone() + Hψv[2].clone() * dotψu * inv_ψ2.clone();
 
         // reuse vector Hψv
         let Hψu = &mut Hψv;
@@ -353,36 +400,49 @@ where
 
     fn update_dual_grad_H(&mut self, z: &[T]) {
         let H = &mut self.H_dual;
-        let α = self.α;
+        let α = self.α.clone();
         let two: T = (2.).as_T();
         let four: T = (4.).as_T();
 
-        let phi = (z[0] / α).powf(two * α) * (z[1] / (T::one() - α)).powf(two - two * α);
-        let ψ = phi - z[2] * z[2];
+        let phi = (z[0].clone() / α.clone()).powf(two.clone() * α.clone())
+            * (z[1].clone() / (T::one() - α.clone()))
+                .powf(two.clone() - two.clone() * α.clone());
+        let ψ = phi.clone() - z[2].clone() * z[2].clone();
 
         // use K.grad as a temporary workspace
         let gψ = &mut self.grad;
-        gψ[0] = two * α * phi / (z[0] * ψ);
-        gψ[1] = two * (T::one() - α) * phi / (z[1] * ψ);
-        gψ[2] = -two * z[2] / ψ;
+        gψ[0] = two.clone() * α.clone() * phi.clone() / (z[0].clone() * ψ.clone());
+        gψ[1] = two.clone() * (T::one() - α.clone()) * phi.clone()
+            / (z[1].clone() * ψ.clone());
+        gψ[2] = -two.clone() * z[2].clone() / ψ.clone();
 
         // compute_Hessian(K,z,H).   Type is symmetric, so
         // only need to assign upper triangle.
-        H[(0, 0)] = gψ[0] * gψ[0] - two * α * (two * α - T::one()) * phi / (z[0] * z[0] * ψ)
-            + (T::one() - α) / (z[0] * z[0]);
-        H[(0, 1)] = gψ[0] * gψ[1] - four * α * (T::one() - α) * phi / (z[0] * z[1] * ψ);
-        H[(1, 1)] = gψ[1] * gψ[1]
-            - two * (T::one() - α) * (T::one() - two * α) * phi / (z[1] * z[1] * ψ)
-            + α / (z[1] * z[1]);
-        H[(0, 2)] = gψ[0] * gψ[2];
-        H[(1, 2)] = gψ[1] * gψ[2];
-        H[(2, 2)] = gψ[2] * gψ[2] + two / ψ;
+        H[(0, 0)] = gψ[0].clone() * gψ[0].clone()
+            - two.clone() * α.clone() * (two.clone() * α.clone() - T::one()) * phi.clone()
+                / (z[0].clone() * z[0].clone() * ψ.clone())
+            + (T::one() - α.clone()) / (z[0].clone() * z[0].clone());
+        H[(0, 1)] = gψ[0].clone() * gψ[1].clone()
+            - four * α.clone() * (T::one() - α.clone()) * phi.clone()
+                / (z[0].clone() * z[1].clone() * ψ.clone());
+        H[(1, 1)] = gψ[1].clone() * gψ[1].clone()
+            - two.clone()
+                * (T::one() - α.clone())
+                * (T::one() - two.clone() * α.clone())
+                * phi.clone()
+                / (z[1].clone() * z[1].clone() * ψ.clone())
+            + α.clone() / (z[1].clone() * z[1].clone());
+        H[(0, 2)] = gψ[0].clone() * gψ[2].clone();
+        H[(1, 2)] = gψ[1].clone() * gψ[2].clone();
+        H[(2, 2)] = gψ[2].clone() * gψ[2].clone() + two.clone() / ψ.clone();
 
         // compute the gradient at z
         let grad = &mut self.grad;
-        grad[0] = -two * α * phi / (z[0] * ψ) - (T::one() - α) / z[0];
-        grad[1] = -two * (T::one() - α) * phi / (z[1] * ψ) - α / z[1];
-        grad[2] = two * z[2] / ψ;
+        grad[0] = -two.clone() * α.clone() * phi.clone() / (z[0].clone() * ψ.clone())
+            - (T::one() - α.clone()) / z[0].clone();
+        grad[1] = -two.clone() * (T::one() - α.clone()) * phi / (z[1].clone() * ψ.clone())
+            - α / z[1].clone();
+        grad[2] = two * z[2].clone() / ψ;
     }
 }
 
@@ -395,26 +455,29 @@ where
     where
         T: FloatT,
     {
-        let α = self.α;
-        let mut g = [T::zero(); 3];
+        let α = self.α.clone();
+        let mut g = [T::zero(), T::zero(), T::zero()];
         let two: T = (2.).as_T();
 
         // unscaled ϕ
-        let phi = (s[0]).powf(two * α) * (s[1]).powf(two - α * two);
+        let phi = (s[0].clone()).powf(two.clone() * α.clone())
+            * (s[1].clone()).powf(two.clone() - α.clone() * two.clone());
 
         // obtain last element of g from the Newton-Raphson method
-        let abs_s = s[2].abs();
+        let abs_s = s[2].clone().abs();
         if abs_s > T::epsilon() {
-            g[2] = _newton_raphson_powcone(abs_s, phi, α);
+            g[2] = _newton_raphson_powcone(abs_s, phi, α.clone());
             if s[2] < T::zero() {
-                g[2] = -g[2];
+                g[2] = -g[2].clone();
             }
-            g[0] = -(α * g[2] * s[2] + T::one() + α) / s[0];
-            g[1] = -((T::one() - α) * g[2] * s[2] + two - α) / s[1];
+            g[0] = -(α.clone() * g[2].clone() * s[2].clone() + T::one() + α.clone())
+                / s[0].clone();
+            g[1] = -((T::one() - α.clone()) * g[2].clone() * s[2].clone() + two - α)
+                / s[1].clone();
         } else {
             g[2] = T::zero();
-            g[0] = -(T::one() + α) / s[0];
-            g[1] = -(two - α) / s[1];
+            g[0] = -(T::one() + α.clone()) / s[0].clone();
+            g[1] = -(two - α) / s[1].clone();
         }
         g
     }
@@ -455,37 +518,60 @@ where
     // shift -2α*log(α) - 2(1-α)*log(1-α) > 0 in f(x),
     // the previous selection is still feasible, i.e. f(x0) > 0
 
-    let x0 =
-        -s3.recip() + (s3 * two + T::sqrt((phi * phi) / (s3 * s3) + phi * three)) / (phi - s3 * s3);
+    let x0 = -s3.clone().recip()
+        + (s3.clone() * two.clone()
+            + T::sqrt(
+                (phi.clone() * phi.clone()) / (s3.clone() * s3.clone())
+                    + phi.clone() * three,
+            ))
+            / (phi.clone() - s3.clone() * s3.clone());
 
     // additional shift due to the choice of dual barrier
-    let t0 = -two * α * (α.logsafe()) - two * (T::one() - α) * (T::one() - α).logsafe();
+    let t0 = -two.clone() * α.clone() * (α.clone().logsafe())
+        - two.clone() * (T::one() - α.clone()) * (T::one() - α.clone()).logsafe();
 
-    // function for f(x) = 0
-    let f0 = {
-        |x: T| -> T {
-            let two = (2.).as_T();
-            let t1 = x * x;
-            let t2 = (x * two) / s3;
-            two * α * (two * α * t1 + (T::one() + α) * t2).logsafe()
-                + two * (T::one() - α) * (two * (T::one() - α) * t1 + (two - α) * t2).logsafe()
-                - phi.logsafe()
-                - (t1 + t2).logsafe()
-                - two * t2.logsafe()
-                + t0
-        }
+    // function for f(x) = 0 — captures pre-cloned locals (s3, phi, α, t0)
+    let s3_f0 = s3.clone();
+    let phi_f0 = phi.clone();
+    let α_f0 = α.clone();
+    let t0_f0 = t0.clone();
+    let f0 = move |x: T| -> T {
+        let two: T = (2.).as_T();
+        let s3 = s3_f0.clone();
+        let phi = phi_f0.clone();
+        let α = α_f0.clone();
+        let t0 = t0_f0.clone();
+        let t1 = x.clone() * x.clone();
+        let t2 = (x * two.clone()) / s3;
+        two.clone()
+            * α.clone()
+            * (two.clone() * α.clone() * t1.clone() + (T::one() + α.clone()) * t2.clone())
+                .logsafe()
+            + two.clone() * (T::one() - α.clone())
+                * (two.clone() * (T::one() - α.clone()) * t1.clone()
+                    + (two.clone() - α) * t2.clone())
+                .logsafe()
+            - phi.logsafe()
+            - (t1 + t2.clone()).logsafe()
+            - two * t2.logsafe()
+            + t0
     };
 
-    // first derivative
-    let f1 = {
-        |x: T| -> T {
-            let two = (2.).as_T();
-            let t1 = x * x;
-            let t2 = (two * x) / s3;
-            (α * α * two) / (α * x + (T::one() + α) / s3)
-                + ((T::one() - α) * two) * (T::one() - α) / ((T::one() - α) * x + (two - α) / s3)
-                - ((x + s3.recip()) * two) / (t1 + t2)
-        }
+    // first derivative — captures pre-cloned locals (s3, α)
+    let s3_f1 = s3.clone();
+    let α_f1 = α.clone();
+    let f1 = move |x: T| -> T {
+        let two: T = (2.).as_T();
+        let s3 = s3_f1.clone();
+        let α = α_f1.clone();
+        let t1 = x.clone() * x.clone();
+        let t2 = (two.clone() * x.clone()) / s3.clone();
+        (α.clone() * α.clone() * two.clone())
+            / (α.clone() * x.clone() + (T::one() + α.clone()) / s3.clone())
+            + ((T::one() - α.clone()) * two.clone()) * (T::one() - α.clone())
+                / ((T::one() - α.clone()) * x.clone()
+                    + (two.clone() - α.clone()) / s3.clone())
+            - ((x + s3.recip()) * two) / (t1 + t2)
     };
     newton_raphson_onesided(x0, f0, f1)
 }

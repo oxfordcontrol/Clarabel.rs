@@ -26,21 +26,32 @@ where
         let H = self;
 
         //matrix is packed triu of a 3x3, so unroll it here
-        y[0] = (H.data[0] * x[0]) + (H.data[1] * x[1]) + (H.data[3] * x[2]);
-        y[1] = (H.data[1] * x[0]) + (H.data[2] * x[1]) + (H.data[4] * x[2]);
-        y[2] = (H.data[3] * x[0]) + (H.data[4] * x[1]) + (H.data[5] * x[2]);
+        y[0] = (H.data[0].clone() * x[0].clone())
+            + (H.data[1].clone() * x[1].clone())
+            + (H.data[3].clone() * x[2].clone());
+        y[1] = (H.data[1].clone() * x[0].clone())
+            + (H.data[2].clone() * x[1].clone())
+            + (H.data[4].clone() * x[2].clone());
+        y[2] = (H.data[3].clone() * x[0].clone())
+            + (H.data[4].clone() * x[1].clone())
+            + (H.data[5].clone() * x[2].clone());
     }
 
     pub fn norm_fro(&self) -> T {
-        let d = self.data;
+        let d = &self.data;
         //Frobenius norm.   Need to be careful to count
         //the packed off diagonals twice
         let mut sumsq = T::zero();
 
         //diagonal terms
-        sumsq += d[0] * d[0] + d[2] * d[2] + d[5] * d[5];
+        sumsq += d[0].clone() * d[0].clone()
+            + d[2].clone() * d[2].clone()
+            + d[5].clone() * d[5].clone();
         //off diagonals
-        sumsq += (d[1] * d[1] + d[3] * d[3] + d[4] * d[4]) * (2.).as_T();
+        sumsq += (d[1].clone() * d[1].clone()
+            + d[3].clone() * d[3].clone()
+            + d[4].clone() * d[4].clone())
+            * (2.).as_T();
 
         sumsq.sqrt()
     }
@@ -50,9 +61,18 @@ where
         let H = self;
         let mut out = T::zero();
         //matrix is packed 3x3, so unroll it here
-        out += y[0] * (H.data[0] * x[0] + H.data[1] * x[1] + H.data[3] * x[2]);
-        out += y[1] * (H.data[1] * x[0] + H.data[2] * x[1] + H.data[4] * x[2]);
-        out += y[2] * (H.data[3] * x[0] + H.data[4] * x[1] + H.data[5] * x[2]);
+        out += y[0].clone()
+            * (H.data[0].clone() * x[0].clone()
+                + H.data[1].clone() * x[1].clone()
+                + H.data[3].clone() * x[2].clone());
+        out += y[1].clone()
+            * (H.data[1].clone() * x[0].clone()
+                + H.data[2].clone() * x[1].clone()
+                + H.data[4].clone() * x[2].clone());
+        out += y[2].clone()
+            * (H.data[3].clone() * x[0].clone()
+                + H.data[4].clone() * x[1].clone()
+                + H.data[5].clone() * x[2].clone());
         out
     }
 }

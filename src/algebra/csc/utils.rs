@@ -9,7 +9,7 @@ use std::iter::zip;
 
 impl<T> CscMatrix<T>
 where
-    T: Num + Copy,
+    T: Num + Clone,
 {
     // increment self.colptr by the number of nonzeros
     // in a dense upper/lower triangle on the diagonal.
@@ -149,7 +149,7 @@ where
 
                 let dest = self.colptr[col];
                 self.rowval[dest] = row;
-                self.nzval[dest] = M.nzval[j];
+                self.nzval[dest] = M.nzval[j].clone();
                 MtoKKT[j] = dest;
                 self.colptr[col] += 1;
             }

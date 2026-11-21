@@ -21,7 +21,7 @@ fn test_matrix_4x4() -> CscMatrix<f64> {
 }
 
 fn inf_norm_diff<T: FloatT>(a: &[T], b: &[T]) -> T {
-    zip(a, b).fold(T::zero(), |acc, (x, y)| T::max(acc, T::abs(*x - *y)))
+    zip(a, b).fold(T::zero(), |acc, (x, y)| T::max(acc, (x.clone() - y.clone()).abs()))
 }
 
 // tests some of the private functions of QDLDL.  Configured

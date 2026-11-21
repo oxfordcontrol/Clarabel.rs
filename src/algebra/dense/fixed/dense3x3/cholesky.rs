@@ -20,26 +20,29 @@ where
     ) -> Result<(), DenseFactorizationError> {
         let L = self;
 
-        let t = A[(0, 0)];
+        let t = A[(0, 0)].clone();
         if t <= T::zero() {
             // positive value k means non-positive pivot leading minor k
             return Err(DenseFactorizationError::Cholesky(1));
         }
 
         L[(0, 0)] = t.sqrt();
-        L[(1, 0)] = A[(1, 0)] / L[(0, 0)];
+        L[(1, 0)] = A[(1, 0)].clone() / L[(0, 0)].clone();
 
-        let t = A[(1, 1)] - L[(1, 0)] * L[(1, 0)];
+        let t = A[(1, 1)].clone() - L[(1, 0)].clone() * L[(1, 0)].clone();
 
         if t <= T::zero() {
             return Err(DenseFactorizationError::Cholesky(2));
         }
 
         L[(1, 1)] = t.sqrt();
-        L[(2, 0)] = A[(2, 0)] / L[(0, 0)];
-        L[(2, 1)] = (A[(2, 1)] - L[(1, 0)] * L[(2, 0)]) / L[(1, 1)];
+        L[(2, 0)] = A[(2, 0)].clone() / L[(0, 0)].clone();
+        L[(2, 1)] = (A[(2, 1)].clone() - L[(1, 0)].clone() * L[(2, 0)].clone())
+            / L[(1, 1)].clone();
 
-        let t = A[(2, 2)] - L[(2, 0)] * L[(2, 0)] - L[(2, 1)] * L[(2, 1)];
+        let t = A[(2, 2)].clone()
+            - L[(2, 0)].clone() * L[(2, 0)].clone()
+            - L[(2, 1)].clone() * L[(2, 1)].clone();
 
         if t <= T::zero() {
             return Err(DenseFactorizationError::Cholesky(3));
@@ -55,14 +58,20 @@ where
         let L = self;
 
         // Forward substitution: Solve Lc = b
-        let c0 = b[0] / L[(0, 0)];
-        let c1 = (b[1] - L[(1, 0)] * c0) / L[(1, 1)];
-        let c2 = (b[2] - L[(2, 0)] * c0 - L[(2, 1)] * c1) / L[(2, 2)];
+        let c0 = b[0].clone() / L[(0, 0)].clone();
+        let c1 = (b[1].clone() - L[(1, 0)].clone() * c0.clone()) / L[(1, 1)].clone();
+        let c2 = (b[2].clone()
+            - L[(2, 0)].clone() * c0.clone()
+            - L[(2, 1)].clone() * c1.clone())
+            / L[(2, 2)].clone();
 
         // Backward substitution: Solve L^T x = c
-        x[2] = c2 / L[(2, 2)];
-        x[1] = (c1 - L[(2, 1)] * x[2]) / L[(1, 1)];
-        x[0] = (c0 - L[(1, 0)] * x[1] - L[(2, 0)] * x[2]) / L[(0, 0)];
+        x[2] = c2 / L[(2, 2)].clone();
+        x[1] = (c1 - L[(2, 1)].clone() * x[2].clone()) / L[(1, 1)].clone();
+        x[0] = (c0
+            - L[(1, 0)].clone() * x[1].clone()
+            - L[(2, 0)].clone() * x[2].clone())
+            / L[(0, 0)].clone();
     }
 }
 

@@ -17,6 +17,7 @@ mod math_traits;
 mod matrix_traits;
 mod matrix_types;
 mod scalarmath;
+mod transcendental;
 mod utils;
 mod vecmath;
 pub use error_types::*;
@@ -25,7 +26,27 @@ pub use math_traits::*;
 pub use matrix_traits::*;
 pub(crate) use matrix_types::*;
 pub(crate) use scalarmath::*;
+pub use transcendental::{BitWidthDiagnostic, RealConst, RealSentinel, Transcendental};
 pub(crate) use utils::*;
+
+// exact-rational backend (feature-gated)
+#[cfg(feature = "bigrational")]
+mod rational;
+#[cfg(feature = "bigrational")]
+pub use rational::{
+    arena_len, max_arena_bits, precision_bits, reset_arena, set_max_arena_bits,
+    set_precision_bits, tighten_scalar, tighten_vec, with_max_arena_bits, with_precision,
+    RationalReal,
+};
+
+// MPFR-backed float backend (feature-gated)
+#[cfg(feature = "mpfr")]
+mod mpfr;
+#[cfg(feature = "mpfr")]
+pub use mpfr::{
+    default_precision as mpfr_default_precision, set_default_precision as set_mpfr_default_precision,
+    with_mpfr_precision, MpfrFloat,
+};
 
 // matrix implementations
 mod csc;

@@ -37,8 +37,8 @@ where
             //number of columns
             for col in 0..mats[0][blockcolidx].ncols() {
                 for blockrow in mats {
-                    let block = blockrow[blockcolidx];
-                    data.extend(block.col_slice(col));
+                    let block = &blockrow[blockcolidx];
+                    data.extend(block.col_slice(col).iter().cloned());
                 }
             }
         }
@@ -63,7 +63,10 @@ where
             for col in 0..block.ncols() {
                 let startidx = M.index_linear((blockrow, blockcol + col));
                 let range = startidx..(startidx + block.nrows());
-                M.data[range].copy_from_slice(block.col_slice(col));
+                let src = block.col_slice(col);
+                for (d, s) in M.data[range].iter_mut().zip(src.iter()) {
+                    *d = s.clone();
+                }
             }
             blockrow += block.nrows();
             blockcol += block.ncols();

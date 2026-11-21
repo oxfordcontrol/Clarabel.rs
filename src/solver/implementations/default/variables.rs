@@ -60,8 +60,8 @@ where
     type SE = DefaultSettings<T>;
 
     fn calc_mu(&mut self, residuals: &DefaultResiduals<T>, cones: &CompositeCone<T>) -> T {
-        let denom = T::from(cones.degree() + 1).unwrap();
-        (residuals.dot_sz + self.τ * self.κ) / denom
+        let denom = T::from_usize(cones.degree() + 1).unwrap();
+        (residuals.dot_sz.clone() + self.τ.clone() * self.κ.clone()) / denom
     }
 
     fn affine_step_rhs(
@@ -73,8 +73,8 @@ where
         self.x.copy_from(&residuals.rx);
         self.z.copy_from(&residuals.rz);
         cones.affine_ds(&mut self.s, &variables.s);
-        self.τ = residuals.rτ;
-        self.κ = variables.τ * variables.κ;
+        self.τ = residuals.rτ.clone();
+        self.κ = variables.τ.clone() * variables.κ.clone();
     }
 
     fn combined_step_rhs(
@@ -87,11 +87,14 @@ where
         μ: T,
         m: T,
     ) {
-        let dotσμ = σ * μ;
+        let dotσμ = σ.clone() * μ;
 
-        self.x.axpby(T::one() - σ, &residuals.rx, T::zero()); //self.x  = (1 - σ)*rx
-        self.τ = (T::one() - σ) * residuals.rτ;
-        self.κ = -dotσμ + m * step.τ * step.κ + variables.τ * variables.κ;
+        self.x
+            .axpby(T::one() - σ.clone(), &residuals.rx, T::zero()); //self.x  = (1 - σ)*rx
+        self.τ = (T::one() - σ.clone()) * residuals.rτ.clone();
+        self.κ = -dotσμ.clone()
+            + m.clone() * step.τ.clone() * step.κ.clone()
+            + variables.τ.clone() * variables.κ.clone();
 
         // ds is different for symmetric and asymmetric cones:
         // Symmetric cones: d.s = λ ◦ λ + W⁻¹Δs ∘ WΔz − σμe
@@ -123,7 +126,7 @@ where
     ) -> T {
         let ατ = {
             if step.τ < T::zero() {
-                -self.τ / step.τ
+                -self.τ.clone() / step.τ.clone()
             } else {
                 T::max_value()
             }
@@ -131,7 +134,7 @@ where
 
         let ακ = {
             if step.κ < T::zero() {
-                -self.κ / step.κ
+                -self.κ.clone() / step.κ.clone()
             } else {
                 T::max_value()
             }
@@ -147,18 +150,18 @@ where
         let mut α = T::min(αz, αs);
 
         if step_direction == StepDirection::Combined {
-            α *= settings.core().max_step_fraction;
+            α *= settings.core().max_step_fraction.clone();
         }
 
         α
     }
 
     fn add_step(&mut self, step: &Self, α: T) {
-        self.x.axpby(α, &step.x, T::one());
-        self.s.axpby(α, &step.s, T::one());
-        self.z.axpby(α, &step.z, T::one());
-        self.τ += α * step.τ;
-        self.κ += α * step.κ;
+        self.x.axpby(α.clone(), &step.x, T::one());
+        self.s.axpby(α.clone(), &step.s, T::one());
+        self.z.axpby(α.clone(), &step.z, T::one());
+        self.τ += α.clone() * step.τ.clone();
+        self.κ += α * step.κ.clone();
     }
 
     fn symmetric_initialization(&mut self, cones: &mut CompositeCone<T>) {
@@ -181,8 +184,8 @@ where
         self.x.copy_from(&src.x);
         self.s.copy_from(&src.s);
         self.z.copy_from(&src.z);
-        self.τ = src.τ;
-        self.κ = src.κ;
+        self.τ = src.τ.clone();
+        self.κ = src.κ.clone();
     }
 
     fn scale_cones(
@@ -195,17 +198,19 @@ where
     }
 
     fn barrier(&self, step: &Self, α: T, cones: &mut CompositeCone<T>) -> T {
-        let central_coef = (cones.degree() + 1).as_T();
+        let central_coef: T = (cones.degree() + 1).as_T();
 
-        let cur_τ = self.τ + α * step.τ;
-        let cur_κ = self.κ + α * step.κ;
+        let cur_τ = self.τ.clone() + α.clone() * step.τ.clone();
+        let cur_κ = self.κ.clone() + α.clone() * step.κ.clone();
 
         // compute current μ
-        let sz = <[T] as VectorMath<T>>::dot_shifted(&self.z, &self.s, &step.z, &step.s, α);
-        let μ = (sz + cur_τ * cur_κ) / central_coef;
+        let sz =
+            <[T] as VectorMath<T>>::dot_shifted(&self.z, &self.s, &step.z, &step.s, α.clone());
+        let μ = (sz + cur_τ.clone() * cur_κ.clone()) / central_coef.clone();
 
         // barrier terms from gap and scalars
-        let mut barrier = central_coef * μ.logsafe() - cur_τ.logsafe() - cur_κ.logsafe();
+        let mut barrier =
+            central_coef * μ.logsafe() - cur_τ.logsafe() - cur_κ.logsafe();
 
         // barriers from the cones
         let (z, s) = (&self.z, &self.s);
@@ -217,13 +222,13 @@ where
     }
 
     fn rescale(&mut self) {
-        let scale = T::max(self.τ, self.κ);
+        let scale = T::max(self.τ.clone(), self.κ.clone());
         let invscale = scale.recip();
 
-        self.x.scale(invscale);
-        self.z.scale(invscale);
-        self.s.scale(invscale);
-        self.τ *= invscale;
+        self.x.scale(invscale.clone());
+        self.z.scale(invscale.clone());
+        self.s.scale(invscale.clone());
+        self.τ *= invscale.clone();
         self.κ *= invscale;
     }
 }
@@ -233,16 +238,17 @@ where
     T: FloatT,
 {
     let (min_margin, pos_margin) = cones.margins(z, pd);
+    let denom: T = cones.degree().as_T();
     let target = T::max(
         T::one(),
-        (pos_margin * (0.1).as_T()) / cones.degree().as_T(),
+        (pos_margin * (0.1).as_T()) / denom,
     );
 
     if min_margin <= T::zero() {
         // at least some component is outside its cone
         // done in two stages since otherwise (1-α) = -α for
         // large α, which makes z exactly 0. (or worse, -0.0 )
-        cones.scaled_unit_shift(z, -min_margin, pd);
+        cones.scaled_unit_shift(z, -min_margin.clone(), pd);
         cones.scaled_unit_shift(z, target, pd);
     } else if min_margin < target {
         // margin is positive but small.
@@ -265,22 +271,22 @@ where
         // Otherwise use τ to get an unscaled solution.
         let scaleinv = {
             if is_infeasible {
-                T::recip(self.κ)
+                T::recip(self.κ.clone())
             } else {
-                T::recip(self.τ)
+                T::recip(self.τ.clone())
             }
         };
 
         // also undo the equilibration
         let d = &data.equilibration.d;
         let (e, einv) = (&data.equilibration.e, &data.equilibration.einv);
-        let cinv = T::recip(data.equilibration.c);
+        let cinv = T::recip(data.equilibration.c.clone());
 
-        self.x.hadamard(d).scale(scaleinv);
-        self.z.hadamard(e).scale(scaleinv * cinv);
-        self.s.hadamard(einv).scale(scaleinv);
+        self.x.hadamard(d).scale(scaleinv.clone());
+        self.z.hadamard(e).scale(scaleinv.clone() * cinv);
+        self.s.hadamard(einv).scale(scaleinv.clone());
 
-        self.τ *= scaleinv;
+        self.τ *= scaleinv.clone();
         self.κ *= scaleinv;
     }
 

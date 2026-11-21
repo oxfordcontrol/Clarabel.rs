@@ -38,8 +38,8 @@ where
         Self {
             H_dual: DenseMatrixSym3::zeros(),
             Hs: DenseMatrixSym3::zeros(),
-            grad: [T::zero(); 3],
-            z: [T::zero(); 3],
+            grad: [T::zero(), T::zero(), T::zero()],
+            z: [T::zero(), T::zero(), T::zero()],
         }
     }
 }
@@ -90,7 +90,9 @@ where
         s[1] = (0.556_409_619_469_370).as_T();
         s[2] = (1.258_967_884_768_947).as_T();
 
-        (z[0], z[1], z[2]) = (s[0], s[1], s[2]);
+        z[0] = s[0].clone();
+        z[1] = s[1].clone();
+        z[2] = s[2].clone();
     }
 
     fn set_identity_scaling(&mut self) {
@@ -113,7 +115,9 @@ where
         self.update_Hs(s, z, μ, scaling_strategy);
 
         // K.z .= z
-        self.z.copy_from(z);
+        self.z[0] = z[0].clone();
+        self.z[1] = z[1].clone();
+        self.z[2] = z[2].clone();
 
         true
     }
@@ -138,11 +142,11 @@ where
     fn combined_ds_shift(&mut self, shift: &mut [T], step_z: &mut [T], step_s: &mut [T], σμ: T) {
         //3rd order correction requires input variables.z
 
-        let mut η = [T::zero(); 3];
+        let mut η = [T::zero(), T::zero(), T::zero()];
         self.higher_correction(&mut η, step_s, step_z);
 
         for i in 0..3 {
-            shift[i] = self.grad[i] * σμ - η[i];
+            shift[i] = self.grad[i].clone() * σμ.clone() - η[i].clone();
         }
     }
 
@@ -159,14 +163,22 @@ where
         settings: &CoreSettings<T>,
         αmax: T,
     ) -> (T, T) {
-        let step = settings.linesearch_backtrack_step;
-        let αmin = settings.min_terminate_step_length;
-        let mut work = [T::zero(); 3];
+        let step = settings.linesearch_backtrack_step.clone();
+        let αmin = settings.min_terminate_step_length.clone();
+        let mut work = [T::zero(), T::zero(), T::zero()];
 
         let _is_prim_feasible_fcn = |s: &[T]| -> bool { self.is_primal_feasible(s) };
         let _is_dual_feasible_fcn = |s: &[T]| -> bool { self.is_dual_feasible(s) };
 
-        let αz = backtrack_search(dz, z, αmax, αmin, step, _is_dual_feasible_fcn, &mut work);
+        let αz = backtrack_search(
+            dz,
+            z,
+            αmax.clone(),
+            αmin.clone(),
+            step.clone(),
+            _is_dual_feasible_fcn,
+            &mut work,
+        );
         let αs = backtrack_search(ds, s, αmax, αmin, step, _is_prim_feasible_fcn, &mut work);
 
         (αz, αs)
@@ -175,8 +187,16 @@ where
     fn compute_barrier(&mut self, z: &[T], s: &[T], dz: &[T], ds: &[T], α: T) -> T {
         let mut barrier = T::zero();
 
-        let cur_z = [z[0] + α * dz[0], z[1] + α * dz[1], z[2] + α * dz[2]];
-        let cur_s = [s[0] + α * ds[0], s[1] + α * ds[1], s[2] + α * ds[2]];
+        let cur_z = [
+            z[0].clone() + α.clone() * dz[0].clone(),
+            z[1].clone() + α.clone() * dz[1].clone(),
+            z[2].clone() + α.clone() * dz[2].clone(),
+        ];
+        let cur_s = [
+            s[0].clone() + α.clone() * ds[0].clone(),
+            s[1].clone() + α.clone() * ds[1].clone(),
+            s[2].clone() + α * ds[2].clone(),
+        ];
 
         barrier += self.barrier_dual(&cur_z);
         barrier += self.barrier_primal(&cur_s);
@@ -203,7 +223,8 @@ where
     {
         if s[2] > T::zero() && s[1] > T::zero() {
             //feasible
-            let res = s[1] * (s[2] / s[1]).logsafe() - s[0];
+            let res =
+                s[1].clone() * (s[2].clone() / s[1].clone()).logsafe() - s[0].clone();
             if res > T::zero() {
                 return true;
             }
@@ -217,7 +238,9 @@ where
         T: FloatT,
     {
         if z[2] > T::zero() && z[0] < T::zero() {
-            let res = z[1] - z[0] - z[0] * (-z[2] / z[0]).logsafe();
+            let res = z[1].clone()
+                - z[0].clone()
+                - z[0].clone() * (-z[2].clone() / z[0].clone()).logsafe();
             if res > T::zero() {
                 return true;
             }
@@ -235,11 +258,17 @@ where
         // where barω = ω(1 - s1/s2 - log(s2) - log(s3))
         // NB: ⟨s,g(s)⟩ = -3 = - ν
 
-        let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
+        let ω = _wright_omega(
+            T::one() - s[0].clone() / s[1].clone()
+                - (s[1].clone() / s[2].clone()).logsafe(),
+        );
 
-        let ω = (ω - T::one()) * (ω - T::one()) / ω;
+        let ω = (ω.clone() - T::one()) * (ω.clone() - T::one()) / ω;
 
-        -ω.logsafe() - (s[1].logsafe()) * ((2.).as_T()) - s[2].logsafe() - (3.).as_T()
+        -ω.logsafe()
+            - (s[1].clone().logsafe()) * ((2.).as_T())
+            - s[2].clone().logsafe()
+            - (3.).as_T()
     }
 
     fn barrier_dual(&mut self, z: &[T]) -> T
@@ -249,8 +278,9 @@ where
         // Dual barrier:
         // f*(z) = -log(z2 - z1 - z1*log(z3/-z1)) - log(-z1) - log(z3)
         // -----------------------------------------
-        let l = (-z[2] / z[0]).logsafe();
-        -(-z[2] * z[0]).logsafe() - (z[1] - z[0] - z[0] * l).logsafe()
+        let l = (-z[2].clone() / z[0].clone()).logsafe();
+        -(-z[2].clone() * z[0].clone()).logsafe()
+            - (z[1].clone() - z[0].clone() - z[0].clone() * l).logsafe()
     }
 
     fn higher_correction(&mut self, η: &mut [T], ds: &[T], v: &[T])
@@ -259,7 +289,7 @@ where
     {
         // u for H^{-1}*Δs
         let H = &self.H_dual;
-        let mut u = [T::zero(); 3];
+        let mut u = [T::zero(), T::zero(), T::zero()];
         let z = &self.z;
 
         //Fine to use symmetric here because the upper
@@ -276,33 +306,56 @@ where
         }
 
         η[1] = T::one();
-        η[2] = -z[0] / z[2]; // gradient of ψ
-        η[0] = η[2].logsafe();
+        η[2] = -z[0].clone() / z[2].clone(); // gradient of ψ
+        η[0] = η[2].clone().logsafe();
 
-        let ψ = z[0] * η[0] - z[0] + z[1];
+        let ψ = z[0].clone() * η[0].clone() - z[0].clone() + z[1].clone();
 
         let dotψu = u.dot(η);
         let dotψv = v.dot(η);
 
         let two: T = (2.).as_T();
-        let coef =
-            ((u[0] * (v[0] / z[0] - v[2] / z[2]) + u[2] * (z[0] * v[2] / z[2] - v[0]) / z[2]) * ψ
-                - two * dotψu * dotψv)
-                / (ψ * ψ * ψ);
+        let coef = ((u[0].clone()
+            * (v[0].clone() / z[0].clone() - v[2].clone() / z[2].clone())
+            + u[2].clone() * (z[0].clone() * v[2].clone() / z[2].clone() - v[0].clone())
+                / z[2].clone())
+            * ψ.clone()
+            - two.clone() * dotψu.clone() * dotψv.clone())
+            / (ψ.clone() * ψ.clone() * ψ.clone());
 
         η.scale(coef);
 
-        let inv_ψ2 = (ψ * ψ).recip();
+        let inv_ψ2 = (ψ.clone() * ψ.clone()).recip();
 
         // efficient implementation for η above
-        η[0] += (ψ.recip() - two / z[0]) * u[0] * v[0] / (z[0] * z[0])
-            - u[2] * v[2] / (z[2] * z[2]) / ψ
-            + dotψu * inv_ψ2 * (v[0] / z[0] - v[2] / z[2])
-            + dotψv * inv_ψ2 * (u[0] / z[0] - u[2] / z[2]);
-        η[2] += two * (z[0] / ψ - T::one()) * u[2] * v[2] / (z[2] * z[2] * z[2])
-            - (u[2] * v[0] + u[0] * v[2]) / (z[2] * z[2]) / ψ
-            + dotψu * inv_ψ2 * (z[0] * v[2] / (z[2] * z[2]) - v[0] / z[2])
-            + dotψv * inv_ψ2 * (z[0] * u[2] / (z[2] * z[2]) - u[0] / z[2]);
+        η[0] = η[0].clone()
+            + (ψ.clone().recip() - two.clone() / z[0].clone())
+                * u[0].clone()
+                * v[0].clone()
+                / (z[0].clone() * z[0].clone())
+            - u[2].clone() * v[2].clone() / (z[2].clone() * z[2].clone()) / ψ.clone()
+            + dotψu.clone()
+                * inv_ψ2.clone()
+                * (v[0].clone() / z[0].clone() - v[2].clone() / z[2].clone())
+            + dotψv.clone()
+                * inv_ψ2.clone()
+                * (u[0].clone() / z[0].clone() - u[2].clone() / z[2].clone());
+        η[2] = η[2].clone()
+            + two.clone() * (z[0].clone() / ψ.clone() - T::one())
+                * u[2].clone()
+                * v[2].clone()
+                / (z[2].clone() * z[2].clone() * z[2].clone())
+            - (u[2].clone() * v[0].clone() + u[0].clone() * v[2].clone())
+                / (z[2].clone() * z[2].clone())
+                / ψ.clone()
+            + dotψu.clone()
+                * inv_ψ2.clone()
+                * (z[0].clone() * v[2].clone() / (z[2].clone() * z[2].clone())
+                    - v[0].clone() / z[2].clone())
+            + dotψv
+                * inv_ψ2
+                * (z[0].clone() * u[2].clone() / (z[2].clone() * z[2].clone())
+                    - u[0].clone() / z[2].clone());
 
         η[..].scale((0.5).as_T());
     }
@@ -332,24 +385,28 @@ where
         let H = &mut self.H_dual;
 
         // Hessian computation, compute μ locally
-        let l = (-z[2] / z[0]).logsafe();
-        let r = -z[0] * l - z[0] + z[1];
+        let l = (-z[2].clone() / z[0].clone()).logsafe();
+        let r = -z[0].clone() * l.clone() - z[0].clone() + z[1].clone();
 
         // compute the gradient at z
-        let c2 = r.recip();
+        let c2 = r.clone().recip();
 
-        grad[0] = c2 * l - z[0].recip();
-        grad[1] = -c2;
-        grad[2] = (c2 * z[0] - T::one()) / z[2];
+        grad[0] = c2.clone() * l.clone() - z[0].clone().recip();
+        grad[1] = -c2.clone();
+        grad[2] = (c2 * z[0].clone() - T::one()) / z[2].clone();
 
         // compute_Hessian(K,z,H).   Type is symmetric, so
         // only need to assign upper triangle.
-        H[(0, 0)] = (r * r - z[0] * r + l * l * z[0] * z[0]) / (r * z[0] * z[0] * r);
-        H[(0, 1)] = -l / (r * r);
-        H[(1, 1)] = (r * r).recip();
-        H[(0, 2)] = (z[1] - z[0]) / (r * r * z[2]);
-        H[(1, 2)] = -z[0] / (r * r * z[2]);
-        H[(2, 2)] = (r * r - z[0] * r + z[0] * z[0]) / (r * r * z[2] * z[2]);
+        H[(0, 0)] = (r.clone() * r.clone() - z[0].clone() * r.clone()
+            + l.clone() * l.clone() * z[0].clone() * z[0].clone())
+            / (r.clone() * z[0].clone() * z[0].clone() * r.clone());
+        H[(0, 1)] = -l / (r.clone() * r.clone());
+        H[(1, 1)] = (r.clone() * r.clone()).recip();
+        H[(0, 2)] = (z[1].clone() - z[0].clone()) / (r.clone() * r.clone() * z[2].clone());
+        H[(1, 2)] = -z[0].clone() / (r.clone() * r.clone() * z[2].clone());
+        H[(2, 2)] = (r.clone() * r.clone() - z[0].clone() * r.clone()
+            + z[0].clone() * z[0].clone())
+            / (r.clone() * r.clone() * z[2].clone() * z[2].clone());
     }
 }
 
@@ -362,13 +419,17 @@ where
     where
         T: FloatT,
     {
-        let mut g = [T::zero(); 3];
-        let ω = _wright_omega(T::one() - s[0] / s[1] - (s[1] / s[2]).logsafe());
+        let ω = _wright_omega(
+            T::one() - s[0].clone() / s[1].clone()
+                - (s[1].clone() / s[2].clone()).logsafe(),
+        );
 
-        g[0] = T::one() / ((ω - T::one()) * s[1]);
-        g[1] = g[0] + g[0] * ((ω * s[1] / s[2]).logsafe()) - T::one() / s[1];
-        g[2] = ω / ((T::one() - ω) * s[2]);
-        g
+        let g0 = T::one() / ((ω.clone() - T::one()) * s[1].clone());
+        let g1 = g0.clone()
+            + g0.clone() * ((ω.clone() * s[1].clone() / s[2].clone()).logsafe())
+            - T::one() / s[1].clone();
+        let g2 = ω.clone() / ((T::one() - ω) * s[2].clone());
+        [g0, g1, g2]
     }
 
     //getters
@@ -401,19 +462,23 @@ where
         panic!("argument not in supported range");
     }
 
+    // Save z for the residual r = z - w - log(w) below; without this clone
+    // the `else` branch (which forms `w = z - logz`) would consume it.
+    let z_saved = z.clone();
+
     let mut p: T;
     let mut w: T;
     if z < T::one() + T::PI() {
         //Initialize with the taylor series
         let zm1 = z - T::one();
-        p = zm1; //(z-1)
-        w = T::one() + p * ((0.5).as_T());
-        p *= zm1; //(z-1)^2
-        w += p * (1. / 16.0).as_T();
-        p *= zm1; //(z-1)^3
-        w -= p * (1. / 192.0).as_T();
-        p *= zm1; //(z-1)^4
-        w -= p * (1. / 3072.0).as_T();
+        p = zm1.clone(); //(z-1)
+        w = T::one() + p.clone() * ((0.5).as_T());
+        p *= zm1.clone(); //(z-1)^2
+        w += p.clone() * (1. / 16.0).as_T();
+        p *= zm1.clone(); //(z-1)^3
+        w -= p.clone() * (1. / 192.0).as_T();
+        p *= zm1.clone(); //(z-1)^4
+        w -= p.clone() * (1. / 3072.0).as_T();
         p *= zm1; //(z-1)^5
         w += p * (13. / 61440.0).as_T();
     } else {
@@ -423,35 +488,46 @@ where
         //        log(z)/z^2(log(z)/2-1) +
         //        log(z)/z^3(1/3log(z)^2-3/2log(z)+1)
 
-        let logz = z.logsafe();
-        let zinv = z.recip();
-        w = z - logz;
+        let logz = z.clone().logsafe();
+        let zinv = z.clone().recip();
+        w = z - logz.clone();
 
         // add log(z)/z
-        let mut q = logz * zinv; // log(z)/z
-        w += q;
+        let mut q = logz.clone() * zinv.clone(); // log(z)/z
+        w += q.clone();
 
         // add log(z)/z^2(log(z)/2-1)
-        q *= zinv; // log(z)/(z^2)
-        w += q * (logz / (2.).as_T() - T::one());
+        q *= zinv.clone(); // log(z)/(z^2)
+        w += q.clone() * (logz.clone() / (2.).as_T() - T::one());
 
         // add log(z)/z^3(1/3log(z)^2-3/2log(z)+1)
         q *= zinv; // log(z)/(z^3)
-        w += q * (logz * logz / (3.).as_T() - logz * (1.5).as_T() + T::one());
+        w += q
+            * (logz.clone() * logz.clone() / (3.).as_T() - logz * (1.5).as_T() + T::one());
     }
 
     // Initialize the residual
-    let mut r = z - w - w.logsafe();
+    let mut r = z_saved - w.clone() - w.clone().logsafe();
 
     // Santiago suggests two refinement iterations only
     for _ in 0..2 {
-        let wp1 = w + T::one();
-        let t = wp1 * (wp1 + (r * (2.).as_T()) / (3.0).as_T());
-        w *= T::one() + (r / wp1) * (t - r * (0.5).as_T()) / (t - r);
+        let wp1 = w.clone() + T::one();
+        let t = wp1.clone()
+            * (wp1.clone() + (r.clone() * (2.).as_T()) / (3.0).as_T());
+        w *= T::one()
+            + (r.clone() / wp1.clone()) * (t.clone() - r.clone() * (0.5).as_T())
+                / (t - r.clone());
 
-        let r_4th = r * r * r * r;
-        let wp1_6th = wp1 * wp1 * wp1 * wp1 * wp1 * wp1;
-        r = (w * w * (2.).as_T() - w * (8.).as_T() - T::one()) / (wp1_6th * (72.0).as_T()) * r_4th;
+        let r_4th = r.clone() * r.clone() * r.clone() * r.clone();
+        let wp1_6th = wp1.clone()
+            * wp1.clone()
+            * wp1.clone()
+            * wp1.clone()
+            * wp1.clone()
+            * wp1;
+        r = (w.clone() * w.clone() * (2.).as_T() - w.clone() * (8.).as_T() - T::one())
+            / (wp1_6th * (72.0).as_T())
+            * r_4th;
     }
 
     w

@@ -38,7 +38,7 @@ cfg_if::cfg_if! {
 }
 impl BlasFloatT for f64 {}
 
-mod private {
+pub mod private {
   pub trait BlasFloatSealed {}
   cfg_if::cfg_if! {
 	if #[cfg(not(feature="sdp-r"))] {

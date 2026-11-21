@@ -54,21 +54,27 @@ impl<const S: usize, T: FloatT> DenseMatrixN<S, T> {
     pub(crate) fn swap_columns(&mut self, i: usize, j: usize) {
         let A = self;
         for r in 0..Self::N {
-            (A[(r, i)], A[(r, j)]) = (A[(r, j)], A[(r, i)])
+            let tmp_i = A[(r, i)].clone();
+            let tmp_j = A[(r, j)].clone();
+            A[(r, i)] = tmp_j;
+            A[(r, j)] = tmp_i;
         }
     }
 
     pub(crate) fn flip_column(&mut self, i: usize) {
         let A = self;
         for r in 0..Self::N {
-            A[(r, i)] = -A[(r, i)];
+            A[(r, i)] = -A[(r, i)].clone();
         }
     }
 
     pub(crate) fn transpose_in_place(&mut self) {
         for c in 0..Self::N {
             for r in 0..c {
-                (self[(r, c)], self[(c, r)]) = (self[(c, r)], self[(r, c)]);
+                let tmp_rc = self[(r, c)].clone();
+                let tmp_cr = self[(c, r)].clone();
+                self[(r, c)] = tmp_cr;
+                self[(c, r)] = tmp_rc;
             }
         }
     }
@@ -80,12 +86,17 @@ impl<const S: usize, T: FloatT> DenseMatrixN<S, T> {
         assert!(Self::N == x.len());
         assert!(Self::N == y.len());
 
-        y.fill(T::zero());
+        // One T::zero() + clone-fill rather than N independent zeros
+        // (the rational backend allocates per T::zero()).
+        let zero = T::zero();
+        for yi in y.iter_mut() {
+            *yi = zero.clone();
+        }
         // column major order, but it probably doesn't matter
         for c in 0..Self::N {
-            let xc = x[c];
+            let xc = x[c].clone();
             for r in 0..Self::N {
-                y[r] += self[(r, c)] * xc;
+                y[r] = y[r].clone() + self[(r, c)].clone() * xc.clone();
             }
         }
     }
@@ -136,8 +147,11 @@ impl<const S: usize, T: FloatT> DenseMatrixMut<T> for DenseMatrixN<S, T> {
 
 impl<const S: usize, T: FloatT> DenseMatrixN<S, T> {
     pub fn zeros() -> Self {
+        // For RationalReal-style backends, T::zero() pushes a fresh
+        // arena entry per call; one-call + clone is S-1 entries cheaper.
+        let zero = T::zero();
         Self {
-            data: [T::zero(); S],
+            data: std::array::from_fn(|_| zero.clone()),
         }
     }
 }
@@ -160,7 +174,9 @@ where
     fn from(B: &DenseStorageMatrix<S2, T>) -> Self {
         debug_assert!(B.size() == (Self::N, Self::N));
         let mut A = Self::zeros();
-        A.data.copy_from_slice(B.data());
+        for (d, s) in A.data.iter_mut().zip(B.data().iter()) {
+            *d = s.clone();
+        }
         A
     }
 }

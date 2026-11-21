@@ -36,8 +36,8 @@ where
             .logical(true) //allocate memory only on init
             .Dsigns(Dsigns.to_vec())
             .regularize_enable(true)
-            .regularize_eps(settings.dynamic_regularization_eps)
-            .regularize_delta(settings.dynamic_regularization_delta)
+            .regularize_eps(settings.dynamic_regularization_eps.clone())
+            .regularize_delta(settings.dynamic_regularization_delta.clone())
             .amd_dense_scale(1.5)
             .build()
             .unwrap();

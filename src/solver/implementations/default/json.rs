@@ -40,8 +40,8 @@ where
 
         json_data.P.lrscale(dinv, dinv);
         json_data.q.hadamard(dinv);
-        json_data.P.scale(c.recip());
-        json_data.q.scale(c.recip());
+        json_data.P.scale(c.clone().recip());
+        json_data.q.scale(c.clone().recip());
 
         json_data.A.lrscale(einv, dinv);
         json_data.b.hadamard(einv);

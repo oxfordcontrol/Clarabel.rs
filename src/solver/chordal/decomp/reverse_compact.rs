@@ -112,9 +112,10 @@ where
         for &i in clique_buffer.iter() {
             if i <= j {
                 let offset = coord_to_upper_triangular_index((i, j));
-                new_s[row_range.start + offset] += old_s[row_ptr + counter];
+                new_s[row_range.start + offset] = new_s[row_range.start + offset].clone()
+                    + old_s[row_ptr + counter].clone();
                 // notice: z overwrites (instead of adding) the overlapping entries
-                new_z[row_range.start + offset] = old_z[row_ptr + counter];
+                new_z[row_range.start + offset] = old_z[row_ptr + counter].clone();
                 counter += 1
             }
         }

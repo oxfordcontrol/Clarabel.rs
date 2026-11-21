@@ -59,8 +59,32 @@ pub struct DefaultInfo<T> {
     /// linear solver information
     pub linsolver: LinearSolverInfo,
 
+    /// Per-iteration trace of (iter, max_numer_bits, max_denom_bits)
+    /// across the primal `x` vector. Populated only on backends with
+    /// arbitrary-precision representations (e.g. `RationalReal`,
+    /// `MpfrFloat`); for IEEE floats this stays empty (the underlying
+    /// [`BitWidthDiagnostic`](crate::algebra::BitWidthDiagnostic)
+    /// returns `(0, 0)` and we skip the push). Useful for observing
+    /// rational denominator blow-up across an IPM run; QOU uses this
+    /// to predict whether a problem at H_n is tractable a priori.
+    pub iter_diagnostics: Vec<IterDiagnostic>,
+
     // target stream for printing
     pub(crate) stream: PrintTarget,
+}
+
+/// One row of the per-iteration diagnostic trace.
+/// See [`DefaultInfo::iter_diagnostics`].
+#[derive(Default, Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct IterDiagnostic {
+    /// Iteration number at which this row was recorded (matches
+    /// `info.iterations` at the moment of capture).
+    pub iter: u32,
+    /// Maximum numerator bit-length across the primal `x` vector.
+    pub max_numer_bits: u64,
+    /// Maximum denominator bit-length across the primal `x` vector.
+    pub max_denom_bits: u64,
 }
 
 impl<T> DefaultInfo<T>
@@ -118,7 +142,7 @@ where
     ) {
         // optimality termination check should be computed w.r.t
         // the pre-homogenization x and z variables.
-        let τinv = T::recip(variables.τ);
+        let τinv = T::recip(variables.τ.clone());
 
         // unscaled linear term norms
         let normb = data.get_normb();
@@ -129,54 +153,76 @@ where
         let e = &data.equilibration.e;
         let dinv = &data.equilibration.dinv;
         let einv = &data.equilibration.einv;
-        let cinv = T::recip(data.equilibration.c);
+        let cinv = T::recip(data.equilibration.c.clone());
 
         // primal and dual costs. dot products are invariant w.r.t
         // equilibration, but we still need to back out the overall
         // objective scaling term c
 
-        let xPx_τinvsq_over2 = residuals.dot_xPx * τinv * τinv / (2.).as_T();
-        self.cost_primal = (residuals.dot_qx * τinv + xPx_τinvsq_over2) * cinv;
-        self.cost_dual = (-residuals.dot_bz * τinv - xPx_τinvsq_over2) * cinv;
+        let xPx_τinvsq_over2 =
+            residuals.dot_xPx.clone() * τinv.clone() * τinv.clone() / (2.).as_T();
+        self.cost_primal =
+            (residuals.dot_qx.clone() * τinv.clone() + xPx_τinvsq_over2.clone()) * cinv.clone();
+        self.cost_dual =
+            (-residuals.dot_bz.clone() * τinv.clone() - xPx_τinvsq_over2) * cinv.clone();
 
         // variables norms, undoing the equilibration.  Do not unscale
         // by τ yet because the infeasibility residuals are ratios of
         // terms that have no affine parts anyway
         let mut normx = variables.x.norm_scaled(d);
-        let mut normz = variables.z.norm_scaled(e) * cinv;
+        let mut normz = variables.z.norm_scaled(e) * cinv.clone();
         let mut norms = variables.s.norm_scaled(einv);
 
         // primal and dual infeasibility residuals.
-        self.res_primal_inf = (residuals.rx_inf.norm_scaled(dinv) * cinv) / T::max(T::one(), normz);
+        self.res_primal_inf =
+            (residuals.rx_inf.norm_scaled(dinv) * cinv.clone()) / T::max(T::one(), normz.clone());
         self.res_dual_inf = T::max(
-            residuals.Px.norm_scaled(dinv) / T::max(T::one(), normx),
-            residuals.rz_inf.norm_scaled(einv) / T::max(T::one(), normx + norms),
+            residuals.Px.norm_scaled(dinv) / T::max(T::one(), normx.clone()),
+            residuals.rz_inf.norm_scaled(einv) / T::max(T::one(), normx.clone() + norms.clone()),
         );
 
         // now back out the τ scaling so we can normalize the unscaled primal / dual errors
-        normx *= τinv;
-        normz *= τinv;
-        norms *= τinv;
+        normx *= τinv.clone();
+        normz *= τinv.clone();
+        norms *= τinv.clone();
 
         // primal and dual relative residuals.
-        self.res_primal =
-            residuals.rz.norm_scaled(einv) * τinv / T::max(T::one(), normb + normx + norms);
-        self.res_dual =
-            residuals.rx.norm_scaled(dinv) * τinv * cinv / T::max(T::one(), normq + normx + normz);
+        self.res_primal = residuals.rz.norm_scaled(einv) * τinv.clone()
+            / T::max(T::one(), normb + normx.clone() + norms);
+        self.res_dual = residuals.rx.norm_scaled(dinv) * τinv.clone() * cinv
+            / T::max(T::one(), normq + normx + normz);
 
         // absolute and relative gaps
-        self.gap_abs = T::abs(self.cost_primal - self.cost_dual);
-        self.gap_rel = self.gap_abs
+        self.gap_abs = (self.cost_primal.clone() - self.cost_dual.clone()).abs();
+        self.gap_rel = self.gap_abs.clone()
             / T::max(
                 T::one(),
-                T::min(T::abs(self.cost_primal), T::abs(self.cost_dual)),
+                T::min(self.cost_primal.clone().abs(), self.cost_dual.clone().abs()),
             );
 
         // κ/τ ratio (scaled)
-        self.ktratio = variables.κ * τinv;
+        self.ktratio = variables.κ.clone() * τinv;
 
         // solve time so far (includes setup)
         self.solve_time = timers.total_time().as_secs_f64();
+
+        // Per-iteration bit-width trace (only populated when T's
+        // BitWidthDiagnostic returns non-zero values, i.e. on
+        // arbitrary-precision backends like RationalReal). Auto-import
+        // via the FloatT supertrait chain — no explicit `use` needed.
+        use crate::algebra::BitWidthDiagnostic as _;
+        let (n_max, d_max) = variables
+            .x
+            .iter()
+            .map(|xi| xi.bit_width())
+            .fold((0u64, 0u64), |a, b| (a.0.max(b.0), a.1.max(b.1)));
+        if n_max != 0 || d_max != 0 {
+            self.iter_diagnostics.push(IterDiagnostic {
+                iter: self.iterations,
+                max_numer_bits: n_max,
+                max_denom_bits: d_max,
+            });
+        }
     }
 
     fn check_termination(
@@ -206,10 +252,10 @@ where
             // Going backwards. Stop immediately if residuals diverge out of feasibility tolerance.
             #[allow(clippy::collapsible_if)] // nested if for readability
             if self.ktratio < T::one() {
-                if (self.res_dual > settings.tol_feas * (100.).as_T()
-                    && self.res_dual > self.prev_res_dual * (100.).as_T())
-                    || (self.res_primal > settings.tol_feas * (100.).as_T()
-                        && self.res_primal > self.prev_res_primal * (100.).as_T())
+                if (self.res_dual > settings.tol_feas.clone() * (100.).as_T()
+                    && self.res_dual > self.prev_res_dual.clone() * (100.).as_T())
+                    || (self.res_primal > settings.tol_feas.clone() * (100.).as_T()
+                        && self.res_primal > self.prev_res_primal.clone() * (100.).as_T())
                 {
                     self.status = SolverStatus::InsufficientProgress;
                 }
@@ -231,23 +277,23 @@ where
     }
 
     fn save_prev_iterate(&mut self, variables: &Self::V, prev_variables: &mut Self::V) {
-        self.prev_cost_primal = self.cost_primal;
-        self.prev_cost_dual = self.cost_dual;
-        self.prev_res_primal = self.res_primal;
-        self.prev_res_dual = self.res_dual;
-        self.prev_gap_abs = self.gap_abs;
-        self.prev_gap_rel = self.gap_rel;
+        self.prev_cost_primal = self.cost_primal.clone();
+        self.prev_cost_dual = self.cost_dual.clone();
+        self.prev_res_primal = self.res_primal.clone();
+        self.prev_res_dual = self.res_dual.clone();
+        self.prev_gap_abs = self.gap_abs.clone();
+        self.prev_gap_rel = self.gap_rel.clone();
 
         prev_variables.copy_from(variables);
     }
 
     fn reset_to_prev_iterate(&mut self, variables: &mut Self::V, prev_variables: &Self::V) {
-        self.cost_primal = self.prev_cost_primal;
-        self.cost_dual = self.prev_cost_dual;
-        self.res_primal = self.prev_res_primal;
-        self.res_dual = self.prev_res_dual;
-        self.gap_abs = self.prev_gap_abs;
-        self.gap_rel = self.prev_gap_rel;
+        self.cost_primal = self.prev_cost_primal.clone();
+        self.cost_dual = self.prev_cost_dual.clone();
+        self.res_primal = self.prev_res_primal.clone();
+        self.res_dual = self.prev_res_dual.clone();
+        self.gap_abs = self.prev_gap_abs.clone();
+        self.gap_rel = self.prev_gap_rel.clone();
 
         variables.copy_from(prev_variables);
     }
@@ -280,12 +326,12 @@ where
         settings: &DefaultSettings<T>,
     ) {
         // "full" tolerances
-        let tol_gap_abs = settings.tol_gap_abs;
-        let tol_gap_rel = settings.tol_gap_rel;
-        let tol_feas = settings.tol_feas;
-        let tol_infeas_abs = settings.tol_infeas_abs;
-        let tol_infeas_rel = settings.tol_infeas_rel;
-        let tol_ktratio = settings.tol_ktratio;
+        let tol_gap_abs = settings.tol_gap_abs.clone();
+        let tol_gap_rel = settings.tol_gap_rel.clone();
+        let tol_feas = settings.tol_feas.clone();
+        let tol_infeas_abs = settings.tol_infeas_abs.clone();
+        let tol_infeas_rel = settings.tol_infeas_rel.clone();
+        let tol_ktratio = settings.tol_ktratio.clone();
 
         let solved_status = SolverStatus::Solved;
         let pinf_status = SolverStatus::PrimalInfeasible;
@@ -311,12 +357,12 @@ where
         settings: &DefaultSettings<T>,
     ) {
         // "almost" tolerances
-        let tol_gap_abs = settings.reduced_tol_gap_abs;
-        let tol_gap_rel = settings.reduced_tol_gap_rel;
-        let tol_feas = settings.reduced_tol_feas;
-        let tol_infeas_abs = settings.reduced_tol_infeas_abs;
-        let tol_infeas_rel = settings.reduced_tol_infeas_rel;
-        let tol_ktratio = settings.reduced_tol_ktratio;
+        let tol_gap_abs = settings.reduced_tol_gap_abs.clone();
+        let tol_gap_rel = settings.reduced_tol_gap_rel.clone();
+        let tol_feas = settings.reduced_tol_feas.clone();
+        let tol_infeas_abs = settings.reduced_tol_infeas_abs.clone();
+        let tol_infeas_rel = settings.reduced_tol_infeas_rel.clone();
+        let tol_ktratio = settings.reduced_tol_ktratio.clone();
 
         let solved_status = SolverStatus::AlmostSolved;
         let pinf_status = SolverStatus::AlmostPrimalInfeasible;
@@ -354,7 +400,8 @@ where
             self.status = solved_status;
         //PJG hardcoded factor 1000 here should be fixed
         } else if self.ktratio > tol_ktratio.recip() * (1000.0).as_T() {
-            if self.is_primal_infeasible(residuals, tol_infeas_abs, tol_infeas_rel) {
+            if self.is_primal_infeasible(residuals, tol_infeas_abs.clone(), tol_infeas_rel.clone())
+            {
                 self.status = pinf_status;
             } else if self.is_dual_infeasible(residuals, tol_infeas_abs, tol_infeas_rel) {
                 self.status = dinf_status;
@@ -375,7 +422,7 @@ where
         tol_infeas_rel: T,
     ) -> bool {
         (residuals.dot_bz < -tol_infeas_abs)
-            && (self.res_primal_inf < -tol_infeas_rel * residuals.dot_bz)
+            && (self.res_primal_inf < -tol_infeas_rel * residuals.dot_bz.clone())
     }
 
     fn is_dual_infeasible(
@@ -385,6 +432,6 @@ where
         tol_infeas_rel: T,
     ) -> bool {
         (residuals.dot_qx < -tol_infeas_abs)
-            && (self.res_dual_inf < -tol_infeas_rel * residuals.dot_qx)
+            && (self.res_dual_inf < -tol_infeas_rel * residuals.dot_qx.clone())
     }
 }
