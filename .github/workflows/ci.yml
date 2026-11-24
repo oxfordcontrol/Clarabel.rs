@@ -20,17 +20,26 @@ jobs:
 
     - name: rust version info
       run: cargo --version
-      
+
     - name: Build
       run: cargo build --verbose --features sdp-accelerate,faer-sparse,serde
-      
+
+    - name: Check without default features
+      run: cargo check --verbose --no-default-features
+
+    - name: Check with serde only
+      run: cargo check --verbose --no-default-features --features serde
+
+    - name: Check with faer-sparse only
+      run: cargo check --verbose --no-default-features --features faer-sparse
+
     - name: Run tests
       run: cargo test --verbose --features sdp-accelerate,faer-sparse,serde
 
     - name: Install cargo-tarpaulin
       run: cargo install cargo-tarpaulin
 
-    - name: Generate code coverage 
+    - name: Generate code coverage
       run: |
         cargo tarpaulin --out xml --features sdp-accelerate,serde,faer-sparse --exclude-files "src/python/*,src/julia/*"
 
@@ -38,6 +47,3 @@ jobs:
       uses: codecov/codecov-action@v5
       with:
         token: ${{secrets.CODECOV_TOKEN}}
-
-
-
