@@ -46,6 +46,7 @@ pub enum SolverError {
     IoError(#[from] std::io::Error),
 
     /// Error from JSON parsing/serialization
+    #[cfg(feature = "serde")]
     #[error("JSON error: {0}")]
     JsonError(#[from] serde_json::Error),
 }
